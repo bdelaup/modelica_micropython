@@ -146,6 +146,21 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
 - Une seule instance de microcontrôleur par simulation (pas de multi-instances).
 - Aucune protection contre un script qui ne rend jamais la main (boucle infinie sans appel à une API du shim) : la simulation peut rester bloquée dans ce cas.
 
+## Vérification de la v0
+
+*Scénarios concrets et critères de succès permettant de dire que la v0 « marche ». Chaque scénario teste une décision de la section « Choix architecturaux ».*
+
+**Moyen d'exécution retenu** : chaque scénario est écrit comme un script OpenModelica Compiler (`.mos`), exécutable en ligne de commande via `omc <scénario>.mos` — reproductible et scriptable indépendamment de cette session (portable vers une éventuelle CI plus tard). Pendant le développement interactif, ces mêmes scénarios peuvent aussi être rejoués via les outils MCP-OpenModelica déjà connectés (`simulate`, `plot`, `getSimulationResultVariables`, `checkModel`), sans réécrire de script à chaque itération.
+
+**Scénarios** :
+
+- [ ] **Clignotement de base** : `demo.py` configure `GP0` en sortie et alterne `on()`/`off()` avec `sleep(1)` entre les deux. Succès : la trace de simulation de `GP0` montre un créneau périodique de la bonne période. Vérifie le shim `machine`/`time` et la boucle de synchro de base.
+- [ ] **Compression du `sleep`** : variante avec un `sleep` long (ex. 1 h simulée) avant un toggle. Succès : le temps réel d'exécution de la simulation reste de l'ordre de la seconde, pas de l'ordre de l'heure. Vérifie la contrainte de synchronisation temporelle — le cœur de la valeur du projet.
+- [ ] **Réactivité en entrée** : `GP1` en entrée, piloté depuis Modelica par une source qui bascule à un instant donné pendant que le script est en `sleep`. Succès : le script réagit (ex. `print()`) sans attendre le tick périodique ni la fin du sleep en cours. Vérifie la synchro événementielle sur transition (option retenue pour l'interface GPIO).
+- [ ] **Erreur du script** : un script qui lève une exception volontaire (ex. division par zéro) doit arrêter la simulation. Succès : le traceback Python est visible dans le journal de simulation. Vérifie la gestion des erreurs et la redirection `stdout`/`stderr`.
+- [ ] **Reset** : relancer la simulation deux fois de suite. Succès : le script redémarre proprement à chaque relance, sans état résiduel de la précédente exécution. Vérifie le cycle de vie de l'External Object.
+- [ ] **Lisibilité visuelle de l'icône et du diagramme** : l'icône du bloc microcontrôleur (telle qu'affichée dans un schéma Modelica) doit rester lisible à taille normale — connecteurs GPIO visibles et correctement étiquetés, pas de chevauchement d'éléments, identité visuelle claire (reconnaissable comme un microcontrôleur, cohérente avec le style de la bibliothèque standard). Vérifié par rendu via les outils MCP-OpenModelica (`iconDiagram`/`classDiagram`) et inspection visuelle directe de l'image obtenue, en complément d'une relecture par un humain dans OMEdit.
+
 ## TODO vers une version exhaustive
 
 *Liste à cocher, tenue à jour, de ce qu'il reste à faire pour passer de la v0 à une version complète.*
@@ -165,3 +180,6 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
 - [ ] Créer et fournir le script de démonstration par défaut (`Resources/Scripts/demo.py`)
 - [ ] Support multi-instances (isolation par sous-interpréteurs CPython, éliminer les singletons globaux dans le shim)
 - [ ] Timeout mou basé sur les appels au shim (protection contre un script qui ne rend jamais la main)
+- [ ] Créer les scripts de démonstration nécessaires aux scénarios de vérification v0 (sleep long, réactivité entrée, erreur volontaire)
+- [ ] Écrire les scripts `.mos` de vérification (un par scénario v0), exécutables via `omc`
+- [ ] Étendre la vérification visuelle (icône/diagramme) à chaque nouveau composant ajouté au-delà de la v0 (ADC, PWM, etc.)
