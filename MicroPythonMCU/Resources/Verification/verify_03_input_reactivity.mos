@@ -6,8 +6,8 @@ loadFile("../../package.mo"); getErrorString();
 simulate(MicroPythonMCU.Examples.InputReactivity, stopTime = 60, numberOfIntervals = 600, fileNamePrefix = "InputReactivity");
 b := getErrorString();
 
-vBefore := val(pico.GP0.v, 9.9, "InputReactivity_res.mat");
-vAfter := val(pico.GP0.v, 15, "InputReactivity_res.mat");
+vBefore := val(mcu.GP0.v, 9.9, "InputReactivity_res.mat");
+vAfter := val(mcu.GP0.v, 15, "InputReactivity_res.mat");
 
 if vBefore < 0.5 and vAfter > 2.0 then
   print("PASS: verify_03_input_reactivity (reaction rapide au changement de GP1)\n");

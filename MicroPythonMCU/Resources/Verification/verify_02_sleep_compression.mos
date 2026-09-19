@@ -10,9 +10,9 @@ loadFile("../../package.mo"); getErrorString();
 simulate(MicroPythonMCU.Examples.SleepCompression, stopTime = 7250, numberOfIntervals = 200, fileNamePrefix = "SleepCompression");
 b := getErrorString();
 
-vBefore := val(pico.GP0.v, 100, "SleepCompression_res.mat");
-vAfter1 := val(pico.GP0.v, 3700, "SleepCompression_res.mat");
-vAfter2 := val(pico.GP0.v, 7210, "SleepCompression_res.mat");
+vBefore := val(mcu.GP0.v, 100, "SleepCompression_res.mat");
+vAfter1 := val(mcu.GP0.v, 3700, "SleepCompression_res.mat");
+vAfter2 := val(mcu.GP0.v, 7210, "SleepCompression_res.mat");
 
 if vBefore < 0.5 and vAfter1 > 2.0 and vAfter2 < 0.5 then
   print("PASS: verify_02_sleep_compression (bascules aux bons instants, execution rapide)\n");

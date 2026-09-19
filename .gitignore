@@ -40,4 +40,5 @@
 *_16dae.h
 *_17inl.c
 *_18spd.c
-/MicroPythonMCU/Pico.c
+/MicroPythonMCU/MCU.c
+/MicroPythonMCU/Resources/Verification/*.c

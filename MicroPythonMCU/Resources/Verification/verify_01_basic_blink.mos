@@ -7,8 +7,8 @@ loadFile("../../package.mo"); getErrorString();
 simulate(MicroPythonMCU.Examples.BasicBlink, stopTime = 4.5, numberOfIntervals = 4500, fileNamePrefix = "BasicBlink");
 b := getErrorString();
 
-vOn := val(pico.GP0.v, 0.5, "BasicBlink_res.mat");
-vOff := val(pico.GP0.v, 1.5, "BasicBlink_res.mat");
+vOn := val(mcu.GP0.v, 0.5, "BasicBlink_res.mat");
+vOff := val(mcu.GP0.v, 1.5, "BasicBlink_res.mat");
 
 if vOn > 2.0 and vOff < 0.5 then
   print("PASS: verify_01_basic_blink (GP0 haut=" + String(vOn) + "V, bas=" + String(vOff) + "V)\n");

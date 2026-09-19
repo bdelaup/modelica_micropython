@@ -102,10 +102,20 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
 
 ### Décision : Connecteurs GPIO exposés par le modèle
 
-- **Choix retenu** : tableau fixe de connecteurs GPIO (pas de connecteurs conditionnels), restreint à **8 broches pour la v0** (au lieu des 29 broches réelles du Pico).
+- **Choix retenu** : tableau fixe de connecteurs GPIO (pas de connecteurs conditionnels), restreint à **8 broches pour la v0** (au lieu des 29 broches réelles du Raspberry Pi Pico).
 - **Alternatives envisagées** :
   - Connecteurs activables un par un (pattern `use_pX`, comme dans la bibliothèque standard Modelica pour des entrées/sorties optionnelles) — icône plus lisible en TP, mais implémentation plus complexe (connecteurs conditionnels). Écarté pour la v0, à reconsidérer pour la version exhaustive.
 - **Notes pour plus tard** : passer à 29 broches (numérotation complète `GP0`–`GP28`) et/ou au pattern `use_pX` lors de l'extension au-delà de la v0.
+
+### Décision : Nom de la classe modèle et identité visuelle (icône, schéma)
+
+- **Contexte** : la classe modèle s'est appelée `Pico` tout au long de l'implémentation v0 (jalons M0-M11), nom de travail directement dérivé de la carte cible (Raspberry Pi Pico / RP2040, cf. section Besoin et décision « Interface GPIO »). Une fois la preuve de concept validée (5 scénarios `PASS`), décision de ne plus afficher ce nom aussi explicitement sur le bloc public : la cible RP2040 reste la référence d'API interne, mais n'a pas besoin d'être mise en avant sur l'identité visuelle du composant pour l'instant.
+- **Choix retenu** : renommage de la classe `Pico` → `MCU` (et de l'instance `pico` → `mcu` dans tous les exemples et scripts de vérification). L'icône affiche « MCU » / « (v0) » en gros, sans mention RP2040 ni Raspberry Pi visible — la référence RP2040 reste documentée dans ce fichier (choix d'architecture interne, cf. décision « Interface GPIO ») mais masquée côté identité visuelle publique.
+- **Icône redessinée à cette occasion** : broches réparties sur le pourtour du bloc (4 à gauche `GP0`-`GP3`, 4 à droite `GP4`-`GP7`, plutôt que les 8 sur un seul bord comme dans la première version), `GND` en bas, noms de broches en blanc sur fond sombre — pour une lecture plus immédiate et « avenante » du composant dans un schéma.
+- **Schéma interne (Diagram)** : les blocs électriques standards utilisés en interne par broche (`SignalVoltage`, `Resistor`, `IdealOpeningSwitch`, `VoltageSensor`) sont désormais explicitement placés et câblés (annotations `Placement`/`Line` sur chaque `connect`), au lieu de rester sans position ni fil visible par défaut. Chaque bloc de type tableau (`src[8]`, `rOut[8]`, `sw[8]`, `sns[8]`) est représenté par une seule icône représentative reliée par un faisceau de fils vers les 8 broches — convention Modelica standard pour les composants vectorisés (donner une position à chaque élément individuel du tableau n'est pas supporté nativement par le rendu du diagramme).
+- **Alternatives envisagées** :
+  - Garder `Pico` comme nom de classe et masquer seulement visuellement le nom sur l'icône (sans renommer la classe) — écarté : moins cohérent, le nom resterait visible partout ailleurs (arborescence du package, messages d'erreur, autocomplétion) même si l'icône était neutre.
+- **Notes pour plus tard** : si la cible RP2040 doit un jour redevenir visible (branding assumé), il suffira de rétablir le texte sur l'icône et/ou de renommer à nouveau — le principe de révisabilité s'applique aussi à ce choix.
 
 ### Décision : Structure du package et interface C du runtime Python
 
@@ -129,7 +139,7 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
 ```
 MicroPythonMCU/
 ├── package.mo, package.order
-├── Pico.mo                       -- le modèle (8 broches GP0-GP7 + GND, pont électrique Analog, cf. décision domaine électrique)
+├── MCU.mo                         -- le modèle (8 broches GP0-GP7 + GND, pont électrique Analog, cf. décision domaine électrique)
 ├── Interfaces/                   -- constantes VOH/VOL/VIH/VIL/ROut (niveaux RP2040 approximatifs)
 ├── Internal/
 │   ├── PyRuntime.mo               -- ExternalObject (constructor/destructor)
@@ -262,7 +272,8 @@ void  PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn /*[8
 - [x] Créer les scripts de démonstration nécessaires aux scénarios de vérification v0 (sleep long, réactivité entrée, erreur volontaire)
 - [x] Écrire les scripts `.mos` de vérification (un par scénario v0), exécutables via `omc`
 - [ ] Étendre la vérification visuelle (icône/diagramme) à chaque nouveau composant ajouté au-delà de la v0 (ADC, PWM, etc.)
-- [x] **Effectuer la vérification visuelle de l'icône `Pico`** (scénario 6) dès que MCP-OpenModelica est reconnecté — fait, deux défauts trouvés et corrigés (connecteurs GPIO fusionnés, `GND` hors cadre)
+- [x] **Effectuer la vérification visuelle de l'icône `MCU`** (scénario 6) dès que MCP-OpenModelica est reconnecté — fait, deux défauts trouvés et corrigés (connecteurs GPIO fusionnés, `GND` hors cadre)
+- [x] Renommer la classe `Pico` → `MCU` et redessiner l'icône/le schéma interne pour une identité visuelle plus accessible (cf. décision « Nom de la classe modèle et identité visuelle »)
 - [ ] Pull-up/pull-down réellement modélisés électriquement (actuellement acceptés en paramètre mais sans effet)
 - [ ] Nom de fichier réel dans les tracebacks Python (actuellement `<string>`, cf. décision « Comportement en cas d'exception »)
 - [ ] Bufferiser les écritures `stdout`/`stderr` jusqu'au `\n` avant de les relayer (actuellement une ligne de journal par fragment de `print()`)

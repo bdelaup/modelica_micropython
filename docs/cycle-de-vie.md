@@ -4,18 +4,18 @@ Cette page détaille ce qui se passe concrètement (1) à la construction du mod
 
 ## 1. Instanciation (t = 0)
 
-`Pico` déclare `Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, pythonHome)` comme variable protégée : en Modelica, cette syntaxe (déclaration + appel du constructeur en valeur initiale) construit l'*External Object* une seule fois, au début de la simulation.
+`MCU` déclare `Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, pythonHome)` comme variable protégée : en Modelica, cette syntaxe (déclaration + appel du constructeur en valeur initiale) construit l'*External Object* une seule fois, au début de la simulation.
 
 ```mermaid
 sequenceDiagram
     participant Sim as Exécutable de simulation<br/>(process OS, un par run)
-    participant Pico as Pico (équations Modelica)
+    participant MCU as MCU (équations Modelica)
     participant Ctor as PyRuntime_new (C)
     participant CPy as CPython
     participant Worker as Thread worker
 
-    Sim->>Pico: initialisation du modèle
-    Pico->>Ctor: PyRuntime(scriptPath, pythonHome)
+    Sim->>MCU: initialisation du modèle
+    MCU->>Ctor: PyRuntime(scriptPath, pythonHome)
     Ctor->>CPy: Py_InitializeFromConfig(module_search_paths explicite)
     Ctor->>CPy: PyImport_AppendInittab (shim natif machine/time)
     Ctor->>CPy: PyRun_SimpleString(SHIM_BOOTSTRAP)<br/>définit machine.Pin, time.sleep...
@@ -24,15 +24,15 @@ sequenceDiagram
     Ctor->>Worker: _beginthreadex(worker_main)
     Worker->>Worker: PyGILState_Ensure() — acquiert le GIL, le garde pour toute sa vie
     Worker->>Worker: attend son tour (turn == TURN_MODELICA au départ)
-    Ctor-->>Pico: handle
-    Note over Pico: le `when {initial(), ...}` de Pico<br/>va déclencher le premier PyRuntime_sync juste après
+    Ctor-->>MCU: handle
+    Note over MCU: le `when {initial(), ...}` de MCU<br/>va déclencher le premier PyRuntime_sync juste après
 ```
 
 Point notable : le thread principal (celui qui vient d'appeler le constructeur) ne rappellera **plus jamais** l'API Python ensuite — tout le travail Python se fait sur le thread worker. C'est pour ça que le GIL peut être libéré une fois pour toutes ici (`PyEval_SaveThread`) plutôt que d'être acquis/libéré à chaque échange : il n'y a jamais deux threads qui veulent toucher l'interpréteur Python en même temps.
 
 ## 2. Le protocole de synchro, à chaque pas de temps
 
-Trois conditions peuvent déclencher un appel à `PyRuntime_sync` depuis le `when` de `Pico` (cf. `requirements.md`, décision « Interface GPIO côté Modelica ») : le réveil d'un `sleep`, un tick périodique (`tickPeriod`), ou la transition d'une broche actuellement en entrée. Dans les trois cas, c'est la **même** fonction C qui est appelée — c'est elle qui décide, en interne, si le script doit réellement reprendre la main.
+Trois conditions peuvent déclencher un appel à `PyRuntime_sync` depuis le `when` de `MCU` (cf. `requirements.md`, décision « Interface GPIO côté Modelica ») : le réveil d'un `sleep`, un tick périodique (`tickPeriod`), ou la transition d'une broche actuellement en entrée. Dans les trois cas, c'est la **même** fonction C qui est appelée — c'est elle qui décide, en interne, si le script doit réellement reprendre la main.
 
 ```mermaid
 sequenceDiagram
@@ -165,10 +165,10 @@ static void yield_to_modelica(double wake_at) {
 }
 ```
 
-**4. Le `when` de `Pico.mo` déclenche le prochain appel.** `time >= pre(nextWakeTime)` est précisément la condition qui fait que le solveur rappelle `PyRuntime_sync` à l'échéance du `sleep(1)` — ni avant (piège b, plus haut), ni beaucoup après (le solveur peut sauter directement à cet instant) :
+**4. Le `when` de `MCU.mo` déclenche le prochain appel.** `time >= pre(nextWakeTime)` est précisément la condition qui fait que le solveur rappelle `PyRuntime_sync` à l'échéance du `sleep(1)` — ni avant (piège b, plus haut), ni beaucoup après (le solveur peut sauter directement à cet instant) :
 
 ```modelica
-// Pico.mo
+// MCU.mo
 when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod),
       change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), ...} then
     (pinBoolOut, pinIsOutputD, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn);
@@ -199,7 +199,7 @@ if (input_changed || !h->wake_pending || currentTime + 1e-9 >= h->wake_requested
 
 Le worker reprend exactement là où `yield_to_modelica` l'avait arrêté (sortie de la boucle `while (h->turn != TURN_WORKER)`), remonte dans `native_sleep`, puis dans le shim, puis dans le script — sur `led.off()`, l'instruction suivant `time.sleep(1)`.
 
-**Résumé du trajet complet** pour cet exemple : script (`led.on()`) → shim Python (`Pin.on`) → module natif C (`native_pin_write`) → `yield_to_modelica` (blocage) → `when` de `Pico.mo` → `PyRuntime_sync` (C, réveille le worker) → retour dans `yield_to_modelica` → shim → script (ligne suivante, `time.sleep(1)`) → et ainsi de suite jusqu'à la fin du script.
+**Résumé du trajet complet** pour cet exemple : script (`led.on()`) → shim Python (`Pin.on`) → module natif C (`native_pin_write`) → `yield_to_modelica` (blocage) → `when` de `MCU.mo` → `PyRuntime_sync` (C, réveille le worker) → retour dans `yield_to_modelica` → shim → script (ligne suivante, `time.sleep(1)`) → et ainsi de suite jusqu'à la fin du script.
 
 ## 4. Fin de simulation
 

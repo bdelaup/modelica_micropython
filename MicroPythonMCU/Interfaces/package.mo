@@ -1,5 +1,5 @@
 within MicroPythonMCU;
-package Interfaces "Niveaux de tension logiques de référence (approximation RP2040, 3.3 V) utilisés par le pont électrique de Pico"
+package Interfaces "Niveaux de tension logiques de référence (approximation RP2040, 3.3 V) utilisés par le pont électrique de MCU"
   extends Modelica.Icons.Package;
 
   constant Modelica.Units.SI.Voltage VOH = 3.3 "Tension de sortie logique haute";

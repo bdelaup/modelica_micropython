@@ -224,7 +224,7 @@ static unsigned __stdcall worker_main(void* arg) {
     PyGILState_STATE gstate = PyGILState_Ensure();
     g_current = h;
 
-    /* Premier tour : attendre que Modelica nous cede la main (t=0, cf. Pico "when initial()"). */
+    /* Premier tour : attendre que Modelica nous cede la main (t=0, cf. MCU "when initial()"). */
     EnterCriticalSection(&h->cs);
     while (h->turn != TURN_WORKER) {
         SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
