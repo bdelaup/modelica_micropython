@@ -1,0 +1,20 @@
+// Scénario de vérification v0 n°4 (cf. requirements.md).
+// omc verify_04_script_error.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.ScriptError, stopTime = 5, fileNamePrefix = "ScriptError");
+// Pas de fonction de recherche de sous-chaine fiable en scripting omc (testee :
+// Modelica.Utilities.Strings.find, System.stringFind, acces a res.resultFile
+// apres capture dans une variable - toutes en echec). On se contente de
+// verifier que getErrorString() n'est pas vide, signe que la simulation a
+// echoue comme attendu. Le contenu exact de la trace a ete verifie
+// manuellement en session (jalon M8) : "ZeroDivisionError" et le message
+// PyRuntime y figurent bien.
+b := getErrorString();
+
+if b <> "" then
+  print("PASS: verify_04_script_error (simulation arretee en erreur)\n--- messages ---\n" + b);
+else
+  print("FAIL: verify_04_script_error (la simulation n'a pas echoue comme attendu)\n");
+end if;

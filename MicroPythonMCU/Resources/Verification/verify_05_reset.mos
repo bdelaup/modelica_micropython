@@ -1,0 +1,18 @@
+// Scénario de vérification v0 n°5 (cf. requirements.md).
+// omc verify_05_reset.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.BasicBlink, stopTime = 2.5, numberOfIntervals = 250, fileNamePrefix = "BasicBlink");
+v1on := val(pico.GP0.v, 0.5, "BasicBlink_res.mat");
+v1off := val(pico.GP0.v, 1.5, "BasicBlink_res.mat");
+
+simulate(MicroPythonMCU.Examples.BasicBlink, stopTime = 2.5, numberOfIntervals = 250, fileNamePrefix = "BasicBlink");
+v2on := val(pico.GP0.v, 0.5, "BasicBlink_res.mat");
+v2off := val(pico.GP0.v, 1.5, "BasicBlink_res.mat");
+
+if abs(v1on - v2on) < 1e-3 and abs(v1off - v2off) < 1e-3 and v1on > 2.0 and v1off < 0.5 then
+  print("PASS: verify_05_reset (deux relances identiques)\n");
+else
+  print("FAIL: verify_05_reset (run1=" + String(v1on) + "/" + String(v1off) + " run2=" + String(v2on) + "/" + String(v2off) + ")\n");
+end if;

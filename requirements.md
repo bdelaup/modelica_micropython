@@ -40,6 +40,12 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
   - Process Python séparé communiquant via FMI/IPC (socket, pipe, FMU) — avantage : découplage propre, portable vers d'autres outils compatibles FMI ; inconvénient : latence d'IPC et contrôle plus grossier du pas de temps, ce qui complique la compression fine des `sleep`.
 - **Notes pour plus tard** : le shim `machine`/`time` devra être confronté à la documentation officielle MicroPython RP2040 pour limiter les écarts de comportement avec le vrai MicroPython. Si des tests (notamment avec les élèves) révèlent des incompatibilités bloquantes, envisager de migrer vers l'alternative « vrai MicroPython embarqué ».
 
+**Implémenté et validé (jalons M0-M9)** : conforme au choix ci-dessus, avec les précisions suivantes issues de l'implémentation réelle :
+- CPython initialisé via l'API moderne `PyConfig`/`Py_InitializeFromConfig` (pas `Py_SetPythonHome`, dépréciée et peu fiable avec une distribution « embeddable » — cf. décision « Distribution Python embarquée » ci-dessous).
+- Protocole de synchronisation thread worker ↔ Modelica : une section critique (`CRITICAL_SECTION`) + une condition variable (`CONDITION_VARIABLE`, API Windows) partagées, avec un simple indicateur « à qui le tour » (ping-pong strict, un seul thread actif à la fois). Le thread worker acquiert le GIL une seule fois à son démarrage (`PyGILState_Ensure`) et le garde pour toute sa durée de vie — comme il n'y a jamais qu'un seul thread Python actif (le thread principal ne rappelle jamais l'API Python après la construction), ce n'est pas un problème de le garder pendant les attentes sur la condition variable.
+- **Bug trouvé et corrigé** : la première version réveillait le worker à *chaque* appel de `PyRuntime_sync`, même si son `sleep()` n'était pas encore échu (ex. déclenché par le tick périodique) — ce qui écourtait les `sleep()` à tort. Corrigé : le worker n'est réveillé que si (a) l'heure demandée est atteinte, ou (b) une broche actuellement en **entrée** a réellement changé de valeur (détecté en comparant la nouvelle valeur reçue à la dernière valeur connue, uniquement pour les broches non pilotées par le script) — ce qui permet la réactivité en entrée pendant un `sleep` sans jamais écourter un `sleep` à tort à cause du tick périodique ou du reflet de nos propres écritures de sortie.
+- **Destructeur simplifié** : `PyRuntime_destroy` ne tente pas de réveiller/joindre proprement le thread worker (probablement bloqué en plein `sleep()`) ni d'appeler `Py_FinalizeEx` — vérifié en session que chaque appel `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé**, qui se termine juste après cet appel ; l'OS récupère donc tout. Choix délibéré (moins de code, aucun piège d'arrêt multi-thread) plutôt qu'un gain de propreté nul en v0 — cf. principe de révisabilité, à reconsidérer si ce choix gêne un jour (ex. si `PyRuntime` est un jour appelé autrement qu'un run par process).
+
 ### Décision : Conception du shim `machine`/`time` (v0)
 
 - **Choix retenu** :
@@ -52,19 +58,39 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
   - Définir des noms de fonctions maison plutôt que de coller à l'API MicroPython existante — écarté : casserait la contrainte de portabilité du code vers un microcontrôleur réel.
 - **Notes pour plus tard** : étendre le shim avec ADC/PWM/Timer/I2C/SPI/UART au fur et à mesure (cf. TODO), en gardant le même principe (état partagé, synchronisé au step de communication, API calquée sur MicroPython RP2040).
 
+**Implémenté et validé (jalons M4-M9)** : conforme au choix ci-dessus. Précisions :
+- Le module `machine`/`time` est défini en Python (une chaîne « bootstrap » exécutée une fois à l'initialisation), au-dessus d'un petit module natif C (`_pyruntime_native`) qui expose seulement `pin_init`/`pin_write`/`pin_read`/`sleep`/`ticks_ms` — approche hybride qui limite la quantité de code C nécessaire (pas de `PyTypeObject` fait main pour `Pin`).
+- `pull` (paramètre du constructeur `Pin`) est accepté pour compatibilité de signature avec l'API MicroPython mais **n'a aucun effet électrique en v0** (pas de résistance de tirage modélisée) — limitation à documenter, cf. Restrictions v0.
+- **Raffinement du principe « tout appel au shim est un point de synchro »** : en pratique, seuls `Pin.__init__`/`.value()`/`.on()`/`.off()` et `time.sleep*` déclenchent réellement un point de synchro (rendent la main à Modelica). `time.ticks_ms()`/`ticks_us()` ne synchronisent **pas** — ce sont de simples lectures de l'horloge déjà connue (`sim_time`, maintenue à jour à chaque synchro), et les faire yielder aurait rendu coûteuse une boucle de polling non bloquante typique (`while ticks_diff(...) < ...`). Le principe reste valable pour sa fonction première (garantir qu'une boucle sans `sleep()` mais avec lecture/écriture de broches reste interruptible) ; `ticks_diff` est une fonction Python pure (soustraction), pas besoin de la router vers le natif.
+
 ### Décision : Interface GPIO côté Modelica (connecteurs et fréquence de synchro)
 
-- **Choix retenu** :
-  - Chaque broche GPIO du modèle expose un connecteur de type `Modelica.Electrical.Digital` (logique multi-niveaux 0/1/haute impédance `Z`/...), plutôt qu'un connecteur maison. Une broche en mode `Pin.OUT` pilote le connecteur ; en mode `Pin.IN`, elle passe en haute impédance et lit la valeur résolue par le circuit externe — cohérent avec le comportement électrique réel et directement connectable aux autres composants de la bibliothèque standard.
-  - Trois sources déclenchent un point de synchro (appel à `PyRuntime_sync`) : (1) le réveil d'un `sleep`, (2) un tick périodique minimal (période configurable, pour garder les écritures de sortie fraîches même si le script ne dort jamais), et (3) un `when` déclenché sur **toute transition d'une broche d'entrée** — ainsi aucun changement d'état en entrée ne peut se produire sans que le script soit sollicité, sans pour autant accrocher la synchro aux évaluations internes du solveur (essais d'intégration, itérations de Newton, etc., qui n'ont pas de sens physique garanti et casseraient la compression des `sleep`). C'est Modelica lui-même, via son mécanisme d'événements (`when`/franchissement de seuil), qui détecte ces transitions de façon fiable et peu coûteuse.
+- **Choix retenu (mis à jour — voir « Implémenté et validé » ci-dessous pour la version finale)** :
+  - Trois sources déclenchent un point de synchro (appel à `PyRuntime_sync`) : (1) le réveil d'un `sleep`, (2) un tick périodique minimal (période configurable, pour garder les écritures de sortie fraîches même si le script ne dort jamais), et (3) un `when` déclenché sur **toute transition d'une broche d'entrée** — ainsi aucun changement d'état en entrée ne peut se produire sans que le script soit sollicité, sans pour autant accrocher la synchro aux évaluations internes du solveur (essais d'intégration, itérations de Newton, etc., qui n'ont pas de sens physique garanti et casseraient la compression des `sleep`). C'est Modelica lui-même, via son mécanisme d'événements (`when`/franchissement de seuil), qui détecte ces transitions de façon fiable et peu coûteuse. **Ce point (déclencheurs de synchro) reste valable tel quel dans l'implémentation finale.**
+  - ~~Chaque broche GPIO du modèle expose un connecteur de type `Modelica.Electrical.Digital`...~~ **Abandonné, cf. décision « Domaine électrique vs logique pur » ci-dessous** : ce choix initial supposait que le microcontrôleur ne s'intégrerait qu'à des circuits logiques abstraits. Une remarque en cours de session a rappelé que le besoin réel implique de vrais circuits électriques (LED+résistance, moteur, capteur...), incompatibles avec le domaine purement logique de `Modelica.Electrical.Digital` (pas de tension/courant réels). Remplacé par un pont électrique réel dans le domaine `Modelica.Electrical.Analog`.
 - **Alternatives envisagées** :
   - Paire de connecteurs causaux `BooleanInput`/`BooleanOutput` par broche, à choisir manuellement selon le câblage — écartée : ne gère ni le changement dynamique de direction (IN/OUT décidé par le script à l'exécution), ni la résolution de bus si plusieurs composants pilotent le même fil.
   - Synchro uniquement aux points sleep/réveil, sans tick périodique — écartée : un script en boucle serrée sans `sleep` rendrait ses écritures GPIO invisibles côté Modelica jusqu'à son prochain sleep, ce qui casserait la fidélité de la simulation dans ce cas.
   - Entrée lue comme un simple instantané au moment du sync, sans `when` de transition dédié — écartée : une transition en entrée strictement comprise entre deux syncs (sleep/tick) serait alors invisible pour le script, ce qui est incompatible avec la propriété recherchée (« aucun changement d'état sans que le script soit sollicité ») et gênerait la future implémentation des interruptions (cf. TODO).
   - Historique des fronts accumulés côté Modelica (file consultée par le script à son prochain sync) — écartée pour l'instant : ajoute un état et une API supplémentaires au shim pour un besoin déjà couvert plus simplement par la synchro événementielle par transition.
-- **Notes pour plus tard** : la période du tick de synchro minimal est un paramètre à calibrer (compromis fidélité / coût de simulation). Si les entrées changent très fréquemment, la synchro par transition peut multiplier les appels à `PyRuntime_sync` — surveiller le coût de simulation dans ce cas. Vérifier l'API exacte de `Modelica.Electrical.Digital` (classes de connecteurs, niveaux logiques disponibles) au moment de l'implémentation, via les outils MCP-OpenModelica. Base naturelle pour les futures interruptions sur changement de pin (cf. TODO).
+  - **Connecteurs `Modelica.Electrical.Digital` avec tri-state `Tristates.BUF3S` par broche** — un temps envisagé comme remplacement du connecteur logique simple, avec `WiredX` pour la résolution multi-pilotes. Écarté au profit du domaine `Analog` (électriquement réaliste, résolution multi-pilotes native via les lois de Kirchhoff, pas besoin de `WiredX` en v0 - un seul pilote par fil).
+- **Notes pour plus tard** : la période du tick de synchro minimal est un paramètre à calibrer (compromis fidélité / coût de simulation). Si les entrées changent très fréquemment, la synchro par transition peut multiplier les appels à `PyRuntime_sync` — surveiller le coût de simulation dans ce cas. Base naturelle pour les futures interruptions sur changement de pin (cf. TODO).
 
 **Précision (conséquence directe des choix ci-dessus)** : entre deux points de synchro, une broche pilotée par le script (`Pin.OUT`) garde sa dernière valeur (échantillonné-bloqué, pas de variation continue côté sortie). Une broche en lecture (`Pin.IN`) déclenche elle-même un sync dès qu'elle change (cf. ci-dessus) ; en dehors de ces transitions, ce que voit le script reste la dernière valeur connue — le solveur peut évaluer le modèle plusieurs fois entre deux événements (pas variable), ça n'affecte pas ce que voit le script.
+
+### Décision : Domaine électrique vs logique pur pour les broches GPIO
+
+- **Contexte** : en investiguant l'implémentation du connecteur `Modelica.Electrical.Digital` initialement retenu, il s'est avéré que ce domaine est purement logique (énumération 9 niveaux IEEE 1164, pas de tension/courant) — un microcontrôleur ainsi modélisé ne pourrait pas piloter un vrai circuit électrique (LED+résistance, moteur, capteur, diviseur de tension...), alors que c'est explicitement le besoin (systèmes physiques, prototypes, cf. section Besoin). Vérifié : aucun pont Digital↔Analog tout fait n'existe dans la bibliothèque standard installée (`Modelica.Electrical.Digital.Converters` ne fait que Digital↔signal `Real`, pas Digital↔`Modelica.Electrical.Analog.Interfaces.Pin`).
+- **Choix retenu** : chaque broche GPIO expose un vrai connecteur électrique `Modelica.Electrical.Analog.Interfaces.PositivePin` (tension/courant réels, lois de Kirchhoff), avec un pont interne par broche composé de blocs standards `Modelica.Electrical.Analog` :
+  - `Sources.SignalVoltage` : tension pilotée (`VOH`=3,3 V / `VOL`=0 V) par un signal `Real` calculé à partir de la valeur/direction retournées par `PyRuntime_sync`, quand la broche est en sortie.
+  - `Basic.Resistor` (en série) : résistance de sortie approximative (« drive strength »), valeur par défaut 100 Ω.
+  - `Ideal.IdealOpeningSwitch` : ouvert (haute impédance) quand la broche est en entrée (`control = not pinIsOutput`), fermé (relie la source au connecteur) quand elle est en sortie — remplace le mécanisme tri-state qu'on cherchait dans le domaine Digital, mais nativement électrique.
+  - `Sensors.VoltageSensor` : mesure la tension réellement présente sur le connecteur (indépendamment de l'état de l'interrupteur), comparée aux seuils `VIL`/`VIH` pour reconstituer le booléen `pinBoolIn` transmis à `PyRuntime_sync`.
+  - Un seul connecteur par broche suffit (pas de connecteurs `_drv`/`_sns` séparés envisagés un temps pour le domaine Digital) : la résolution multi-pilotes est native en `Analog` (sommation des courants, loi de Kirchhoff), donc pas besoin d'un composant de résolution de bus explicite en v0 (un seul pilote par fil).
+- **Alternatives envisagées** :
+  - Rester en domaine `Digital` pur (logique uniquement) — écarté : incompatible avec l'intégration à de vrais circuits électriques, qui est le cœur du besoin.
+  - Pont électrique avec source idéale (impédance de sortie nulle, pas de résistance série) — plus simple, mais irréaliste face à un vrai circuit chargé (pas de limitation de courant). Gardé en plan de repli si `Resistor`+`IdealOpeningSwitch`+`SignalVoltage`+`VoltageSensor` posait un problème de boucle algébrique (n'a finalement pas été nécessaire, `checkModel` et la simulation passent sans souci avec la résistance série).
+- **Notes pour plus tard** : les niveaux de tension (`VOH`/`VOL`/`VIH`/`VIL`) et la résistance série sont des approximations RP2040 raisonnables mais pas des valeurs datasheet exactes (cf. `Interfaces` package) — à affiner si un usage plus poussé le demande. Généraliser à `WiredX`/résolution multi-pilotes explicite si des scénarios multi-instances/multi-pilotes apparaissent au-delà du point-à-point simple de la v0.
 
 ### Décision : Source du script Python fourni au modèle
 
@@ -83,7 +109,7 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
 
 ### Décision : Structure du package et interface C du runtime Python
 
-- **Choix retenu** (proposition à affiner à l'implémentation) :
+- **Choix retenu initial** (proposition, cf. structure finale réellement implémentée juste en dessous) :
   ```
   MicroPythonMCU (package racine)
   ├── Pico              -- model exposant les 8 connecteurs GPIO v0 (style Modelica.Electrical.Digital)
@@ -98,7 +124,47 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
   - `PyRuntime_new(scriptPath) → handle` (constructeur externe : démarre le thread CPython, charge le script).
   - `PyRuntime_destroy(handle)` (destructeur externe : arrête le thread proprement).
   - `PyRuntime_sync(handle, currentTime, pinValues[8]) → (pinValues[8], pinIsOutput[8], nextWakeTime)` : appelée depuis un `when` Modelica aux points de synchro (sleep/réveil + tick périodique, cf. décision précédente) ; transmet l'état d'entrée résolu des broches, réveille le thread jusqu'à son prochain point de blocage, renvoie les valeurs pilotées, la direction courante de chaque broche et la prochaine heure de réveil demandée.
-- **Notes pour plus tard** : cette signature est une première proposition, à valider/ajuster une fois l'implémentation de l'External Object commencée (notamment le format exact des valeurs logiques `Modelica.Electrical.Digital`).
+
+**Structure et interface finalement implémentées (jalons M0-M11)** :
+```
+MicroPythonMCU/
+├── package.mo, package.order
+├── Pico.mo                       -- le modèle (8 broches GP0-GP7 + GND, pont électrique Analog, cf. décision domaine électrique)
+├── Interfaces/                   -- constantes VOH/VOL/VIH/VIL/ROut (niveaux RP2040 approximatifs)
+├── Internal/
+│   ├── PyRuntime.mo               -- ExternalObject (constructor/destructor)
+│   └── PyRuntime_sync.mo          -- impure function, le point de synchro
+├── Examples/                     -- un modèle par scénario de vérification (BasicBlink, SleepCompression, InputReactivity, ScriptError)
+└── Resources/
+    ├── Include/                   -- PyRuntimeImpl.c/.h (implémentation C) + en-têtes Python 3.12 vendorés (Python.h et cie)
+    ├── Library/win64/              -- libpython312.a (bibliothèque d'import régénérée pour le toolchain MinGW d'OpenModelica)
+    ├── PythonRuntime/               -- distribution Python « embeddable » officielle vendorée (DLL + stdlib zip), cf. décision dédiée
+    ├── Scripts/demo.py              -- script de démo par défaut (clignotement GP0)
+    └── Verification/                -- scripts .py et .mos des scénarios de vérification (cf. section dédiée)
+```
+Signature réellement implémentée (simplifiée : `Boolean` plutôt que logique 9 niveaux, puisque le domaine Digital a été abandonné) :
+```c
+void* PyRuntime_new(const char* scriptPath, const char* pythonHome);
+void  PyRuntime_destroy(void* handle);
+void  PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn /*[8]*/,
+                      int* pinBoolOut /*[8]*/, int* pinIsOutput /*[8]*/, double* nextWakeTime);
+```
+`PyRuntime_new` prend aussi `pythonHome` (chemin vers `Resources/PythonRuntime`, résolu côté Modelica via `Modelica.Utilities.Files.loadResource`, même mécanisme que `scriptPath`) — nécessaire pour pointer CPython vers la distribution embarquée plutôt qu'un Python système.
+- **Notes pour plus tard** : signature validée par l'implémentation réelle et les scénarios de vérification. Prochaine extension naturelle (ADC/PWM/...) : ajouter des tableaux/paramètres similaires plutôt que changer la structure d'ensemble.
+
+### Décision : Distribution Python embarquée (portabilité vers un autre poste)
+
+- **Contexte** : question soulevée en cours de session — l'approche initiale (compiler/lier contre le Python installé sur la machine de développement) obligerait chaque poste élève à avoir Python 3.12 installé à un emplacement connu, ce qui est une vraie friction en contexte scolaire (postes multiples, pas forcément de droits admin).
+- **Choix retenu** : la bibliothèque embarque la distribution Python officielle « embeddable » (zip `python-3.12.4-embed-amd64.zip` distribué par python.org, prévu justement pour ce cas d'usage — appli qui embarque Python sans installateur ni entrée registre) dans `Resources/PythonRuntime/`. Ça élimine le prérequis « installer Python » côté élève. Seul prérequis résiduel sur le poste cible : le VC++ Redistributable (la DLL officielle est compilée MSVC), quasi toujours déjà présent. Les binaires (DLL + stdlib zip, quelques Mo) sont committés directement dans le dépôt (simplicité > légèreté du dépôt pour la v0).
+- **Alternatives envisagées** :
+  - Garder un Python système requis — écarté : friction réelle en contexte scolaire, cf. contexte ci-dessus.
+  - Script de récupération du zip « embeddable » au premier build plutôt que de committer les binaires — plus propre pour un dépôt git mais ajoute une dépendance réseau/une étape supplémentaire ; écarté pour la v0, à reconsidérer si la taille du dépôt devient gênante.
+- **Détails d'implémentation qui découlent de ce choix** :
+  - `PyRuntime_new` reçoit un `pythonHome` (résolu via `Modelica.Utilities.Files.loadResource`, comme `scriptPath`) plutôt qu'un chemin codé en dur — la portabilité est donc automatique, ce n'est plus une limitation v0 à documenter comme envisagé un temps.
+  - La distribution « embeddable » range le stdlib dans `python312.zip` (pas de dossier `Lib`/`DLLs` dépliés comme une install normale) : il a fallu configurer explicitement `config.module_search_paths` (zip + dossier home) plutôt que de laisser CPython deviner ses chemins — sinon le calcul automatique se fait polluer par une éventuelle installation Python système via le registre Windows (observé en session : `sys.path` pointait vers le Python système au lieu du Python vendoré, malgré `PYTHONHOME` positionné).
+  - Une bibliothèque d'import compatible MinGW (`libpython312.a`) a dû être régénérée (`gendef`+`dlltool`, déjà présents dans le toolchain d'OpenModelica) à partir de la DLL vendorée, car seule la version MSVC (`python312.lib`) est fournie par la distribution embeddable/l'installation système.
+  - **Résolution de `python312.dll` à l'exécution** : pour la v0, on s'appuie sur un lien classique (`-lpython312`) : la DLL doit être trouvable au démarrage du process de simulation généré (à côté de l'exécutable, ou sur le PATH). Un chargement dynamique explicite (`LoadLibrary` résolu au chemin de ressource Modelica, indépendant de l'ordre de recherche de DLL de l'OS) serait plus robuste mais plus coûteux à développer — cf. TODO.
+- **Notes pour plus tard** : n'a pas encore été testé sur un poste sans Python système du tout (la machine de développement en a un, utilisé seulement pour ses en-têtes de compilation `Python.h`, vendorés eux aussi dans `Resources/Include/` — pas pour l'exécution, vérifié en désactivant le Python système du PATH pendant les tests). À valider en conditions réelles sur un poste élève.
 
 ### Décision : Multi-instances (plusieurs microcontrôleurs dans un même modèle)
 
@@ -114,12 +180,16 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
   - Figer les sorties GPIO à leur dernière valeur et laisser le reste de la simulation continuer (mime un crash matériel réaliste) — écarté : moins pédagogique, plus difficile à diagnostiquer pour un élève.
 - **Notes pour plus tard** : le mode « figer et continuer » pourrait redevenir pertinent dans une version orientée réalisme industriel, au-delà du cadre pédagogique actuel.
 
+**Implémenté et validé (jalon M8)**, avec un écueil rencontré et contourné : la première implémentation récupérait la trace Python manuellement (`PyErr_Fetch`/`PyErr_NormalizeException` + module `traceback`) pour produire un message d'erreur unique avec le vrai chemin du script. Cette approche fonctionnait isolément (testée hors contexte) mais provoquait un plantage (violation d'accès) systématique une fois exécutée dans le contexte de l'exécutable de simulation généré par OpenModelica — cause précise non identifiée (probablement une interaction avec l'environnement d'exécution généré par OM, pas un bug Python générique). **Solution retenue** : `PyRun_SimpleString` à la place, qui affiche elle-même la trace via `sys.stderr` (donc relayée vers `ModelicaFormatMessage`, cf. décision suivante) avant de rendre la main en cas d'échec — un simple code de retour suffit alors pour déclencher `ModelicaError`. Robuste, mais **limitation connue** : le nom de fichier affiché dans la trace est `<string>`, pas le vrai chemin du script (cf. TODO).
+
 ### Décision : Protection contre un script qui ne rend jamais la main
 
 - **Choix retenu** : aucune protection/timeout en v0 (le risque de blocage de la simulation est accepté). Principe de conception retenu dès maintenant : tout appel à une API surchargée du shim (`machine.*`, `time.*`) doit être un point de synchronisation potentiel avec Modelica — pas seulement `sleep()`. Ce point de passage unique facilite l'ajout ultérieur d'une protection, même si une boucle strictement CPU-bound sans aucun appel au shim resterait indétectable par ce mécanisme.
 - **Alternatives envisagées** :
   - Timeout configurable dès la v0, avec arrêt en erreur si le script ne se synchronise pas dans un délai donné — écarté pour la v0, à reconsidérer pour la version exhaustive.
 - **Notes pour plus tard** : implémenter un timeout mou basé sur ce principe (vérification du temps réel écoulé à chaque appel au shim) pour la version exhaustive.
+
+**Précision issue de l'implémentation** : le principe est concrètement réalisé par `Pin.__init__`/`.value()`/`.on()`/`.off()` et `time.sleep*`, qui rendent tous la main à Modelica (cf. décision shim `machine`/`time`, section « raffinement »). `time.ticks_ms()`/`ticks_us()` ont été délibérément exclus de ce principe (lectures pures, pas de synchro) — une boucle de polling non bloquante basée uniquement sur `ticks_ms()` sans jamais lire/écrire de broche ni dormir échapperait donc à ce mécanisme, comme une boucle purement CPU-bound. Cas marginal, cohérent avec l'absence de protection acceptée pour la v0.
 
 ### Décision : Cycle de vie du script lors d'une relance (reset) de la simulation
 
@@ -128,6 +198,8 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
   - Conserver l'état Python entre les relances — écarté : moins fidèle au comportement d'un vrai microcontrôleur, complexité inutile.
 - **Notes pour plus tard** : comportement cohérent avec le cycle de vie standard (constructeur/destructeur) d'un External Object Modelica, pas d'action spécifique à prévoir.
 
+**Implémenté et validé (jalon M9)** : deux relances successives du même scénario produisent des résultats identiques (vérifié : mêmes tensions `GP0` aux mêmes instants sur deux `simulate()` consécutifs). Confirmé en session que chaque relance exécute l'exécutable de simulation généré comme un nouveau process OS — le redémarrage « à zéro » est donc une conséquence naturelle de l'architecture (pas de mécanisme de reset explicite à coder).
+
 ### Décision : Sortie des print() et des erreurs du script
 
 - **Choix retenu** : rediriger `stdout`/`stderr` du script Python vers les messages OpenModelica (`ModelicaFormatMessage`/`ModelicaError`), pour qu'ils apparaissent directement dans le journal de simulation d'OMEdit — même endroit que les erreurs d'exécution (cf. décision sur les exceptions non gérées), sans fenêtre supplémentaire à chercher.
@@ -135,6 +207,8 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
   - Fichier de log séparé à côté du script — garde le journal de simulation « propre » si le script produit beaucoup de sortie, mais moins immédiat pour l'élève (fichier à ouvrir manuellement). Écarté pour la v0.
   - Les deux en parallèle — plus complet mais plus de travail d'implémentation dès la v0. Écarté pour la v0.
 - **Notes pour plus tard** : si le volume de sortie devient gênant dans le journal de simulation (scripts très verbeux), reconsidérer un fichier de log séparé en complément.
+
+**Implémenté et validé (jalon M3)**, avec un défaut cosmétique connu : `print()` avec plusieurs arguments (ex. `print("x =", x)`) déclenche plusieurs appels à `write()` (un par fragment séparé par un espace, plus le saut de ligne), et chacun devient une ligne de log distincte dans le journal OMEdit plutôt que d'être regroupé sur une seule ligne. Pas bloquant pour la v0 (le contenu reste lisible), mais à corriger en bufferisant côté C jusqu'au prochain `\n` — cf. TODO.
 
 ## Restrictions version 0
 
@@ -145,29 +219,34 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
 - Le script Python doit être fourni via un fichier externe (chemin `.py`) ; pas de script inline en paramètre pour cette version.
 - Une seule instance de microcontrôleur par simulation (pas de multi-instances).
 - Aucune protection contre un script qui ne rend jamais la main (boucle infinie sans appel à une API du shim) : la simulation peut rester bloquée dans ce cas.
+- Windows uniquement (v0 développée et testée sous Windows 11 ; l'implémentation C utilise des API Windows pour le threading — non testé, probablement pas fonctionnel tel quel sur Linux/macOS).
+- `pull` (résistance de tirage interne, paramètre du constructeur `Pin`) accepté pour compatibilité d'API mais sans effet électrique — pas de pull-up/pull-down réellement modélisé en v0.
+- Les tracebacks affichés en cas d'erreur du script montrent `<string>` comme nom de fichier plutôt que le vrai chemin du script (limitation du mécanisme de gestion d'erreur retenu, cf. décision « Comportement en cas d'exception »).
+- Les binaires de la distribution Python embarquée (quelques Mo) sont committés directement dans le dépôt git.
+- `PyRuntime_destroy` ne joint pas proprement le thread worker ni n'appelle `Py_FinalizeEx` (repose sur la fin du process OS à chaque run de simulation, cf. décision « Mécanisme d'exécution »).
 
 ## Vérification de la v0
 
 *Scénarios concrets et critères de succès permettant de dire que la v0 « marche ». Chaque scénario teste une décision de la section « Choix architecturaux ».*
 
-**Moyen d'exécution retenu** : chaque scénario est écrit comme un script OpenModelica Compiler (`.mos`), exécutable en ligne de commande via `omc <scénario>.mos` — reproductible et scriptable indépendamment de cette session (portable vers une éventuelle CI plus tard). Pendant le développement interactif, ces mêmes scénarios peuvent aussi être rejoués via les outils MCP-OpenModelica déjà connectés (`simulate`, `plot`, `getSimulationResultVariables`, `checkModel`), sans réécrire de script à chaque itération.
+**Moyen d'exécution retenu** : chaque scénario est écrit comme un script OpenModelica Compiler (`.mos`), exécutable en ligne de commande via `omc <scénario>.mos` — reproductible et scriptable indépendamment de cette session (portable vers une éventuelle CI plus tard). Pendant le développement interactif, ces mêmes scénarios peuvent aussi être rejoués via les outils MCP-OpenModelica déjà connectés (`simulate`, `plot`, `getSimulationResultVariables`, `checkModel`), sans réécrire de script à chaque itération. **Implémenté et validé** : les scripts `.mos` (`verify_0X_*.mos`) et les modèles `MicroPythonMCU.Examples.*` correspondants vivent dans `Resources/Verification/` et `Examples/` ; chaque `.mos` s'exécute avec ce dossier comme répertoire courant (ex. `omc verify_01_basic_blink.mos`) et affiche `PASS`/`FAIL` — les 5 scripts passent (`PASS`). Note technique : le scripting `omc` n'a pas de fonction fiable de recherche de sous-chaîne (`Modelica.Utilities.Strings.find` et `System.stringFind` inexistants dans cette installation, accès aux champs d'un `SimulationResult` échoué également indisponible) — `verify_04` détecte donc l'échec attendu via `getErrorString() <> ""` plutôt qu'en cherchant le texte de la trace.
 
 **Scénarios** :
 
-- [ ] **Clignotement de base** : `demo.py` configure `GP0` en sortie et alterne `on()`/`off()` avec `sleep(1)` entre les deux. Succès : la trace de simulation de `GP0` montre un créneau périodique de la bonne période. Vérifie le shim `machine`/`time` et la boucle de synchro de base.
-- [ ] **Compression du `sleep`** : variante avec un `sleep` long (ex. 1 h simulée) avant un toggle. Succès : le temps réel d'exécution de la simulation reste de l'ordre de la seconde, pas de l'ordre de l'heure. Vérifie la contrainte de synchronisation temporelle — le cœur de la valeur du projet.
-- [ ] **Réactivité en entrée** : `GP1` en entrée, piloté depuis Modelica par une source qui bascule à un instant donné pendant que le script est en `sleep`. Succès : le script réagit (ex. `print()`) sans attendre le tick périodique ni la fin du sleep en cours. Vérifie la synchro événementielle sur transition (option retenue pour l'interface GPIO).
-- [ ] **Erreur du script** : un script qui lève une exception volontaire (ex. division par zéro) doit arrêter la simulation. Succès : le traceback Python est visible dans le journal de simulation. Vérifie la gestion des erreurs et la redirection `stdout`/`stderr`.
-- [ ] **Reset** : relancer la simulation deux fois de suite. Succès : le script redémarre proprement à chaque relance, sans état résiduel de la précédente exécution. Vérifie le cycle de vie de l'External Object.
-- [ ] **Lisibilité visuelle de l'icône et du diagramme** : l'icône du bloc microcontrôleur (telle qu'affichée dans un schéma Modelica) doit rester lisible à taille normale — connecteurs GPIO visibles et correctement étiquetés, pas de chevauchement d'éléments, identité visuelle claire (reconnaissable comme un microcontrôleur, cohérente avec le style de la bibliothèque standard). Vérifié par rendu via les outils MCP-OpenModelica (`iconDiagram`/`classDiagram`) et inspection visuelle directe de l'image obtenue, en complément d'une relecture par un humain dans OMEdit.
+- [x] **Clignotement de base** : `demo.py` configure `GP0` en sortie et alterne `on()`/`off()` avec `sleep(1)` entre les deux. Succès : la trace de simulation de `GP0` montre un créneau périodique de la bonne période. Vérifie le shim `machine`/`time` et la boucle de synchro de base. **Validé** (jalon M5) : `GP0` alterne ≈3,0 V / 0 V toutes les secondes, conforme.
+- [x] **Compression du `sleep`** : variante avec un `sleep` long (ex. 1 h simulée) avant un toggle. Succès : le temps réel d'exécution de la simulation reste de l'ordre de la seconde, pas de l'ordre de l'heure. Vérifie la contrainte de synchronisation temporelle — le cœur de la valeur du projet. **Validé** (jalon M6) : 2 h de temps simulé (deux `sleep(3600)`) exécutées en moins de 9 s de temps réel (compilation comprise ; ≈0,4 s pour la simulation seule), bascules aux instants attendus (t=3600 s, t=7200 s).
+- [x] **Réactivité en entrée** : `GP1` en entrée, piloté depuis Modelica par une source qui bascule à un instant donné pendant que le script est en `sleep`. Succès : le script réagit (ex. `print()`) sans attendre le tick périodique ni la fin du sleep en cours. Vérifie la synchro événementielle sur transition (option retenue pour l'interface GPIO). **Validé** (jalon M7) : `GP1` bascule à t=10 s pendant un `sleep(3600)` ; le script se réveille et réagit (`print` + `GP0` piloté) peu après t=10 s, pas à t=3600 s. A nécessité un correctif (cf. décision « Mécanisme d'exécution », bug du réveil prématuré) pour distinguer une vraie transition d'entrée d'un simple tick périodique ou du reflet de nos propres écritures de sortie.
+- [x] **Erreur du script** : un script qui lève une exception volontaire (ex. division par zéro) doit arrêter la simulation. Succès : le traceback Python est visible dans le journal de simulation. Vérifie la gestion des erreurs et la redirection `stdout`/`stderr`. **Validé** (jalon M8), après correction d'un plantage (cf. décision « Comportement en cas d'exception »).
+- [x] **Reset** : relancer la simulation deux fois de suite. Succès : le script redémarre proprement à chaque relance, sans état résiduel de la précédente exécution. Vérifie le cycle de vie de l'External Object. **Validé** (jalon M9) : deux relances produisent des résultats strictement identiques.
+- [x] **Lisibilité visuelle de l'icône et du diagramme** : l'icône du bloc microcontrôleur (telle qu'affichée dans un schéma Modelica) doit rester lisible à taille normale — connecteurs GPIO visibles et correctement étiquetés, pas de chevauchement d'éléments, identité visuelle claire (reconnaissable comme un microcontrôleur, cohérente avec le style de la bibliothèque standard). Vérifié par rendu via les outils MCP-OpenModelica (`iconDiagram`/`classDiagram`) et inspection visuelle directe de l'image obtenue, en complément d'une relecture par un humain dans OMEdit. **Validé**, après correction de deux défauts trouvés par le premier rendu (MCP-OpenModelica reconnecté après la session d'implémentation initiale) : (1) les 8 connecteurs GPIO se touchaient exactement (aucun espace entre eux) et fusionnaient visuellement en une seule barre bleue continue — corrigé en réduisant la taille de chaque connecteur (±10 → ±7 unités) pour créer un espacement visible ; (2) la broche `GND` et son étiquette dépassaient les limites du système de coordonnées de l'icône (-100 à 100) et étaient coupées à l'affichage — corrigé en réduisant la hauteur du corps du bloc pour leur faire de la place, entièrement à l'intérieur des limites. Ce cas illustre bien l'intérêt de ce scénario de vérification : les deux défauts n'étaient pas détectables par simple lecture du code `.mo`.
 
 ## TODO vers une version exhaustive
 
 *Liste à cocher, tenue à jour, de ce qu'il reste à faire pour passer de la v0 à une version complète.*
 
-- [ ] Choisir le mécanisme d'exécution du script Python (doit permettre de suspendre l'exécution sur un `sleep` et d'avancer le temps simulé sans exécuter réellement l'attente)
-- [ ] Implémenter le modèle de microcontrôleur v0 dans OpenModelica (GPIO simples, API façon RP2040)
-- [ ] Implémenter le mécanisme de synchronisation temps script / temps de simulation, avec compression des `sleep`
+- [x] Choisir le mécanisme d'exécution du script Python (doit permettre de suspendre l'exécution sur un `sleep` et d'avancer le temps simulé sans exécuter réellement l'attente)
+- [x] Implémenter le modèle de microcontrôleur v0 dans OpenModelica (GPIO simples, API façon RP2040)
+- [x] Implémenter le mécanisme de synchronisation temps script / temps de simulation, avec compression des `sleep`
 - [ ] ADC (entrées analogiques)
 - [ ] PWM (sorties modulées)
 - [ ] Timers / délais / interruptions (time.sleep, machine.Timer, IRQ sur changement de pin)
@@ -177,9 +256,18 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
 - [ ] Étendre à 29 broches GPIO (numérotation complète `GP0`–`GP28`)
 - [ ] Envisager le pattern de connecteurs GPIO activables (`use_pX`) pour alléger l'icône
 - [ ] Support optionnel du script Python inline (en plus du fichier externe)
-- [ ] Créer et fournir le script de démonstration par défaut (`Resources/Scripts/demo.py`)
+- [x] Créer et fournir le script de démonstration par défaut (`Resources/Scripts/demo.py`)
 - [ ] Support multi-instances (isolation par sous-interpréteurs CPython, éliminer les singletons globaux dans le shim)
 - [ ] Timeout mou basé sur les appels au shim (protection contre un script qui ne rend jamais la main)
-- [ ] Créer les scripts de démonstration nécessaires aux scénarios de vérification v0 (sleep long, réactivité entrée, erreur volontaire)
-- [ ] Écrire les scripts `.mos` de vérification (un par scénario v0), exécutables via `omc`
+- [x] Créer les scripts de démonstration nécessaires aux scénarios de vérification v0 (sleep long, réactivité entrée, erreur volontaire)
+- [x] Écrire les scripts `.mos` de vérification (un par scénario v0), exécutables via `omc`
 - [ ] Étendre la vérification visuelle (icône/diagramme) à chaque nouveau composant ajouté au-delà de la v0 (ADC, PWM, etc.)
+- [x] **Effectuer la vérification visuelle de l'icône `Pico`** (scénario 6) dès que MCP-OpenModelica est reconnecté — fait, deux défauts trouvés et corrigés (connecteurs GPIO fusionnés, `GND` hors cadre)
+- [ ] Pull-up/pull-down réellement modélisés électriquement (actuellement acceptés en paramètre mais sans effet)
+- [ ] Nom de fichier réel dans les tracebacks Python (actuellement `<string>`, cf. décision « Comportement en cas d'exception »)
+- [ ] Bufferiser les écritures `stdout`/`stderr` jusqu'au `\n` avant de les relayer (actuellement une ligne de journal par fragment de `print()`)
+- [ ] Chargement dynamique de `python312.dll` (`LoadLibrary` résolu au chemin de ressource Modelica) pour ne plus dépendre de l'ordre de recherche de DLL de l'OS
+- [ ] Support Linux/macOS (l'implémentation C actuelle utilise des API de threading Windows ; la distribution Python « embeddable » est une notion Windows uniquement)
+- [ ] Arrêt propre du thread worker + `Py_FinalizeEx` dans `PyRuntime_destroy` (actuellement omis, repose sur la fin du process à chaque run)
+- [ ] Généraliser la résolution de bus (`Modelica.Electrical.Analog`, plusieurs pilotes sur un même fil) si des scénarios multi-instances/multi-pilotes apparaissent
+- [ ] Script de récupération de la distribution Python « embeddable » au build plutôt que binaires committés dans le dépôt (si la taille du dépôt devient gênante)

@@ -1,0 +1,16 @@
+// Scénario de vérification v0 n°3 (cf. requirements.md).
+// omc verify_03_input_reactivity.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.InputReactivity, stopTime = 60, numberOfIntervals = 600, fileNamePrefix = "InputReactivity");
+b := getErrorString();
+
+vBefore := val(pico.GP0.v, 9.9, "InputReactivity_res.mat");
+vAfter := val(pico.GP0.v, 15, "InputReactivity_res.mat");
+
+if vBefore < 0.5 and vAfter > 2.0 then
+  print("PASS: verify_03_input_reactivity (reaction rapide au changement de GP1)\n");
+else
+  print("FAIL: verify_03_input_reactivity (avant=" + String(vBefore) + " apres=" + String(vAfter) + ")\n" + b);
+end if;

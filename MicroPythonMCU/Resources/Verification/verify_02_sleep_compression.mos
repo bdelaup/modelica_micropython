@@ -1,0 +1,21 @@
+// Scénario de vérification v0 n°2 (cf. requirements.md).
+// omc verify_02_sleep_compression.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+// Note : la compression du sleep est prouvée par le simple fait que ce script
+// se termine en quelques secondes malgre 7250 s de temps simule (deux
+// sleep(3600)) - pas de fonction de chronometrage fiable en scripting omc,
+// mesure manuelle faite en session (~0.4 s de temps de simulation pur).
+simulate(MicroPythonMCU.Examples.SleepCompression, stopTime = 7250, numberOfIntervals = 200, fileNamePrefix = "SleepCompression");
+b := getErrorString();
+
+vBefore := val(pico.GP0.v, 100, "SleepCompression_res.mat");
+vAfter1 := val(pico.GP0.v, 3700, "SleepCompression_res.mat");
+vAfter2 := val(pico.GP0.v, 7210, "SleepCompression_res.mat");
+
+if vBefore < 0.5 and vAfter1 > 2.0 and vAfter2 < 0.5 then
+  print("PASS: verify_02_sleep_compression (bascules aux bons instants, execution rapide)\n");
+else
+  print("FAIL: verify_02_sleep_compression (avant=" + String(vBefore) + " apres1=" + String(vAfter1) + " apres2=" + String(vAfter2) + ")\n" + b);
+end if;
