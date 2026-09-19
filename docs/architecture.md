@@ -12,7 +12,8 @@ graph TD
         MCU["MCU (model)<br/>pont électrique GPIO + orchestration"]
         Interfaces["Interfaces (package)<br/>constantes VOH/VOL/VIH/VIL/ROut"]
         Internal["Internal (package)<br/>PyRuntime (ExternalObject) + PyRuntime_sync"]
-        Examples["Examples (package)<br/>4 scénarios de vérification"]
+        Utils["Utils (package)<br/>LED : icône réactive au courant"]
+        Examples["Examples (package)<br/>4 scénarios de vérification + LedChaser (démonstrateur)"]
     end
     subgraph RES["Resources"]
         Include["Include/<br/>PyRuntimeImpl.c + .h<br/>+ en-têtes Python 3.12 vendorés"]
@@ -24,7 +25,9 @@ graph TD
 
     MCU -- "paramètres VOH/VOL/..." --> Interfaces
     MCU -- "instancie (protected)" --> Internal
+    MCU -- "builtinLed (public, GP25 interne)" --> Utils
     Examples -- "extends / utilise" --> MCU
+    Examples -- "Utils.LED (LedChaser)" --> Utils
     Internal -- "Include = PyRuntimeImpl.c" --> Include
     Internal -- "LibraryDirectory" --> Library
     Internal -- "pythonHome (loadResource, runtime)" --> PythonRuntime
@@ -43,16 +46,18 @@ modelica_micropython3/
 ├── docs/                           -- cette documentation (le "comment")
 └── MicroPythonMCU/                 -- la bibliothèque OpenModelica elle-même
     ├── package.mo, package.order   -- déclaration du package racine
-    ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND, pont électrique, orchestration de la synchro
+    ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND, pont électrique, LED embarquée GP25 (même pont, interne, pas de connecteur), orchestration de la synchro
     ├── Interfaces/                 -- constantes de niveaux de tension (VOH, VOL, VIH, VIL, ROut) — approximation RP2040
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
     │   └── PyRuntime_sync.mo       -- impure function : le point de synchro appelé depuis le `when` de MCU
-    ├── Examples/                   -- un modèle par scénario de vérification de requirements.md
+    ├── Utils/                      -- LED.mo : diode + icône réactive au courant (DynamicSelect colorOff→colorOn), utilisée par MCU et par les exemples
+    ├── Examples/                   -- un modèle par scénario de vérification de requirements.md, + un démonstrateur
     │   ├── BasicBlink.mo           -- scénario 1 : clignotement de base
     │   ├── SleepCompression.mo     -- scénario 2 : compression d'un sleep long
     │   ├── InputReactivity.mo      -- scénario 3 : réactivité à une entrée pendant un sleep
-    │   └── ScriptError.mo          -- scénario 4 : exception non gérée
+    │   ├── ScriptError.mo          -- scénario 4 : exception non gérée
+    │   └── LedChaser.mo            -- chenillard bidirectionnel sur les 8 GPIO (démonstrateur, pas un scénario de requirements.md)
     └── Resources/
         ├── Include/                -- PyRuntimeImpl.c/.h (le vrai code de PyRuntime) + Python.h et cie (vendorés)
         ├── Library/win64/          -- libpython312.a, bibliothèque d'import régénérée pour le compilateur MinGW d'OpenModelica
@@ -84,6 +89,8 @@ L'icône représente le microcontrôleur comme un boîtier avec ses 8 broches r�
 
 ![Schéma simplifié du scénario BasicBlink](images/exemple-basicblink.svg)
 
-Les 4 modèles d'`Examples/` suivent tous le même agencement : `mcu` au centre, `GP0`-`GP3` câblées vers des composants de charge/mesure à gauche (résistances de tirage, LED simulée, source de tension pour `InputReactivity`) et `GP4`-`GP7` vers des composants similaires à droite, avec une masse commune (`ground`) en bas. Le schéma interne du modèle `MCU` lui-même (le pont électrique par broche) est documenté dans `integration-python.md` et `cycle-de-vie.md`.
+Les 4 modèles de scénario d'`Examples/` suivent tous le même agencement : `mcu` au centre, `GP0`-`GP3` câblées vers des composants de charge/mesure à gauche (résistances de tirage, LED simulée, source de tension pour `InputReactivity`) et `GP4`-`GP7` vers des composants similaires à droite, avec une masse commune (`ground`) en bas. Le schéma interne du modèle `MCU` lui-même (le pont électrique par broche) est documenté dans `integration-python.md` et `cycle-de-vie.md`.
+
+`LedChaser.mo` est un cinquième modèle d'`Examples/`, mais un démonstrateur plutôt qu'un scénario de vérification de `requirements.md` : les 8 GPIO pilotent chacun une `Utils.LED` (chenillard bidirectionnel, ~150 ms/broche), pour donner à voir la luminosité de l'icône `Utils.LED` en conditions de clignotement rapide (cf. `requirements.md`, décision « Calibration de la luminosité de l'icône `Utils.LED` »).
 
 <!-- TODO screenshot (optionnel) : pour le schéma complet avec les 8 fils réellement routés (plutôt que ce résumé simplifié), capturer la vue "Diagram" de MicroPythonMCU.Examples.BasicBlink dans OMEdit et l'ajouter sous docs/images/exemple-basicblink-complet.png -->

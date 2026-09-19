@@ -1,13 +1,12 @@
 from machine import Pin
 import time
 
-led = Pin(0, Pin.OUT)
-builtin = Pin(Pin.LED, Pin.OUT)
+led = Pin(7, Pin.OUT)
 
 while True:
     led.on()
-    builtin.on()
+    print("On")
     time.sleep(1)
     led.off()
-    builtin.off()
+    print("Off")
     time.sleep(1)

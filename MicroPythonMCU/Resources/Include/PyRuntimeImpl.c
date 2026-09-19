@@ -12,7 +12,9 @@
 #include <string.h>
 #include "ModelicaUtilities.h"
 
-#define NUM_PINS 8
+#define NUM_PINS 9          /* 0-7 = GP0-GP7 (broches externes) ; 8 = LED embarquee (interne, pas de connecteur electrique) */
+#define LED_PIN_INDEX 8
+#define LED_PIN_ID 25       /* numero reel de la broche sur le Raspberry Pi Pico, non expose par MCU */
 #define TURN_MODELICA 0
 #define TURN_WORKER 1
 
@@ -94,15 +96,25 @@ static void yield_to_modelica(double wake_at) {
 
 /* --- Module natif expose au shim Python (machine.Pin / time) --- */
 
+/* Traduit un identifiant de broche tel qu'ecrit dans le script (0-7 pour les
+   GPIO externes, 25 pour la LED embarquee) vers son index dans les tableaux
+   pin_*[NUM_PINS]. Retourne -1 si l'identifiant n'est pas supporte. */
+static int resolve_pin_index(int id) {
+    if (id >= 0 && id < LED_PIN_INDEX) return id;
+    if (id == LED_PIN_ID) return LED_PIN_INDEX;
+    return -1;
+}
+
 static PyObject* native_pin_init(PyObject* self, PyObject* args) {
     int id, is_output;
     if (!PyArg_ParseTuple(args, "ii", &id, &is_output)) return NULL;
-    if (id < 0 || id >= NUM_PINS) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d hors plage (0-%d) pour la v0", id, NUM_PINS - 1);
+    int idx = resolve_pin_index(id);
+    if (idx < 0) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
-    g_current->pin_is_output[id] = is_output;
+    g_current->pin_is_output[idx] = is_output;
     LeaveCriticalSection(&g_current->cs);
     yield_to_modelica(g_current->sim_time);
     Py_RETURN_NONE;
@@ -111,13 +123,14 @@ static PyObject* native_pin_init(PyObject* self, PyObject* args) {
 static PyObject* native_pin_write(PyObject* self, PyObject* args) {
     int id, value;
     if (!PyArg_ParseTuple(args, "ii", &id, &value)) return NULL;
-    if (id < 0 || id >= NUM_PINS) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d hors plage (0-%d) pour la v0", id, NUM_PINS - 1);
+    int idx = resolve_pin_index(id);
+    if (idx < 0) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
-    if (g_current->pin_is_output[id]) {
-        g_current->pin_driven_value[id] = value;
+    if (g_current->pin_is_output[idx]) {
+        g_current->pin_driven_value[idx] = value;
     }
     LeaveCriticalSection(&g_current->cs);
     yield_to_modelica(g_current->sim_time);
@@ -127,13 +140,14 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
 static PyObject* native_pin_read(PyObject* self, PyObject* args) {
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
-    if (id < 0 || id >= NUM_PINS) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d hors plage (0-%d) pour la v0", id, NUM_PINS - 1);
+    int idx = resolve_pin_index(id);
+    if (idx < 0) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     yield_to_modelica(g_current->sim_time);
     EnterCriticalSection(&g_current->cs);
-    int v = g_current->pin_sensed_value[id];
+    int v = g_current->pin_sensed_value[idx];
     LeaveCriticalSection(&g_current->cs);
     return PyBool_FromLong(v);
 }
@@ -178,10 +192,13 @@ static const char* SHIM_BOOTSTRAP =
     "    OUT = 1\n"
     "    PULL_UP = 2\n"
     "    PULL_DOWN = 3\n"
+    "    LED = 25\n"  /* doit rester aligne sur LED_PIN_ID cote C (PyRuntimeImpl.c) */
     "    def __init__(self, id, mode=None, pull=None):\n"
+    "        if id == 'LED':\n"
+    "            id = Pin.LED\n"
     "        self.id = id\n"
     "        if mode is not None:\n"
-    "            _native.pin_init(id, 1 if mode == Pin.OUT else 0)\n"
+    "            _native.pin_init(self.id, 1 if mode == Pin.OUT else 0)\n"
     "    def value(self, x=None):\n"
     "        if x is None:\n"
     "            return 1 if _native.pin_read(self.id) else 0\n"
@@ -190,6 +207,8 @@ static const char* SHIM_BOOTSTRAP =
     "        _native.pin_write(self.id, 1)\n"
     "    def off(self):\n"
     "        _native.pin_write(self.id, 0)\n"
+    "    def toggle(self):\n"
+    "        self.value(0 if self.value() else 1)\n"
     "\n"
     "_machine = types.ModuleType('machine')\n"
     "_machine.Pin = Pin\n"
@@ -400,10 +419,28 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
        faire que rafraichir l'etat observe, sans laisser le script avancer
        avant l'heure - sinon un sleep(1) pourrait etre ecourte a tort. */
     if (input_changed || !h->wake_pending || currentTime + 1e-9 >= h->wake_requested_at) {
-        h->turn = TURN_WORKER;
-        WakeConditionVariable(&h->cv);
-        while (h->turn != TURN_MODELICA) {
-            SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        /* Boucle interne : tant que le worker redemande un reveil immediat
+           (ex. plusieurs Pin(...) construits/pilotes a la suite, sans sleep
+           entre deux), on lui redonne la main tout de suite plutot que de
+           rendre la main a Modelica et compter sur l'iteration d'evenements
+           pour redeclencher cette fonction. Constate empiriquement : au-dela
+           de 2-3 reveils immediats chaines au meme instant simule, Modelica
+           ne rappelle pas PyRuntime_sync assez de fois pour tous les
+           traiter, laissant le script (et la simulation) bloques en silence
+           (cf. requirements.md). On ne s'arrete que si le worker demande un
+           reveil dans le futur, termine, ou plante. */
+        for (;;) {
+            h->turn = TURN_WORKER;
+            WakeConditionVariable(&h->cv);
+            while (h->turn != TURN_MODELICA) {
+                SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+            }
+            if (h->script_done || h->script_error) {
+                break;
+            }
+            if (!h->wake_pending || h->wake_requested_at > currentTime + 1e-9) {
+                break;
+            }
         }
     }
 

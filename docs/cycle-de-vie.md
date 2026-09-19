@@ -205,9 +205,9 @@ Le worker reprend exactement là où `yield_to_modelica` l'avait arrêté (sorti
 
 `PyRuntime_destroy` **ne tente pas** de réveiller/joindre proprement le thread worker (probablement bloqué en plein `sleep()`), ni d'appeler `Py_FinalizeEx`. Choix délibéré, pas un oubli : chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé** qui se termine juste après cet appel — l'OS récupère tout (thread compris) à la sortie du process. Ça évite les pièges classiques d'un arrêt propre multi-thread pour un bénéfice nul dans ce contexte. C'est aussi pour ça qu'une relance de simulation redémarre le script à zéro sans rien de spécial à coder (scénario de vérification 5) : un nouveau process = un nouvel interpréteur CPython, sans aucun état résiduel.
 
-## Trois pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
+## Quatre pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
 
-Ces trois bugs, trouvés pendant l'implémentation, ont directement façonné le protocole ci-dessus — les documenter évite de les réintroduire par inadvertance lors d'une future extension.
+Ces quatre bugs, trouvés pendant l'implémentation, ont directement façonné le protocole ci-dessus — les documenter évite de les réintroduire par inadvertance lors d'une future extension.
 
 ### a) Boucle de réveil intempestif (auto-déclenchement)
 
@@ -226,3 +226,31 @@ Même après le correctif (a), `PyRuntime_sync` réveillait systématiquement le
 La première version de la gestion d'erreur récupérait la trace Python manuellement (`PyErr_Fetch` + module `traceback`) pour produire un message d'erreur unique avec le vrai chemin du script. Ça fonctionnait isolément (testé hors du contexte OpenModelica) mais provoquait un plantage systématique (violation d'accès) une fois exécuté dans l'exécutable de simulation généré — cause précise non identifiée.
 
 **Correctif** : `PyRun_SimpleString` à la place, qui affiche elle-même la trace via `sys.stderr` (donc relayée vers `ModelicaFormatMessage`, cf. `integration-python.md`) avant de rendre la main en cas d'échec ; `PyRuntime_sync` se contente de détecter l'échec pour déclencher `ModelicaError`. Limitation résiduelle : le nom de fichier affiché dans la trace est `<string>`, pas le vrai chemin du script.
+
+### d) Réveils immédiats chaînés au même instant simulé (script bloqué en silence)
+
+Trouvé en vérifiant la luminosité de l'icône sur `Examples.LedChaser` (script qui construit 8-9 `Pin` en boucle puis les pilote en séquence, chacun un point de synchro à réveil immédiat, c'est-à-dire `wake_requested_at == currentTime`) : `GP0` ne basculait jamais, alors que `checkModel` et `simulate()` se terminaient tous les deux « avec succès », sans aucune erreur. Bissection par nombre de broches pilotées en boucle : 2-3 broches fonctionnent, 4 et plus échouent silencieusement.
+
+**Cause identifiée** (confirmée via `simflags="-lv LOG_EVENTS,LOG_INIT -w"`, pas une supposition) : quand plusieurs réveils immédiats se chaînent au même instant simulé (ex. `Pin(i, Pin.OUT)` répété dans une boucle Python, chacun un aller-retour shim → `yield_to_modelica` → retour), OpenModelica ne ré-invoque pas de façon fiable `PyRuntime_sync` au-delà de 2-3 itérations d'événement au même instant — l'itération d'événement s'arrête avant que le thread worker n'ait fini de vider tous ses réveils immédiats en attente, qui restent alors bloqués indéfiniment sur la variable de condition.
+
+**Correctif** : ne plus compter sur l'itération d'événement Modelica pour rappeler `PyRuntime_sync` autant de fois que nécessaire — la fonction C vide elle-même en interne, dans une seule invocation, toute la chaîne de réveils immédiats en attente (boucle `for (;;)` autour du réveil du worker, qui ne s'arrête que si le script est terminé/en erreur ou si le prochain réveil demandé n'est plus immédiat) :
+
+```c
+if (input_changed || !h->wake_pending || currentTime + 1e-9 >= h->wake_requested_at) {
+    for (;;) {
+        h->turn = TURN_WORKER;
+        WakeConditionVariable(&h->cv);
+        while (h->turn != TURN_MODELICA) {
+            SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        }
+        if (h->script_done || h->script_error) {
+            break;
+        }
+        if (!h->wake_pending || h->wake_requested_at > currentTime + 1e-9) {
+            break;
+        }
+    }
+}
+```
+
+Bug latent depuis l'ajout du pont à 9 broches (LED embarquée) — potentiellement déclenchable par tout script qui configure plusieurs broches en boucle sans `sleep()` entre elles, pas seulement `LedChaser`. Vérifié par bissection sur des variantes de `MCU.mo`, puis re-testé sur `LedChaser` en entier et sur les 5 scénarios de `Resources/Verification/` (aucune régression).

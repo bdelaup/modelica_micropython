@@ -17,10 +17,11 @@ Bibliothèque OpenModelica fournissant un modèle de microcontrôleur programmab
 ```
 MicroPythonMCU/
 ├── package.mo, package.order   -- déclaration du package racine
-├── MCU.mo                      -- le modèle : icône, 8 broches GP0-GP7 + GND, pont électrique Analog, orchestration de la synchro
+├── MCU.mo                      -- le modèle : icône, 8 broches GP0-GP7 + GND, pont électrique Analog, LED embarquée GP25 interne (même pont, sans connecteur externe), orchestration de la synchro
 ├── Interfaces/                 -- constantes de niveaux de tension (VOH, VOL, VIH, VIL, ROut) — approximation RP2040
 ├── Internal/                   -- ExternalObject PyRuntime (constructor/destructor) + PyRuntime_sync (point de synchro)
-├── Examples/                   -- un modèle par scénario de vérification (BasicBlink, SleepCompression, InputReactivity, ScriptError)
+├── Utils/                      -- LED.mo : LED dont l'icône réagit au courant qui la traverse ; utilisée par MCU (LED embarquée) et par les exemples
+├── Examples/                   -- un modèle par scénario de vérification (BasicBlink, SleepCompression, InputReactivity, ScriptError) + LedChaser (chenillard bidirectionnel, démonstrateur)
 └── Resources/
     ├── Include/                -- PyRuntimeImpl.c/.h (implémentation C réelle) + en-têtes Python 3.12 vendorés
     ├── Library/win64/          -- libpython312.a, import lib régénérée pour le compilateur MinGW d'OpenModelica

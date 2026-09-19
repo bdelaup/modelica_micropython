@@ -7,8 +7,9 @@
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome);
 void PyRuntime_destroy(void* handle);
 
-/* pinBoolIn: [8] en entree (etat resolu des broches). pinBoolOut/pinIsOutput:
-   [8] en sortie (deja alloues par l'appelant, convention Modelica External C).
+/* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,
+   8 = LED embarquee interne, cf. PyRuntimeImpl.c). pinBoolOut/pinIsOutput:
+   [9] en sortie (deja alloues par l'appelant, convention Modelica External C).
    nextWakeTime: sortie scalaire. */
 void PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn,
                      int* pinBoolOut, int* pinIsOutput, double* nextWakeTime);
