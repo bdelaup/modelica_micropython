@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 340" width="560" height="340" font-family="sans-serif">
+  <rect x="0" y="0" width="560" height="340" fill="white"/>
+
+  <!-- Pico (boîte simplifiée) -->
+  <rect x="40" y="40" width="120" height="140" fill="rgb(60,60,60)" stroke="black" stroke-width="1"/>
+  <text x="100" y="105" text-anchor="middle" fill="white" font-size="20">Pico</text>
+  <text x="150" y="70" text-anchor="end" fill="black" font-size="15">GP0</text>
+  <rect x="163" y="63" width="12" height="12" fill="rgb(0,0,255)"/>
+  <text x="150" y="150" text-anchor="end" fill="white" font-size="12">GND</text>
+  <rect x="163" y="144" width="12" height="12" fill="white" stroke="rgb(0,0,255)" stroke-width="1"/>
+
+  <!-- Fil GP0 -> led -->
+  <line x1="169" y1="69" x2="260" y2="69" stroke="rgb(0,0,255)" stroke-width="1.5"/>
+  <rect x="260" y="54" width="70" height="30" fill="white" stroke="rgb(0,0,255)" stroke-width="1.5"/>
+  <text x="295" y="42" text-anchor="middle" font-size="14">led</text>
+  <text x="295" y="98" text-anchor="middle" font-size="12" fill="gray">R = 1000 Ω</text>
+
+  <!-- Fil led -> masse -->
+  <line x1="330" y1="69" x2="400" y2="69" stroke="rgb(0,0,255)" stroke-width="1.5"/>
+  <line x1="400" y1="69" x2="400" y2="230" stroke="rgb(0,0,255)" stroke-width="1.5"/>
+
+  <!-- Fil GND (Pico) -> masse -->
+  <line x1="169" y1="150" x2="220" y2="150" stroke="rgb(0,0,255)" stroke-width="1.5"/>
+  <line x1="220" y1="150" x2="220" y2="230" stroke="rgb(0,0,255)" stroke-width="1.5"/>
+  <line x1="220" y1="230" x2="400" y2="230" stroke="rgb(0,0,255)" stroke-width="1.5"/>
+
+  <!-- symbole masse -->
+  <g transform="translate(310,230)">
+    <line x1="0" y1="0" x2="0" y2="15" stroke="black" stroke-width="1.5"/>
+    <line x1="-20" y1="15" x2="20" y2="15" stroke="black" stroke-width="1.5"/>
+    <line x1="-13" y1="22" x2="13" y2="22" stroke="black" stroke-width="1.5"/>
+    <line x1="-6" y1="29" x2="6" y2="29" stroke="black" stroke-width="1.5"/>
+    <text x="0" y="48" text-anchor="middle" font-size="13">ground</text>
+  </g>
+
+  <text x="280" y="300" text-anchor="middle" font-size="13" fill="black">Scénario « BasicBlink »</text>
+  <text x="280" y="318" text-anchor="middle" font-size="12" fill="gray">GP1-GP7 : même principe, tirés à la masse par une résistance (non représentés)</text>
+</svg>
