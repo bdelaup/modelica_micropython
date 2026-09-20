@@ -22,6 +22,7 @@ __pycache__/
 *_records.c
 *_records.o
 *_JacLSJac*.bin
+*_JacA.bin
 *_01exo.c
 *_02nls.c
 *_03lsy.c

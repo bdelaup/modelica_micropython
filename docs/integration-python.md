@@ -85,7 +85,9 @@ graph TD
 
 Écrire le shim en deux couches (un minimum de C, le reste en Python) limite la quantité de code C à maintenir — une classe `Pin` en `PyTypeObject` fait main aurait demandé beaucoup plus de code pour le même résultat.
 
-**Redirection `stdout`/`stderr`** : sur le même principe, un module `pyruntime_stdio` (deux fonctions C, `write`/`flush`) est injecté comme `sys.stdout`/`sys.stderr` ; chaque écriture relaie vers `ModelicaFormatMessage`, donc `print()` apparaît dans le journal de simulation OMEdit (voir `requirements.md`, décision « Sortie des print() »).
+**Redirection `stdout`/`stderr`** : sur le même principe, un module `pyruntime_stdio` (deux fonctions C, `write`/`flush`) est injecté comme `sys.stdout`/`sys.stderr` ; chaque appel à `ModelicaFormatMessage` produit sa propre ligne dans le journal de simulation OMEdit, donc `print()` apparaît dans ce journal (voir `requirements.md`, décision « Sortie des print() »).
+
+**Piège rencontré en session** : `print()` avec plusieurs arguments (ex. `print("Companion :", True)`) déclenche plusieurs `write()` distincts côté CPython (un par argument + séparateur), pas un seul appel avec la ligne déjà assemblée. Relayer chaque `write()` tel quel vers `ModelicaFormatMessage` fragmentait donc un seul `print()` sur plusieurs lignes du journal (`"Companion :"`, une ligne quasi vide pour le séparateur, puis `"True"`). Corrigé en bufferisant côté C (`relay_emit_pending` dans `PyRuntimeImpl.c`) : les caractères s'accumulent jusqu'à un vrai `\n`, un seul appel à `ModelicaFormatMessage` par ligne complète. Le buffer est aussi vidé explicitement après `PyRun_SimpleString` (fin de script) pour ne pas perdre une dernière ligne sans saut de ligne final (ex. `print(..., end="")`).
 
 ## Portabilité : Windows uniquement (v0)
 

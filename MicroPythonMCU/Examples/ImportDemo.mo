@@ -70,7 +70,7 @@ equation
     Line(points = {{110, -50}, {130, -50}, {130, -190}, {0, -190}, {0, -200}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-200, -220}, {150, 110}})),
-    experiment(StopTime = 0.5, Interval = 0.001),
+    experiment(StopTime = 0.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
 <p>Scénario de vérification 10 (cf. <code>requirements.md</code>) : le script principal <code>import_demo.py</code> importe deux modules auxiliaires — <code>companion.py</code>, posé à côté de lui dans <code>Resources/Scripts/</code> (rendu importable par <code>addScriptDirToPath</code>, activé par défaut sur <code>MCU</code>), et <code>shared_helper.py</code>, dans le sous-dossier séparé <code>Resources/Scripts/lib/</code> (rendu importable via le paramètre <code>libraryPath</code> de <code>mcu</code>, qui y pointe explicitement). Si l'un des deux imports échouait, le script lèverait une <code>ImportError</code> non rattrapée et la simulation s'arrêterait en erreur. <code>led0</code>/<code>led1</code> confirment visuellement que les deux imports ont réussi. Les broches inutilisées (<code>GP2</code>-<code>GP7</code>) sont tirées à la masse.</p>
 </html>"));
