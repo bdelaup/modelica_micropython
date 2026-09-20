@@ -33,6 +33,8 @@ struct PyRuntimeHandle {
     int pin_driven_value[NUM_PINS];
     int pin_sensed_value[NUM_PINS];
     double pin_analog_value[NUM_PINS];
+    double pwm_freq[NUM_PINS];   /* 0 = pas en mode PWM */
+    double pwm_duty[NUM_PINS];   /* 0-1, pertinent seulement si pwm_freq > 0 */
 
     int script_done;
     int script_error;
@@ -168,6 +170,60 @@ static PyObject* native_adc_read(PyObject* self, PyObject* args) {
     return PyFloat_FromDouble(v);
 }
 
+static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
+    int id;
+    double freq;
+    if (!PyArg_ParseTuple(args, "id", &id, &freq)) return NULL;
+    int idx = resolve_pin_index(id);
+    if (idx < 0) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        return NULL;
+    }
+    if (freq < 0) {
+        PyErr_Format(PyExc_ValueError, "frequence PWM negative (%f)", freq);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    g_current->pin_is_output[idx] = 1;  /* le PWM prend la broche en sortie, comme sur le vrai RP2040 */
+    g_current->pwm_freq[idx] = freq;
+    LeaveCriticalSection(&g_current->cs);
+    yield_to_modelica(g_current->sim_time);
+    Py_RETURN_NONE;
+}
+
+static PyObject* native_pwm_set_duty(PyObject* self, PyObject* args) {
+    int id;
+    double duty;
+    if (!PyArg_ParseTuple(args, "id", &id, &duty)) return NULL;
+    int idx = resolve_pin_index(id);
+    if (idx < 0) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        return NULL;
+    }
+    if (duty < 0.0) duty = 0.0;
+    if (duty > 1.0) duty = 1.0;
+    EnterCriticalSection(&g_current->cs);
+    g_current->pwm_duty[idx] = duty;
+    LeaveCriticalSection(&g_current->cs);
+    yield_to_modelica(g_current->sim_time);
+    Py_RETURN_NONE;
+}
+
+static PyObject* native_pwm_deinit(PyObject* self, PyObject* args) {
+    int id;
+    if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
+    int idx = resolve_pin_index(id);
+    if (idx < 0) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    g_current->pwm_freq[idx] = 0;  /* retombe en sortie numerique classique, pilotee par pin_driven_value (bas par defaut) */
+    LeaveCriticalSection(&g_current->cs);
+    yield_to_modelica(g_current->sim_time);
+    Py_RETURN_NONE;
+}
+
 static PyObject* native_sleep(PyObject* self, PyObject* args) {
     double seconds;
     if (!PyArg_ParseTuple(args, "d", &seconds)) return NULL;
@@ -185,6 +241,9 @@ static PyMethodDef native_methods[] = {
     {"pin_write", native_pin_write, METH_VARARGS, "Pilote une broche (si en sortie)"},
     {"pin_read", native_pin_read, METH_VARARGS, "Lit l'etat resolu d'une broche"},
     {"adc_read", native_adc_read, METH_VARARGS, "Lit la tension brute (V) mesuree sur une broche ADC"},
+    {"pwm_set_freq", native_pwm_set_freq, METH_VARARGS, "Configure la frequence PWM (Hz) d'une broche, la prend en sortie"},
+    {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Configure le rapport cyclique PWM (0-1) d'une broche"},
+    {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Arrete le PWM sur une broche (retombe en sortie numerique classique)"},
     {"sleep", native_sleep, METH_VARARGS, "Attend N secondes de temps simule"},
     {"ticks_ms", native_ticks_ms, METH_VARARGS, "Horloge simulee, en millisecondes"},
     {NULL, NULL, 0, NULL}
@@ -237,9 +296,35 @@ static const char* SHIM_BOOTSTRAP =
     "        raw = round(v / 3.3 * 65535)\n"
     "        return 0 if raw < 0 else (65535 if raw > 65535 else raw)\n"
     "\n"
+    "class PWM:\n"
+    "    def __init__(self, pin, freq=None, duty_u16=None):\n"
+    "        if isinstance(pin, Pin):\n"
+    "            pin = pin.id\n"
+    "        self.id = pin\n"
+    "        self._freq = 0\n"
+    "        self._duty = 0\n"
+    "        if freq is not None:\n"
+    "            self.freq(freq)\n"
+    "        if duty_u16 is not None:\n"
+    "            self.duty_u16(duty_u16)\n"
+    "    def freq(self, f=None):\n"
+    "        if f is None:\n"
+    "            return self._freq\n"
+    "        _native.pwm_set_freq(self.id, float(f))\n"
+    "        self._freq = int(f)\n"
+    "    def duty_u16(self, d=None):\n"
+    "        if d is None:\n"
+    "            return self._duty\n"
+    "        _native.pwm_set_duty(self.id, d / 65535.0)\n"
+    "        self._duty = d\n"
+    "    def deinit(self):\n"
+    "        _native.pwm_deinit(self.id)\n"
+    "        self._freq = 0\n"
+    "\n"
     "_machine = types.ModuleType('machine')\n"
     "_machine.Pin = Pin\n"
     "_machine.ADC = ADC\n"
+    "_machine.PWM = PWM\n"
     "sys.modules['machine'] = _machine\n"
     "\n"
     "def sleep(s):\n"
@@ -412,7 +497,9 @@ void PyRuntime_destroy(void* handle_) {
 
 void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
                      const double* pinAnalogIn,
-                     int* pinBoolOut, int* pinIsOutput, double* nextWakeTime) {
+                     int* pinBoolOut, int* pinIsOutput,
+                     double* pwmFreqOut, double* pwmDutyOut,
+                     double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
 
@@ -420,6 +507,8 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
         for (i = 0; i < NUM_PINS; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
             pinIsOutput[i] = h->pin_is_output[i];
+            pwmFreqOut[i] = h->pwm_freq[i];
+            pwmDutyOut[i] = h->pwm_duty[i];
         }
         *nextWakeTime = 1.0e300; /* pas d'autre reveil attendu */
         return;
@@ -477,6 +566,8 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     for (i = 0; i < NUM_PINS; i++) {
         pinBoolOut[i] = h->pin_driven_value[i];
         pinIsOutput[i] = h->pin_is_output[i];
+        pwmFreqOut[i] = h->pwm_freq[i];
+        pwmDutyOut[i] = h->pwm_duty[i];
     }
     int done = h->script_done;
     int error = h->script_error;

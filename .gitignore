@@ -1,3 +1,7 @@
+# Artefacts de compilation Python (générés par py_compile lors des vérifications de syntaxe du miroir du shim)
+__pycache__/
+*.pyc
+
 # Artefacts de compilation OpenModelica (générés par omc/simulate(), à ne jamais committer)
 *.exe
 *.o

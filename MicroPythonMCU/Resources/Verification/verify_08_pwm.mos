@@ -1,0 +1,22 @@
+// Scénario de vérification v0 n°9 (cf. requirements.md).
+// omc verify_08_pwm.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.PwmLed, stopTime = 0.5, numberOfIntervals = 25000, fileNamePrefix = "PwmLed");
+b := getErrorString();
+
+// freq=200Hz -> periode 5ms, duty=19661/65535=~30% -> haut pendant les 1.5
+// premieres ms de chaque periode, bas ensuite. Le PWM continue de tourner
+// meme apres t=0 (le script se termine immediatement, cf. pwm_led.py) :
+// verifie aussi a t=0.3 (bien apres, script termine depuis longtemps).
+vHigh1 := val(mcu.GP0.v, 0.001, "PwmLed_res.mat");
+vLow1 := val(mcu.GP0.v, 0.003, "PwmLed_res.mat");
+vHigh2 := val(mcu.GP0.v, 0.0051, "PwmLed_res.mat");
+vHighLate := val(mcu.GP0.v, 0.3, "PwmLed_res.mat");
+
+if vHigh1 > 2.0 and vLow1 < 0.5 and vHigh2 > 2.0 and vHighLate > 2.0 then
+  print("PASS: verify_08_pwm (GP0 1ere periode haut=" + String(vHigh1) + "V bas=" + String(vLow1) + "V, 2e periode haut=" + String(vHigh2) + "V, t=0.3 haut=" + String(vHighLate) + "V)\n");
+else
+  print("FAIL: verify_08_pwm (haut1=" + String(vHigh1) + " bas1=" + String(vLow1) + " haut2=" + String(vHigh2) + " tardif=" + String(vHighLate) + ")\n" + b);
+end if;

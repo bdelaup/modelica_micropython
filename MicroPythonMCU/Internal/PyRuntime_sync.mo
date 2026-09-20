@@ -6,8 +6,10 @@ impure function PyRuntime_sync "Point de synchro entre le script Python et la si
   input Real pinAnalogIn[9] "tension brute (V) mesuree sur chaque broche, alignee sur pinBoolIn - lue par machine.ADC ; index 9 (LED) jamais utilise cote ADC";
   output Boolean pinBoolOut[9];
   output Boolean pinIsOutput[9];
+  output Real pwmFreq[9] "frequence PWM par broche (Hz), 0 = pas en mode PWM - cf. machine.PWM";
+  output Real pwmDuty[9] "rapport cyclique PWM par broche (0-1), pertinent seulement si pwmFreq > 0";
   output Real nextWakeTime;
-  external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, nextWakeTime) annotation(
+  external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pwmFreq, pwmDuty, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
     Library = "python312",

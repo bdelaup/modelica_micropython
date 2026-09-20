@@ -50,9 +50,38 @@ class ADC:
         raw = round(v / 3.3 * 65535)
         return 0 if raw < 0 else (65535 if raw > 65535 else raw)
 
+class PWM:
+    def __init__(self, pin, freq=None, duty_u16=None):
+        if isinstance(pin, Pin):
+            pin = pin.id
+        self.id = pin
+        self._freq = 0
+        self._duty = 0
+        if freq is not None:
+            self.freq(freq)
+        if duty_u16 is not None:
+            self.duty_u16(duty_u16)
+
+    def freq(self, f=None):
+        if f is None:
+            return self._freq
+        _native.pwm_set_freq(self.id, float(f))
+        self._freq = int(f)
+
+    def duty_u16(self, d=None):
+        if d is None:
+            return self._duty
+        _native.pwm_set_duty(self.id, d / 65535.0)
+        self._duty = d
+
+    def deinit(self):
+        _native.pwm_deinit(self.id)
+        self._freq = 0
+
 _machine = types.ModuleType('machine')
 _machine.Pin = Pin
 _machine.ADC = ADC
+_machine.PWM = PWM
 sys.modules['machine'] = _machine
 
 def sleep(s):

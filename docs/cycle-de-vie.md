@@ -171,13 +171,13 @@ static void yield_to_modelica(double wake_at) {
 // MCU.mo
 when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod),
       change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), ...} then
-    (pinBoolOut, pinIsOutputD, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
+    (pinBoolOut, pinIsOutputD, pwmFreq, pwmDuty, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
 end when;
 ```
 
 ```modelica
 // PyRuntime_sync.mo — le pont entre l'appel Modelica ci-dessus et la fonction C
-external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, nextWakeTime) annotation(
+external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pwmFreq, pwmDuty, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
     Library = "python312",
@@ -185,6 +185,8 @@ external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBool
 ```
 
 `pinAnalogIn` (`pinNodeVoltage` côté `MCU.mo`) est arrivé avec `machine.ADC` : la tension brute, déjà calculée pour le seuillage numérique, est transmise en plus sous forme continue — `Pin.value()` lit `pinBoolIn` (seuillé), `ADC.read_u16()` lit `pinAnalogIn` (brut, mis à l'échelle sur 16 bits côté shim). Même point de synchro, même tableau d'index (0-7 = `GP0`-`GP7`, 8 = LED embarquée jamais utilisé côté ADC), aucun nouveau déclencheur de `when` requis (cf. `requirements.md`, décision « ADC »).
+
+`pwmFreq`/`pwmDuty` sont arrivés avec `machine.PWM` : contrairement aux autres champs (mis à jour à chaque appel), ce sont des paramètres de configuration — `machine.PWM.freq()`/`.duty_u16()` les écrivent (points de synchro classiques), mais **c'est ensuite Modelica qui génère le créneau réel en continu** dans l'équation `src[i].v` de `MCU.mo` (`mod(time, 1/pwmFreq[i]) < pwmDuty[i]/pwmFreq[i]`), sans repasser par `PyRuntime_sync` à chaque front — hors de portée du mécanisme de synchro par thread pour des fréquences de l'ordre du kHz. Le PWM continue donc de tourner même après que le script se soit terminé (cf. `requirements.md`, décision « PWM (sorties modulées) »).
 
 **5. `PyRuntime_sync` décide s'il rend la main, puis attend le retour du worker :**
 

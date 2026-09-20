@@ -57,6 +57,31 @@ v = adc.read_u16()             # 0-65535
 |---|---|---|---|
 | `.read_u16()` | `read_u16() -> int` | Lit la tension mesurée sur la broche et la restitue sur 16 bits (`round(v / 3.3 * 65535)`, bornée à `[0, 65535]`) | Oui |
 
+## `machine.PWM`
+
+```python
+from machine import Pin, PWM
+pwm = PWM(Pin(0))
+pwm.freq(1000)          # Hz
+pwm.duty_u16(32768)     # 0-65535 (~50%)
+```
+
+Une fois configuré, le créneau est généré **en continu côté Modelica** (expression `mod(time, période)` dans `MCU.mo`), sans aller-retour avec le thread Python à chaque front — le script peut se terminer, le PWM continue de tourner, fidèle au vrai périphérique matériel du RP2040. Voir `requirements.md`, décision « PWM (sorties modulées) », pour le détail du mécanisme et sa validation.
+
+### Constructeur
+
+`PWM(pin, freq=None, duty_u16=None)` — `pin` : `0`-`7` (entier) ou objet `Pin` (son `.id` est utilisé). Prend la broche en sortie (comme le vrai RP2040). `freq`/`duty_u16` optionnels, équivalents à appeler `.freq()`/`.duty_u16()` juste après construction.
+
+### Méthodes
+
+| Méthode | Signature | Comportement | Synchronise ? |
+|---|---|---|---|
+| `.freq(f)` | `freq(f)` | Configure la fréquence PWM (Hz) ; place aussi la broche en sortie | Oui |
+| `.freq()` | `freq() -> int` | Renvoie la dernière fréquence configurée (valeur mise en cache côté Python, pas de nouvel appel natif) | **Non** |
+| `.duty_u16(d)` | `duty_u16(d)` | Configure le rapport cyclique (0-65535, borné) | Oui |
+| `.duty_u16()` | `duty_u16() -> int` | Renvoie le dernier rapport cyclique configuré (valeur mise en cache) | **Non** |
+| `.deinit()` | `deinit()` | Arrête le PWM ; la broche repasse en sortie numérique classique (bas par défaut) | Oui |
+
 ## `time`
 
 ```python
@@ -81,7 +106,8 @@ Détails et justifications dans `requirements.md` (section Restrictions v0) :
 
 - `pull` (`Pin.PULL_UP`/`Pin.PULL_DOWN`) accepté en paramètre mais sans résistance de tirage réellement modélisée.
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).
-- Aucune autre classe `machine.*` (pas de `PWM`, `Timer`, `I2C`, `SPI`, `UART`) — voir le TODO de `requirements.md` pour les extensions prévues.
+- Aucune autre classe `machine.*` (pas de `Timer`, `I2C`, `SPI`, `UART`) — voir le TODO de `requirements.md` pour les extensions prévues.
 - Pas d'`irq()` sur `Pin` (interruptions sur changement d'état).
 - `ADC.read_u16()` : référence de conversion (3,3 V) codée en dur dans le shim, pas liée au paramètre `VOH` de `MCU` ; pas d'échantillonnage périodique ni d'événement de seuil (contrairement à une broche numérique en entrée, une variation sur l'ADC ne réveille jamais le script — il faut l'interroger explicitement).
+- `PWM` : chaque broche a sa fréquence/rapport cyclique indépendants (le vrai RP2040 partage un canal de fréquence entre deux broches voisines, pas modélisé ici) ; `deinit()` repasse la broche en sortie numérique **basse**, pas en haute impédance.
 - **Relire une broche juste après avoir écrit sur une autre (même physiquement reliées) peut renvoyer l'état d'*avant* l'écriture.** Plusieurs appels au shim qui s'enchaînent sans qu'aucun ne demande un vrai délai restent dans le même passage côté runtime C, sans repasser par la résolution du circuit Modelica entre-temps — la lecture voit alors un instantané pris avant l'écriture qui vient de se produire. Il faut un point de synchro explicite entre les deux (n'importe quel `sleep`/`sleep_ms`/`sleep_us` non nul suffit, même très court) pour forcer ce passage. Exemple concret : [`Examples/PinEcho.mo`](../MicroPythonMCU/Examples/PinEcho.mo) (script [`pin_echo.py`](../MicroPythonMCU/Resources/Scripts/pin_echo.py)), où `GP2` relit électriquement ce que le script vient d'écrire sur `GP1`.
