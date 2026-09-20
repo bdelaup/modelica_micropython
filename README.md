@@ -20,7 +20,8 @@ Dans OMEdit : *File → Open Model/Library File(s)…* → sélectionner `MicroP
 ## Démarrage rapide
 
 1. Ouvrir et simuler `MicroPythonMCU.Examples.BasicBlink` : `GP0` clignote (`Resources/Scripts/demo.py`).
-<p align="center"><img src="docs/images/basicblink.png" alt="Tree" width="400"></p>
+
+<p align="center"><img src="docs/images/basicblink.png" alt="schema MCU blik" width="400"></p>
 
 1. Dans les paramètres du composant `MCU`, pointer **Chemin du script** (bouton *…*) vers votre propre `.py` :
 
