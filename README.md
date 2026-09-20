@@ -1,6 +1,4 @@
-<p align="center"><img src="docs/images/logo.svg" alt="Logo MicroPythonMCU" width="140"></p>
-
-# MicroPythonMCU
+## MicroPythonMCU
 
 **Modèle de microcontrôleur programmable en python pour OpenModelica**
 
