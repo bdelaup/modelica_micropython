@@ -1,11 +1,11 @@
 within MicroPythonMCU.Sandbox;
 
 model adc_read_test
-  MCU mcu annotation(
+  MCU mcu(scriptPath = "D:/benoit/OneDrive - LYCEE Jules Haag/modelica_micropython3/MicroPythonMCU/Sandbox/adc_read_test.py")  annotation(
     Placement(transformation(origin = {-21, 35}, extent = {{-31, -31}, {31, 31}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-32, -34}, extent = {{-10, -10}, {10, 10}})));
-  Modelica.Electrical.Analog.Sources.RampVoltage rampVoltage annotation(
+  Modelica.Electrical.Analog.Sources.RampVoltage rampVoltage(V = 5, duration = 10)  annotation(
     Placement(transformation(origin = {-78, 40}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
 equation
   connect(rampVoltage.n, ground.p) annotation(
