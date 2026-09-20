@@ -10,21 +10,21 @@ model MCU "Microcontrôleur programmable simulé (v0), piloté par un script Pyt
   parameter Modelica.Units.SI.Voltage VIL = Interfaces.VIL "Seuil de reconnaissance d'une entrée basse";
   parameter Modelica.Units.SI.Resistance ROut = Interfaces.ROut "Résistance série de sortie (drive strength)";
   parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Résistance série de la LED embarquée (interne, GP25)";
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP0 "GPIO 0 (machine.Pin(0))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP0 "GPIO 0 (machine.Pin(0) ou machine.ADC(0))" annotation(
     Placement(transformation(origin = {-62, 50}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP1 "GPIO 1 (machine.Pin(1))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP1 "GPIO 1 (machine.Pin(1) ou machine.ADC(1))" annotation(
     Placement(transformation(origin = {-62, 20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP2 "GPIO 2 (machine.Pin(2))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP2 "GPIO 2 (machine.Pin(2) ou machine.ADC(2))" annotation(
     Placement(transformation(origin = {-62, -20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP3 "GPIO 3 (machine.Pin(3))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP3 "GPIO 3 (machine.Pin(3) ou machine.ADC(3))" annotation(
     Placement(transformation(origin = {-62, -50}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP4 "GPIO 4 (machine.Pin(4))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP4 "GPIO 4 (machine.Pin(4) ou machine.ADC(4))" annotation(
     Placement(transformation(origin = {62, 50}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP5 "GPIO 5 (machine.Pin(5))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP5 "GPIO 5 (machine.Pin(5) ou machine.ADC(5))" annotation(
     Placement(transformation(origin = {62, 20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP6 "GPIO 6 (machine.Pin(6))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP6 "GPIO 6 (machine.Pin(6) ou machine.ADC(6))" annotation(
     Placement(transformation(origin = {62, -20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP7 "GPIO 7 (machine.Pin(7))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP7 "GPIO 7 (machine.Pin(7) ou machine.ADC(7))" annotation(
     Placement(transformation(origin = {62, -50}, extent = {{-7, -7}, {7, 7}})));
   Modelica.Electrical.Analog.Interfaces.NegativePin GND "Référence commune (masse) - à relier à la masse du circuit externe" annotation(
     Placement(transformation(origin = {0, -78}, extent = {{-6, -6}, {6, 6}})));
@@ -104,13 +104,13 @@ equation
   connect(builtinLed.n, GND) annotation(
     Line(points = {{-130, -120}, {-130, -108}, {0, -108}, {0, -78}}, color = {0, 0, 255}));
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), change(pinBoolIn[2]) and not pre(pinIsOutputD[2]), change(pinBoolIn[3]) and not pre(pinIsOutputD[3]), change(pinBoolIn[4]) and not pre(pinIsOutputD[4]), change(pinBoolIn[5]) and not pre(pinIsOutputD[5]), change(pinBoolIn[6]) and not pre(pinIsOutputD[6]), change(pinBoolIn[7]) and not pre(pinIsOutputD[7]), change(pinBoolIn[8]) and not pre(pinIsOutputD[8]), change(pinBoolIn[9]) and not pre(pinIsOutputD[9])} then
-    (pinBoolOut, pinIsOutputD, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn);
+    (pinBoolOut, pinIsOutputD, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
   end when;
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(extent = {{-55, 65}, {55, -65}}, lineColor = {0, 0, 0}, fillColor = {60, 60, 60}, fillPattern = FillPattern.Solid), Ellipse(extent = {{-6, 46}, {6, 34}}, lineColor = {0, 0, 0}, fillPattern = FillPattern.Solid, fillColor = DynamicSelect({40, 90, 40}, {integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(0 - 40)), integer(90 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(220 - 90)), integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(0 - 40))})), Text(extent = {{-40, 18}, {40, -2}}, textString = "MCU", textColor = {255, 255, 255}, textStyle = {TextStyle.Bold}), Text(extent = {{-40, -4}, {40, -18}}, textString = "(v0)", textColor = {200, 200, 200}), Text(extent = {{-46, 57}, {-8, 43}}, textString = "GP0", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Left), Text(extent = {{-46, 27}, {-8, 13}}, textString = "GP1", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Left), Text(extent = {{-46, -13}, {-8, -27}}, textString = "GP2", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Left), Text(extent = {{-46, -43}, {-8, -57}}, textString = "GP3", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Left), Text(extent = {{8, 57}, {46, 43}}, textString = "GP4", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Right), Text(extent = {{8, 27}, {46, 13}}, textString = "GP5", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Right), Text(extent = {{8, -13}, {46, -27}}, textString = "GP6", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Right), Text(extent = {{8, -43}, {46, -57}}, textString = "GP7", textColor = {255, 255, 255}, horizontalAlignment = TextAlignment.Right), Text(extent = {{-25, -83}, {25, -90}}, textString = "GND", textColor = {0, 0, 0}), Text(extent = {{-150, 140}, {150, 100}}, textString = "%name", textColor = {0, 0, 255})}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-200, -150}, {100, 110}})),
     Documentation(info = "<html>
-<p>Modèle v0 complet : pont électrique GPIO (source de tension pilotée, résistance série, interrupteur idéal, capteur de tension) piloté par <code>PyRuntime</code>, qui exécute le script Python de l'utilisateur (compatible MicroPython, API <code>machine.Pin</code>/<code>time</code>) dans un thread avec interception de <code>sleep()</code>. Référence d'API : Raspberry Pi Pico (RP2040), cf. <code>requirements.md</code> — non affichée sur l'icône pour rester générique.</p>
+<p>Modèle v0 complet : pont électrique GPIO (source de tension pilotée, résistance série, interrupteur idéal, capteur de tension) piloté par <code>PyRuntime</code>, qui exécute le script Python de l'utilisateur (compatible MicroPython, API <code>machine.Pin</code>/<code>machine.ADC</code>/<code>time</code>) dans un thread avec interception de <code>sleep()</code>. Référence d'API : Raspberry Pi Pico (RP2040), cf. <code>requirements.md</code> — non affichée sur l'icône pour rester générique. Chaque broche <code>GP0</code>-<code>GP7</code> est utilisable au choix du script en numérique (<code>machine.Pin</code>) ou en analogique (<code>machine.ADC</code>, lecture 16 bits de la tension mesurée par le capteur déjà présent dans le pont) — contrairement au vrai Pico où seules <code>GP26</code>-<code>GP28</code> sont ADC-capables, cf. restrictions dans <code>requirements.md</code>.</p>
 <p>La pastille sur l'icône représente la LED embarquée du Raspberry Pi Pico (câblée sur <code>GP25</code> sur la vraie carte). Elle est traitée comme une broche normale, avec le même pont électrique interne que <code>GP0</code>-<code>GP7</code> (<code>SignalVoltage</code>/<code>Resistor</code>/<code>IdealOpeningSwitch</code>/<code>VoltageSensor</code>, indice 9 des mêmes tableaux) — simplement sans connecteur externe : la sortie de ce pont interne alimente directement, à demeure, une résistance série (<code>ledResistor</code>) et une vraie <code>Utils.LED</code> (<code>builtinLed</code>) reliée à <code>GND</code>, fidèle au câblage réel du Pico. Pilotable depuis le script exactement comme les 8 broches GPIO (<code>machine.Pin(25, machine.Pin.OUT).on()</code>/<code>.off()</code>) ; ce n'est pas l'une des 8 broches GPIO exposées en v0 (cf. restrictions dans <code>requirements.md</code>), donc aucun circuit externe ne peut s'y connecter. Vert vif quand allumée, vert éteint sinon — visible pendant la lecture animée d'un résultat de simulation dans OMEdit (<code>DynamicSelect</code> sur <code>builtinLed.mean.y</code>), pas sur un rendu statique.</p>
 </html>"));
 end MCU;

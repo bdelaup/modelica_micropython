@@ -171,18 +171,20 @@ static void yield_to_modelica(double wake_at) {
 // MCU.mo
 when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod),
       change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), ...} then
-    (pinBoolOut, pinIsOutputD, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn);
+    (pinBoolOut, pinIsOutputD, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
 end when;
 ```
 
 ```modelica
 // PyRuntime_sync.mo — le pont entre l'appel Modelica ci-dessus et la fonction C
-external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinBoolOut, pinIsOutput, nextWakeTime) annotation(
+external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
     Library = "python312",
     LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
 ```
+
+`pinAnalogIn` (`pinNodeVoltage` côté `MCU.mo`) est arrivé avec `machine.ADC` : la tension brute, déjà calculée pour le seuillage numérique, est transmise en plus sous forme continue — `Pin.value()` lit `pinBoolIn` (seuillé), `ADC.read_u16()` lit `pinAnalogIn` (brut, mis à l'échelle sur 16 bits côté shim). Même point de synchro, même tableau d'index (0-7 = `GP0`-`GP7`, 8 = LED embarquée jamais utilisé côté ADC), aucun nouveau déclencheur de `when` requis (cf. `requirements.md`, décision « ADC »).
 
 **5. `PyRuntime_sync` décide s'il rend la main, puis attend le retour du worker :**
 

@@ -5,5 +5,6 @@ package MicroPythonMCU "Bibliothèque de simulation d'un microcontrôleur progra
   annotation(
     Documentation(info = "<html>
 <p>Voir <code>requirements.md</code> à la racine du dépôt pour le besoin, les choix d'architecture et le périmètre de la version v0.</p>
-</html>"));
+</html>"),
+  uses(Modelica(version = "4.1.0")));
 end MicroPythonMCU;

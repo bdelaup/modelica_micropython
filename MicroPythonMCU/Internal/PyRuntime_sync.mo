@@ -3,10 +3,11 @@ impure function PyRuntime_sync "Point de synchro entre le script Python et la si
   input PyRuntime handle;
   input Real currentTime;
   input Boolean pinBoolIn[9] "indices 1-8 = GP0-GP7, 9 = LED embarquee (interne)";
+  input Real pinAnalogIn[9] "tension brute (V) mesuree sur chaque broche, alignee sur pinBoolIn - lue par machine.ADC ; index 9 (LED) jamais utilise cote ADC";
   output Boolean pinBoolOut[9];
   output Boolean pinIsOutput[9];
   output Real nextWakeTime;
-  external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinBoolOut, pinIsOutput, nextWakeTime) annotation(
+  external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
     Library = "python312",

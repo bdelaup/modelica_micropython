@@ -80,7 +80,7 @@ graph TD
 ```
 
 - **Couche native (C)** : `_pyruntime_native`, un module C minimal (`PyMethodDef`) exposant seulement les primitives bas niveau (`pin_init`, `pin_write`, `pin_read`, `sleep`, `ticks_ms`). Enregistré via `PyImport_AppendInittab` **avant** `Py_InitializeFromConfig`.
-- **Couche Python (bootstrap)** : une chaîne C (`SHIM_BOOTSTRAP`) exécutée une fois via `PyRun_SimpleString` juste après l'initialisation, qui définit la classe `Pin` (avec `IN`/`OUT`/`PULL_UP`/`PULL_DOWN`, `.value()`, `.on()`, `.off()`) et les fonctions `time.sleep`/`sleep_ms`/`sleep_us`/`ticks_ms`/`ticks_us`/`ticks_diff` par-dessus le module natif, puis les injecte dans `sys.modules['machine']` et `sys.modules['time']`.
+- **Couche Python (bootstrap)** : une chaîne C (`SHIM_BOOTSTRAP`) exécutée une fois via `PyRun_SimpleString` juste après l'initialisation, qui définit la classe `Pin` (avec `IN`/`OUT`/`PULL_UP`/`PULL_DOWN`, `.value()`, `.on()`, `.off()`) et les fonctions `time.sleep`/`sleep_ms`/`sleep_us`/`ticks_ms`/`ticks_us`/`ticks_diff` par-dessus le module natif, puis les injecte dans `sys.modules['machine']` et `sys.modules['time']`. Référence complète de cette API côté script (signatures, ce qui synchronise ou non, limitations) : [api-machine.md](api-machine.md) ; un miroir lisible (dé-échappé) de `SHIM_BOOTSTRAP` est tenu à jour dans [shim/machine_time_shim.py](shim/machine_time_shim.py) — la chaîne C dans `PyRuntimeImpl.c` reste la source de vérité exécutée, ce miroir est à resynchroniser manuellement si elle change.
 
 Écrire le shim en deux couches (un minimum de C, le reste en Python) limite la quantité de code C à maintenir — une classe `Pin` en `PyTypeObject` fait main aurait demandé beaucoup plus de code pour le même résultat.
 

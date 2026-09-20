@@ -1,0 +1,16 @@
+// Scénario de vérification v0 n°8 (cf. requirements.md).
+// omc verify_07_adc_read.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.AdcRead, stopTime = 1, numberOfIntervals = 1000, fileNamePrefix = "AdcRead");
+b := getErrorString();
+
+vTap := val(mcu.GP1.v, 0.05, "AdcRead_res.mat");
+vLed := val(mcu.GP0.v, 0.05, "AdcRead_res.mat");
+
+if vTap > 1.5 and vTap < 3.0 and vLed > 2.0 then
+  print("PASS: verify_07_adc_read (GP1(ADC)=" + String(vTap) + "V, GP0(led)=" + String(vLed) + "V)\n");
+else
+  print("FAIL: verify_07_adc_read (GP1(ADC)=" + String(vTap) + "V, GP0(led)=" + String(vLed) + "V)\n" + b);
+end if;

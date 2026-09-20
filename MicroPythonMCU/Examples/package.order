@@ -3,3 +3,5 @@ SleepCompression
 InputReactivity
 ScriptError
 LedChaser
+PinEcho
+AdcRead

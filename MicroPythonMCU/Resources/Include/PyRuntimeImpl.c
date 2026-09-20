@@ -32,6 +32,7 @@ struct PyRuntimeHandle {
     int pin_is_output[NUM_PINS];
     int pin_driven_value[NUM_PINS];
     int pin_sensed_value[NUM_PINS];
+    double pin_analog_value[NUM_PINS];
 
     int script_done;
     int script_error;
@@ -152,6 +153,21 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
     return PyBool_FromLong(v);
 }
 
+static PyObject* native_adc_read(PyObject* self, PyObject* args) {
+    int id;
+    if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
+    int idx = resolve_pin_index(id);
+    if (idx < 0 || idx == LED_PIN_INDEX) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte comme entree ADC pour la v0 (0-%d uniquement)", id, LED_PIN_INDEX - 1);
+        return NULL;
+    }
+    yield_to_modelica(g_current->sim_time);
+    EnterCriticalSection(&g_current->cs);
+    double v = g_current->pin_analog_value[idx];
+    LeaveCriticalSection(&g_current->cs);
+    return PyFloat_FromDouble(v);
+}
+
 static PyObject* native_sleep(PyObject* self, PyObject* args) {
     double seconds;
     if (!PyArg_ParseTuple(args, "d", &seconds)) return NULL;
@@ -168,6 +184,7 @@ static PyMethodDef native_methods[] = {
     {"pin_init", native_pin_init, METH_VARARGS, "Configure la direction d'une broche"},
     {"pin_write", native_pin_write, METH_VARARGS, "Pilote une broche (si en sortie)"},
     {"pin_read", native_pin_read, METH_VARARGS, "Lit l'etat resolu d'une broche"},
+    {"adc_read", native_adc_read, METH_VARARGS, "Lit la tension brute (V) mesuree sur une broche ADC"},
     {"sleep", native_sleep, METH_VARARGS, "Attend N secondes de temps simule"},
     {"ticks_ms", native_ticks_ms, METH_VARARGS, "Horloge simulee, en millisecondes"},
     {NULL, NULL, 0, NULL}
@@ -210,8 +227,19 @@ static const char* SHIM_BOOTSTRAP =
     "    def toggle(self):\n"
     "        self.value(0 if self.value() else 1)\n"
     "\n"
+    "class ADC:\n"
+    "    def __init__(self, id):\n"
+    "        if isinstance(id, Pin):\n"
+    "            id = id.id\n"
+    "        self.id = id\n"
+    "    def read_u16(self):\n"
+    "        v = _native.adc_read(self.id)\n"
+    "        raw = round(v / 3.3 * 65535)\n"
+    "        return 0 if raw < 0 else (65535 if raw > 65535 else raw)\n"
+    "\n"
     "_machine = types.ModuleType('machine')\n"
     "_machine.Pin = Pin\n"
+    "_machine.ADC = ADC\n"
     "sys.modules['machine'] = _machine\n"
     "\n"
     "def sleep(s):\n"
@@ -383,6 +411,7 @@ void PyRuntime_destroy(void* handle_) {
 }
 
 void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
+                     const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput, double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
@@ -411,6 +440,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
             input_changed = 1;
         }
         h->pin_sensed_value[i] = pinBoolIn[i];
+        h->pin_analog_value[i] = pinAnalogIn[i];
     }
 
     /* Sinon, ne rendre la main au worker que si son reveil demande est

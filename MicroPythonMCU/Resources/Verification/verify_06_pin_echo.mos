@@ -1,0 +1,21 @@
+// Scénario de vérification v0 n°7 (cf. requirements.md).
+// omc verify_06_pin_echo.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.PinEcho, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "PinEcho");
+b := getErrorString();
+
+// GP1 est haut pendant [0, 0.3[, bas pendant [0.3, 0.6[, etc. (PERIOD=0.3s, cf. pin_echo.py).
+// GP3 doit refleter GP1 (via GP2, releu apres synchro) : on verifie juste avant
+// chaque bascule, la ou une lecture perimee (bug non corrige) serait visible.
+vEcho1 := val(mcu.GP3.v, 0.29, "PinEcho_res.mat");
+vEcho2 := val(mcu.GP3.v, 0.59, "PinEcho_res.mat");
+vSource1 := val(mcu.GP1.v, 0.29, "PinEcho_res.mat");
+vSource2 := val(mcu.GP1.v, 0.59, "PinEcho_res.mat");
+
+if vEcho1 > 2.0 and vEcho2 < 0.5 then
+  print("PASS: verify_06_pin_echo (GP1=" + String(vSource1) + "V/" + String(vSource2) + "V, GP3=" + String(vEcho1) + "V/" + String(vEcho2) + "V)\n");
+else
+  print("FAIL: verify_06_pin_echo (GP1=" + String(vSource1) + "V/" + String(vSource2) + "V, GP3=" + String(vEcho1) + "V/" + String(vEcho2) + "V)\n" + b);
+end if;

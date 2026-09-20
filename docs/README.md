@@ -9,6 +9,8 @@ Pour le **pourquoi** (besoin, décisions d'architecture avec alternatives, restr
 1. [architecture.md](architecture.md) — arborescence du dépôt, rôle de chaque fichier/dossier, vue d'ensemble des composants.
 2. [integration-python.md](integration-python.md) — comment CPython est compilé et lié dans l'exécutable de simulation généré par OpenModelica, la distribution Python embarquée, le shim `machine`/`time`.
 3. [cycle-de-vie.md](cycle-de-vie.md) — ce qui se passe à l'instanciation (construction de `PyRuntime`, démarrage du thread) et à chaque pas de temps (le protocole de synchronisation entre le solveur Modelica et le script Python), plus les pièges rencontrés en cours d'implémentation.
+4. [api-machine.md](api-machine.md) — référence de l'API `machine`/`time` telle qu'exposée au script utilisateur (côté « qui écrit un script », pas « comment c'est câblé »), avec un [miroir lisible du shim](shim/machine_time_shim.py) (la source de vérité exécutée reste la chaîne C dans `PyRuntimeImpl.c`).
+5. [tests.md](tests.md) — comment relancer la suite de vérification (`Resources/Verification/*.mos`) de façon reproductible, ce que vérifie chaque script, et comment en ajouter un nouveau.
 
 ## Convention pour les captures d'écran
 
