@@ -1,38 +1,22 @@
 within MicroPythonMCU.Examples;
+
 model SleepCompression "Scénario de vérification v0 n°2 : deux sleep(3600) simulés ne doivent pas prendre une heure de temps réel chacun"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/sleep_long.py"), tickPeriod = 60) "scriptPath = Verification/sleep_long.py" annotation(Placement(transformation(extent = {{-250, -100}, {-50, 100}})));
-  Modelica.Electrical.Analog.Basic.Ground ground annotation(Placement(transformation(extent = {{-160, -190}, {-140, -180}})));
-  Modelica.Electrical.Analog.Basic.Resistor led(R = 1000) "Charge simulant une LED sur GP0" annotation(Placement(transformation(extent = {{-300, 40}, {-280, 60}})));
-  Modelica.Electrical.Analog.Basic.Resistor pulldown1(R = 1000) "GP1" annotation(Placement(transformation(extent = {{-300, 10}, {-280, 30}})));
-  Modelica.Electrical.Analog.Basic.Resistor pulldown2(R = 1000) "GP2" annotation(Placement(transformation(extent = {{-300, -30}, {-280, -10}})));
-  Modelica.Electrical.Analog.Basic.Resistor pulldown3(R = 1000) "GP3" annotation(Placement(transformation(extent = {{-300, -60}, {-280, -40}})));
-  Modelica.Electrical.Analog.Basic.Resistor pulldown4(R = 1000) "GP4" annotation(Placement(transformation(extent = {{-20, 40}, {0, 60}})));
-  Modelica.Electrical.Analog.Basic.Resistor pulldown5(R = 1000) "GP5" annotation(Placement(transformation(extent = {{-20, 10}, {0, 30}})));
-  Modelica.Electrical.Analog.Basic.Resistor pulldown6(R = 1000) "GP6" annotation(Placement(transformation(extent = {{-20, -30}, {0, -10}})));
-  Modelica.Electrical.Analog.Basic.Resistor pulldown7(R = 1000) "GP7" annotation(Placement(transformation(extent = {{-20, -60}, {0, -40}})));
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/sleep_long.py"), tickPeriod = 60) "scriptPath = Verification/sleep_long.py" annotation(
+    Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
+  Modelica.Electrical.Analog.Basic.Ground ground annotation(
+    Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
+  Modelica.Electrical.Analog.Basic.Resistor led(R = 1000) "Charge simulant une LED sur GP0" annotation(
+    Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
 equation
-  connect(mcu.GND, ground.p) annotation(Line(points = {{-150, -78}, {-150, -180}}, color = {0, 0, 255}));
-
-  connect(mcu.GP0, led.n) annotation(Line(points = {{-212, 50}, {-280, 50}}, color = {0, 0, 255}));
-  connect(led.p, ground.p) annotation(Line(points = {{-300, 50}, {-300, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
-  connect(mcu.GP1, pulldown1.n) annotation(Line(points = {{-212, 20}, {-280, 20}}, color = {0, 0, 255}));
-  connect(pulldown1.p, ground.p) annotation(Line(points = {{-300, 20}, {-300, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
-  connect(mcu.GP2, pulldown2.n) annotation(Line(points = {{-212, -20}, {-280, -20}}, color = {0, 0, 255}));
-  connect(pulldown2.p, ground.p) annotation(Line(points = {{-300, -20}, {-300, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
-  connect(mcu.GP3, pulldown3.n) annotation(Line(points = {{-212, -50}, {-280, -50}}, color = {0, 0, 255}));
-  connect(pulldown3.p, ground.p) annotation(Line(points = {{-300, -50}, {-300, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
-
-  connect(mcu.GP4, pulldown4.p) annotation(Line(points = {{-88, 50}, {-20, 50}}, color = {0, 0, 255}));
-  connect(pulldown4.n, ground.p) annotation(Line(points = {{0, 50}, {0, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
-  connect(mcu.GP5, pulldown5.p) annotation(Line(points = {{-88, 20}, {-20, 20}}, color = {0, 0, 255}));
-  connect(pulldown5.n, ground.p) annotation(Line(points = {{0, 20}, {0, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
-  connect(mcu.GP6, pulldown6.p) annotation(Line(points = {{-88, -20}, {-20, -20}}, color = {0, 0, 255}));
-  connect(pulldown6.n, ground.p) annotation(Line(points = {{0, -20}, {0, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
-  connect(mcu.GP7, pulldown7.p) annotation(Line(points = {{-88, -50}, {-20, -50}}, color = {0, 0, 255}));
-  connect(pulldown7.n, ground.p) annotation(Line(points = {{0, -50}, {0, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
+  connect(mcu.GND, ground.p) annotation(
+    Line(points = {{0, -39}, {0, -75}}, color = {0, 0, 255}));
+  connect(mcu.GP0, led.n) annotation(
+    Line(points = {{-31, 25}, {-75, 25}}, color = {0, 0, 255}));
+  connect(led.p, ground.p) annotation(
+    Line(points = {{-105, 25}, {-105, -75}, {0, -75}}, color = {0, 0, 255}));
   annotation(
-    Diagram(coordinateSystem(extent = {{-340, -220}, {40, 120}})),
+    Diagram(coordinateSystem(extent = {{-160, -120}, {80, 80}})),
     experiment(StopTime = 7250, Interval = 10),
     Documentation(info = "<html>
 <p>Succès attendu : la simulation de 7250 s de temps simulé (deux sleep d'1 h) se termine en quelques secondes de temps réel, pas en ~2 h. <code>mcu.GP0.v</code> bascule à t=3600 s et t=7200 s.</p>

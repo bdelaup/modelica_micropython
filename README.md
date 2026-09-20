@@ -96,8 +96,8 @@ nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [
 - [x] Circuit électrique réel (pas de signaux logiques abstraits)
 - [x] LED embarquée
 - [x] Gestion des erreurs de script
-- [ ] I2C / SPI / UART
 - [ ] Timers / interruptions
+- [ ] I2C / SPI / UART
 - [ ] Multi-instances
 - [ ] Linux / macOS
 
@@ -107,8 +107,12 @@ Liste complète et justifications : [`requirements.md`](requirements.md#todo-ver
 
 [MIT](LICENSE) — attribution obligatoire (copyright + texte de licence) dans toute copie ou republication, totale ou partielle. La distribution Python vendorée (`MicroPythonMCU/Resources/PythonRuntime/`) garde sa propre licence (Python Software Foundation).
 
+Le composant `Utils.LED` (icône réactive au courant) s'inspire de `Arduino.Components.LED` de la bibliothèque [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) (CATIA-Systems).
+
 ## Contexte
 
 Projet porté par B. Delaup, enseignant en sciences de l'ingénieur. MicroPythonMCU a vocation à être à la croisée d'un usage pédagogique (tester avant de déployer sur un prototype réel) et d'un usage industriel (jumeau numérique de logiciel embarqué).
 
 En partie développer avec l'aide d'IA.
+
+
