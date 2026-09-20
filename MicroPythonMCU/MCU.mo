@@ -2,7 +2,11 @@ within MicroPythonMCU;
 
 model MCU "Microcontrôleur programmable simulé (v0), piloté par un script Python compatible MicroPython"
   parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/demo.py") "Chemin du script utilisateur (.py)" annotation(
-    Dialog(loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un script Python")));
+    Dialog(group = "Script Python", loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un script Python")));
+  parameter Boolean addScriptDirToPath = true "Rendre importables les fichiers .py situés à côté du script (ex. import mon_module) - reproduit le comportement du vrai Pico (dossier racine de la flash sur sys.path)" annotation(
+    Dialog(group = "Script Python"));
+  parameter String libraryPath = "" "Optionnel : fichier .py d'un dossier de bibliothèque partagée à rendre importable (le dossier contenant ce fichier est ajouté au chemin de recherche des modules) - laisser vide si non utilisé" annotation(
+    Dialog(group = "Script Python", loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un fichier de la bibliothèque à ajouter")));
   parameter Modelica.Units.SI.Time tickPeriod = 0.1 "Période du point de synchro minimal (fraîcheur des sorties si le script ne dort jamais)";
   parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Tension logique haute";
   parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Tension logique basse";
@@ -39,7 +43,7 @@ protected
   discrete Real pwmDuty[9](each start = 0, each fixed = true) "Rapport cyclique PWM par broche (0-1), pertinent seulement si pwmFreq > 0";
   Modelica.Units.SI.Time pwmPeriod[9] "1/pwmFreq, avec plancher pour éviter une division par zéro quand pwmFreq = 0 (broche pas en PWM)";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochain réveil demandé par le script (sleep) ou +inf si terminé";
-  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime")) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
+  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
     Placement(transformation(extent = {{-20, 75}, {20, 95}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Source de tension pilotée par le script (VOH/VOL) quand la broche est en sortie ; index 9 = LED embarquée" annotation(
     Placement(transformation(extent = {{-190, -90}, {-150, -50}})));
@@ -118,6 +122,7 @@ equation
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-200, -150}, {100, 110}})),
     Documentation(info = "<html>
 <p>Modèle v0 complet : pont électrique GPIO (source de tension pilotée, résistance série, interrupteur idéal, capteur de tension) piloté par <code>PyRuntime</code>, qui exécute le script Python de l'utilisateur (compatible MicroPython, API <code>machine.Pin</code>/<code>machine.ADC</code>/<code>machine.PWM</code>/<code>time</code>) dans un thread avec interception de <code>sleep()</code>. Référence d'API : Raspberry Pi Pico (RP2040), cf. <code>requirements.md</code> — non affichée sur l'icône pour rester générique. Chaque broche <code>GP0</code>-<code>GP7</code> est utilisable au choix du script en numérique (<code>machine.Pin</code>), en analogique (<code>machine.ADC</code>, lecture 16 bits de la tension mesurée par le capteur déjà présent dans le pont) ou en PWM (<code>machine.PWM</code>, créneau généré en continu côté Modelica une fois fréquence/rapport cyclique configurés — pas de va-et-vient avec le thread Python à chaque front, cf. <code>requirements.md</code>) — contrairement au vrai Pico où seules certaines broches sont ADC-capables, cf. restrictions dans <code>requirements.md</code>.</p>
+<p>Le script peut importer un module auxiliaire (<code>import mon_module</code>) : par défaut (<code>addScriptDirToPath</code>), le dossier du script est ajouté au chemin de recherche Python, et <code>libraryPath</code> permet de désigner en plus un fichier <code>.py</code> d'une bibliothèque partagée (son dossier est alors ajouté aussi) — cf. <code>requirements.md</code>, décision « Import de modules auxiliaires ».</p>
 <p>La pastille sur l'icône représente la LED embarquée du Raspberry Pi Pico (câblée sur <code>GP25</code> sur la vraie carte). Elle est traitée comme une broche normale, avec le même pont électrique interne que <code>GP0</code>-<code>GP7</code> (<code>SignalVoltage</code>/<code>Resistor</code>/<code>IdealOpeningSwitch</code>/<code>VoltageSensor</code>, indice 9 des mêmes tableaux) — simplement sans connecteur externe : la sortie de ce pont interne alimente directement, à demeure, une résistance série (<code>ledResistor</code>) et une vraie <code>Utils.LED</code> (<code>builtinLed</code>) reliée à <code>GND</code>, fidèle au câblage réel du Pico. Pilotable depuis le script exactement comme les 8 broches GPIO (<code>machine.Pin(25, machine.Pin.OUT).on()</code>/<code>.off()</code>) ; ce n'est pas l'une des 8 broches GPIO exposées en v0 (cf. restrictions dans <code>requirements.md</code>), donc aucun circuit externe ne peut s'y connecter. Vert vif quand allumée, vert éteint sinon — visible pendant la lecture animée d'un résultat de simulation dans OMEdit (<code>DynamicSelect</code> sur <code>builtinLed.mean.y</code>), pas sur un rendu statique.</p>
 </html>"));
 end MCU;

@@ -4,7 +4,12 @@
 /* Jalon M5 : thread worker + condition variable, interception de sleep()/des
    appels au shim comme points de synchro (cf. requirements.md). */
 
-void* PyRuntime_new(const char* scriptPath, const char* pythonHome);
+/* addScriptDirToPath (Boolean Modelica -> int C) et libraryPath (chaine vide
+   = desactive) etendent sys.path pour permettre a l'utilisateur d'importer
+   un module auxiliaire depuis le dossier du script et/ou une bibliotheque
+   partagee - cf. requirements.md, decision "Import de modules auxiliaires". */
+void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
+                     int addScriptDirToPath, const char* libraryPath);
 void PyRuntime_destroy(void* handle);
 
 /* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,

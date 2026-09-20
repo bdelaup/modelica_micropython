@@ -24,6 +24,7 @@ omc verify_05_reset.mos
 omc verify_06_pin_echo.mos
 omc verify_07_adc_read.mos
 omc verify_08_pwm.mos
+omc verify_09_import.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -39,6 +40,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_06_pin_echo.mos` | `Examples.PinEcho` | Bouclage entre deux broches du même `MCU` | `GP3` suit `GP1` (relu via `GP2`) à chaque phase, sans lecture périmée |
 | `verify_07_adc_read.mos` | `Examples.AdcRead` | Entrée analogique (`machine.ADC`) | `GP1` reflète le pont diviseur (~2,2 V), `GP0` (LED) s'allume (seuil franchi) |
 | `verify_08_pwm.mos` | `Examples.PwmLed` | Sortie PWM (`machine.PWM`) | `GP0` suit le créneau attendu (haut/bas conformes à la période/rapport cyclique), y compris bien après la fin du script |
+| `verify_09_import.mos` | `Examples.ImportDemo` | Import de modules auxiliaires (`addScriptDirToPath`/`libraryPath`) | `GP0`/`GP1` (LED) s'allument, confirmant que les deux imports (dossier du script, bibliothèque partagée) ont réussi |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 
@@ -67,6 +69,8 @@ else
 end if;
 ```
 **Limitation connue de cette installation `omc`** : pas de fonction fiable de recherche de sous-chaîne dans le scripting `.mos` (`Modelica.Utilities.Strings.find`/`System.stringFind` indisponibles) — pour un scénario d'échec attendu, détecter via `getErrorString() <> ""` plutôt qu'en cherchant un texte précis dans la trace (cf. `verify_04_script_error.mos`).
+
+**Piège rencontré en session** : `getErrorString()` n'est **pas** fiable comme critère « aucune erreur » pour un scénario de succès attendu — l'avertissement anodin « The initial conditions are not fully specified » (présent dans *tous* les scénarios, y compris ceux qui réussissent parfaitement) s'y retrouve capturé. Un `if b == "" and ... then PASS`, comme tenté une première fois pour `verify_09_import.mos`, échoue donc à tort. Se fier uniquement aux valeurs numériques attendues (`val(...)`) pour le critère de succès ; `b` reste utile seulement pour le diagnostic affiché dans le message `FAIL`.
 
 ## Nettoyage
 

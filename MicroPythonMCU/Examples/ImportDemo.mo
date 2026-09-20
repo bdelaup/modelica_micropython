@@ -1,18 +1,22 @@
 within MicroPythonMCU.Examples;
-model PwmLedFade "GP0 pilote une LED en PWM (machine.PWM), 200 Hz / ~30% de rapport cyclique, configuré une fois puis généré en continu côté Modelica"
+model ImportDemo "Le script principal importe un module auxiliaire pose a cote de lui (addScriptDirToPath) et un module d'une bibliotheque partagee dans un dossier separe (libraryPath)"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/pwm_led_fade.py")) "scriptPath = Resources/Scripts/pwm_led.py" annotation(
+  MCU mcu(
+    scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/import_demo.py"),
+    libraryPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/lib/shared_helper.py")) "scriptPath = Resources/Scripts/import_demo.py, libraryPath = Resources/Scripts/lib/shared_helper.py (addScriptDirToPath reste a sa valeur par defaut, true)" annotation(
     Placement(transformation(extent = {{-100, -100}, {100, 100}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(extent = {{-10, -210}, {10, -200}})));
 
-  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0 : import companion, meme dossier que le script)" annotation(
     Placement(transformation(extent = {{-110, 45}, {-90, 55}})));
-  MicroPythonMCU.Utils.LED led0 "GP0 : créneau PWM (200 Hz, ~30%)" annotation(
+  MicroPythonMCU.Utils.LED led0 "GP0 : import companion (addScriptDirToPath)" annotation(
     Placement(transformation(extent = {{-160, 40}, {-180, 60}})));
-
-  Modelica.Electrical.Analog.Basic.Resistor pulldown1(R = 1000) "GP1 (inutilisee), tirée à la masse" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limite le courant de led1 (GP1 : import shared_helper, bibliotheque partagee)" annotation(
     Placement(transformation(extent = {{-110, 15}, {-90, 25}})));
+  MicroPythonMCU.Utils.LED led1 "GP1 : import shared_helper (libraryPath)" annotation(
+    Placement(transformation(extent = {{-160, 10}, {-180, 30}})));
+
   Modelica.Electrical.Analog.Basic.Resistor pulldown2(R = 1000) "GP2 (inutilisee), tirée à la masse" annotation(
     Placement(transformation(extent = {{-110, -25}, {-90, -15}})));
   Modelica.Electrical.Analog.Basic.Resistor pulldown3(R = 1000) "GP3 (inutilisee), tirée à la masse" annotation(
@@ -34,10 +38,12 @@ equation
     Line(points = {{-110, 50}, {-160, 50}}, color = {0, 0, 255}));
   connect(led0.n, ground.p) annotation(
     Line(points = {{-180, 50}, {-180, -190}, {0, -190}, {0, -200}}, color = {0, 0, 255}));
-  connect(mcu.GP1, pulldown1.n) annotation(
+  connect(mcu.GP1, r1.n) annotation(
     Line(points = {{-62, 20}, {-90, 20}}, color = {0, 0, 255}));
-  connect(pulldown1.p, ground.p) annotation(
-    Line(points = {{-110, 20}, {-130, 20}, {-130, -190}, {0, -190}, {0, -200}}, color = {0, 0, 255}));
+  connect(r1.p, led1.p) annotation(
+    Line(points = {{-110, 20}, {-160, 20}}, color = {0, 0, 255}));
+  connect(led1.n, ground.p) annotation(
+    Line(points = {{-180, 20}, {-180, -190}, {0, -190}, {0, -200}}, color = {0, 0, 255}));
   connect(mcu.GP2, pulldown2.n) annotation(
     Line(points = {{-62, -20}, {-90, -20}}, color = {0, 0, 255}));
   connect(pulldown2.p, ground.p) annotation(
@@ -64,8 +70,8 @@ equation
     Line(points = {{110, -50}, {130, -50}, {130, -190}, {0, -190}, {0, -200}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-200, -220}, {150, 110}})),
-    experiment(StopTime = 4, Interval = 0.008, StartTime = 0, Tolerance = 1e-06),
+    experiment(StopTime = 0.5, Interval = 0.001),
     Documentation(info = "<html>
-<p>Scénario de vérification 9 (cf. <code>requirements.md</code>) : <code>GP0</code> est configurée en sortie PWM (<code>machine.PWM</code>) plutôt qu'en broche numérique classique — le script <code>pwm_led.py</code> appelle <code>PWM(Pin(0))</code>, <code>freq(200)</code> et <code>duty_u16(19661)</code> (~30%) une seule fois puis se termine : le créneau est ensuite généré en continu côté Modelica (expression <code>mod(time, période)</code> dans <code>MCU.mo</code>), sans qu'aucun aller-retour supplémentaire avec le thread Python ne soit nécessaire — fidèle au vrai périphérique matériel PWM du RP2040, qui tourne indépendamment du CPU une fois configuré. <code>led0</code> rend le rapport cyclique observable visuellement (luminosité réduite par rapport à un GPIO numérique allumé en continu). Les broches inutilisées (<code>GP1</code>-<code>GP7</code>) sont tirées à la masse.</p>
+<p>Scénario de vérification 10 (cf. <code>requirements.md</code>) : le script principal <code>import_demo.py</code> importe deux modules auxiliaires — <code>companion.py</code>, posé à côté de lui dans <code>Resources/Scripts/</code> (rendu importable par <code>addScriptDirToPath</code>, activé par défaut sur <code>MCU</code>), et <code>shared_helper.py</code>, dans le sous-dossier séparé <code>Resources/Scripts/lib/</code> (rendu importable via le paramètre <code>libraryPath</code> de <code>mcu</code>, qui y pointe explicitement). Si l'un des deux imports échouait, le script lèverait une <code>ImportError</code> non rattrapée et la simulation s'arrêterait en erreur. <code>led0</code>/<code>led1</code> confirment visuellement que les deux imports ont réussi. Les broches inutilisées (<code>GP2</code>-<code>GP7</code>) sont tirées à la masse.</p>
 </html>"));
-end PwmLedFade;
+end ImportDemo;

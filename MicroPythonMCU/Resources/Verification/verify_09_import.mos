@@ -1,0 +1,16 @@
+// Scénario de vérification v0 n°10 (cf. requirements.md).
+// omc verify_09_import.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.ImportDemo, stopTime = 0.5, numberOfIntervals = 500, fileNamePrefix = "ImportDemo");
+b := getErrorString();
+
+vCompanion := val(mcu.GP0.v, 0.05, "ImportDemo_res.mat");
+vShared := val(mcu.GP1.v, 0.05, "ImportDemo_res.mat");
+
+if vCompanion > 2.0 and vShared > 2.0 then
+  print("PASS: verify_09_import (GP0(companion)=" + String(vCompanion) + "V, GP1(shared_helper)=" + String(vShared) + "V)\n");
+else
+  print("FAIL: verify_09_import (GP0=" + String(vCompanion) + " GP1=" + String(vShared) + ")\n" + b);
+end if;

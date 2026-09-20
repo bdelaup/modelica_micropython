@@ -397,7 +397,29 @@ static unsigned __stdcall worker_main(void* arg) {
 
 /* --- API exportee --- */
 
-void* PyRuntime_new(const char* scriptPath, const char* pythonHome) {
+/* Retourne une copie allouee du dossier contenant 'path' (tout ce qui precede
+   le dernier separateur '/' ou '\\' - un chemin choisi via le selecteur de
+   fichier OMEdit sur Windows peut utiliser l'un ou l'autre), ou une chaine
+   vide si aucun separateur n'est trouve. A liberer par l'appelant (free). */
+static char* dirname_of(const char* path) {
+    const char* last_slash = strrchr(path, '/');
+    const char* last_backslash = strrchr(path, '\\');
+    const char* sep = last_slash;
+    if (last_backslash && (!sep || last_backslash > sep)) {
+        sep = last_backslash;
+    }
+    if (!sep) {
+        return strdup("");
+    }
+    size_t len = (size_t) (sep - path);
+    char* result = (char*) malloc(len + 1);
+    memcpy(result, path, len);
+    result[len] = '\0';
+    return result;
+}
+
+void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
+                     int addScriptDirToPath, const char* libraryPath) {
     PyStatus status;
     PyConfig config;
 
@@ -425,6 +447,38 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome) {
             ModelicaFormatError("PyRuntime: echec d'ajout de %s au sys.path", pythonHome);
             return NULL;
         }
+    }
+
+    /* Import de modules auxiliaires (cf. requirements.md, decision "Import de
+       modules auxiliaires") : ajoute au sys.path le dossier du script
+       (addScriptDirToPath) et/ou celui d'une bibliotheque partagee
+       (libraryPath, desactive si chaine vide) - meme mecanisme que le zip et
+       pythonHome ci-dessus, juste 0-2 entrees de plus. */
+    if (addScriptDirToPath) {
+        char* dir = dirname_of(scriptPath);
+        if (dir[0] != '\0') {
+            status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(dir, NULL));
+            if (PyStatus_Exception(status)) {
+                free(dir);
+                PyConfig_Clear(&config);
+                ModelicaFormatError("PyRuntime: echec d'ajout du dossier du script au sys.path");
+                return NULL;
+            }
+        }
+        free(dir);
+    }
+    if (libraryPath && libraryPath[0] != '\0') {
+        char* dir = dirname_of(libraryPath);
+        if (dir[0] != '\0') {
+            status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(dir, NULL));
+            if (PyStatus_Exception(status)) {
+                free(dir);
+                PyConfig_Clear(&config);
+                ModelicaFormatError("PyRuntime: echec d'ajout de libraryPath ('%s') au sys.path", libraryPath);
+                return NULL;
+            }
+        }
+        free(dir);
     }
     status = PyConfig_SetBytesString(&config, &config.home, pythonHome);
     if (PyStatus_Exception(status)) {
