@@ -89,6 +89,12 @@ modelica_micropython3/
 
 L'icône représente le microcontrôleur comme un boîtier avec ses 8 broches réparties sur le pourtour — `GP0`-`GP3` sur le bord gauche, `GP4`-`GP7` sur le bord droit, chacune étiquetée en blanc (carré bleu plein = `PositivePin`) — et la broche `GND` en bas (carré à bord bleu = `NegativePin`). Le nom de classe et l'icône affichent volontairement « MCU » plutôt que « Pico »/RP2040 : cf. `requirements.md`, décision « Nom de la classe modèle et identité visuelle ». Voir aussi le scénario de vérification 6 pour l'historique des deux défauts de rendu trouvés et corrigés lors de la toute première version de l'icône (connecteurs fusionnés, `GND` hors cadre).
 
+## Icône du package et logo du projet
+
+![Logo MicroPythonMCU](images/logo.svg)
+
+`MicroPythonMCU/package.mo` reprend la même silhouette que l'icône du modèle `MCU` ci-dessus (boîtier, 8 broches, `GND`, pastille LED), avec le texte central remplacé par « µPy » (police « Trebuchet MS », plus grande) — cf. `requirements.md`, décision « Logo du projet / icône du package ». `docs/images/logo.svg` en est un miroir SVG (même méthode que `mcu-icone.svg`), utilisé comme logo dans `README.md` ; à resynchroniser manuellement si l'icône du package change.
+
 ## Schémas des exemples
 
 ![Schéma simplifié du scénario BasicBlink](images/exemple-basicblink.svg)

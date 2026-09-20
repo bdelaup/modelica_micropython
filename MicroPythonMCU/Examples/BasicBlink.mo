@@ -59,7 +59,7 @@ equation
     Line(points = {{0, -50}, {0, -200}, {-150, -200}, {-150, -180}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-340, -220}, {40, 120}})),
-    experiment(StopTime = 4.5, Interval = 0.001),
+    experiment(StopTime = 4.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
 <p>Succès attendu : la trace de <code>mcu.GP0.v</code> montre un créneau périodique 0 V / ≈3 V de période 2 s (1 s allumé, 1 s éteint).</p>
 </html>"));

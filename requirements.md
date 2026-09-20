@@ -169,6 +169,15 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre d
   - Garder `Pico` comme nom de classe et masquer seulement visuellement le nom sur l'icône (sans renommer la classe) — écarté : moins cohérent, le nom resterait visible partout ailleurs (arborescence du package, messages d'erreur, autocomplétion) même si l'icône était neutre.
 - **Notes pour plus tard** : si la cible RP2040 doit un jour redevenir visible (branding assumé), il suffira de rétablir le texte sur l'icône et/ou de renommer à nouveau — le principe de révisabilité s'applique aussi à ce choix.
 
+### Décision : Logo du projet / icône du package
+
+- **Contexte** : dépôt destiné à devenir public sur GitLab — besoin d'une icône de package (`MicroPythonMCU/package.mo`, jusque-là celle par défaut de `Modelica.Icons.Package`, sans personnalisation) et d'un logo pour l'image du projet (README, avatar GitLab). Demande explicite : sobre, rappelant à la fois la simulation, Python et le microcontrôleur.
+- **Choix retenu** : réutiliser la silhouette de l'icône du modèle `MCU` (boîtier gris foncé, 8 broches bleues `GP0`-`GP7`, `GND`, pastille LED verte) plutôt qu'un pictogramme nouveau — cohérence visuelle immédiate entre le logo du projet et le composant qu'on manipule réellement dans OMEdit. Le texte central (`MCU`/`(v0)` sur le modèle) est remplacé par `µPy` en gros, police « Trebuchet MS » (plus ronde/accueillante que la police par défaut) — lisible comme un clin d'œil à MicroPython tout en restant sobre (2 couleurs : gris foncé + bleu, déjà utilisées par l'icône `MCU`, pas de nouvelle couleur introduite). Implémenté à deux endroits :
+  - `MicroPythonMCU/package.mo` (`Icon`) : icône du package telle qu'affichée dans l'explorateur OMEdit.
+  - `docs/images/logo.svg` : miroir SVG (même méthode que `docs/images/mcu-icone.svg` — mêmes coordonnées, axe des ordonnées inversé), utilisé comme logo dans le `README.md`.
+- **Alternatives envisagées** : un pictogramme distinct (puce stylisée + trace de signal carré façon oscilloscope + monogramme « Py ») — proposé en premier, plus « logo » au sens marketing, mais moins immédiatement reconnaissable comme *ce* projet précisément puisqu'il ne réutilisait pas l'icône du composant `MCU` déjà manipulé dans OMEdit. Écarté au profit de la cohérence avec l'existant.
+- **Notes pour plus tard** : le logo SVG est un miroir tenu à jour manuellement (pas de génération automatique depuis l'annotation `Icon`), à resynchroniser si l'icône du modèle `MCU` ou du package change. Avatar GitLab du projet à définir manuellement dans les paramètres GitLab (hors de portée d'un commit du dépôt).
+
 ### Décision : LED embarquée (GP25) — traitée comme une broche normale, avec un vrai pont électrique interne
 
 - **Contexte** : sur le vrai Raspberry Pi Pico, une LED est câblée en dur sur `GP25`, non reliée à une broche externe du connecteur — elle n'est donc pas l'une des 29 broches GPIO générales de la carte. Demande initiale : afficher une pastille verte sur l'icône (cosmétique). Demandes de suivi successives : la rendre réellement pilotable depuis le script comme sur la vraie carte, puis la traiter « comme une broche normale » plutôt qu'un cas particulier booléen — cf. discussion et choix tranchés via `AskUserQuestion` (garder le numéro 25 ; ajouter un vrai pont électrique interne réutilisant les composants GPIO).
@@ -291,7 +300,7 @@ void  PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn /*[9
   - Les deux en parallèle — plus complet mais plus de travail d'implémentation dès la v0. Écarté pour la v0.
 - **Notes pour plus tard** : si le volume de sortie devient gênant dans le journal de simulation (scripts très verbeux), reconsidérer un fichier de log séparé en complément.
 
-**Implémenté et validé (jalon M3)**, avec un défaut cosmétique connu : `print()` avec plusieurs arguments (ex. `print("x =", x)`) déclenche plusieurs appels à `write()` (un par fragment séparé par un espace, plus le saut de ligne), et chacun devient une ligne de log distincte dans le journal OMEdit plutôt que d'être regroupé sur une seule ligne. Pas bloquant pour la v0 (le contenu reste lisible), mais à corriger en bufferisant côté C jusqu'au prochain `\n` — cf. TODO.
+**Implémenté et validé (jalon M3)**, avec un défaut cosmétique trouvé puis corrigé par la suite : `print()` avec plusieurs arguments (ex. `print("x =", x)`) déclenchait plusieurs appels à `write()` (un par fragment séparé par un espace, plus le saut de ligne), et chacun devenait une ligne de log distincte dans le journal OMEdit plutôt que d'être regroupé sur une seule ligne — repéré via `Examples.ImportDemo` (`print("Companion :", companion.check())` affichait `"Companion :"` sur une ligne, un séparateur quasi vide sur la suivante, `"True"` sur une troisième). **Corrigé** en bufferisant côté C (`relay_emit_pending` dans `PyRuntimeImpl.c`) : les caractères écrits s'accumulent jusqu'à un vrai `\n`, un seul appel à `ModelicaFormatMessage` par ligne complète ; le buffer est aussi vidé explicitement juste après `PyRun_SimpleString` (fin du script) pour ne pas perdre une dernière ligne sans saut de ligne final (ex. `print(..., end="")`). Vérifié : `verify_09_import.mos` affiche désormais `Companion : True` sur une seule ligne de journal ; suite complète (`verify_01`-`verify_09`) rejouée sans régression.
 
 ## Restrictions version 0
 
@@ -356,7 +365,7 @@ void  PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn /*[9
 - [x] Renommer la classe `Pico` → `MCU` et redessiner l'icône/le schéma interne pour une identité visuelle plus accessible (cf. décision « Nom de la classe modèle et identité visuelle »)
 - [ ] Pull-up/pull-down réellement modélisés électriquement (actuellement acceptés en paramètre mais sans effet)
 - [ ] Nom de fichier réel dans les tracebacks Python (actuellement `<string>`, cf. décision « Comportement en cas d'exception »)
-- [ ] Bufferiser les écritures `stdout`/`stderr` jusqu'au `\n` avant de les relayer (actuellement une ligne de journal par fragment de `print()`)
+- [x] Bufferiser les écritures `stdout`/`stderr` jusqu'au `\n` avant de les relayer (un seul appel `ModelicaFormatMessage` par ligne complète, plus une ligne de journal par fragment de `print()`)
 - [ ] Chargement dynamique de `python312.dll` (`LoadLibrary` résolu au chemin de ressource Modelica) pour ne plus dépendre de l'ordre de recherche de DLL de l'OS
 - [ ] Support Linux/macOS (l'implémentation C actuelle utilise des API de threading Windows ; la distribution Python « embeddable » est une notion Windows uniquement)
 - [ ] Arrêt propre du thread worker + `Py_FinalizeEx` dans `PyRuntime_destroy` (actuellement omis, repose sur la fin du process à chaque run)

@@ -1,93 +1,115 @@
-# modelica_micropython3
+<p align="center"><img src="docs/images/logo.svg" alt="Logo MicroPythonMCU" width="140"></p>
 
+# MicroPythonMCU
 
+**Modèle de microcontrôleur programmable en python pour OpenModelica**
 
-## Getting started
+`MicroPythonMCU` fournit un modèle OpenModelica (`MCU`) dont le comportement est exécuté par un script Python compatible [MicroPython](https://micropython.org/) (API `machine`/`time`, référence Raspberry Pi Pico / RP2040).
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/bdelaup/modelica_micropython3.git
-git branch -M main
-git push -uf origin main
-```
-
-## Integrate with your tools
-
-* [Set up project integrations](https://gitlab.com/bdelaup/modelica_micropython3/-/settings/integrations)
-
-## Collaborate with your team
-
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+ Usage : tester un code de pilotage sur le jumeau numérique avant de le déployer sur un prototype réel (pédagogique ou industriel). 
+ 
+ Détails d'architecture : [`requirements.md`](requirements.md).
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+- [OpenModelica](https://openmodelica.org/download/download-windows/) avec OMEdit (testé avec `1.27.1-64bit`) — le toolchain de compilation est déjà inclus, rien d'autre à installer (le runtime Python est vendoré dans la bibliothèque).
+- Windows uniquement pour cette v0.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Dans OMEdit : *File → Open Model/Library File(s)…* → sélectionner `MicroPythonMCU/package.mo`. La bibliothèque et ses exemples (`MicroPythonMCU.Examples`) apparaissent dans l'explorateur.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+<p align="center"><img src="docs/images/library_tree.png" alt="Tree" width=""></p>
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Démarrage rapide
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+1. Ouvrir et simuler `MicroPythonMCU.Examples.BasicBlink` : `GP0` clignote (`Resources/Scripts/demo.py`).
+2. Dans les paramètres du composant `MCU`, pointer **Chemin du script** (bouton *…*) vers votre propre `.py` :
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+   ```python
+   from machine import Pin
+   import time
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+   led = Pin(0, Pin.OUT)
+   while True:
+       led.on()
+       time.sleep(1)
+       led.off()
+       time.sleep(1)
+   ```
 
-## License
-For open source projects, say how it is licensed.
+   Ce même fichier peut être copié tel quel sur un vrai Raspberry Pi Pico.
+3. Un second fichier `.py` posé à côté du script devient automatiquement importable (`addScriptDirToPath`) ; pour une bibliothèque partagée dans un autre dossier, utiliser le paramètre `libraryPath` (voir `Examples.ImportDemo`).
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## API `machine` / `time`
+
+Référence complète (toutes les signatures, ce qui synchronise ou non le script) : [`docs/api-machine.md`](docs/api-machine.md). Aperçu :
+
+```python
+from machine import Pin, ADC, PWM
+import time
+
+# Pin — GPIO numérique
+led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
+btn = Pin(1, Pin.IN)
+led.on(); led.off(); led.toggle()
+btn.value()                     # lit l'état résolu de la broche (0/1)
+
+# ADC — entrée analogique
+adc = ADC(2)                    # n'importe laquelle de GP0-GP7
+niveau = adc.read_u16()         # 0-65535, référence 3,3 V
+
+# PWM — sortie modulée, générée en continu côté Modelica une fois configurée
+pwm = PWM(Pin(3))
+pwm.freq(1000)                  # Hz
+pwm.duty_u16(32768)             # 0-65535 (~50%)
+
+# time — horloge simulée, sleep() compressé (pas d'attente réelle)
+time.sleep(1)                   # sleep_ms()/sleep_us() aussi disponibles
+time.ticks_ms()                 # ne synchronise pas (simple lecture)
+```
+
+## Vérifier l'installation
+
+```
+cd MicroPythonMCU/Resources/Verification
+omc verify_01_basic_blink.mos   # … verify_09_import.mos
+```
+
+nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [`docs/tests.md`](docs/tests.md).
+
+## Documentation
+
+| Document | Contenu |
+|---|---|
+| [`requirements.md`](requirements.md) | Source de vérité : besoin, décisions d'architecture (avec alternatives), restrictions v0, roadmap |
+| [`docs/architecture.md`](docs/architecture.md) | Arborescence du dépôt |
+| [`docs/integration-python.md`](docs/integration-python.md) | Intégration CPython/OpenModelica, shim `machine`/`time` |
+| [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md) | Protocole de synchro (diagrammes de séquence), pièges rencontrés |
+| [`docs/api-machine.md`](docs/api-machine.md) | Référence API `machine`/`time` |
+| [`docs/tests.md`](docs/tests.md) | Rejouer/ajouter un scénario de vérification |
+
+## État
+
+- [x] GPIO numériques (`machine.Pin`)
+- [x] Entrées analogiques (`machine.ADC`)
+- [x] Sorties modulées (`machine.PWM`)
+- [x] Compression des `sleep`
+- [x] Import de modules auxiliaires
+- [x] Circuit électrique réel (pas de signaux logiques abstraits)
+- [x] LED embarquée
+- [x] Gestion des erreurs de script
+- [ ] I2C / SPI / UART
+- [ ] Timers / interruptions
+- [ ] Multi-instances
+- [ ] Linux / macOS
+
+Liste complète et justifications : [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive).
+
+## Licence
+
+[MIT](LICENSE) — attribution obligatoire (copyright + texte de licence) dans toute copie ou republication, totale ou partielle. La distribution Python vendorée (`MicroPythonMCU/Resources/PythonRuntime/`) garde sa propre licence (Python Software Foundation).
+
+## Contexte
+
+Projet porté par B. Delaup, enseignant en sciences de l'ingénieur. MicroPythonMCU a vocation à être à la croisée d'un usage pédagogique (tester avant de déployer sur un prototype réel) et d'un usage industriel (jumeau numérique de logiciel embarqué).
+
+En partie développer avec l'aide d'IA.

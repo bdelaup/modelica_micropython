@@ -20,7 +20,6 @@ model PinEcho "GP1 oscille, GP2 relit son état électrique, GP3 reproduit ce qu
     Placement(transformation(origin = {-34, 58}, extent = {{-82, -95}, {-62, -85}})));
   Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9) "Constante de temps du bouclage (R*C = 1 microseconde, totalement negligeable devant PERIOD=0.3s de pin_echo.py) : juste assez pour que GP2 soit un veritable etat dynamique plutot qu'un alias algebrique exact de GP1, cf. loopR" annotation(
     Placement(transformation(extent = {{-52, -120}, {-32, -110}})));
-
   Modelica.Electrical.Analog.Basic.Resistor pulldown0(R = 1000) "GP0 (inutilisee) : tirée à la masse, comme dans BasicBlink.mo - laisser une broche du pont GPIO totalement flottante (avec ce bouclage GP1/GP2) rend le système non-linéaire d'initialisation singulier (constaté empiriquement)" annotation(
     Placement(transformation(extent = {{-110, 45}, {-90, 55}})));
   Modelica.Electrical.Analog.Basic.Resistor pulldown4(R = 1000) "GP4 (inutilisee), tirée à la masse" annotation(
