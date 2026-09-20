@@ -113,6 +113,6 @@ Le composant `Utils.LED` (icône réactive au courant) s'inspire de `Arduino.Com
 
 Projet porté par B. Delaup, enseignant en sciences de l'ingénieur. MicroPythonMCU a vocation à être à la croisée d'un usage pédagogique (tester avant de déployer sur un prototype réel) et d'un usage industriel (jumeau numérique de logiciel embarqué).
 
-En partie développer avec l'aide d'IA.
+En partie développé avec l'aide d'IA.
 
 
