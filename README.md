@@ -66,13 +66,20 @@ pwm.duty_u16(32768)             # 0-65535 (~50%)
 # time — horloge simulée, sleep() compressé (pas d'attente réelle)
 time.sleep(1)                   # sleep_ms()/sleep_us() aussi disponibles
 time.ticks_ms()                 # ne synchronise pas (simple lecture)
+
+# Pin.irq — callback sur front montant/descendant
+btn.irq(handler=lambda p: led.toggle(), trigger=Pin.IRQ_RISING)
+
+# Timer — minuteur logiciel periodique, se declenche meme pendant un sleep()
+from machine import Timer
+Timer().init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
 ```
 
 ## Vérifier l'installation
 
 ```
 cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos   # … verify_09_import.mos
+omc verify_01_basic_blink.mos   # … verify_11_timer.mos
 ```
 
 nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [`docs/tests.md`](docs/tests.md).
@@ -98,7 +105,7 @@ nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [
 - [x] Circuit électrique réel (pas de signaux logiques abstraits)
 - [x] LED embarquée
 - [x] Gestion des erreurs de script
-- [ ] Timers / interruptions
+- [x] Interruptions sur broche (`machine.Pin.irq`) et minuteurs logiciels (`machine.Timer`)
 - [ ] I2C / SPI / UART
 - [ ] Multi-instances
 - [ ] Linux / macOS
@@ -191,13 +198,20 @@ pwm.duty_u16(32768)             # 0-65535 (~50%)
 # time — simulated clock, sleep() is time-compressed (no real waiting)
 time.sleep(1)                   # sleep_ms()/sleep_us() also available
 time.ticks_ms()                 # does not synchronize (plain read)
+
+# Pin.irq — callback on rising/falling edge
+btn.irq(handler=lambda p: led.toggle(), trigger=Pin.IRQ_RISING)
+
+# Timer — software periodic timer, keeps firing even during a sleep()
+from machine import Timer
+Timer().init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
 ```
 
 ## Verify the installation
 
 ```
 cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos   # … verify_09_import.mos
+omc verify_01_basic_blink.mos   # … verify_11_timer.mos
 ```
 
 requires `omc` on the `PATH` and `OPENMODELICAHOME` set — details: [`docs/tests.md`](docs/tests.md) *(French only)*.
@@ -225,7 +239,7 @@ requires `omc` on the `PATH` and `OPENMODELICAHOME` set — details: [`docs/test
 - [x] Real electrical circuit (no abstract logic signals)
 - [x] Onboard LED
 - [x] Script error handling
-- [ ] Timers / interrupts
+- [x] Pin interrupts (`machine.Pin.irq`) and software timers (`machine.Timer`)
 - [ ] I2C / SPI / UART
 - [ ] Multiple instances
 - [ ] Linux / macOS

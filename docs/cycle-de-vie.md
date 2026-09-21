@@ -205,13 +205,51 @@ Le worker reprend exactement là où `yield_to_modelica` l'avait arrêté (sorti
 
 **Résumé du trajet complet** pour cet exemple : script (`led.on()`) → shim Python (`Pin.on`) → module natif C (`native_pin_write`) → `yield_to_modelica` (blocage) → `when` de `MCU.mo` → `PyRuntime_sync` (C, réveille le worker) → retour dans `yield_to_modelica` → shim → script (ligne suivante, `time.sleep(1)`) → et ainsi de suite jusqu'à la fin du script.
 
+## 3bis. Callbacks `machine.Pin.irq()` / `machine.Timer` : réveil « authentique » vs. « pitstop »
+
+Un callback IRQ/Timer doit s'exécuter sur le thread worker (seul thread qui touche jamais l'interpréteur Python), donc forcément à l'un de ses points de réveil — mais parfois **sans** laisser l'appel bloquant en cours (typiquement `time.sleep(...)`) se terminer en avance. Exemple : un `Timer` périodique à 500 ms doit continuer à se déclencher pendant un `sleep(3600)`, sans jamais écourter ce `sleep`.
+
+`yield_to_modelica` distingue donc, à chaque réveil, un réveil **authentique** (l'échéance `wake_at` demandée par l'appel bloquant en cours est atteinte, OU une vraie transition d'entrée a eu lieu — auquel cas le script doit reprendre, comme toujours) d'un simple **pitstop** (aucune des deux raisons ci-dessus : le réveil ne sert qu'à exécuter un callback dû, ex. un `Timer` périodique pendant un `sleep` bien plus long). Dans le second cas, les callbacks dus sont exécutés puis le **même** `wake_at` est reposté — l'appel bloquant (`native_sleep`, etc.) ne reprend pas la main, le script ne voit rien.
+
+```c
+static int yield_to_modelica(double wake_at) {
+    struct PyRuntimeHandle* h = g_current;
+    for (;;) {
+        EnterCriticalSection(&h->cs);
+        h->wake_requested_at = wake_at;
+        h->wake_pending = 1;
+        h->turn = TURN_MODELICA;
+        WakeConditionVariable(&h->cv);
+        while (h->turn != TURN_WORKER) {
+            SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        }
+        int genuine = h->wake_had_input_change || (h->sim_time + PYRUNTIME_EPS >= wake_at);
+        LeaveCriticalSection(&h->cs);
+
+        if (run_due_callbacks(h) != 0) {
+            return -1;   /* callback a leve, PyErr deja positionne */
+        }
+        if (genuine) {
+            return 0;    /* reprend l'appel bloquant en cours (native_sleep, etc.) */
+        }
+        /* pitstop pur : reposte le meme wake_at, rattend le prochain appel de PyRuntime_sync */
+    }
+}
+```
+
+`h->wake_had_input_change` est posé par `PyRuntime_sync` (thread Modelica) juste avant de réveiller le worker — c'est la seule information qui manquait côté worker pour distinguer les deux cas, puisque la notion de « vraie transition d'entrée » n'est calculée que côté `PyRuntime_sync`.
+
+Un point de verrouillage est **impératif**, pas une question de style : `run_due_callbacks` rassemble les callbacks dus sous verrou (`cs`), **relâche complètement** ce verrou, puis seulement alors appelle le callback Python. `SleepConditionVariableCS` ne relâche qu'**un seul niveau** de section critique — un callback qui touche une broche (`pin.value(...)`, très probable en pratique, ex. un handler qui bascule une LED) ré-entre `EnterCriticalSection` avant de rappeler `yield_to_modelica`, ce qui laisserait `cs` techniquement encore tenu si l'appel Python avait lieu pendant que le verrou était déjà pris — deadlock réel entre le worker et Modelica. Vérifié sans deadlock ni callback manqué par un test isolé (scratchpad, avant intégration) avec un callback volontairement ré-entrant (lit puis écrit une broche depuis l'intérieur d'un callback `Timer`).
+
+Le déclenchement d'un `Timer`/`Pin.irq()` ne nécessite **aucun changement** à `MCU.mo` ni à `Internal/PyRuntime_sync.mo` : le `when` de `MCU.mo` appelle déjà `PyRuntime_sync` sur toute transition d'entrée, et Modelica réagit déjà à n'importe quelle valeur de `nextWakeTime` — il suffit que `PyRuntime_sync` intègre les échéances de `Timer` actifs dans son calcul de `nextWakeTime` (`min` avec l'échéance propre du worker) et dans sa condition de réveil du worker.
+
 ## 4. Fin de simulation
 
 `PyRuntime_destroy` **ne tente pas** de réveiller/joindre proprement le thread worker (probablement bloqué en plein `sleep()`), ni d'appeler `Py_FinalizeEx`. Choix délibéré, pas un oubli : chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé** qui se termine juste après cet appel — l'OS récupère tout (thread compris) à la sortie du process. Ça évite les pièges classiques d'un arrêt propre multi-thread pour un bénéfice nul dans ce contexte. C'est aussi pour ça qu'une relance de simulation redémarre le script à zéro sans rien de spécial à coder (scénario de vérification 5) : un nouveau process = un nouvel interpréteur CPython, sans aucun état résiduel.
 
-## Quatre pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
+## Cinq pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
 
-Ces quatre bugs, trouvés pendant l'implémentation, ont directement façonné le protocole ci-dessus — les documenter évite de les réintroduire par inadvertance lors d'une future extension.
+Ces cinq bugs, trouvés pendant l'implémentation, ont directement façonné le protocole ci-dessus — les documenter évite de les réintroduire par inadvertance lors d'une future extension.
 
 ### a) Boucle de réveil intempestif (auto-déclenchement)
 
@@ -258,3 +296,9 @@ if (input_changed || !h->wake_pending || currentTime + 1e-9 >= h->wake_requested
 ```
 
 Bug latent depuis l'ajout du pont à 9 broches (LED embarquée) — potentiellement déclenchable par tout script qui configure plusieurs broches en boucle sans `sleep()` entre elles, pas seulement `LedChaser`. Vérifié par bissection sur des variantes de `MCU.mo`, puis re-testé sur `LedChaser` en entier et sur les 5 scénarios de `Resources/Verification/` (aucune régression).
+
+### e) Tempête d'événements à durée simulée nulle (`Timer` à période ≤ 0)
+
+Repéré en concevant le mécanisme de « pitstop » (§3bis), pas par un bug reproduit en pratique : un `Timer(period=0)` (ou une période sous la tolérance numérique) redeviendrait dû immédiatement après son propre déclenchement. Contrairement au piège (d) — borné, drainé en une seule invocation C — celui-ci ne serait **pas** contenu par la boucle de drain de `PyRuntime_sync` : cette boucle ne s'applique qu'au sein d'un même `currentTime`, alors qu'ici chaque pitstop rend la main à Modelica (le `sleep()` du worker restant lointain) avant le pitstop suivant. Résultat : une suite non bornée d'appels `PyRuntime_sync` à `currentTime` inchangé, potentiellement un blocage du solveur ou de sa limite d'itération d'événements.
+
+**Correctif** : `native_timer_init` rejette (`ValueError`) toute période sous un plancher `TIMER_MIN_PERIOD = 1 ms`, avant même d'armer le minuteur — même style que `native_pwm_set_freq`, qui rejette déjà les fréquences négatives.

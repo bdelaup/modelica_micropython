@@ -1,0 +1,24 @@
+// Scénario de vérification v0 n°12 (cf. requirements.md).
+// omc verify_11_timer.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.TimerToggle, stopTime = 2.5, numberOfIntervals = 5000, fileNamePrefix = "TimerToggle");
+b := getErrorString();
+
+// Timer(period=500ms, PERIODIC) bascule GP0 a chaque echeance : bas au depart,
+// haut apres 0.5s, bas apres 1.0s, haut apres 1.5s, bas apres 2.0s. Aucune
+// entree du modele ne change (pas de source externe) : ce basculement ne peut
+// venir que du Timer, pas d'une reactivite en entree ni d'un sleep() qui
+// retournerait en avance.
+v0 := val(mcu.GP0.v, 0.4, "TimerToggle_res.mat");
+v1 := val(mcu.GP0.v, 0.7, "TimerToggle_res.mat");
+v2 := val(mcu.GP0.v, 1.2, "TimerToggle_res.mat");
+v3 := val(mcu.GP0.v, 1.7, "TimerToggle_res.mat");
+v4 := val(mcu.GP0.v, 2.2, "TimerToggle_res.mat");
+
+if v0 < 0.5 and v1 > 2.0 and v2 < 0.5 and v3 > 2.0 and v4 < 0.5 then
+  print("PASS: verify_11_timer (t=0.4:" + String(v0) + "V t=0.7:" + String(v1) + "V t=1.2:" + String(v2) + "V t=1.7:" + String(v3) + "V t=2.2:" + String(v4) + "V)\n");
+else
+  print("FAIL: verify_11_timer (t=0.4:" + String(v0) + " t=0.7:" + String(v1) + " t=1.2:" + String(v2) + " t=1.7:" + String(v3) + " t=2.2:" + String(v4) + ")\n" + b);
+end if;

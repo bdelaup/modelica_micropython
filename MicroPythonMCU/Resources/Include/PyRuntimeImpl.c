@@ -17,6 +17,12 @@
 #define LED_PIN_ID 25       /* numero reel de la broche sur le Raspberry Pi Pico, non expose par MCU */
 #define TURN_MODELICA 0
 #define TURN_WORKER 1
+#define PYRUNTIME_EPS 1e-9
+
+#define MAX_TIMERS 4                 /* pool fixe de machine.Timer, meme esprit que les 8 broches GPIO plutot que 29 */
+#define TIMER_MIN_PERIOD 0.001       /* plancher (1 ms) : evite une tempete d'evenements Modelica a duree simulee nulle si period<=0, cf. requirements.md */
+#define IRQ_TRIGGER_RISING 1
+#define IRQ_TRIGGER_FALLING 2
 
 struct PyRuntimeHandle {
     char* scriptPath;
@@ -28,6 +34,7 @@ struct PyRuntimeHandle {
     double sim_time;
     double wake_requested_at;
     int wake_pending;
+    int wake_had_input_change;  /* pose par PyRuntime_sync avant de reveiller le worker : distingue un reveil "authentique" (deadline propre du worker atteinte, ou vraie transition d'entree) d'un simple "pitstop" (callback de Timer/IRQ a executer, sans faire revenir l'appel bloquant en cours), cf. yield_to_modelica */
 
     int pin_is_output[NUM_PINS];
     int pin_driven_value[NUM_PINS];
@@ -35,6 +42,21 @@ struct PyRuntimeHandle {
     double pin_analog_value[NUM_PINS];
     double pwm_freq[NUM_PINS];   /* 0 = pas en mode PWM */
     double pwm_duty[NUM_PINS];   /* 0-1, pertinent seulement si pwm_freq > 0 */
+
+    /* machine.Pin.irq() : au plus un handler par broche */
+    PyObject* pin_irq_handler[NUM_PINS];  /* NULL = pas de callback enregistre */
+    PyObject* pin_irq_self[NUM_PINS];     /* l'instance Python Pin, passee en argument au handler comme sur le vrai MicroPython */
+    int pin_irq_trigger[NUM_PINS];        /* bitmask IRQ_TRIGGER_RISING/FALLING */
+    int pin_irq_pending[NUM_PINS];        /* pose par PyRuntime_sync sur un front correspondant, consomme par run_due_callbacks */
+
+    /* machine.Timer : pool fixe de MAX_TIMERS minuteurs logiciels */
+    int timer_allocated[MAX_TIMERS];   /* slot occupe par un objet Timer() (initialise ou non) */
+    int timer_active[MAX_TIMERS];      /* arme (init() appele, pas encore deinit()/tire une fois pour un ONE_SHOT) */
+    double timer_period[MAX_TIMERS];   /* secondes */
+    int timer_mode[MAX_TIMERS];        /* 0 = ONE_SHOT, 1 = PERIODIC */
+    double timer_next_fire[MAX_TIMERS]; /* temps simule absolu */
+    PyObject* timer_callback[MAX_TIMERS];
+    PyObject* timer_self[MAX_TIMERS];  /* l'instance Python Timer, passee en argument au callback comme sur le vrai MicroPython */
 
     int script_done;
     int script_error;
@@ -106,19 +128,115 @@ static PyObject* PyInit_pyruntime_stdio(void) {
     return PyModule_Create(&relay_module_def);
 }
 
-/* --- Point de synchro : rend la main a Modelica et attend le tour suivant --- */
+/* --- machine.Timer : plus proche echeance active (h->cs deja tenu par l'appelant) --- */
 
-static void yield_to_modelica(double wake_at) {
-    struct PyRuntimeHandle* h = g_current;
+static double earliest_timer_deadline(struct PyRuntimeHandle* h) {
+    double best = 1.0e300;
+    int i;
+    for (i = 0; i < MAX_TIMERS; i++) {
+        if (h->timer_active[i] && h->timer_next_fire[i] < best) {
+            best = h->timer_next_fire[i];
+        }
+    }
+    return best;
+}
+
+/* --- Dispatch des callbacks IRQ/Timer dus ---
+   Rassemble sous verrou (incref des references recuperees, purge des drapeaux
+   "pending"/rearmement des Timer periodiques), RELACHE le verrou, puis appelle
+   seulement alors dans Python. Ne jamais appeler de Python en tenant cs :
+   SleepConditionVariableCS (utilise par yield_to_modelica pour tout appel du
+   shim, y compris ceux qu'un callback ferait a son tour, ex. piloter une
+   broche ou dormir) ne relache qu'un seul niveau de section critique - un
+   callback qui re-entre cs via native_pin_write/native_sleep/etc laisserait cs
+   techniquement encore tenu quand Modelica devrait pouvoir le reprendre,
+   deadlock reel (pas juste un style plus propre). Retourne 0 si tout s'est
+   bien passe, -1 si un callback a leve une exception (PyErr deja positionne,
+   a laisser remonter tel quel - cf. yield_to_modelica et les sites d'appel
+   natifs). */
+static int run_due_callbacks(struct PyRuntimeHandle* h) {
+    struct { PyObject* callback; PyObject* arg; } due[NUM_PINS + MAX_TIMERS];
+    int due_count = 0;
+    int i;
+
     EnterCriticalSection(&h->cs);
-    h->wake_requested_at = wake_at;
-    h->wake_pending = 1;
-    h->turn = TURN_MODELICA;
-    WakeConditionVariable(&h->cv);
-    while (h->turn != TURN_WORKER) {
-        SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+    for (i = 0; i < NUM_PINS; i++) {
+        if (h->pin_irq_pending[i]) {
+            h->pin_irq_pending[i] = 0;
+            due[due_count].callback = h->pin_irq_handler[i];
+            due[due_count].arg = h->pin_irq_self[i];
+            Py_XINCREF(due[due_count].callback);
+            Py_XINCREF(due[due_count].arg);
+            due_count++;
+        }
+    }
+    for (i = 0; i < MAX_TIMERS; i++) {
+        if (h->timer_active[i] && h->timer_next_fire[i] <= h->sim_time + PYRUNTIME_EPS) {
+            due[due_count].callback = h->timer_callback[i];
+            due[due_count].arg = h->timer_self[i];
+            Py_XINCREF(due[due_count].callback);
+            Py_XINCREF(due[due_count].arg);
+            due_count++;
+            if (h->timer_mode[i] == 1 /* PERIODIC */) {
+                h->timer_next_fire[i] += h->timer_period[i];
+            } else {
+                h->timer_active[i] = 0;
+                Py_CLEAR(h->timer_callback[i]);
+                Py_CLEAR(h->timer_self[i]);
+            }
+        }
     }
     LeaveCriticalSection(&h->cs);
+
+    int status = 0;
+    for (i = 0; i < due_count; i++) {
+        if (status == 0 && due[i].callback) {
+            PyObject* result = PyObject_CallFunctionObjArgs(due[i].callback, due[i].arg, NULL);
+            if (result) {
+                Py_DECREF(result);
+            } else {
+                status = -1; /* PyErr deja positionne par l'appel - ne pas l'effacer */
+            }
+        }
+        Py_XDECREF(due[i].callback);
+        Py_XDECREF(due[i].arg);
+    }
+    return status;
+}
+
+/* --- Point de synchro : rend la main a Modelica et attend le tour suivant ---
+   Retourne 0 en cas de reveil normal, -1 si un callback IRQ/Timer declenche
+   pendant l'attente a leve une exception (l'appelant doit alors "return NULL"
+   immediatement, PyErr est deja positionne - cf. run_due_callbacks). Boucle
+   interne : si le reveil n'est "authentique" ni parce que l'echeance propre
+   demandee (wake_at) est atteinte, ni parce qu'une broche en entree a
+   vraiment change (h->wake_had_input_change), alors ce n'est qu'un "pitstop"
+   (un Timer/IRQ du dispatch qui n'implique pas de reprendre l'appel bloquant
+   en cours, ex. un Timer periodique pendant un sleep() long) : on reposte le
+   MEME wake_at et on rattend le prochain appel de PyRuntime_sync, sans
+   laisser l'appelant (native_sleep, etc.) reprendre la main trop tot. */
+static int yield_to_modelica(double wake_at) {
+    struct PyRuntimeHandle* h = g_current;
+    for (;;) {
+        EnterCriticalSection(&h->cs);
+        h->wake_requested_at = wake_at;
+        h->wake_pending = 1;
+        h->turn = TURN_MODELICA;
+        WakeConditionVariable(&h->cv);
+        while (h->turn != TURN_WORKER) {
+            SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        }
+        int genuine = h->wake_had_input_change || (h->sim_time + PYRUNTIME_EPS >= wake_at);
+        LeaveCriticalSection(&h->cs);
+
+        if (run_due_callbacks(h) != 0) {
+            return -1;
+        }
+        if (genuine) {
+            return 0;
+        }
+        /* pitstop pur : reposter le meme wake_at au tour suivant de la boucle */
+    }
 }
 
 /* --- Module natif expose au shim Python (machine.Pin / time) --- */
@@ -143,7 +261,7 @@ static PyObject* native_pin_init(PyObject* self, PyObject* args) {
     EnterCriticalSection(&g_current->cs);
     g_current->pin_is_output[idx] = is_output;
     LeaveCriticalSection(&g_current->cs);
-    yield_to_modelica(g_current->sim_time);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -160,7 +278,7 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
         g_current->pin_driven_value[idx] = value;
     }
     LeaveCriticalSection(&g_current->cs);
-    yield_to_modelica(g_current->sim_time);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -172,7 +290,7 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
-    yield_to_modelica(g_current->sim_time);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     int v = g_current->pin_sensed_value[idx];
     LeaveCriticalSection(&g_current->cs);
@@ -187,7 +305,7 @@ static PyObject* native_adc_read(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "GPIO %d non supporte comme entree ADC pour la v0 (0-%d uniquement)", id, LED_PIN_INDEX - 1);
         return NULL;
     }
-    yield_to_modelica(g_current->sim_time);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     double v = g_current->pin_analog_value[idx];
     LeaveCriticalSection(&g_current->cs);
@@ -204,14 +322,19 @@ static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (freq < 0) {
-        PyErr_Format(PyExc_ValueError, "frequence PWM negative (%f)", freq);
+        /* PyErr_Format (PyUnicode_FromFormat) ne supporte pas %f - pas de conversion
+           flottante native, seulement entiers/chaines/pointeurs (cf. doc C API Python).
+           Formater la valeur soi-meme avec snprintf puis l'inserer via %s. */
+        char freq_str[64];
+        snprintf(freq_str, sizeof(freq_str), "%f", freq);
+        PyErr_Format(PyExc_ValueError, "frequence PWM negative (%s)", freq_str);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
     g_current->pin_is_output[idx] = 1;  /* le PWM prend la broche en sortie, comme sur le vrai RP2040 */
     g_current->pwm_freq[idx] = freq;
     LeaveCriticalSection(&g_current->cs);
-    yield_to_modelica(g_current->sim_time);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -229,7 +352,7 @@ static PyObject* native_pwm_set_duty(PyObject* self, PyObject* args) {
     EnterCriticalSection(&g_current->cs);
     g_current->pwm_duty[idx] = duty;
     LeaveCriticalSection(&g_current->cs);
-    yield_to_modelica(g_current->sim_time);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -244,7 +367,7 @@ static PyObject* native_pwm_deinit(PyObject* self, PyObject* args) {
     EnterCriticalSection(&g_current->cs);
     g_current->pwm_freq[idx] = 0;  /* retombe en sortie numerique classique, pilotee par pin_driven_value (bas par defaut) */
     LeaveCriticalSection(&g_current->cs);
-    yield_to_modelica(g_current->sim_time);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -252,7 +375,7 @@ static PyObject* native_sleep(PyObject* self, PyObject* args) {
     double seconds;
     if (!PyArg_ParseTuple(args, "d", &seconds)) return NULL;
     double wake_at = g_current->sim_time + (seconds > 0 ? seconds : 0);
-    yield_to_modelica(wake_at);
+    if (yield_to_modelica(wake_at) != 0) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -260,14 +383,116 @@ static PyObject* native_ticks_ms(PyObject* self, PyObject* args) {
     return PyLong_FromLongLong((long long)(g_current->sim_time * 1000.0));
 }
 
+/* --- machine.Pin.irq() --- */
+
+static PyObject* native_pin_irq_set(PyObject* self, PyObject* args) {
+    int id, trigger;
+    PyObject* pin_self;
+    PyObject* handler;
+    if (!PyArg_ParseTuple(args, "iOOi", &id, &pin_self, &handler, &trigger)) return NULL;
+    int idx = resolve_pin_index(id);
+    if (idx < 0) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    Py_CLEAR(g_current->pin_irq_handler[idx]);
+    Py_CLEAR(g_current->pin_irq_self[idx]);
+    g_current->pin_irq_pending[idx] = 0;
+    if (handler != Py_None) {
+        Py_INCREF(handler);
+        Py_INCREF(pin_self);
+        g_current->pin_irq_handler[idx] = handler;
+        g_current->pin_irq_self[idx] = pin_self;
+        g_current->pin_irq_trigger[idx] = trigger;
+    } else {
+        g_current->pin_irq_trigger[idx] = 0;
+    }
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
+/* --- machine.Timer --- */
+
+static PyObject* native_timer_new(PyObject* self, PyObject* args) {
+    int i;
+    EnterCriticalSection(&g_current->cs);
+    for (i = 0; i < MAX_TIMERS; i++) {
+        if (!g_current->timer_allocated[i]) {
+            g_current->timer_allocated[i] = 1;
+            LeaveCriticalSection(&g_current->cs);
+            return PyLong_FromLong(i);
+        }
+    }
+    LeaveCriticalSection(&g_current->cs);
+    PyErr_Format(PyExc_RuntimeError, "nombre maximal de Timer() atteint (%d) pour la v0", MAX_TIMERS);
+    return NULL;
+}
+
+static PyObject* native_timer_init(PyObject* self, PyObject* args) {
+    int slot, mode;
+    double period_seconds;
+    PyObject* callback;
+    PyObject* timer_self;
+    if (!PyArg_ParseTuple(args, "idiOO", &slot, &period_seconds, &mode, &callback, &timer_self)) return NULL;
+    if (slot < 0 || slot >= MAX_TIMERS || !g_current->timer_allocated[slot]) {
+        PyErr_Format(PyExc_ValueError, "Timer invalide");
+        return NULL;
+    }
+    if (period_seconds < TIMER_MIN_PERIOD) {
+        /* PyErr_Format ne supporte pas %f (cf. native_pwm_set_freq) - formater a la main. */
+        char period_str[64], min_str[64];
+        snprintf(period_str, sizeof(period_str), "%f", period_seconds);
+        snprintf(min_str, sizeof(min_str), "%f", TIMER_MIN_PERIOD);
+        PyErr_Format(PyExc_ValueError, "periode de Timer trop courte (%s s, minimum %s s pour la v0)", period_str, min_str);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    Py_CLEAR(g_current->timer_callback[slot]);
+    Py_CLEAR(g_current->timer_self[slot]);
+    Py_INCREF(callback);
+    Py_INCREF(timer_self);
+    g_current->timer_callback[slot] = callback;
+    g_current->timer_self[slot] = timer_self;
+    g_current->timer_period[slot] = period_seconds;
+    g_current->timer_mode[slot] = mode;
+    g_current->timer_next_fire[slot] = g_current->sim_time + period_seconds;
+    g_current->timer_active[slot] = 1;
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject* native_timer_deinit(PyObject* self, PyObject* args) {
+    int slot;
+    if (!PyArg_ParseTuple(args, "i", &slot)) return NULL;
+    if (slot < 0 || slot >= MAX_TIMERS) {
+        PyErr_Format(PyExc_ValueError, "Timer invalide");
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    g_current->timer_active[slot] = 0;
+    g_current->timer_allocated[slot] = 0;
+    Py_CLEAR(g_current->timer_callback[slot]);
+    Py_CLEAR(g_current->timer_self[slot]);
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef native_methods[] = {
     {"pin_init", native_pin_init, METH_VARARGS, "Configure la direction d'une broche"},
     {"pin_write", native_pin_write, METH_VARARGS, "Pilote une broche (si en sortie)"},
     {"pin_read", native_pin_read, METH_VARARGS, "Lit l'etat resolu d'une broche"},
+    {"pin_irq_set", native_pin_irq_set, METH_VARARGS, "Enregistre/efface le callback IRQ d'une broche"},
     {"adc_read", native_adc_read, METH_VARARGS, "Lit la tension brute (V) mesuree sur une broche ADC"},
     {"pwm_set_freq", native_pwm_set_freq, METH_VARARGS, "Configure la frequence PWM (Hz) d'une broche, la prend en sortie"},
     {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Configure le rapport cyclique PWM (0-1) d'une broche"},
     {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Arrete le PWM sur une broche (retombe en sortie numerique classique)"},
+    {"timer_new", native_timer_new, METH_VARARGS, "Alloue un slot de Timer() dans le pool fixe"},
+    {"timer_init", native_timer_init, METH_VARARGS, "Arme un Timer (periode, mode, callback)"},
+    {"timer_deinit", native_timer_deinit, METH_VARARGS, "Arrete et libere un Timer"},
     {"sleep", native_sleep, METH_VARARGS, "Attend N secondes de temps simule"},
     {"ticks_ms", native_ticks_ms, METH_VARARGS, "Horloge simulee, en millisecondes"},
     {NULL, NULL, 0, NULL}
@@ -293,6 +518,8 @@ static const char* SHIM_BOOTSTRAP =
     "    PULL_UP = 2\n"
     "    PULL_DOWN = 3\n"
     "    LED = 25\n"  /* doit rester aligne sur LED_PIN_ID cote C (PyRuntimeImpl.c) */
+    "    IRQ_RISING = 1\n"   /* doit rester aligne sur IRQ_TRIGGER_RISING cote C */
+    "    IRQ_FALLING = 2\n"  /* doit rester aligne sur IRQ_TRIGGER_FALLING cote C */
     "    def __init__(self, id, mode=None, pull=None):\n"
     "        if id == 'LED':\n"
     "            id = Pin.LED\n"
@@ -309,6 +536,8 @@ static const char* SHIM_BOOTSTRAP =
     "        _native.pin_write(self.id, 0)\n"
     "    def toggle(self):\n"
     "        self.value(0 if self.value() else 1)\n"
+    "    def irq(self, handler=None, trigger=IRQ_RISING | IRQ_FALLING, **kwargs):\n"
+    "        _native.pin_irq_set(self.id, self, handler, trigger)\n"
     "\n"
     "class ADC:\n"
     "    def __init__(self, id):\n"
@@ -345,10 +574,21 @@ static const char* SHIM_BOOTSTRAP =
     "        _native.pwm_deinit(self.id)\n"
     "        self._freq = 0\n"
     "\n"
+    "class Timer:\n"
+    "    ONE_SHOT = 0\n"
+    "    PERIODIC = 1\n"
+    "    def __init__(self, id=-1):\n"
+    "        self._slot = _native.timer_new()\n"
+    "    def init(self, period=1000, mode=PERIODIC, callback=None):\n"
+    "        _native.timer_init(self._slot, period / 1000.0, mode, callback, self)\n"
+    "    def deinit(self):\n"
+    "        _native.timer_deinit(self._slot)\n"
+    "\n"
     "_machine = types.ModuleType('machine')\n"
     "_machine.Pin = Pin\n"
     "_machine.ADC = ADC\n"
     "_machine.PWM = PWM\n"
+    "_machine.Timer = Timer\n"
     "sys.modules['machine'] = _machine\n"
     "\n"
     "def sleep(s):\n"
@@ -570,7 +810,10 @@ void PyRuntime_destroy(void* handle_) {
        de finaliser CPython : l'OS recupere tout a la sortie du process. Choix
        delibere pour eviter les pieges d'un arret propre multi-thread pour un
        gain nul en v0 - a revisiter si ce choix s'avere un jour gener (cf.
-       principe de revisabilite, requirements.md). */
+       principe de revisabilite, requirements.md). Les references Python
+       accumulees par les callbacks IRQ/Timer (pin_irq_handler/timer_callback
+       etc.) suivent le meme principe : jamais decref explicitement, le
+       process recupere tout. */
     (void) handle_;
 }
 
@@ -601,22 +844,41 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
        scenario de verification "reactivite en entree" - la broche doit
        pouvoir interrompre une attente en cours, cote v0 sans vraie
        interruption materielle). Une broche en SORTIE qui "change" ne compte
-       pas : ce n'est que le reflet de notre propre ecriture. */
+       pas : ce n'est que le reflet de notre propre ecriture. Meme boucle :
+       si un handler machine.Pin.irq() est enregistre sur cette broche et que
+       le sens du front correspond au trigger demande, on marque le callback
+       comme du (consomme par run_due_callbacks au reveil du worker). */
     int input_changed = 0;
     for (i = 0; i < NUM_PINS; i++) {
-        if (!h->pin_is_output[i] && h->pin_sensed_value[i] != pinBoolIn[i]) {
+        int old_val = h->pin_sensed_value[i];
+        int new_val = pinBoolIn[i];
+        if (!h->pin_is_output[i] && old_val != new_val) {
             input_changed = 1;
+            if (h->pin_irq_handler[i] != NULL) {
+                int edge = new_val ? IRQ_TRIGGER_RISING : IRQ_TRIGGER_FALLING;
+                if (h->pin_irq_trigger[i] & edge) {
+                    h->pin_irq_pending[i] = 1;
+                }
+            }
         }
-        h->pin_sensed_value[i] = pinBoolIn[i];
+        h->pin_sensed_value[i] = new_val;
         h->pin_analog_value[i] = pinAnalogIn[i];
     }
+    h->wake_had_input_change = input_changed;
+
+    /* Un Timer actif dont l'echeance est atteinte doit aussi faire rendre la
+       main au worker (sinon son callback ne se declencherait jamais) - meme
+       si ni une entree n'a change, ni le propre reveil du worker n'est du.
+       yield_to_modelica distingue ensuite, cote worker, un reveil
+       "authentique" d'un simple "pitstop" pour ce cas precis. */
+    int timer_due = (earliest_timer_deadline(h) <= currentTime + PYRUNTIME_EPS);
 
     /* Sinon, ne rendre la main au worker que si son reveil demande est
        effectivement atteint (ou qu'il n'attendait rien - premier appel). Un
        appel de PyRuntime_sync qui arrive plus tot (tick periodique) ne doit
        faire que rafraichir l'etat observe, sans laisser le script avancer
        avant l'heure - sinon un sleep(1) pourrait etre ecourte a tort. */
-    if (input_changed || !h->wake_pending || currentTime + 1e-9 >= h->wake_requested_at) {
+    if (input_changed || !h->wake_pending || currentTime + PYRUNTIME_EPS >= h->wake_requested_at || timer_due) {
         /* Boucle interne : tant que le worker redemande un reveil immediat
            (ex. plusieurs Pin(...) construits/pilotes a la suite, sans sleep
            entre deux), on lui redonne la main tout de suite plutot que de
@@ -626,7 +888,13 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
            ne rappelle pas PyRuntime_sync assez de fois pour tous les
            traiter, laissant le script (et la simulation) bloques en silence
            (cf. requirements.md). On ne s'arrete que si le worker demande un
-           reveil dans le futur, termine, ou plante. */
+           reveil dans le futur, termine, ou plante. Un "pitstop" (callback
+           Timer/IRQ execute par yield_to_modelica sans faire reprendre
+           l'appel bloquant en cours) se traduit ici par un seul aller-retour
+           : le worker repose le MEME wake_requested_at (toujours > currentTime),
+           donc cette boucle s'arrete normalement et rend la main a Modelica -
+           les pitstops suivants se feront lors des appels ulterieurs de
+           PyRuntime_sync, a mesure que le temps simule avance. */
         for (;;) {
             h->turn = TURN_WORKER;
             WakeConditionVariable(&h->cv);
@@ -636,7 +904,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
             if (h->script_done || h->script_error) {
                 break;
             }
-            if (!h->wake_pending || h->wake_requested_at > currentTime + 1e-9) {
+            if (!h->wake_pending || h->wake_requested_at > currentTime + PYRUNTIME_EPS) {
                 break;
             }
         }
@@ -652,6 +920,10 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     int error = h->script_error;
     char* error_message = h->error_message;
     double wake_at = h->wake_pending ? h->wake_requested_at : currentTime;
+    double next_timer = earliest_timer_deadline(h); /* recalcule : un Timer periodique peut avoir ete rearme pendant le drain ci-dessus */
+    if (next_timer < wake_at) {
+        wake_at = next_timer;
+    }
     LeaveCriticalSection(&h->cs);
 
     if (error) {

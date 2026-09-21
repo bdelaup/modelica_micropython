@@ -1,0 +1,24 @@
+// Scénario de vérification v0 n°11 (cf. requirements.md).
+// omc verify_10_pin_irq.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.PinIrq, stopTime = 8, numberOfIntervals = 8000, fileNamePrefix = "PinIrq");
+b := getErrorString();
+
+// GP1 : creneau (front montant a t=2s/t=6s, descendant a t=4s/t=8s). Le script
+// enregistre Pin.irq(trigger=Pin.IRQ_RISING) : seul un front montant doit
+// basculer GP0. vBefore (avant tout front) doit rester bas ; vAfterRise1
+// (apres le 1er montant) doit passer haut ; vAfterFall1 (apres le 1er
+// descendant) doit RESTER haut (preuve que la descente ne declenche pas) ;
+// vAfterRise2 (apres le 2e montant) doit rebasculer bas.
+vBefore := val(mcu.GP0.v, 1, "PinIrq_res.mat");
+vAfterRise1 := val(mcu.GP0.v, 3, "PinIrq_res.mat");
+vAfterFall1 := val(mcu.GP0.v, 4.5, "PinIrq_res.mat");
+vAfterRise2 := val(mcu.GP0.v, 7, "PinIrq_res.mat");
+
+if vBefore < 0.5 and vAfterRise1 > 2.0 and vAfterFall1 > 2.0 and vAfterRise2 < 0.5 then
+  print("PASS: verify_10_pin_irq (avant=" + String(vBefore) + "V, apres 1er montant=" + String(vAfterRise1) + "V, apres 1er descendant=" + String(vAfterFall1) + "V (inchange), apres 2e montant=" + String(vAfterRise2) + "V)\n");
+else
+  print("FAIL: verify_10_pin_irq (avant=" + String(vBefore) + " apres1erMontant=" + String(vAfterRise1) + " apres1erDescendant=" + String(vAfterFall1) + " apres2eMontant=" + String(vAfterRise2) + ")\n" + b);
+end if;

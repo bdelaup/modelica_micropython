@@ -17,6 +17,8 @@ class Pin:
     PULL_UP = 2
     PULL_DOWN = 3
     LED = 25  # doit rester aligné sur LED_PIN_ID côté C (PyRuntimeImpl.c)
+    IRQ_RISING = 1   # doit rester aligné sur IRQ_TRIGGER_RISING côté C
+    IRQ_FALLING = 2  # doit rester aligné sur IRQ_TRIGGER_FALLING côté C
 
     def __init__(self, id, mode=None, pull=None):
         if id == 'LED':
@@ -38,6 +40,9 @@ class Pin:
 
     def toggle(self):
         self.value(0 if self.value() else 1)
+
+    def irq(self, handler=None, trigger=IRQ_RISING | IRQ_FALLING, **kwargs):
+        _native.pin_irq_set(self.id, self, handler, trigger)
 
 class ADC:
     def __init__(self, id):
@@ -78,10 +83,24 @@ class PWM:
         _native.pwm_deinit(self.id)
         self._freq = 0
 
+class Timer:
+    ONE_SHOT = 0
+    PERIODIC = 1
+
+    def __init__(self, id=-1):
+        self._slot = _native.timer_new()
+
+    def init(self, period=1000, mode=PERIODIC, callback=None):
+        _native.timer_init(self._slot, period / 1000.0, mode, callback, self)
+
+    def deinit(self):
+        _native.timer_deinit(self._slot)
+
 _machine = types.ModuleType('machine')
 _machine.Pin = Pin
 _machine.ADC = ADC
 _machine.PWM = PWM
+_machine.Timer = Timer
 sys.modules['machine'] = _machine
 
 def sleep(s):

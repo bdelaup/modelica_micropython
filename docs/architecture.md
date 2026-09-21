@@ -13,7 +13,7 @@ graph TD
         Interfaces["Interfaces (package)<br/>constantes VOH/VOL/VIH/VIL/ROut"]
         Internal["Internal (package)<br/>PyRuntime (ExternalObject) + PyRuntime_sync"]
         Utils["Utils (package)<br/>LED : icône réactive au courant"]
-        Examples["Examples (package)<br/>8 scénarios de vérification + LedChaser (démonstrateur)"]
+        Examples["Examples (package)<br/>10 scénarios de vérification + LedChaser (démonstrateur)"]
     end
     subgraph RES["Resources"]
         Include["Include/<br/>PyRuntimeImpl.c + .h<br/>+ en-têtes Python 3.12 vendorés"]
@@ -61,7 +61,9 @@ modelica_micropython3/
     │   ├── PinEcho.mo              -- scénario 7 : bouclage électrique entre deux broches du même MCU (GP1 pilotée, GP2 relit, GP3 reproduit)
     │   ├── AdcRead.mo              -- scénario 8 : GP1 en entrée analogique (machine.ADC), pont diviseur externe, seuil recopié sur GP0
     │   ├── PwmLed.mo               -- scénario 9 : GP0 en sortie PWM (machine.PWM), créneau généré en continu côté Modelica
-    │   └── ImportDemo.mo           -- scénario 10 : le script importe un module auxiliaire (addScriptDirToPath) et un module d'une bibliothèque partagée (libraryPath)
+    │   ├── ImportDemo.mo           -- scénario 10 : le script importe un module auxiliaire (addScriptDirToPath) et un module d'une bibliothèque partagée (libraryPath)
+    │   ├── PinIrq.mo               -- scénario 11 : machine.Pin.irq() sur GP1 (front montant uniquement), bascule GP0 depuis le callback
+    │   └── TimerToggle.mo          -- scénario 12 : machine.Timer périodique bascule GP0 pendant un sleep() long, sans le faire retourner en avance
     └── Resources/
         ├── Include/                -- PyRuntimeImpl.c/.h (le vrai code de PyRuntime) + Python.h et cie (vendorés)
         ├── Library/win64/          -- libpython312.a, bibliothèque d'import régénérée pour le compilateur MinGW d'OpenModelica
@@ -77,7 +79,7 @@ modelica_micropython3/
 | `MCU.mo` (Modelica) | Modélise le pont électrique GPIO (source de tension, résistance série, interrupteur, capteur), déclenche les points de synchro | Continuellement (équations électriques) + aux instants d'événement (`when`) |
 | `PyRuntime.mo` (Modelica) | Déclare l'External Object et ses fonctions `constructor`/`destructor` | Une fois à l'initialisation, une fois (nominalement) à la fin |
 | `PyRuntime_sync.mo` (Modelica) | Point d'entrée appelé depuis le `when` de `MCU` ; transmet `pinBoolIn` (seuillé, numérique) et `pinAnalogIn`/`pinNodeVoltage` (brut, lu par `machine.ADC`) en entrée, `pwmFreq`/`pwmDuty` (configurés par `machine.PWM`) en sortie en plus de `pinBoolOut`/`pinIsOutput` | À chaque événement de synchro |
-| `PyRuntimeImpl.c` (C) | Implémente réellement `PyRuntime_new`/`_destroy`/`_sync`, gère le thread worker, le shim, la redirection stdout | Compilé une fois par `omc`, exécuté à chaque appel externe |
+| `PyRuntimeImpl.c` (C) | Implémente réellement `PyRuntime_new`/`_destroy`/`_sync`, gère le thread worker, le shim (dont `machine.Pin.irq()`/`machine.Timer`, cf. `cycle-de-vie.md` §3bis), la redirection stdout | Compilé une fois par `omc`, exécuté à chaque appel externe |
 | Distribution Python vendorée | Fournit l'interpréteur (DLL) et la bibliothèque standard (zip) | Chargée dynamiquement au démarrage de l'exécutable de simulation |
 | Script utilisateur (`.py`) | Le code écrit par l'élève/l'utilisateur, exécuté par le thread worker | Depuis t=0 jusqu'à sa fin/erreur, entrecoupé de pauses (voir cycle-de-vie.md) |
 
@@ -110,5 +112,9 @@ Les 4 premiers modèles de scénario d'`Examples/` suivent tous le même agencem
 `PwmLed.mo` (scénario de vérification 9) configure `GP0` en sortie `machine.PWM` (200 Hz, ~30% de rapport cyclique) plutôt qu'en sortie numérique classique, pilotant directement `led0` — le script configure une seule fois puis se termine, le créneau continuant d'être généré côté Modelica indépendamment du thread Python (cf. `requirements.md`, décision « PWM (sorties modulées) », pour le mécanisme et sa validation en isolation avant intégration). Les broches `GP1`-`GP7`, inutilisées, sont laissées non connectées.
 
 `ImportDemo.mo` (scénario de vérification 10) illustre l'import d'un module auxiliaire par le script principal (`import_demo.py`) : `companion.py`, posé à côté de lui dans `Resources/Scripts/` (rendu importable par `mcu.addScriptDirToPath`, actif par défaut), et `shared_helper.py`, dans le sous-dossier séparé `Resources/Scripts/lib/` (rendu importable via `mcu.libraryPath`). `led0`/`led1` confirment visuellement que les deux imports ont réussi — cf. `requirements.md`, décision « Import de modules auxiliaires ». Les broches `GP2`-`GP7`, inutilisées, sont laissées non connectées.
+
+`PinIrq.mo` (scénario de vérification 11) câble `GP1` sur un créneau externe (`Modelica.Blocks.Sources.Pulse`, front montant et descendant dans la fenêtre simulée) ; le script `pin_irq_demo.py` enregistre `Pin(1, Pin.IN).irq(handler=on_rise, trigger=Pin.IRQ_RISING)`, qui bascule `led0` (GP0) — seul un front montant doit déclencher le callback, preuve du filtrage par sens de front. Cf. `requirements.md`, décision « Interruptions sur broche et minuteurs logiciels ». Les broches `GP2`-`GP7`, inutilisées, sont laissées non connectées.
+
+`TimerToggle.mo` (scénario de vérification 12) n'a aucune source externe : le script `timer_toggle.py` arme un `Timer(period=500, mode=Timer.PERIODIC)` qui bascule `led0` (GP0), puis fait un seul `sleep(3600)`. Le basculement périodique se produit sans qu'aucune entrée du modèle ne change — preuve que le mécanisme de « pitstop » (cf. `cycle-de-vie.md`) fonctionne indépendamment du `sleep()` en cours, sans le faire retourner en avance. Les broches `GP1`-`GP7`, inutilisées, sont laissées non connectées.
 
 <!-- TODO screenshot (optionnel) : pour le schéma complet avec les 8 fils réellement routés (plutôt que ce résumé simplifié), capturer la vue "Diagram" de MicroPythonMCU.Examples.BasicBlink dans OMEdit et l'ajouter sous docs/images/exemple-basicblink-complet.png -->

@@ -38,6 +38,9 @@ led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
 | `.on()` | `on()` | Équivalent à `value(1)` | Oui |
 | `.off()` | `off()` | Équivalent à `value(0)` | Oui |
 | `.toggle()` | `toggle()` | Inverse l'état courant (lit puis réécrit l'opposé) — implémenté en Python pur au-dessus de `value()`, pas d'appel natif dédié | Oui (via `value()`, deux fois) |
+| `.irq(handler, trigger)` | `irq(handler=None, trigger=IRQ_RISING\|IRQ_FALLING, **kwargs)` | Enregistre (ou efface, si `handler=None`) un callback appelé sur un front correspondant au `trigger`. Le callback reçoit l'objet `Pin` en argument (`handler(pin)`), comme sur le vrai MicroPython. `**kwargs` absorbe `hard=`/`priority=`/`wake=` pour compatibilité de signature, sans effet (cf. Limitations). | Oui |
+
+Constantes de `trigger` : `Pin.IRQ_RISING = 1`, `Pin.IRQ_FALLING = 2` (à combiner par `|` pour les deux sens ; valeurs propres à ce shim, pas garanties identiques à un port MicroPython réel — sans conséquence, un script utilise toujours les noms symboliques). Le callback tourne « soft » : il est exécuté au prochain point de réveil du worker (celui qui a déclenché la transition, ou tout point de synchro ultérieur si le worker était déjà occupé), jamais en préemption immédiate du script — cf. `cycle-de-vie.md` pour le mécanisme exact (« pitstop »). Une transition d'entrée réveille le script même sans `irq()` enregistré (comportement déjà existant, « réactivité en entrée ») : enregistrer un `irq()` ajoute l'appel du callback à ce réveil, ça ne change pas le fait que le `sleep()` en cours retourne quand même en avance.
 
 ## `machine.ADC`
 
@@ -82,6 +85,35 @@ Une fois configuré, le créneau est généré **en continu côté Modelica** (e
 | `.duty_u16()` | `duty_u16() -> int` | Renvoie le dernier rapport cyclique configuré (valeur mise en cache) | **Non** |
 | `.deinit()` | `deinit()` | Arrête le PWM ; la broche repasse en sortie numérique classique (bas par défaut) | Oui |
 
+## `machine.Timer`
+
+```python
+from machine import Timer
+tim = Timer()
+tim.init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
+tim.deinit()
+```
+
+Minuteur logiciel : une fois armé, le callback continue de se déclencher **pendant** un `sleep()` déjà en cours ailleurs dans le script, sans jamais le faire retourner en avance — mécanisme de « pitstop », cf. `cycle-de-vie.md` et `requirements.md` (décision « Interruptions sur broche et minuteurs logiciels »).
+
+### Constantes
+
+| Constante | Valeur | Usage |
+|---|---|---|
+| `Timer.ONE_SHOT` | `0` | le callback se déclenche une seule fois puis le timer se désarme tout seul |
+| `Timer.PERIODIC` | `1` | le callback se redéclenche indéfiniment toutes les `period` ms |
+
+### Constructeur
+
+`Timer(id=-1)` — `id` accepté pour compatibilité de signature avec MicroPython, ignoré (v0 : un pool fixe de 4 minuteurs logiciels partagé par tous les `Timer()`, cf. Limitations). Ne synchronise pas (pure allocation d'un emplacement dans le pool).
+
+### Méthodes
+
+| Méthode | Signature | Comportement | Synchronise ? |
+|---|---|---|---|
+| `.init(period, mode, callback)` | `init(period=1000, mode=PERIODIC, callback=None)` | Arme (ou réarme) le minuteur : `period` en **millisecondes** (comme le vrai MicroPython), `mode` = `ONE_SHOT`/`PERIODIC`, `callback` reçoit l'objet `Timer` en argument (`callback(timer)`) | Oui |
+| `.deinit()` | `deinit()` | Arrête et libère le minuteur (son emplacement redevient disponible pour un futur `Timer()`) | Oui |
+
 ## `time`
 
 ```python
@@ -106,8 +138,9 @@ Détails et justifications dans `requirements.md` (section Restrictions v0) :
 
 - `pull` (`Pin.PULL_UP`/`Pin.PULL_DOWN`) accepté en paramètre mais sans résistance de tirage réellement modélisée.
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).
-- Aucune autre classe `machine.*` (pas de `Timer`, `I2C`, `SPI`, `UART`) — voir le TODO de `requirements.md` pour les extensions prévues.
-- Pas d'`irq()` sur `Pin` (interruptions sur changement d'état).
+- Aucune autre classe `machine.*` (pas d'`I2C`, `SPI`, `UART`) — voir le TODO de `requirements.md` pour les extensions prévues.
+- `Pin.irq()` : tout callback tourne « soft » (déféré au prochain point de réveil du worker) ; `hard=` accepté mais sans effet — aucune notion de contexte d'interruption matérielle possible dans ce modèle mono-thread. Une exception levée dans un callback arrête toute la simulation (même politique que le script principal), pas d'isolation « le callback plante mais le reste continue ».
+- `machine.Timer` : pool fixe de 4 minuteurs partagé par tous les `Timer()` (au-delà, `Timer()` lève `RuntimeError`) ; période minimale 1 ms (`ValueError` en dessous, garde-fou contre une tempête d'événements à durée simulée nulle).
 - `ADC.read_u16()` : référence de conversion (3,3 V) codée en dur dans le shim, pas liée au paramètre `VOH` de `MCU` ; pas d'échantillonnage périodique ni d'événement de seuil (contrairement à une broche numérique en entrée, une variation sur l'ADC ne réveille jamais le script — il faut l'interroger explicitement).
 - `PWM` : chaque broche a sa fréquence/rapport cyclique indépendants (le vrai RP2040 partage un canal de fréquence entre deux broches voisines, pas modélisé ici) ; `deinit()` repasse la broche en sortie numérique **basse**, pas en haute impédance.
 - **Relire une broche juste après avoir écrit sur une autre (même physiquement reliées) peut renvoyer l'état d'*avant* l'écriture.** Plusieurs appels au shim qui s'enchaînent sans qu'aucun ne demande un vrai délai restent dans le même passage côté runtime C, sans repasser par la résolution du circuit Modelica entre-temps — la lecture voit alors un instantané pris avant l'écriture qui vient de se produire. Il faut un point de synchro explicite entre les deux (n'importe quel `sleep`/`sleep_ms`/`sleep_us` non nul suffit, même très court) pour forcer ce passage. Exemple concret : [`Examples/PinEcho.mo`](../MicroPythonMCU/Examples/PinEcho.mo) (script [`pin_echo.py`](../MicroPythonMCU/Resources/Scripts/pin_echo.py)), où `GP2` relit électriquement ce que le script vient d'écrire sur `GP1`.
