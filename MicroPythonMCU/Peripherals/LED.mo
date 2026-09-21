@@ -1,4 +1,4 @@
-within MicroPythonMCU.Utils;
+within MicroPythonMCU.Peripherals;
 model LED "LED dont l'icône s'éclaire en fonction du courant qui la traverse (inspiré de Arduino.Components.LED, bibliothèque Modelica-Arduino)"
   extends Modelica.Electrical.Analog.Interfaces.TwoPin;
 

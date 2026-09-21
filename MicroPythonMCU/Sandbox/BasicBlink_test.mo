@@ -22,7 +22,7 @@ model BasicBlink_test "Scénario de vérification v0 n°1 : le script de démo p
     Placement(transformation(extent = {{-20, -30}, {0, -10}})));
   Modelica.Electrical.Analog.Basic.Resistor pulldown7(R = 220) "GP7" annotation(
     Placement(transformation(origin = {-24, 0}, extent = {{-20, -60}, {0, -40}})));
-  Utils.LED led1 annotation(
+  Peripherals.LED led1 annotation(
     Placement(transformation(origin = {-58, -100}, extent = {{-10, -10}, {10, 10}})));
 equation
   connect(mcu.GND, ground.p) annotation(

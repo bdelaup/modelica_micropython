@@ -73,13 +73,18 @@ btn.irq(handler=lambda p: led.toggle(), trigger=Pin.IRQ_RISING)
 # Timer — minuteur logiciel periodique, se declenche meme pendant un sleep()
 from machine import Timer
 Timer().init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
+
+# Display — liaison logique pedagogique, ecriture seule, livraison instantanee
+from machine import Display
+display = Display(0)
+display.write("Bonjour")        # reçu par un Peripherals.Display câblé sur mcu.Display0
 ```
 
 ## Vérifier l'installation
 
 ```
 cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos   # … verify_11_timer.mos
+omc verify_01_basic_blink.mos   # … verify_12_display.mos
 ```
 
 nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [`docs/tests.md`](docs/tests.md).
@@ -93,6 +98,7 @@ nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [
 | [`docs/integration-python.md`](docs/integration-python.md) | Intégration CPython/OpenModelica, shim `machine`/`time` |
 | [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md) | Protocole de synchro (diagrammes de séquence), pièges rencontrés |
 | [`docs/api-machine.md`](docs/api-machine.md) | Référence API `machine`/`time` |
+| [`docs/peripherique-display.md`](docs/peripherique-display.md) | Périphérique d'affichage pédagogique (`machine.Display`), connecteur logique, `Peripherals/` |
 | [`docs/tests.md`](docs/tests.md) | Rejouer/ajouter un scénario de vérification |
 
 ## État
@@ -106,7 +112,8 @@ nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [
 - [x] LED embarquée
 - [x] Gestion des erreurs de script
 - [x] Interruptions sur broche (`machine.Pin.irq`) et minuteurs logiciels (`machine.Timer`)
-- [ ] I2C / SPI / UART
+- [x] Périphérique d'affichage pédagogique (`machine.Display`) — texte affiché réellement sur l'icône
+- [ ] I2C / SPI / vrai UART sur les GPIO
 - [ ] Multi-instances
 - [ ] Linux / macOS
 
@@ -116,7 +123,7 @@ Liste complète et justifications : [`requirements.md`](requirements.md#todo-ver
 
 [MIT](LICENSE) — attribution obligatoire (copyright + texte de licence) dans toute copie ou republication, totale ou partielle. La distribution Python vendorée (`MicroPythonMCU/Resources/PythonRuntime/`) garde sa propre licence (Python Software Foundation).
 
-Le composant `Utils.LED` (icône réactive au courant) s'inspire de `Arduino.Components.LED` de la bibliothèque [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) (CATIA-Systems).
+Le composant `Peripherals.LED` (icône réactive au courant) s'inspire de `Arduino.Components.LED` de la bibliothèque [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) (CATIA-Systems).
 
 ## Contexte
 
@@ -205,13 +212,18 @@ btn.irq(handler=lambda p: led.toggle(), trigger=Pin.IRQ_RISING)
 # Timer — software periodic timer, keeps firing even during a sleep()
 from machine import Timer
 Timer().init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
+
+# Display — write-only pedagogical logical link, instant delivery
+from machine import Display
+display = Display(0)
+display.write("Hello")          # received by a Peripherals.Display wired to mcu.Display0
 ```
 
 ## Verify the installation
 
 ```
 cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos   # … verify_11_timer.mos
+omc verify_01_basic_blink.mos   # … verify_12_display.mos
 ```
 
 requires `omc` on the `PATH` and `OPENMODELICAHOME` set — details: [`docs/tests.md`](docs/tests.md) *(French only)*.
@@ -225,6 +237,7 @@ requires `omc` on the `PATH` and `OPENMODELICAHOME` set — details: [`docs/test
 | [`docs/integration-python.md`](docs/integration-python.md) | CPython/OpenModelica integration, `machine`/`time` shim |
 | [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md) | Sync protocol (sequence diagrams), pitfalls encountered |
 | [`docs/api-machine.md`](docs/api-machine.md) | `machine`/`time` API reference |
+| [`docs/peripherique-display.md`](docs/peripherique-display.md) | Pedagogical display peripheral (`machine.Display`), logical connector, `Peripherals/` |
 | [`docs/tests.md`](docs/tests.md) | Replaying/adding a verification scenario |
 
 *(All linked documents above are in French.)*
@@ -240,7 +253,8 @@ requires `omc` on the `PATH` and `OPENMODELICAHOME` set — details: [`docs/test
 - [x] Onboard LED
 - [x] Script error handling
 - [x] Pin interrupts (`machine.Pin.irq`) and software timers (`machine.Timer`)
-- [ ] I2C / SPI / UART
+- [x] Pedagogical display peripheral (`machine.Display`) — text actually shown on the icon
+- [ ] I2C / SPI / real UART on the GPIO pins
 - [ ] Multiple instances
 - [ ] Linux / macOS
 
@@ -250,7 +264,7 @@ Full list and rationale: [`requirements.md`](requirements.md#todo-vers-une-versi
 
 [MIT](LICENSE) — attribution required (copyright + license text) in any copy or republication, whole or partial. The vendored Python distribution (`MicroPythonMCU/Resources/PythonRuntime/`) keeps its own license (Python Software Foundation).
 
-The `Utils.LED` component (current-reactive icon) is inspired by `Arduino.Components.LED` from the [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) library (CATIA-Systems).
+The `Peripherals.LED` component (current-reactive icon) is inspired by `Arduino.Components.LED` from the [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) library (CATIA-Systems).
 
 ## Context
 

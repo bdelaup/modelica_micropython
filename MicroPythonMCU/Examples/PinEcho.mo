@@ -10,9 +10,9 @@ model PinEcho "GP1 oscille, GP2 relit son état électrique, GP3 reproduit ce qu
     Placement(transformation(origin = {-90, 10}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor r3(R = 330) "limite le courant de led3 (GP3, l'echo)" annotation(
     Placement(transformation(origin = {-90, -25}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led1 "GP1 : oscille (source)" annotation(
+  MicroPythonMCU.Peripherals.LED led1 "GP1 : oscille (source)" annotation(
     Placement(transformation(origin = {-138, 10}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Utils.LED led3 "GP3 : reproduit ce que GP2 a lu sur GP1 (echo)" annotation(
+  MicroPythonMCU.Peripherals.LED led3 "GP3 : reproduit ce que GP2 a lu sur GP1 (echo)" annotation(
     Placement(transformation(origin = {-138, -25}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
   Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "Bouclage GP1->GP2 : resistance de liaison. Un connect() direct (ou une egalite algebrique exacte via un capteur+source ideale) entre GP1 et GP2 s'est avere annuler la tension pilotee de GP1 dans les resultats (constate empiriquement, reproduit avec plusieurs mecanismes de bouclage differents) - contourne en donnant a GP2 un veritable etat dynamique (cf. loopC) plutot qu'un alias algebrique exact de GP1, cf. requirements.md" annotation(
     Placement(transformation(origin = {-57, -9}, extent = {{-10, -10}, {10, 10}})));

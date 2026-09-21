@@ -8,7 +8,7 @@ model PinIrq "GP1 pilotee par un creneau (front montant et descendant) ; le scri
 
   Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led0 "GP0 : bascule sur chaque front montant de GP1 (IRQ_RISING)" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0 : bascule sur chaque front montant de GP1 (IRQ_RISING)" annotation(
     Placement(transformation(origin = {-142, 25}, extent = {{15, -15}, {-15, 15}}, rotation = -0)));
 
   Modelica.Electrical.Analog.Sources.SignalVoltage btnSrc "Pilote GP1 depuis l'exterieur" annotation(

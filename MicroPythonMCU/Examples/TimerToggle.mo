@@ -8,7 +8,7 @@ model TimerToggle "GP0 pilote une LED basculee par un machine.Timer periodique (
 
   Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led0 "GP0 : bascule toutes les 500 ms, pilotee par machine.Timer" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0 : bascule toutes les 500 ms, pilotee par machine.Timer" annotation(
     Placement(transformation(origin = {-142, 25}, extent = {{15, -15}, {-15, 15}}, rotation = -0)));
 equation
   connect(mcu.GND, ground.p) annotation(

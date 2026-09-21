@@ -11,6 +11,7 @@ Pour le **pourquoi** (besoin, décisions d'architecture avec alternatives, restr
 3. [cycle-de-vie.md](cycle-de-vie.md) — ce qui se passe à l'instanciation (construction de `PyRuntime`, démarrage du thread) et à chaque pas de temps (le protocole de synchronisation entre le solveur Modelica et le script Python), plus les pièges rencontrés en cours d'implémentation.
 4. [api-machine.md](api-machine.md) — référence de l'API `machine`/`time` telle qu'exposée au script utilisateur (côté « qui écrit un script », pas « comment c'est câblé »), avec un [miroir lisible du shim](shim/machine_time_shim.py) (la source de vérité exécutée reste la chaîne C dans `PyRuntimeImpl.c`).
 5. [tests.md](tests.md) — comment relancer la suite de vérification (`Resources/Verification/*.mos`) de façon reproductible, ce que vérifie chaque script, et comment en ajouter un nouveau.
+6. [peripherique-display.md](peripherique-display.md) — le périphérique d'affichage pédagogique `Peripherals.Display` (`machine.Display`) : pourquoi il est modélisé en connecteur logique causal plutôt qu'électrique, comment le texte s'affiche réellement sur son icône, le déroulé d'un envoi.
 
 ## Convention pour les captures d'écran
 

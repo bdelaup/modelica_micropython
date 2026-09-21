@@ -24,6 +24,8 @@
 #define IRQ_TRIGGER_RISING 1
 #define IRQ_TRIGGER_FALLING 2
 
+#define DISPLAY_MSG_MAX_LEN 128      /* tres au-dessus des 40 caracteres d'un afficheur 20x2, buffer fixe modeste (meme esprit que g_stdout_buf) */
+
 struct PyRuntimeHandle {
     char* scriptPath;
 
@@ -57,6 +59,14 @@ struct PyRuntimeHandle {
     double timer_next_fire[MAX_TIMERS]; /* temps simule absolu */
     PyObject* timer_callback[MAX_TIMERS];
     PyObject* timer_self[MAX_TIMERS];  /* l'instance Python Timer, passee en argument au callback comme sur le vrai MicroPython */
+
+    /* machine.Display : liaison logique unique (MCU.Display0), ecrite
+       uniquement par native_display_write (jamais par PyRuntime_sync) -
+       peripherique pedagogique, pas un vrai protocole (pas de reception
+       modelisee), cf. requirements.md decision "Périphérique d'affichage
+       pédagogique". */
+    int display_seq;
+    char display_payload[DISPLAY_MSG_MAX_LEN + 1];
 
     int script_done;
     int script_error;
@@ -413,6 +423,32 @@ static PyObject* native_pin_irq_set(PyObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* --- machine.Display : périphérique pédagogique, un seul sens (ecriture) --- */
+
+/* Un seul id supporte pour l'instant (0, MCU.Display0) - meme esprit que
+   resolve_pin_index. */
+static int resolve_display_index(int id) {
+    if (id == 0) return 0;
+    return -1;
+}
+
+static PyObject* native_display_write(PyObject* self, PyObject* args) {
+    int id;
+    const char* text;
+    if (!PyArg_ParseTuple(args, "is", &id, &text)) return NULL;
+    if (resolve_display_index(id) < 0) {
+        PyErr_Format(PyExc_ValueError, "Display %d non supporte pour la v0 (seul Display(0) existe)", id);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    strncpy(g_current->display_payload, text, DISPLAY_MSG_MAX_LEN);
+    g_current->display_payload[DISPLAY_MSG_MAX_LEN] = '\0';  /* tronque si trop long, restriction v0 assumee */
+    g_current->display_seq++;
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
 /* --- machine.Timer --- */
 
 static PyObject* native_timer_new(PyObject* self, PyObject* args) {
@@ -490,6 +526,7 @@ static PyMethodDef native_methods[] = {
     {"pwm_set_freq", native_pwm_set_freq, METH_VARARGS, "Configure la frequence PWM (Hz) d'une broche, la prend en sortie"},
     {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Configure le rapport cyclique PWM (0-1) d'une broche"},
     {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Arrete le PWM sur une broche (retombe en sortie numerique classique)"},
+    {"display_write", native_display_write, METH_VARARGS, "Transmet un texte au périphérique d'affichage pédagogique connecté (livraison instantanee)"},
     {"timer_new", native_timer_new, METH_VARARGS, "Alloue un slot de Timer() dans le pool fixe"},
     {"timer_init", native_timer_init, METH_VARARGS, "Arme un Timer (periode, mode, callback)"},
     {"timer_deinit", native_timer_deinit, METH_VARARGS, "Arrete et libere un Timer"},
@@ -574,6 +611,12 @@ static const char* SHIM_BOOTSTRAP =
     "        _native.pwm_deinit(self.id)\n"
     "        self._freq = 0\n"
     "\n"
+    "class Display:\n"
+    "    def __init__(self, id=0, **kwargs):\n"
+    "        self.id = id\n"  /* kwargs : signature volontairement minimale, composant pedagogique, pas un vrai protocole */
+    "    def write(self, text):\n"
+    "        _native.display_write(self.id, text if isinstance(text, str) else str(text))\n"
+    "\n"
     "class Timer:\n"
     "    ONE_SHOT = 0\n"
     "    PERIODIC = 1\n"
@@ -588,6 +631,7 @@ static const char* SHIM_BOOTSTRAP =
     "_machine.Pin = Pin\n"
     "_machine.ADC = ADC\n"
     "_machine.PWM = PWM\n"
+    "_machine.Display = Display\n"
     "_machine.Timer = Timer\n"
     "sys.modules['machine'] = _machine\n"
     "\n"
@@ -821,6 +865,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput,
                      double* pwmFreqOut, double* pwmDutyOut,
+                     int* displaySeqOut, const char** displayPayloadOut,
                      double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
@@ -832,6 +877,9 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
             pwmFreqOut[i] = h->pwm_freq[i];
             pwmDutyOut[i] = h->pwm_duty[i];
         }
+        *displaySeqOut = h->display_seq;
+        *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
+        strcpy((char*) *displayPayloadOut, h->display_payload);
         *nextWakeTime = 1.0e300; /* pas d'autre reveil attendu */
         return;
     }
@@ -916,6 +964,9 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
         pwmFreqOut[i] = h->pwm_freq[i];
         pwmDutyOut[i] = h->pwm_duty[i];
     }
+    *displaySeqOut = h->display_seq;
+    *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
+    strcpy((char*) *displayPayloadOut, h->display_payload);
     int done = h->script_done;
     int error = h->script_error;
     char* error_message = h->error_message;

@@ -1,0 +1,29 @@
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.DisplayDemo, stopTime = 3, numberOfIntervals = 600, fileNamePrefix = "DisplayDemo");
+b := getErrorString();
+
+v0 := val(mcu.Display0.seq, 0.5, "DisplayDemo_res.mat");
+v1 := val(mcu.Display0.seq, 1.5, "DisplayDemo_res.mat");
+v2 := val(mcu.Display0.seq, 2.5, "DisplayDemo_res.mat");
+
+// "Bonjour" (premier message) : B=66, o=111, n=110 - confirme que le texte reellement
+// recu atteint bien l'icone caractere par caractere (Internal.StringToCharCodes,
+// propage via connect() jusqu'a display.displayLink.charCode), pas seulement le compteur seq.
+// NB : val() sur un index de tableau via une variable de boucle .mos ne se resout pas
+// correctement dans cette installation (renvoie NaN) - indices litteraux uniquement.
+c1 := val(display.displayLink.charCode[1], 1.5, "DisplayDemo_res.mat");
+c2 := val(display.displayLink.charCode[2], 1.5, "DisplayDemo_res.mat");
+c3 := val(display.displayLink.charCode[3], 1.5, "DisplayDemo_res.mat");
+
+// Defilement 20x2 : apres le 2e message ("Ca marche"), la ligne 1 doit montrer
+// "Ca marche" (C=67) et la ligne 2 l'ancien message "Bonjour" (B=66), decale.
+l1_after2 := val(display.displayLink.charCode[1], 2.5, "DisplayDemo_res.mat");
+l2_after2 := val(display.line2CharCode[1], 2.5, "DisplayDemo_res.mat");
+
+if v0 == 0 and v1 == 1 and v2 == 2 and c1 == 66 and c2 == 111 and c3 == 110 and l1_after2 == 67 and l2_after2 == 66 then
+  print("PASS: verify_12_display (seq: " + String(v0) + " -> " + String(v1) + " -> " + String(v2) + " ; charCode[1:3]=" + String(c1) + "," + String(c2) + "," + String(c3) + " = 'Bon' ; apres 2e message, ligne1[1]=" + String(l1_after2) + "='C', ligne2[1]=" + String(l2_after2) + "='B' (defilement))\n");
+else
+  print("FAIL: verify_12_display (seq: " + String(v0) + " -> " + String(v1) + " -> " + String(v2) + " ; charCode[1:3]=" + String(c1) + "," + String(c2) + "," + String(c3) + " ; l1_after2=" + String(l1_after2) + " l2_after2=" + String(l2_after2) + ")\n" + b);
+end if;

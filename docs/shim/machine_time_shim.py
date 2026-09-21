@@ -83,6 +83,14 @@ class PWM:
         _native.pwm_deinit(self.id)
         self._freq = 0
 
+class Display:
+    def __init__(self, id=0, **kwargs):
+        self.id = id  # kwargs : signature volontairement minimale, composant
+                      # pedagogique (Peripherals.Display), pas un vrai protocole
+
+    def write(self, text):
+        _native.display_write(self.id, text if isinstance(text, str) else str(text))
+
 class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
@@ -101,6 +109,7 @@ _machine.Pin = Pin
 _machine.ADC = ADC
 _machine.PWM = PWM
 _machine.Timer = Timer
+_machine.Display = Display
 sys.modules['machine'] = _machine
 
 def sleep(s):

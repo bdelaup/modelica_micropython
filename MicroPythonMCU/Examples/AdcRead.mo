@@ -8,7 +8,7 @@ model AdcRead "GP1 utilisée en entrée analogique (machine.ADC), pilotée par u
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led0 "GP0 : recopie (v > moitie de l'echelle ADC) ?" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0 : recopie (v > moitie de l'echelle ADC) ?" annotation(
     Placement(transformation(origin = {-140, 25}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
   Modelica.Electrical.Analog.Sources.ConstantVoltage supply(V = 3.3) "alimentation du pont diviseur (independante de MCU)" annotation(
     Placement(transformation(origin = {-126, -36}, extent = {{-15, -15}, {15, 15}}, rotation = -90)));

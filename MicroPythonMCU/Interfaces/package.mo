@@ -7,6 +7,7 @@ package Interfaces "Niveaux de tension logiques de référence (approximation RP
   constant Modelica.Units.SI.Voltage VIH = 2.0 "Seuil de reconnaissance d'une entrée logique haute (approximation)";
   constant Modelica.Units.SI.Voltage VIL = 0.8 "Seuil de reconnaissance d'une entrée logique basse (approximation)";
   constant Modelica.Units.SI.Resistance ROut = 100 "Résistance série de sortie par défaut (drive strength approximative)";
+  constant Integer DISPLAY_COLS = 20 "Nombre de colonnes affichées sur l'icône du périphérique pédagogique Peripherals.Display (fidèle à un vrai afficheur caractère 20x2) - tronque les messages plus longs sur l'icône uniquement (le texte complet reste disponible dans le journal de simulation)";
 
   annotation(
     Documentation(info = "<html>

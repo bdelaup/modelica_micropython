@@ -8,11 +8,11 @@ model ImportDemo "Le script principal importe un module auxiliaire pose a cote d
     Placement(transformation(origin = {0, -100}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0 : import companion, meme dossier que le script)" annotation(
     Placement(transformation(origin = {-90, 40}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led0 "GP0 : import companion (addScriptDirToPath)" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0 : import companion (addScriptDirToPath)" annotation(
     Placement(transformation(origin = {-140, 40}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
   Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limite le courant de led1 (GP1 : import shared_helper, bibliotheque partagee)" annotation(
     Placement(transformation(origin = {-90, -10}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led1 "GP1 : import shared_helper (libraryPath)" annotation(
+  MicroPythonMCU.Peripherals.LED led1 "GP1 : import shared_helper (libraryPath)" annotation(
     Placement(transformation(origin = {-140, -10}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(

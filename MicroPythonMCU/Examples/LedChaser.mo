@@ -1,6 +1,6 @@
 within MicroPythonMCU.Examples;
 
-model LedChaser "Chenillard bidirectionnel : une LED (Utils.LED) par broche GP0-GP7, disposées en anneau autour du microcontrôleur, allumées une à la fois dans l'ordre GP0->GP3 (gauche) puis GP7->GP4 (droite), puis en sens inverse"
+model LedChaser "Chenillard bidirectionnel : une LED (Peripherals.LED) par broche GP0-GP7, disposées en anneau autour du microcontrôleur, allumées une à la fois dans l'ordre GP0->GP3 (gauche) puis GP7->GP4 (droite), puis en sens inverse"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/led_chaser.py")) "scriptPath = Resources/Scripts/led_chaser.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -22,21 +22,21 @@ model LedChaser "Chenillard bidirectionnel : une LED (Utils.LED) par broche GP0-
     Placement(transformation(origin = {90, -20}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor r7(R = 330) "limite le courant de led7 (GP7)" annotation(
     Placement(transformation(origin = {90, -60}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led0 "GP0, en haut à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0, en haut à gauche" annotation(
     Placement(transformation(origin = {-140, 60}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Utils.LED led1 "GP1, à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led1 "GP1, à gauche" annotation(
     Placement(transformation(origin = {-140, 20}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Utils.LED led2 "GP2, à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led2 "GP2, à gauche" annotation(
     Placement(transformation(origin = {-140, -20}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Utils.LED led3 "GP3, en bas à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led3 "GP3, en bas à gauche" annotation(
     Placement(transformation(origin = {-140, -60}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Utils.LED led4 "GP4, en haut à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led4 "GP4, en haut à droite" annotation(
     Placement(transformation(origin = {140, 60}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led5 "GP5, à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led5 "GP5, à droite" annotation(
     Placement(transformation(origin = {140, 20}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led6 "GP6, à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led6 "GP6, à droite" annotation(
     Placement(transformation(origin = {140, -20}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led7 "GP7, en bas à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led7 "GP7, en bas à droite" annotation(
     Placement(transformation(origin = {140, -60}, extent = {{-15, -15}, {15, 15}})));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -93,6 +93,6 @@ equation
     Diagram(coordinateSystem(extent = {{-200, -140}, {200, 100}})),
     experiment(StopTime = 4.5, Interval = 0.001),
     Documentation(info = "<html>
-<p>Démonstrateur (hors scénarios de vérification de <code>requirements.md</code>) : huit <code>Utils.LED</code>, une par broche <code>GP0</code>-<code>GP7</code>, disposées en anneau autour de <code>mcu</code> (colonne de gauche <code>GP0</code>→<code>GP3</code> de haut en bas, colonne de droite <code>GP4</code>→<code>GP7</code> de haut en bas). Le script <code>led_chaser.py</code> allume une seule LED à la fois et la fait courir le long de cet anneau (0,1,2,3,7,6,5,4 puis retour), en relisant l'animation d'un résultat de simulation dans OMEdit — chaque LED s'éclaire brièvement à son tour.</p>
+<p>Démonstrateur (hors scénarios de vérification de <code>requirements.md</code>) : huit <code>Peripherals.LED</code>, une par broche <code>GP0</code>-<code>GP7</code>, disposées en anneau autour de <code>mcu</code> (colonne de gauche <code>GP0</code>→<code>GP3</code> de haut en bas, colonne de droite <code>GP4</code>→<code>GP7</code> de haut en bas). Le script <code>led_chaser.py</code> allume une seule LED à la fois et la fait courir le long de cet anneau (0,1,2,3,7,6,5,4 puis retour), en relisant l'animation d'un résultat de simulation dans OMEdit — chaque LED s'éclaire brièvement à son tour.</p>
 </html>"));
 end LedChaser;

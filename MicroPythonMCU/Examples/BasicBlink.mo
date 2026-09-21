@@ -8,7 +8,7 @@ model BasicBlink "Scénario de vérification v0 n°1 : le script de démo par d�
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led0 "GP0 : clignote en même temps que la LED embarquée" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0 : clignote en même temps que la LED embarquée" annotation(
     Placement(transformation(origin = {-128, 25}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(

@@ -8,7 +8,7 @@ model PwmLed "GP0 pilote une LED en PWM (machine.PWM), 200 Hz / ~30% de rapport 
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Utils.LED led0 "GP0 : créneau PWM (200 Hz, ~30%)" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0 : créneau PWM (200 Hz, ~30%)" annotation(
     Placement(transformation(origin = {-140, 25}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(
