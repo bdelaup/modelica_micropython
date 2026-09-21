@@ -13,6 +13,8 @@ Pour le **pourquoi** (besoin, décisions d'architecture avec alternatives, restr
 5. [tests.md](tests.md) — comment relancer la suite de vérification (`Resources/Verification/*.mos`) de façon reproductible, ce que vérifie chaque script, et comment en ajouter un nouveau.
 6. [peripherique-display.md](peripherique-display.md) — le périphérique d'affichage pédagogique `Peripherals.Display` (`machine.Display`) : pourquoi il est modélisé en connecteur logique causal plutôt qu'électrique, comment le texte s'affiche réellement sur son icône, le déroulé d'un envoi.
 
+Voir aussi [`requirements-archive.md`](../requirements-archive.md) à la racine du dépôt : récits de débogage déjà refermés et propositions abandonnées, extraits de `requirements.md` pour garder ce dernier concentré sur l'architecture actuelle — consultation ponctuelle seulement.
+
 ## Convention pour les captures d'écran
 
 Certains emplacements sont marqués `<!-- TODO screenshot: ... -->` : ce sont des captures à prendre dans OMEdit (icône ou schéma d'un modèle) et à déposer dans `docs/images/` sous le nom indiqué, puis à référencer avec `![description](images/nom.png)` à la place du commentaire.

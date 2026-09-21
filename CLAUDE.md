@@ -52,3 +52,5 @@ Nécessite `omc` et le toolchain MinGW d'une installation OpenModelica sur le `P
 ## Note pour les futures instances
 
 Ce fichier doit être mis à jour dès que la structure de dossiers, les dépendances ou les commandes de build/test/lint évoluent dans le dépôt (nouveau composant shim, portage Linux/macOS, etc.). Ne pas laisser ces sections devenir obsolètes ni inventer des détails absents du code ou de `requirements.md`.
+
+Dans `requirements.md` : les récits de débogage déjà refermés (bug trouvé → corrigé, sans incidence sur l'architecture actuelle) et les propositions initiales jamais retenues vont dans `requirements-archive.md`, pas dans `requirements.md` — n'y garder que le `Choix retenu`/`Alternatives`/`Notes pour plus tard` de chaque décision, pour que le fichier reste concentré sur l'état présent plutôt que de regrossir avec le temps.
