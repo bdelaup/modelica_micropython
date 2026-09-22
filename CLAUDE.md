@@ -23,10 +23,12 @@ MicroPythonMCU/
 ├── Peripherals/                -- composants connectables à MCU : LED.mo (icône réactive au courant, utilisée par MCU en LED embarquée et par les exemples) ; Display.mo (périphérique d'affichage pédagogique, écriture seule, affiche le texte réellement reçu sur l'icône + retour par print())
 ├── Examples/                   -- un modèle par scénario de vérification (BasicBlink, SleepCompression, InputReactivity, ScriptError, PinEcho, AdcRead, PwmLed, ImportDemo, PinIrq, TimerToggle, DisplayDemo, UartLoopback) + LedChaser (chenillard bidirectionnel, démonstrateur)
 └── Resources/
-    ├── Include/                -- PyRuntimeImpl.c/.h (implémentation C réelle) + en-têtes Python 3.12 vendorés
+    ├── Include/                -- nos sources C uniquement à la racine : PyRuntimeImpl.c (fichier chapeau, inclut textuellement les parties), PyRuntimeImpl.h, StringToCharCodes.c
+    │   ├── pyruntime/          -- l'implémentation découpée : pyruntime_core.h (constantes + handle), _relay.c, _sync.c, _pin.c, _display.c, _uart.c, _timer.c, _module.c — incluses par le chapeau dans un ORDRE SIGNIFICATIF (une seule unité de compilation, chaque static défini avant son premier appel)
+    │   └── cpython312/         -- en-têtes Python 3.12 vendorés (inclus via `#include "cpython312/Python.h"`, quoted : les includes internes de CPython se résolvent relativement à ce dossier)
     ├── Library/win64/          -- libpython312.a, import lib régénérée pour le compilateur MinGW d'OpenModelica
     ├── PythonRuntime/          -- distribution Python « embeddable » officielle vendorée (DLL + stdlib zip)
-    ├── Scripts/                -- scripts des exemples (demo.py par défaut, un script par scénario d'Examples/)
+    ├── Scripts/                -- scripts des exemples (demo.py par défaut, un script par scénario d'Examples/) + _shim/machine_time_shim.py (le shim machine/time lui-même, lu et exécuté par PyRuntime_new avant le script utilisateur — source unique, plus de miroir dans docs/)
     └── Verification/           -- scripts .py spécifiques à la vérification + scripts .mos exécutables via omc
 docs/                            -- documentation d'implémentation (architecture, intégration Python, cycle de vie), voir docs/README.md
 requirements.md                  -- source de vérité du cadrage et des décisions d'architecture

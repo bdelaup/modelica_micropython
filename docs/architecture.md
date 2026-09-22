@@ -13,13 +13,13 @@ graph TD
         Interfaces["Interfaces (package)<br/>constantes VOH/VOL/VIH/VIL/ROut<br/>+ connecteurs logiques DisplayLinkOutput/DisplayLinkInput"]
         Internal["Internal (package)<br/>PyRuntime (ExternalObject) + PyRuntime_sync"]
         Peripherals["Peripherals (package)<br/>LED : icône réactive au courant<br/>Display : affiche le texte reçu (icône, 20x2, défilement) - périphérique pédagogique"]
-        Examples["Examples (package)<br/>12 scénarios de vérification + LedChaser (démonstrateur)"]
+        Examples["Examples (package)<br/>13 scénarios de vérification + LedChaser (démonstrateur)"]
     end
     subgraph RES["Resources"]
-        Include["Include/<br/>PyRuntimeImpl.c + .h<br/>+ en-têtes Python 3.12 vendorés"]
+        Include["Include/<br/>PyRuntimeImpl.c (chapeau) + .h<br/>+ pyruntime/ (parties incluses)<br/>+ cpython312/ (en-têtes vendorés)"]
         Library["Library/win64/<br/>libpython312.a<br/>(import lib régénérée MinGW)"]
         PythonRuntime["PythonRuntime/<br/>distribution Python « embeddable »<br/>(DLL + stdlib zip)"]
-        Scripts["Scripts/<br/>demo.py"]
+        Scripts["Scripts/<br/>demo.py + _shim/machine_time_shim.py"]
         Verification["Verification/<br/>scripts .py + .mos de test"]
     end
 
@@ -34,7 +34,7 @@ graph TD
     Internal -- "Include = PyRuntimeImpl.c" --> Include
     Internal -- "LibraryDirectory" --> Library
     Internal -- "pythonHome (loadResource, runtime)" --> PythonRuntime
-    MCU -- "scriptPath par défaut (loadResource)" --> Scripts
+    MCU -- "scriptPath par défaut + shimPath (loadResource)" --> Scripts
     Verification -. "scripts appelés par les Examples" .-> Examples
 ```
 
@@ -68,12 +68,16 @@ modelica_micropython3/
     │   ├── ImportDemo.mo           -- scénario 10 : le script importe un module auxiliaire (addScriptDirToPath) et un module d'une bibliothèque partagée (libraryPath)
     │   ├── PinIrq.mo               -- scénario 11 : machine.Pin.irq() sur GP1 (front montant uniquement), bascule GP0 depuis le callback
     │   ├── TimerToggle.mo          -- scénario 12 : machine.Timer périodique bascule GP0 pendant un sleep() long, sans le faire retourner en avance
-    │   └── DisplayDemo.mo          -- cf. verify_12_display.mos : machine.Display(0).write() vers un Peripherals.Display câblé sur Display0
+    │   ├── DisplayDemo.mo          -- cf. verify_12_display.mos : machine.Display(0).write() vers un Peripherals.Display câblé sur Display0
+    │   └── UartLoopback.mo         -- scénario 13 : machine.UART électrique réel, TX (GP0) bouclé sur RX (GP1) via loopR/loopC, témoin GP3 (voir peripherique-uart.md)
     └── Resources/
-        ├── Include/                -- PyRuntimeImpl.c/.h (le vrai code de PyRuntime) + Python.h et cie (vendorés)
+        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c (fichier chapeau) + PyRuntimeImpl.h + StringToCharCodes.c
+        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _relay.c, _sync.c, _pin.c, _display.c, _uart.c, _timer.c, _module.c
+        │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
         ├── Library/win64/          -- libpython312.a, bibliothèque d'import régénérée pour le compilateur MinGW d'OpenModelica
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md
         ├── Scripts/                -- scripts des exemples (dont demo.py, valeur par défaut de `MCU.scriptPath`, et display_demo.py)
+        │   └── _shim/              -- machine_time_shim.py : le shim machine/time lui-même (source unique, exécuté par PyRuntime_new avant le script utilisateur)
         └── Verification/           -- scripts Python spécifiques à la vérification + scripts `.mos` exécutables via `omc` (scénarios de requirements.md)
 ```
 
@@ -83,8 +87,8 @@ modelica_micropython3/
 |---|---|---|
 | `MCU.mo` (Modelica) | Modélise le pont électrique GPIO (source de tension, résistance série, interrupteur, capteur), déclenche les points de synchro | Continuellement (équations électriques) + aux instants d'événement (`when`) |
 | `PyRuntime.mo` (Modelica) | Déclare l'External Object et ses fonctions `constructor`/`destructor` | Une fois à l'initialisation, une fois (nominalement) à la fin |
-| `PyRuntime_sync.mo` (Modelica) | Point d'entrée appelé depuis le `when` de `MCU` ; transmet `pinBoolIn` (seuillé, numérique) et `pinAnalogIn`/`pinNodeVoltage` (brut, lu par `machine.ADC`) en entrée ; `pwmFreq`/`pwmDuty` (configurés par `machine.PWM`) et `displaySeq`/`displayPayload` (configurés par `machine.Display.write()`) en sortie en plus de `pinBoolOut`/`pinIsOutput` | À chaque événement de synchro |
-| `PyRuntimeImpl.c` (C) | Implémente réellement `PyRuntime_new`/`_destroy`/`_sync`, gère le thread worker, le shim (dont `machine.Pin.irq()`/`machine.Timer`/`machine.Display`, cf. `cycle-de-vie.md` §3bis), la redirection stdout | Compilé une fois par `omc`, exécuté à chaque appel externe |
+| `PyRuntime_sync.mo` (Modelica) | Point d'entrée appelé depuis le `when` de `MCU` ; transmet `pinBoolIn` (seuillé, numérique) et `pinAnalogIn`/`pinNodeVoltage` (brut, lu par `machine.ADC`) en entrée ; `pwmFreq`/`pwmDuty` (configurés par `machine.PWM`), `displaySeq`/`displayPayload` (configurés par `machine.Display.write()`) et les sorties série `uartTxPin`/`uartTxActive`/`uartTxStart`/`uartBitDur`/`uartTxNumBits`/`uartTxBits` (motif de trame dont Modelica génère la forme d'onde, cf. `peripherique-uart.md`) en sortie, en plus de `pinBoolOut`/`pinIsOutput` | À chaque événement de synchro |
+| `PyRuntimeImpl.c` (C) | Fichier chapeau : inclut les parties de `pyruntime/` qui implémentent `PyRuntime_new`/`_destroy`/`_sync`, le thread worker, le shim (dont `machine.Pin.irq()`/`machine.Timer`/`machine.Display`, cf. `cycle-de-vie.md` §3bis), le décodage de la réception série (machine à états entièrement en C, cf. `peripherique-uart.md`) et la redirection stdout | Compilé une fois par `omc` (une seule unité de compilation), exécuté à chaque appel externe |
 | Distribution Python vendorée | Fournit l'interpréteur (DLL) et la bibliothèque standard (zip) | Chargée dynamiquement au démarrage de l'exécutable de simulation |
 | Script utilisateur (`.py`) | Le code écrit par l'élève/l'utilisateur, exécuté par le thread worker | Depuis t=0 jusqu'à sa fin/erreur, entrecoupé de pauses (voir cycle-de-vie.md) |
 
@@ -123,5 +127,7 @@ Les 4 premiers modèles de scénario d'`Examples/` suivent tous le même agencem
 `TimerToggle.mo` (scénario de vérification 12) n'a aucune source externe : le script `timer_toggle.py` arme un `Timer(period=500, mode=Timer.PERIODIC)` qui bascule `led0` (GP0), puis fait un seul `sleep(3600)`. Le basculement périodique se produit sans qu'aucune entrée du modèle ne change — preuve que le mécanisme de « pitstop » (cf. `cycle-de-vie.md`) fonctionne indépendamment du `sleep()` en cours, sans le faire retourner en avance. Les broches `GP1`-`GP7`, inutilisées, sont laissées non connectées.
 
 `DisplayDemo.mo` (`verify_12_display.mos`) démontre le périphérique d'affichage pédagogique du projet (`machine.Display`, cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ») : le script `display_demo.py` (`Resources/Scripts/`) appelle `Display(0).write(...)` à deux instants séparés par un `sleep(1)` ; un `Peripherals.Display` (nouveau paquet, cf. arborescence ci-dessus) reçoit chaque message via son connecteur `displayLink`, câblé sur `mcu.Display0` — un connecteur **logique causal** (`Interfaces.DisplayLinkOutput`/`DisplayLinkInput`), pas électrique comme les `GPx`, cf. `docs/peripherique-display.md`. Aucune broche `GPx` utilisée dans ce scénario. Détail à noter pour qui modifie l'icône de l'afficheur : le texte reçu s'affiche **réellement sur l'icône**, fidèle à un vrai 20×2 (20 caractères par ligne, un `Text` par colonne, cf. `Internal.StringToCharCodes` et `docs/peripherique-display.md` §4) — à chaque nouvelle réception, l'ancien message décale vers la ligne 2 (`line2CharCode = pre(displayLink.charCode)`) et le nouveau occupe la ligne 1 — en plus d'apparaître dans le journal de simulation (`Streams.print`, texte complet). Écran de couleur fixe (pas d'animation lumineuse). Le contournement (une `String` ne peut pas être stockée dans les résultats de simulation, `.mat`/`.csv`, vérifié empiriquement pendant ce chantier) passe par un tableau `Integer` de codes ASCII, lui bien storable, comme n'importe quelle grandeur numérique déjà utilisée pour `Peripherals.LED`.
+
+`UartLoopback.mo` (scénario de vérification 13) est le seul exemple où une broche `GPx` porte un **signal série réel** : le script `uart_loopback.py` configure `machine.UART(0, baudrate=1200, tx=Pin(0), rx=Pin(1))` et émet `b'Hi'` ; `GP0` (TX) est bouclée électriquement sur `GP1` (RX) par le motif `loopR`/`loopC` de `PinEcho` (obligatoire : un `connect()` direct entre deux broches du même `MCU` fait disparaître la tension pilotée des résultats), et `led3` (GP3) confirme que les octets relus sont intacts. Tracer `mcu.GP0.v` donne une vraie trame 8N1 lisible comme à l'oscilloscope. Mécanisme complet (émission générée en continu par Modelica, réception décodée côté C) : [peripherique-uart.md](peripherique-uart.md).
 
 <!-- TODO screenshot (optionnel) : pour le schéma complet avec les 8 fils réellement routés (plutôt que ce résumé simplifié), capturer la vue "Diagram" de MicroPythonMCU.Examples.BasicBlink dans OMEdit et l'ajouter sous docs/images/exemple-basicblink-complet.png -->

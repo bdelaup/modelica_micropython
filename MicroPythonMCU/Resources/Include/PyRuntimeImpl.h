@@ -7,9 +7,12 @@
 /* addScriptDirToPath (Boolean Modelica -> int C) et libraryPath (chaine vide
    = desactive) etendent sys.path pour permettre a l'utilisateur d'importer
    un module auxiliaire depuis le dossier du script et/ou une bibliotheque
-   partagee - cf. requirements.md, decision "Import de modules auxiliaires". */
+   partagee - cf. requirements.md, decision "Import de modules auxiliaires".
+   shimPath : chemin du shim machine/time (Resources/Scripts/_shim/
+   machine_time_shim.py), execute avant le script utilisateur. */
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
-                     int addScriptDirToPath, const char* libraryPath);
+                     int addScriptDirToPath, const char* libraryPath,
+                     const char* shimPath);
 void PyRuntime_destroy(void* handle);
 
 /* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,

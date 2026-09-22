@@ -54,7 +54,7 @@ protected
   Real uartTxBitIdx[9] "Index du bit en cours d'émission (-1 hors trame)";
   Boolean uartTxLevel[9] "Niveau logique à émettre sur la broche (repos = haut)";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochain réveil demandé par le script (sleep) ou +inf si terminé";
-  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
+  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py")) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Source de tension pilotée par le script (VOH/VOL) quand la broche est en sortie ; index 9 = LED embarquée" annotation(
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));

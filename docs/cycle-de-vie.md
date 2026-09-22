@@ -18,7 +18,7 @@ sequenceDiagram
     MCU->>Ctor: PyRuntime(scriptPath, pythonHome)
     Ctor->>CPy: Py_InitializeFromConfig(module_search_paths explicite)
     Ctor->>CPy: PyImport_AppendInittab (shim natif machine/time)
-    Ctor->>CPy: PyRun_SimpleString(SHIM_BOOTSTRAP)<br/>définit machine.Pin, time.sleep...
+    Ctor->>CPy: PyRun_SimpleString(machine_time_shim.py)<br/>définit machine.Pin, time.sleep...
     Ctor->>CPy: PySys_SetObject(stdout/stderr, relais)
     Ctor->>CPy: PyEval_SaveThread() — libère le GIL
     Ctor->>Worker: _beginthreadex(worker_main)
@@ -114,7 +114,7 @@ while True:
 **1. Le script appelle le shim.** `from machine import Pin` ne lit rien sur le disque : `machine` et `time` ont déjà été injectés dans `sys.modules` avant l'exécution du script (voir `integration-python.md`). `Pin.on()` et `time.sleep()` ne font que déléguer au module natif :
 
 ```python
-# SHIM_BOOTSTRAP, chaîne C dans PyRuntimeImpl.c
+# Resources/Scripts/_shim/machine_time_shim.py
 class Pin:
     def on(self):
         _native.pin_write(self.id, 1)
@@ -242,6 +242,8 @@ static int yield_to_modelica(double wake_at) {
 Un point de verrouillage est **impératif**, pas une question de style : `run_due_callbacks` rassemble les callbacks dus sous verrou (`cs`), **relâche complètement** ce verrou, puis seulement alors appelle le callback Python. `SleepConditionVariableCS` ne relâche qu'**un seul niveau** de section critique — un callback qui touche une broche (`pin.value(...)`, très probable en pratique, ex. un handler qui bascule une LED) ré-entre `EnterCriticalSection` avant de rappeler `yield_to_modelica`, ce qui laisserait `cs` techniquement encore tenu si l'appel Python avait lieu pendant que le verrou était déjà pris — deadlock réel entre le worker et Modelica. Vérifié sans deadlock ni callback manqué par un test isolé (scratchpad, avant intégration) avec un callback volontairement ré-entrant (lit puis écrit une broche depuis l'intérieur d'un callback `Timer`).
 
 Le déclenchement d'un `Timer`/`Pin.irq()` ne nécessite **aucun changement** à `MCU.mo` ni à `Internal/PyRuntime_sync.mo` : le `when` de `MCU.mo` appelle déjà `PyRuntime_sync` sur toute transition d'entrée, et Modelica réagit déjà à n'importe quelle valeur de `nextWakeTime` — il suffit que `PyRuntime_sync` intègre les échéances de `Timer` actifs dans son calcul de `nextWakeTime` (`min` avec l'échéance propre du worker) et dans sa condition de réveil du worker.
+
+**Le décodage de la réception série réutilise exactement ce mécanisme** : `machine.UART` programme ses instants d'échantillonnage (milieu de chaque bit) via `nextWakeTime`, comme un `Timer`, et **sans réveiller le worker** — le script récupère les octets à son rythme par `any()`/`read()`. C'est aussi pourquoi la broche affectée à la réception est exclue du calcul de « vraie transition d'entrée » : sans ça, chaque front reçu ferait retourner en avance le `sleep()` en cours. Détail complet : [peripherique-uart.md](peripherique-uart.md).
 
 ## 4. Fin de simulation
 
