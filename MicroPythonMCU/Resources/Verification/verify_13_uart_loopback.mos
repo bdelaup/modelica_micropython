@@ -1,0 +1,51 @@
+// Scénario de vérification v0 n°14 (cf. requirements.md).
+// omc verify_13_uart_loopback.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartLoopback, stopTime = 0.05, numberOfIntervals = 20000, fileNamePrefix = "UartLoopback");
+b := getErrorString();
+
+// 1200 bauds -> un bit dure 1/1200 = 833.33 us ; trame 8N1 = 10 bits = 8.33 ms.
+// uart_loopback.py attend REPOS_MS = 5 ms avant d'emettre b'Hi' : deux trames
+// qui s'enchainent sans trou. Sondes au MILIEU de chaque bit, jamais sur une
+// transition : 5 ms + (k+0.5)*833.33 us, decale de 8.33 ms pour la 2e trame.
+
+// Etat de REPOS : des que l'UART est configure (des le demarrage du script,
+// bien avant le premier write), la broche TX est pilotee activement au niveau
+// HAUT - c'est le TX qui tient la ligne, pas le RX, et aucune resistance de
+// tirage n'intervient (sortie push-pull, cf. requirements.md).
+vReposAvant := val(mcu.GP0.v, 0.0025, "UartLoopback_res.mat");   // avant toute emission -> HAUT
+vReposApres := val(mcu.GP0.v, 0.03, "UartLoopback_res.mat");     // apres les 2 trames -> HAUT
+
+// Trame 1 = 'H' = 0x48 = 0b01001000 -> data poids faible en tete : 0,0,0,1,0,0,1,0
+vStart := val(mcu.GP0.v, 0.0054167, "UartLoopback_res.mat");  // bit 0 = start -> BAS
+vB0 := val(mcu.GP0.v, 0.00625, "UartLoopback_res.mat");       // bit 1 = b0 = 0 -> BAS
+vB3 := val(mcu.GP0.v, 0.00875, "UartLoopback_res.mat");       // bit 4 = b3 = 1 -> HAUT
+vB6 := val(mcu.GP0.v, 0.01125, "UartLoopback_res.mat");       // bit 7 = b6 = 1 -> HAUT
+vB7 := val(mcu.GP0.v, 0.0120833, "UartLoopback_res.mat");     // bit 8 = b7 = 0 -> BAS
+vStop := val(mcu.GP0.v, 0.0129167, "UartLoopback_res.mat");   // bit 9 = stop -> HAUT
+
+// Trame 2 = 'i' = 0x69 = 0b01101001 -> data poids faible en tete : 1,0,0,1,0,1,1,0
+// Demarre 10 bits plus tard : verifie que la file enchaine bien les trames.
+vStart2 := val(mcu.GP0.v, 0.01375, "UartLoopback_res.mat");     // start 2e trame -> BAS
+vB0second := val(mcu.GP0.v, 0.0145833, "UartLoopback_res.mat"); // b0 = 1 -> HAUT
+vB1second := val(mcu.GP0.v, 0.0154167, "UartLoopback_res.mat"); // b1 = 0 -> BAS
+vStop2 := val(mcu.GP0.v, 0.02125, "UartLoopback_res.mat");      // stop 2e trame -> HAUT
+
+// La broche RX doit bien voir la trame a travers le bouclage electrique.
+vRx := val(mcu.GP1.v, 0.00875, "UartLoopback_res.mat");
+
+// Critere principal : le temoin GP3 ne s'allume que si les DEUX octets relus
+// sont exactement ceux qui ont ete emis - preuve que toute la chaine a
+// fonctionne (serialisation C -> forme d'onde Modelica -> circuit ->
+// echantillonnage C -> file de reception -> uart.read() cote Python). Il
+// detecte aussi tout octet fantome : un faux bit de start decode avant la
+// premiere trame ferait echouer la comparaison.
+vTemoin := val(mcu.GP3.v, 0.04, "UartLoopback_res.mat");
+
+if vReposAvant > 2.0 and vReposApres > 2.0 and vStart < 0.5 and vB0 < 0.5 and vB3 > 2.0 and vB6 > 2.0 and vB7 < 0.5 and vStop > 2.0 and vStart2 < 0.5 and vB0second > 2.0 and vB1second < 0.5 and vStop2 > 2.0 and vRx > 2.0 and vTemoin > 2.0 then
+  print("PASS: verify_13_uart_loopback (repos avant=" + String(vReposAvant) + "V apres=" + String(vReposApres) + "V ; trame 'H' start=" + String(vStart) + "V b3=" + String(vB3) + "V b6=" + String(vB6) + "V stop=" + String(vStop) + "V ; trame 'i' enchainee start=" + String(vStart2) + "V b0=" + String(vB0second) + "V stop=" + String(vStop2) + "V ; RX=" + String(vRx) + "V, temoin GP3=" + String(vTemoin) + "V)\n");
+else
+  print("FAIL: verify_13_uart_loopback (repos avant=" + String(vReposAvant) + " apres=" + String(vReposApres) + " ; trame1 start=" + String(vStart) + " b0=" + String(vB0) + " b3=" + String(vB3) + " b6=" + String(vB6) + " b7=" + String(vB7) + " stop=" + String(vStop) + " ; trame2 start=" + String(vStart2) + " b0=" + String(vB0second) + " b1=" + String(vB1second) + " stop=" + String(vStop2) + " ; RX=" + String(vRx) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;

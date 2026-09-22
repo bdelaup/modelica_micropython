@@ -44,6 +44,15 @@ protected
   discrete Modelica.Units.SI.Frequency pwmFreq[9](each start = 0, each fixed = true) "Fréquence PWM par broche (Hz) ; 0 = pas en mode PWM (sortie numérique classique via pinBoolOut), cf. machine.PWM";
   discrete Real pwmDuty[9](each start = 0, each fixed = true) "Rapport cyclique PWM par broche (0-1), pertinent seulement si pwmFreq > 0";
   Modelica.Units.SI.Time pwmPeriod[9] "1/pwmFreq, avec plancher pour éviter une division par zéro quand pwmFreq = 0 (broche pas en PWM)";
+  discrete Integer uartTxPin(start = 0, fixed = true) "Broche affectée à l'émission série (0 = aucune) ; une fois affectée elle le reste, même hors trame, car la ligne au repos doit être HAUTE - cf. machine.UART";
+  discrete Boolean uartTxActive(start = false, fixed = true) "Une trame est en cours d'émission";
+  discrete Modelica.Units.SI.Time uartTxStart(start = 0, fixed = true) "Instant du front de start de la trame en cours";
+  discrete Modelica.Units.SI.Time uartBitDur(start = 1, fixed = true) "Durée d'un bit (1/baudrate)";
+  discrete Integer uartTxNumBits(start = 10, fixed = true) "Nombre de bits utiles de la trame (10 en 8N1)";
+  discrete Real uartTxBits[Interfaces.UART_MAX_FRAME_BITS](each start = 1, each fixed = true) "Motif de bits de la trame, déjà sérialisé côté C (start + data LSB first + stop) : Modelica ne fait que le rejouer dans le temps";
+  Real uartTxPhase[9] "Position temporelle dans la trame, en nombre de bits. Vaut -1 (constante) sur toute broche qui n'émet pas : floor() ne croise alors jamais rien, donc aucun événement parasite - même principe que le plancher de pwmPeriod";
+  Real uartTxBitIdx[9] "Index du bit en cours d'émission (-1 hors trame)";
+  Boolean uartTxLevel[9] "Niveau logique à émettre sur la broche (repos = haut)";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochain réveil demandé par le script (sleep) ou +inf si terminé";
   Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
@@ -83,7 +92,10 @@ equation
     pinNodeVoltage[i] = sns[i].v;
     pinBoolIn[i] = pinNodeVoltage[i] > (VIL + VIH)/2 "seuil logique médian, approximation v0";
     pwmPeriod[i] = 1/max(pwmFreq[i], 1e-6);
-    src[i].v = if pinIsOutputD[i] then (if pwmFreq[i] > 0 then (if mod(time, pwmPeriod[i]) < pwmDuty[i]*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "sortie PWM (créneau généré en continu par Modelica, cf. requirements.md) si pwmFreq > 0, sinon sortie numérique classique";
+    uartTxPhase[i] = if uartTxPin == i and uartTxActive then (time - uartTxStart)/uartBitDur else -1.0;
+    uartTxBitIdx[i] = floor(uartTxPhase[i]);
+    uartTxLevel[i] = if uartTxBitIdx[i] < -0.5 or uartTxBitIdx[i] > uartTxNumBits - 0.5 then true elseif uartTxBitIdx[i] < 0.5 then uartTxBits[1] > 0.5 elseif uartTxBitIdx[i] < 1.5 then uartTxBits[2] > 0.5 elseif uartTxBitIdx[i] < 2.5 then uartTxBits[3] > 0.5 elseif uartTxBitIdx[i] < 3.5 then uartTxBits[4] > 0.5 elseif uartTxBitIdx[i] < 4.5 then uartTxBits[5] > 0.5 elseif uartTxBitIdx[i] < 5.5 then uartTxBits[6] > 0.5 elseif uartTxBitIdx[i] < 6.5 then uartTxBits[7] > 0.5 elseif uartTxBitIdx[i] < 7.5 then uartTxBits[8] > 0.5 elseif uartTxBitIdx[i] < 8.5 then uartTxBits[9] > 0.5 elseif uartTxBitIdx[i] < 9.5 then uartTxBits[10] > 0.5 elseif uartTxBitIdx[i] < 10.5 then uartTxBits[11] > 0.5 elseif uartTxBitIdx[i] < 11.5 then uartTxBits[12] > 0.5 elseif uartTxBitIdx[i] < 12.5 then uartTxBits[13] > 0.5 else true "sélection du bit courant par if/elseif explicite plutôt qu'indexation par variable ; hors trame et au-delà du dernier bit utile : niveau de repos (haut)";
+    src[i].v = if pinIsOutputD[i] then (if uartTxPin == i then (if uartTxLevel[i] then VOH else VOL) elseif pwmFreq[i] > 0 then (if mod(time, pwmPeriod[i]) < pwmDuty[i]*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "trame série (générée en continu par Modelica à partir du motif de bits fourni par le C) si la broche est affectée à l'UART, sinon créneau PWM si pwmFreq > 0, sinon sortie numérique classique - cf. requirements.md";
     sw[i].control = not pinIsOutputD[i] "ouvert (haute impédance) si la broche est en entrée";
   end for;
   connect(sw[9].n, ledResistor.p);
@@ -91,7 +103,7 @@ equation
   connect(ledResistor.n, builtinLed.p);
   connect(builtinLed.n, GND);
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), change(pinBoolIn[2]) and not pre(pinIsOutputD[2]), change(pinBoolIn[3]) and not pre(pinIsOutputD[3]), change(pinBoolIn[4]) and not pre(pinIsOutputD[4]), change(pinBoolIn[5]) and not pre(pinIsOutputD[5]), change(pinBoolIn[6]) and not pre(pinIsOutputD[6]), change(pinBoolIn[7]) and not pre(pinIsOutputD[7]), change(pinBoolIn[8]) and not pre(pinIsOutputD[8]), change(pinBoolIn[9]) and not pre(pinIsOutputD[9])} then
-    (pinBoolOut, pinIsOutputD, pwmFreq, pwmDuty, Display0.seq, Display0.payload, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
+    (pinBoolOut, pinIsOutputD, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxActive, uartTxStart, uartBitDur, uartTxNumBits, uartTxBits, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
     Display0.charCode = Internal.StringToCharCodes(Display0.payload, Interfaces.DISPLAY_COLS) "codes ASCII derives de Display0.payload (String, non stockable dans les resultats), pour permettre au périphérique d'affichage connecté d'animer le texte reellement recu sur son icone - cf. Internal.StringToCharCodes";
   end when;
   annotation(

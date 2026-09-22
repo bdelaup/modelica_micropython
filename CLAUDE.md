@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## État du dépôt
 
-La v0 (preuve de concept) est implémentée et vérifiée : bibliothèque OpenModelica `MicroPythonMCU/` avec un modèle `MCU` fonctionnel (GPIO numériques + ADC + PWM + interruptions/minuteurs + import de modules auxiliaires + liaison vers un périphérique d'affichage pédagogique), un runtime CPython embarqué en C, 13 modèles d'exemple et 12 scénarios de vérification qui passent (`PASS`). Le cadrage détaillé (besoin, choix d'architecture avec alternatives, restrictions v0, TODO vers une version exhaustive) reste dans `requirements.md`, qui est la source de vérité — le consulter avant de modifier le périmètre ou l'architecture. Une documentation d'implémentation illustrée (arborescence, intégration Python/OpenModelica, cycle de vie) vit dans `docs/`.
+La v0 (preuve de concept) est implémentée et vérifiée : bibliothèque OpenModelica `MicroPythonMCU/` avec un modèle `MCU` fonctionnel (GPIO numériques + ADC + PWM + interruptions/minuteurs + UART série électrique réelle + import de modules auxiliaires + liaison vers un périphérique d'affichage pédagogique), un runtime CPython embarqué en C, 14 modèles d'exemple et 13 scénarios de vérification qui passent (`PASS`). Le cadrage détaillé (besoin, choix d'architecture avec alternatives, restrictions v0, TODO vers une version exhaustive) reste dans `requirements.md`, qui est la source de vérité — le consulter avant de modifier le périmètre ou l'architecture. Une documentation d'implémentation illustrée (arborescence, intégration Python/OpenModelica, cycle de vie) vit dans `docs/`.
 
 ## Projet
 
@@ -17,11 +17,11 @@ Bibliothèque OpenModelica fournissant un modèle de microcontrôleur programmab
 ```
 MicroPythonMCU/
 ├── package.mo, package.order   -- déclaration du package racine
-├── MCU.mo                      -- le modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique OU PWM, au choix du script) + liaison Display0 vers un périphérique d'affichage pédagogique, pont électrique Analog, LED embarquée GP25 interne (même pont, sans connecteur externe), import de modules auxiliaires (addScriptDirToPath/libraryPath), orchestration de la synchro
-├── Interfaces/                 -- constantes de niveaux de tension (VOH, VOL, VIH, VIL, ROut) — approximation RP2040 ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique)
-├── Internal/                   -- ExternalObject PyRuntime (constructor/destructor, +addScriptDirToPath/libraryPath) + PyRuntime_sync (point de synchro, transmet pinBoolIn/pinAnalogIn en entrée, pwmFreq/pwmDuty/displaySeq/displayPayload en sortie) + StringToCharCodes (utilitaire String -> Integer[n] de codes ASCII, pour afficher du texte sur une icône)
+├── MCU.mo                      -- le modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique, PWM OU série UART, au choix du script) + liaison Display0 vers un périphérique d'affichage pédagogique, pont électrique Analog, LED embarquée GP25 interne (même pont, sans connecteur externe), import de modules auxiliaires (addScriptDirToPath/libraryPath), orchestration de la synchro
+├── Interfaces/                 -- constantes de niveaux de tension (VOH, VOL, VIH, VIL, ROut) — approximation RP2040 ; UART_MAX_FRAME_BITS (aligné sur le C) ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique)
+├── Internal/                   -- ExternalObject PyRuntime (constructor/destructor, +addScriptDirToPath/libraryPath) + PyRuntime_sync (point de synchro, transmet pinBoolIn/pinAnalogIn en entrée, pwmFreq/pwmDuty/displaySeq/displayPayload/uartTx* en sortie) + StringToCharCodes (utilitaire String -> Integer[n] de codes ASCII, pour afficher du texte sur une icône)
 ├── Peripherals/                -- composants connectables à MCU : LED.mo (icône réactive au courant, utilisée par MCU en LED embarquée et par les exemples) ; Display.mo (périphérique d'affichage pédagogique, écriture seule, affiche le texte réellement reçu sur l'icône + retour par print())
-├── Examples/                   -- un modèle par scénario de vérification (BasicBlink, SleepCompression, InputReactivity, ScriptError, PinEcho, AdcRead, PwmLed, ImportDemo, PinIrq, TimerToggle, DisplayDemo) + LedChaser (chenillard bidirectionnel, démonstrateur)
+├── Examples/                   -- un modèle par scénario de vérification (BasicBlink, SleepCompression, InputReactivity, ScriptError, PinEcho, AdcRead, PwmLed, ImportDemo, PinIrq, TimerToggle, DisplayDemo, UartLoopback) + LedChaser (chenillard bidirectionnel, démonstrateur)
 └── Resources/
     ├── Include/                -- PyRuntimeImpl.c/.h (implémentation C réelle) + en-têtes Python 3.12 vendorés
     ├── Library/win64/          -- libpython312.a, import lib régénérée pour le compilateur MinGW d'OpenModelica
@@ -40,11 +40,11 @@ requirements.md                  -- source de vérité du cadrage et des décisi
 
 ## Build, test, vérification
 
-Pas de manifeste de dépendances ni de build séparé : `omc` compile `PyRuntimeImpl.c` à la volée via les annotations `Include` du modèle. Les 12 scénarios de vérification de `requirements.md` sont exécutables indépendamment de toute session interactive :
+Pas de manifeste de dépendances ni de build séparé : `omc` compile `PyRuntimeImpl.c` à la volée via les annotations `Include` du modèle. Les 13 scénarios de vérification de `requirements.md` sont exécutables indépendamment de toute session interactive :
 
 ```
 cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos        # et verify_02_.../verify_12_...
+omc verify_01_basic_blink.mos        # et verify_02_.../verify_13_...
 ```
 
 Nécessite `omc` et le toolchain MinGW d'une installation OpenModelica sur le `PATH` (ex. `<OPENMODELICAHOME>/tools/msys/ucrt64/bin`), et `OPENMODELICAHOME` positionné. Chaque script affiche `PASS`/`FAIL` sur sa propre ligne. Les artefacts de compilation générés (`.exe`, `.o`, `.c` générés, `*_res.mat`, etc.) sont couverts par `.gitignore` — ne pas les committer. Détails, tableau des scénarios et prérequis pratiques (dont un piège de `PATH` déjà rencontré) : `docs/tests.md`.

@@ -11,3 +11,4 @@ ScriptError
 PinIrq
 TimerToggle
 DisplayDemo
+UartLoopback

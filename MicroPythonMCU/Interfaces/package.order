@@ -4,5 +4,6 @@ VIH
 VIL
 ROut
 DISPLAY_COLS
+UART_MAX_FRAME_BITS
 DisplayLinkOutput
 DisplayLinkInput

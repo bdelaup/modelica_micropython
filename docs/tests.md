@@ -25,6 +25,10 @@ omc verify_06_pin_echo.mos
 omc verify_07_adc_read.mos
 omc verify_08_pwm.mos
 omc verify_09_import.mos
+omc verify_10_pin_irq.mos
+omc verify_11_timer.mos
+omc verify_12_display.mos
+omc verify_13_uart_loopback.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -41,6 +45,10 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_07_adc_read.mos` | `Examples.AdcRead` | Entrée analogique (`machine.ADC`) | `GP1` reflète le pont diviseur (~2,2 V), `GP0` (LED) s'allume (seuil franchi) |
 | `verify_08_pwm.mos` | `Examples.PwmLed` | Sortie PWM (`machine.PWM`) | `GP0` suit le créneau attendu (haut/bas conformes à la période/rapport cyclique), y compris bien après la fin du script |
 | `verify_09_import.mos` | `Examples.ImportDemo` | Import de modules auxiliaires (`addScriptDirToPath`/`libraryPath`) | `GP0`/`GP1` (LED) s'allument, confirmant que les deux imports (dossier du script, bibliothèque partagée) ont réussi |
+| `verify_10_pin_irq.mos` | `Examples.PinIrq` | Interruption sur broche (`machine.Pin.irq`) | `GP0` bascule au front montant, reste inchangée au front descendant (filtrage par sens de front) |
+| `verify_11_timer.mos` | `Examples.TimerToggle` | Minuteur logiciel (`machine.Timer`) | `GP0` bascule toutes les 500 ms pendant un `sleep` long, sans l'écourter (« pitstop ») |
+| `verify_12_display.mos` | `Examples.DisplayDemo` | Périphérique d'affichage pédagogique (`machine.Display`) | `seq` 0→1→2, `charCode` conformes au texte, défilement 20×2 (ancien message en ligne 2) |
+| `verify_13_uart_loopback.mos` | `Examples.UartLoopback` | Liaison série électrique réelle bouclée (`machine.UART`) | Trame 8N1 correcte sur `GP0` (start bas, données poids faible en tête, stop/repos hauts), deux trames enchaînées sans trou, témoin `GP3` allumé (octets relus intacts) |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

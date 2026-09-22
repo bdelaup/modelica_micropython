@@ -4,6 +4,7 @@
    contre un script qui ne rend jamais la main"). Windows uniquement (v0). */
 
 #include "PyRuntimeImpl.h"
+#define PY_SSIZE_T_CLEAN   /* exige par l'API C Python pour les formats "#" (cf. native_uart_write, qui recoit des bytes + longueur) - doit preceder Python.h */
 #include <Python.h>
 #include <windows.h>
 #include <process.h>
@@ -25,6 +26,15 @@
 #define IRQ_TRIGGER_FALLING 2
 
 #define DISPLAY_MSG_MAX_LEN 128      /* tres au-dessus des 40 caracteres d'un afficheur 20x2, buffer fixe modeste (meme esprit que g_stdout_buf) */
+
+/* machine.UART : un seul peripherique (id 0) en v0, sur deux broches GPx au choix du script. */
+#define UART_TX_BUF_LEN 64           /* FIFO d'emission (le FIFO materiel du vrai RP2040 fait 32 octets) */
+#define UART_RX_BUF_LEN 64           /* FIFO de reception, meme dimensionnement */
+#define UART_MAX_FRAME_BITS 13       /* 1 start + 9 data + 1 parite + 2 stop : dimensionne pour un futur format parametrable, seul 8N1 (10 bits) est emis en v0 */
+#define UART_MIN_BAUD 50
+#define UART_MAX_BAUD 115200         /* garde-fou contre une tempete d'evenements Modelica (un evenement par front de bit), meme esprit que TIMER_MIN_PERIOD */
+#define UART_RX_IDLE 0
+#define UART_RX_RECEIVING 1
 
 struct PyRuntimeHandle {
     char* scriptPath;
@@ -67,6 +77,34 @@ struct PyRuntimeHandle {
        pédagogique". */
     int display_seq;
     char display_payload[DISPLAY_MSG_MAX_LEN + 1];
+
+    /* machine.UART : contrairement a Display, cet etat est ecrit des DEUX cotes -
+       par les natives (uart_init/uart_write) ET par PyRuntime_sync, qui fait
+       avancer l'emission et le decodage de la reception a chaque point de synchro.
+       La forme d'onde elle-meme est generee en continu par Modelica a partir de
+       uart_tx_bits/uart_tx_start_time (motif PWM), pas front par front depuis ici.
+       Cf. requirements.md, decision "UART electrique reel". */
+    int uart_configured;
+    int uart_tx_pin;             /* index interne 0-8, -1 si non affecte */
+    int uart_rx_pin;
+    double uart_bit_dur;         /* 1/baudrate, en secondes */
+    int uart_rx_claimed[NUM_PINS]; /* broche affectee a la reception UART : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO (fidele au materiel reel), cf. PyRuntime_sync */
+
+    unsigned char uart_tx_buf[UART_TX_BUF_LEN];
+    int uart_tx_head, uart_tx_tail;   /* file circulaire : head = prochaine ecriture, tail = prochaine lecture */
+    int uart_tx_active;               /* une trame est en cours d'emission */
+    double uart_tx_start_time;        /* instant du front de start de la trame en cours */
+    double uart_tx_end_time;          /* instant de fin de la trame en cours (rechargement de la suivante) */
+    double uart_tx_bits[UART_MAX_FRAME_BITS]; /* motif de bits complet (start + data + stop), publie tel quel vers Modelica */
+    int uart_tx_num_bits;
+
+    unsigned char uart_rx_buf[UART_RX_BUF_LEN];
+    int uart_rx_head, uart_rx_tail;
+    int uart_rx_state;                /* UART_RX_IDLE | UART_RX_RECEIVING */
+    int uart_rx_last_level;           /* niveau vu au dernier point de synchro : le start se detecte sur un FRONT descendant, pas sur un niveau bas (cf. uart_rx_step) */
+    double uart_rx_next_sample;       /* prochain instant d'echantillonnage, remonte a Modelica via nextWakeTime */
+    int uart_rx_bit_index;            /* 0-7 : bit de donnee en cours */
+    unsigned int uart_rx_shift;       /* registre a decalage */
 
     int script_done;
     int script_error;
@@ -147,6 +185,138 @@ static double earliest_timer_deadline(struct PyRuntimeHandle* h) {
         if (h->timer_active[i] && h->timer_next_fire[i] < best) {
             best = h->timer_next_fire[i];
         }
+    }
+    return best;
+}
+
+/* --- machine.UART : files circulaires TX/RX et echeances (h->cs deja tenu par l'appelant) ---
+   Files a taille fixe dans le handle, comme le reste de l'etat des peripheriques
+   (pas de malloc ; PyRuntime_destroy est un no-op assume, cf. requirements.md). */
+
+static int uart_tx_count(struct PyRuntimeHandle* h) {
+    return (h->uart_tx_head - h->uart_tx_tail + UART_TX_BUF_LEN) % UART_TX_BUF_LEN;
+}
+
+static int uart_rx_count(struct PyRuntimeHandle* h) {
+    return (h->uart_rx_head - h->uart_rx_tail + UART_RX_BUF_LEN) % UART_RX_BUF_LEN;
+}
+
+/* Retourne 0 si la file est pleine (octet perdu, comme un vrai FIFO materiel qui deborde). */
+static int uart_tx_push(struct PyRuntimeHandle* h, unsigned char byte) {
+    int next = (h->uart_tx_head + 1) % UART_TX_BUF_LEN;
+    if (next == h->uart_tx_tail) {
+        return 0;
+    }
+    h->uart_tx_buf[h->uart_tx_head] = byte;
+    h->uart_tx_head = next;
+    return 1;
+}
+
+static int uart_rx_push(struct PyRuntimeHandle* h, unsigned char byte) {
+    int next = (h->uart_rx_head + 1) % UART_RX_BUF_LEN;
+    if (next == h->uart_rx_tail) {
+        return 0;
+    }
+    h->uart_rx_buf[h->uart_rx_head] = byte;
+    h->uart_rx_head = next;
+    return 1;
+}
+
+/* Serialise un octet en motif de bits 8N1 (start=0, 8 data LSB first, stop=1) et
+   demarre la trame a l'instant 'now'. C'est LE seul endroit qui connait le format
+   de trame : passer a un format parametrable (parite, 7/9 bits, 2 stop) ne demande
+   de toucher ni Modelica ni le shim Python. */
+static void uart_tx_begin_frame(struct PyRuntimeHandle* h, unsigned char byte, double now) {
+    int i;
+    h->uart_tx_bits[0] = 0.0;                      /* start */
+    for (i = 0; i < 8; i++) {
+        h->uart_tx_bits[1 + i] = ((byte >> i) & 1) ? 1.0 : 0.0;   /* data, LSB first */
+    }
+    h->uart_tx_bits[9] = 1.0;                      /* stop */
+    for (i = 10; i < UART_MAX_FRAME_BITS; i++) {
+        h->uart_tx_bits[i] = 1.0;                  /* inutilise en 8N1 : niveau de repos */
+    }
+    h->uart_tx_num_bits = 10;
+    h->uart_tx_start_time = now;
+    h->uart_tx_end_time = now + 10 * h->uart_bit_dur;
+    h->uart_tx_active = 1;
+}
+
+/* Fait avancer l'emission : clot la trame arrivee a echeance et charge l'octet
+   suivant de la file. Appelee par PyRuntime_sync a chaque point de synchro. */
+static void uart_tx_advance(struct PyRuntimeHandle* h, double now) {
+    while (h->uart_tx_active && now + PYRUNTIME_EPS >= h->uart_tx_end_time) {
+        if (uart_tx_count(h) > 0) {
+            unsigned char next = h->uart_tx_buf[h->uart_tx_tail];
+            h->uart_tx_tail = (h->uart_tx_tail + 1) % UART_TX_BUF_LEN;
+            /* enchainement sans trou : la trame suivante demarre pile a la fin de la precedente */
+            uart_tx_begin_frame(h, next, h->uart_tx_end_time);
+        } else {
+            h->uart_tx_active = 0;   /* file vide : la ligne repasse au repos (niveau haut) */
+        }
+    }
+}
+
+/* Decodage de la reception : machine a etats echantillonnant la ligne au MILIEU
+   de chaque bit. Entierement cote C - Modelica n'a aucune machine a etats a
+   porter, il se contente de rappeler PyRuntime_sync aux instants demandes via
+   nextWakeTime (meme mecanisme que machine.Timer). */
+static void uart_rx_step(struct PyRuntimeHandle* h, double now, const int* pinBoolIn) {
+    if (!h->uart_configured || h->uart_rx_pin < 0) {
+        return;
+    }
+    int level = pinBoolIn[h->uart_rx_pin];
+    if (h->uart_rx_state == UART_RX_IDLE) {
+        /* Le start se detecte sur un FRONT descendant, jamais sur un simple
+           niveau bas : au tout premier point de synchro, la ligne n'est pas
+           encore pilotee (le script n'a pas eu le temps de configurer l'UART)
+           et vaut 0 V - un test sur le niveau y verrait un bit de start et
+           fabriquerait un octet fantome. Exiger le front impose d'avoir vu la
+           ligne au repos (niveau haut) au moins une fois avant d'ecouter, ce
+           que fait aussi un vrai recepteur UART. */
+        if (h->uart_rx_last_level && !level) {
+            /* Le premier bit de donnees se lit 1.5 duree de bit plus tard
+               (moitie du start + moitie du bit 0). */
+            h->uart_rx_state = UART_RX_RECEIVING;
+            h->uart_rx_bit_index = 0;
+            h->uart_rx_shift = 0;
+            h->uart_rx_next_sample = now + 1.5 * h->uart_bit_dur;
+        }
+        h->uart_rx_last_level = level;
+        return;
+    }
+    h->uart_rx_last_level = level;
+    /* En reception on ne se fie qu'aux echeances, jamais aux fronts. */
+    while (h->uart_rx_state == UART_RX_RECEIVING && now + PYRUNTIME_EPS >= h->uart_rx_next_sample) {
+        if (h->uart_rx_bit_index < 8) {
+            if (level) {
+                h->uart_rx_shift |= (1u << h->uart_rx_bit_index);   /* LSB first */
+            }
+            h->uart_rx_bit_index++;
+            h->uart_rx_next_sample += h->uart_bit_dur;
+        } else {
+            /* Bit de stop : la ligne doit etre revenue au niveau haut. Attendre
+               ce bit avant de repasser au repos est indispensable - sinon un
+               dernier bit de donnees a 0 serait relu comme un nouveau bit de
+               start. Trame invalide (stop bas) = octet ignore, simplification v0. */
+            if (level) {
+                uart_rx_push(h, (unsigned char) (h->uart_rx_shift & 0xFF));
+            }
+            h->uart_rx_state = UART_RX_IDLE;
+        }
+    }
+}
+
+static double earliest_uart_deadline(struct PyRuntimeHandle* h) {
+    double best = 1.0e300;
+    if (!h->uart_configured) {
+        return best;
+    }
+    if (h->uart_tx_active && h->uart_tx_end_time < best) {
+        best = h->uart_tx_end_time;
+    }
+    if (h->uart_rx_state == UART_RX_RECEIVING && h->uart_rx_next_sample < best) {
+        best = h->uart_rx_next_sample;
     }
     return best;
 }
@@ -449,6 +619,159 @@ static PyObject* native_display_write(PyObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* --- machine.UART : liaison serie electrique reelle sur deux broches GPx ---
+   L'emission est generee en continu par Modelica a partir du motif de bits publie
+   ici (comme le PWM, et comme le vrai peripherique UART du RP2040 qui tourne
+   independamment du CPU une fois programme) ; la reception est decodee ici meme,
+   dans PyRuntime_sync, par echantillonnage au milieu de chaque bit. */
+
+/* Un seul id supporte en v0 - meme esprit que resolve_display_index. */
+static int resolve_uart_index(int id) {
+    if (id == 0) return 0;
+    return -1;
+}
+
+static PyObject* native_uart_init(PyObject* self, PyObject* args) {
+    int id, tx_id, rx_id;
+    double baudrate;
+    if (!PyArg_ParseTuple(args, "iiid", &id, &tx_id, &rx_id, &baudrate)) return NULL;
+    if (resolve_uart_index(id) < 0) {
+        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        return NULL;
+    }
+    int tx = resolve_pin_index(tx_id);
+    int rx = resolve_pin_index(rx_id);
+    if (tx < 0 || tx >= LED_PIN_INDEX) {
+        PyErr_Format(PyExc_ValueError, "broche TX %d non supportee (0-%d attendu)", tx_id, LED_PIN_INDEX - 1);
+        return NULL;
+    }
+    if (rx < 0 || rx >= LED_PIN_INDEX) {
+        PyErr_Format(PyExc_ValueError, "broche RX %d non supportee (0-%d attendu)", rx_id, LED_PIN_INDEX - 1);
+        return NULL;
+    }
+    if (tx == rx) {
+        PyErr_SetString(PyExc_ValueError, "TX et RX doivent etre deux broches differentes");
+        return NULL;
+    }
+    if (baudrate < UART_MIN_BAUD || baudrate > UART_MAX_BAUD) {
+        /* PyErr_Format ne supporte pas %f (cf. native_pwm_set_freq) */
+        char baud_str[64];
+        snprintf(baud_str, sizeof(baud_str), "%g", baudrate);
+        PyErr_Format(PyExc_ValueError, "baudrate %s hors bornes (%d-%d)", baud_str, UART_MIN_BAUD, UART_MAX_BAUD);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    g_current->uart_configured = 1;
+    g_current->uart_tx_pin = tx;
+    g_current->uart_rx_pin = rx;
+    g_current->uart_bit_dur = 1.0 / baudrate;
+    g_current->pin_is_output[tx] = 1;   /* la broche TX est prise par le peripherique, comme sur le vrai RP2040 */
+    g_current->pin_is_output[rx] = 0;
+    g_current->uart_rx_claimed[rx] = 1; /* ses fronts ne reveillent plus le script (cf. PyRuntime_sync) */
+    g_current->uart_rx_state = UART_RX_IDLE;
+    g_current->uart_tx_active = 0;
+    g_current->uart_tx_head = g_current->uart_tx_tail = 0;
+    g_current->uart_rx_head = g_current->uart_rx_tail = 0;
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject* native_uart_write(PyObject* self, PyObject* args) {
+    int id;
+    const char* data;
+    Py_ssize_t len;
+    /* "y#" : bytes + longueur. Pas "s", qui s'arrete au premier NUL et refuse les bytes. */
+    if (!PyArg_ParseTuple(args, "iy#", &id, &data, &len)) return NULL;
+    if (resolve_uart_index(id) < 0) {
+        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        return NULL;
+    }
+    if (!g_current->uart_configured) {
+        PyErr_SetString(PyExc_RuntimeError, "UART non initialise");
+        return NULL;
+    }
+    Py_ssize_t i;
+    long written = 0;
+    EnterCriticalSection(&g_current->cs);
+    for (i = 0; i < len; i++) {
+        if (!uart_tx_push(g_current, (unsigned char) data[i])) {
+            break;   /* file pleine : les octets restants sont perdus, comme un FIFO materiel qui deborde */
+        }
+        written++;
+    }
+    /* Si rien n'est en cours d'emission, demarrer tout de suite la premiere trame. */
+    if (!g_current->uart_tx_active && uart_tx_count(g_current) > 0) {
+        unsigned char first = g_current->uart_tx_buf[g_current->uart_tx_tail];
+        g_current->uart_tx_tail = (g_current->uart_tx_tail + 1) % UART_TX_BUF_LEN;
+        uart_tx_begin_frame(g_current, first, g_current->sim_time);
+    }
+    LeaveCriticalSection(&g_current->cs);
+    /* Non bloquant : le temps n'avance pas ici, Modelica joue la forme d'onde. */
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    return PyLong_FromLong(written);
+}
+
+static PyObject* native_uart_any(PyObject* self, PyObject* args) {
+    int id;
+    if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
+    if (resolve_uart_index(id) < 0) {
+        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        return NULL;
+    }
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    EnterCriticalSection(&g_current->cs);
+    long n = uart_rx_count(g_current);
+    LeaveCriticalSection(&g_current->cs);
+    return PyLong_FromLong(n);
+}
+
+/* n < 0 : lire tout ce qui est disponible. Retourne None si rien (comme MicroPython). */
+static PyObject* native_uart_read(PyObject* self, PyObject* args) {
+    int id, n;
+    if (!PyArg_ParseTuple(args, "ii", &id, &n)) return NULL;
+    if (resolve_uart_index(id) < 0) {
+        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        return NULL;
+    }
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    char out[UART_RX_BUF_LEN];
+    int count = 0;
+    EnterCriticalSection(&g_current->cs);
+    int avail = uart_rx_count(g_current);
+    int want = (n < 0 || n > avail) ? avail : n;
+    while (count < want) {
+        out[count++] = (char) g_current->uart_rx_buf[g_current->uart_rx_tail];
+        g_current->uart_rx_tail = (g_current->uart_rx_tail + 1) % UART_RX_BUF_LEN;
+    }
+    LeaveCriticalSection(&g_current->cs);
+    if (count == 0) {
+        Py_RETURN_NONE;
+    }
+    return PyBytes_FromStringAndSize(out, count);
+}
+
+static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
+    int id;
+    if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
+    if (resolve_uart_index(id) < 0) {
+        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    if (g_current->uart_configured && g_current->uart_rx_pin >= 0) {
+        g_current->uart_rx_claimed[g_current->uart_rx_pin] = 0;
+    }
+    g_current->uart_configured = 0;
+    g_current->uart_tx_active = 0;
+    g_current->uart_rx_state = UART_RX_IDLE;
+    g_current->uart_tx_pin = -1;
+    g_current->uart_rx_pin = -1;
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
 /* --- machine.Timer --- */
 
 static PyObject* native_timer_new(PyObject* self, PyObject* args) {
@@ -527,6 +850,11 @@ static PyMethodDef native_methods[] = {
     {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Configure le rapport cyclique PWM (0-1) d'une broche"},
     {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Arrete le PWM sur une broche (retombe en sortie numerique classique)"},
     {"display_write", native_display_write, METH_VARARGS, "Transmet un texte au périphérique d'affichage pédagogique connecté (livraison instantanee)"},
+    {"uart_init", native_uart_init, METH_VARARGS, "Configure l'UART (broches TX/RX, baudrate) et prend les broches"},
+    {"uart_write", native_uart_write, METH_VARARGS, "Met des octets dans la file d'emission (non bloquant), retourne le nombre accepte"},
+    {"uart_any", native_uart_any, METH_VARARGS, "Nombre d'octets recus en attente de lecture"},
+    {"uart_read", native_uart_read, METH_VARARGS, "Lit jusqu'a n octets recus (n < 0 = tout), None si rien"},
+    {"uart_deinit", native_uart_deinit, METH_VARARGS, "Libere l'UART et ses broches"},
     {"timer_new", native_timer_new, METH_VARARGS, "Alloue un slot de Timer() dans le pool fixe"},
     {"timer_init", native_timer_init, METH_VARARGS, "Arme un Timer (periode, mode, callback)"},
     {"timer_deinit", native_timer_deinit, METH_VARARGS, "Arrete et libere un Timer"},
@@ -617,6 +945,45 @@ static const char* SHIM_BOOTSTRAP =
     "    def write(self, text):\n"
     "        _native.display_write(self.id, text if isinstance(text, str) else str(text))\n"
     "\n"
+    /* UART : bits/parity/stop absorbes par **kwargs, acceptes mais sans effet -
+       seul 8N1 est emis en v0 (meme approche que pull= sur Pin). */
+    "class UART:\n"
+    "    def __init__(self, id=0, baudrate=1200, tx=None, rx=None, **kwargs):\n"
+    "        self.id = id\n"
+    "        self.init(baudrate, tx=tx, rx=rx, **kwargs)\n"
+    "    def init(self, baudrate=1200, tx=None, rx=None, **kwargs):\n"
+    "        if tx is None or rx is None:\n"
+    "            raise ValueError('tx et rx doivent etre precises (ex. UART(0, tx=Pin(0), rx=Pin(1)))')\n"
+    "        if isinstance(tx, Pin):\n"
+    "            tx = tx.id\n"
+    "        if isinstance(rx, Pin):\n"
+    "            rx = rx.id\n"
+    "        self._baudrate = baudrate\n"
+    "        self.tx = tx\n"
+    "        self.rx = rx\n"
+    "        _native.uart_init(self.id, tx, rx, float(baudrate))\n"
+    "    def write(self, data):\n"
+    "        if isinstance(data, str):\n"
+    "            data = data.encode()\n"
+    "        elif not isinstance(data, (bytes, bytearray)):\n"
+    "            data = str(data).encode()\n"
+    "        return _native.uart_write(self.id, bytes(data))\n"
+    "    def any(self):\n"
+    "        return _native.uart_any(self.id)\n"
+    "    def read(self, n=None):\n"
+    "        return _native.uart_read(self.id, -1 if n is None else int(n))\n"
+    "    def readline(self):\n"
+    "        buf = b''\n"
+    "        while True:\n"
+    "            chunk = _native.uart_read(self.id, 1)\n"
+    "            if chunk is None:\n"
+    "                return buf if buf else None\n"
+    "            buf += chunk\n"
+    "            if chunk == b'\\n':\n"
+    "                return buf\n"
+    "    def deinit(self):\n"
+    "        _native.uart_deinit(self.id)\n"
+    "\n"
     "class Timer:\n"
     "    ONE_SHOT = 0\n"
     "    PERIODIC = 1\n"
@@ -632,6 +999,7 @@ static const char* SHIM_BOOTSTRAP =
     "_machine.ADC = ADC\n"
     "_machine.PWM = PWM\n"
     "_machine.Display = Display\n"
+    "_machine.UART = UART\n"
     "_machine.Timer = Timer\n"
     "sys.modules['machine'] = _machine\n"
     "\n"
@@ -822,6 +1190,10 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     InitializeCriticalSection(&handle->cs);
     InitializeConditionVariable(&handle->cv);
     handle->turn = TURN_MODELICA;
+    /* calloc met tout a zero, or 0 est un index de broche valide : les deux
+       broches UART doivent donc etre remises explicitement a "non affectee". */
+    handle->uart_tx_pin = -1;
+    handle->uart_rx_pin = -1;
 
     /* Le shim doit exister dans l'interprete AVANT que le script ne fasse
        "import machine"/"import time" sur le thread worker. */
@@ -861,11 +1233,32 @@ void PyRuntime_destroy(void* handle_) {
     (void) handle_;
 }
 
+/* Publie l'etat UART vers Modelica, qui genere la forme d'onde en continu a
+   partir de ces valeurs. uartTxPin vaut 0 tant qu'aucune broche n'est affectee
+   en TX ; une fois affectee, elle le reste meme hors trame (la ligne au repos
+   doit etre HAUTE, pas retomber sur pinBoolOut qui vaut bas par defaut). */
+static void uart_publish(struct PyRuntimeHandle* h, int* uartTxPinOut, int* uartTxActiveOut,
+                          double* uartTxStartOut, double* uartBitDurOut,
+                          int* uartTxNumBitsOut, double* uartTxBitsOut) {
+    int k;
+    *uartTxPinOut = (h->uart_configured && h->uart_tx_pin >= 0) ? h->uart_tx_pin + 1 : 0;
+    *uartTxActiveOut = h->uart_tx_active;
+    *uartTxStartOut = h->uart_tx_start_time;
+    *uartBitDurOut = (h->uart_bit_dur > 0) ? h->uart_bit_dur : 1.0;
+    *uartTxNumBitsOut = h->uart_tx_num_bits;
+    for (k = 0; k < UART_MAX_FRAME_BITS; k++) {
+        uartTxBitsOut[k] = h->uart_tx_bits[k];
+    }
+}
+
 void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
+                     int* uartTxPinOut, int* uartTxActiveOut,
+                     double* uartTxStartOut, double* uartBitDurOut,
+                     int* uartTxNumBitsOut, double* uartTxBitsOut,
                      double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
@@ -880,7 +1273,16 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
         *displaySeqOut = h->display_seq;
         *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
         strcpy((char*) *displayPayloadOut, h->display_payload);
-        *nextWakeTime = 1.0e300; /* pas d'autre reveil attendu */
+        /* Le script est fini mais l'UART, comme le PWM, continue de tourner en
+           autonome : la file d'emission doit finir de se vider. Pas de verrou
+           ici, le worker est mort (meme raison que le reste de cette branche). */
+        uart_tx_advance(h, currentTime);
+        uart_rx_step(h, currentTime, pinBoolIn);
+        uart_publish(h, uartTxPinOut, uartTxActiveOut, uartTxStartOut, uartBitDurOut,
+                     uartTxNumBitsOut, uartTxBitsOut);
+        /* Seule une echeance UART peut encore demander un reveil apres la fin
+           du script (trame suivante a charger, bit a echantillonner). */
+        *nextWakeTime = earliest_uart_deadline(h);
         return;
     }
 
@@ -900,7 +1302,14 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     for (i = 0; i < NUM_PINS; i++) {
         int old_val = h->pin_sensed_value[i];
         int new_val = pinBoolIn[i];
-        if (!h->pin_is_output[i] && old_val != new_val) {
+        /* Une broche affectee a la reception UART est exclue : ses fronts
+           appartiennent au peripherique serie, pas au script. Sans cette
+           exclusion, chaque front de bit recu rendrait le reveil "authentique"
+           (cf. yield_to_modelica) et ferait retourner en avance le sleep() en
+           cours - a 1200 bauds, une dizaine de sleep() casses par octet recu.
+           Fidele au materiel reel, ou une broche prise par le peripherique UART
+           ne genere plus d'interruption GPIO. */
+        if (!h->pin_is_output[i] && !h->uart_rx_claimed[i] && old_val != new_val) {
             input_changed = 1;
             if (h->pin_irq_handler[i] != NULL) {
                 int edge = new_val ? IRQ_TRIGGER_RISING : IRQ_TRIGGER_FALLING;
@@ -913,6 +1322,14 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
         h->pin_analog_value[i] = pinAnalogIn[i];
     }
     h->wake_had_input_change = input_changed;
+
+    /* Fait avancer le peripherique UART : l'emission passe a la trame suivante
+       quand la courante arrive a echeance, et la reception echantillonne la
+       ligne au milieu de chaque bit. Les deux se cadencent via nextWakeTime
+       (cf. earliest_uart_deadline), sans jamais reveiller le worker : le script
+       recupere les octets a son rythme, par uart.any()/uart.read(). */
+    uart_tx_advance(h, currentTime);
+    uart_rx_step(h, currentTime, pinBoolIn);
 
     /* Un Timer actif dont l'echeance est atteinte doit aussi faire rendre la
        main au worker (sinon son callback ne se declencherait jamais) - meme
@@ -967,6 +1384,9 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     *displaySeqOut = h->display_seq;
     *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
     strcpy((char*) *displayPayloadOut, h->display_payload);
+    /* Publie apres le drain : le script a pu lancer une emission pendant celui-ci. */
+    uart_publish(h, uartTxPinOut, uartTxActiveOut, uartTxStartOut, uartBitDurOut,
+                 uartTxNumBitsOut, uartTxBitsOut);
     int done = h->script_done;
     int error = h->script_error;
     char* error_message = h->error_message;
@@ -975,11 +1395,19 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     if (next_timer < wake_at) {
         wake_at = next_timer;
     }
+    /* Meme raison : une emission/reception a pu demarrer pendant le drain. */
+    double next_uart = earliest_uart_deadline(h);
+    double uart_only = next_uart;
+    if (next_uart < wake_at) {
+        wake_at = next_uart;
+    }
     LeaveCriticalSection(&h->cs);
 
     if (error) {
         ModelicaFormatError("PyRuntime (%s): %s", h->scriptPath, error_message ? error_message : "erreur inconnue");
         return;
     }
-    *nextWakeTime = done ? 1.0e300 : wake_at;
+    /* Script termine : seul l'UART peut encore demander un reveil (il finit de
+       vider sa file en autonome, comme le PWM continue de tourner). */
+    *nextWakeTime = done ? uart_only : wake_at;
 }

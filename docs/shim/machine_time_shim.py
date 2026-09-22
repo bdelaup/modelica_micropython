@@ -91,6 +91,52 @@ class Display:
     def write(self, text):
         _native.display_write(self.id, text if isinstance(text, str) else str(text))
 
+class UART:
+    # bits/parity/stop sont absorbes par **kwargs : acceptes pour compatibilite
+    # d'API mais sans effet, seul le format 8N1 est emis en v0 (meme approche
+    # que pull= sur Pin). Le format de trame vit entierement cote C.
+    def __init__(self, id=0, baudrate=1200, tx=None, rx=None, **kwargs):
+        self.id = id
+        self.init(baudrate, tx=tx, rx=rx, **kwargs)
+
+    def init(self, baudrate=1200, tx=None, rx=None, **kwargs):
+        if tx is None or rx is None:
+            raise ValueError('tx et rx doivent etre precises (ex. UART(0, tx=Pin(0), rx=Pin(1)))')
+        if isinstance(tx, Pin):
+            tx = tx.id
+        if isinstance(rx, Pin):
+            rx = rx.id
+        self._baudrate = baudrate
+        self.tx = tx
+        self.rx = rx
+        _native.uart_init(self.id, tx, rx, float(baudrate))
+
+    def write(self, data):
+        if isinstance(data, str):
+            data = data.encode()
+        elif not isinstance(data, (bytes, bytearray)):
+            data = str(data).encode()
+        return _native.uart_write(self.id, bytes(data))
+
+    def any(self):
+        return _native.uart_any(self.id)
+
+    def read(self, n=None):
+        return _native.uart_read(self.id, -1 if n is None else int(n))
+
+    def readline(self):
+        buf = b''
+        while True:
+            chunk = _native.uart_read(self.id, 1)
+            if chunk is None:
+                return buf if buf else None
+            buf += chunk
+            if chunk == b'\n':
+                return buf
+
+    def deinit(self):
+        _native.uart_deinit(self.id)
+
 class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
@@ -110,6 +156,7 @@ _machine.ADC = ADC
 _machine.PWM = PWM
 _machine.Timer = Timer
 _machine.Display = Display
+_machine.UART = UART
 sys.modules['machine'] = _machine
 
 def sleep(s):

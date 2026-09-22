@@ -23,13 +23,25 @@ void PyRuntime_destroy(void* handle);
    Python a chaque front. displaySeqOut/displayPayloadOut: sorties scalaires -
    seq incremente a chaque machine.Display.write(), payload le dernier texte
    transmis (livraison instantanee, pas de bauds simules, cf. requirements.md
-   decision "Périphérique d'affichage pédagogique"). nextWakeTime: sortie
-   scalaire. */
+   decision "Périphérique d'affichage pédagogique"). uartTxPinOut: broche
+   affectee a l'emission serie (0 = aucune, sinon 1-9 aligne sur pinBoolOut) ;
+   uartTxActiveOut: une trame est en cours ; uartTxStartOut: instant de son
+   front de start ; uartBitDurOut: 1/baudrate ; uartTxNumBitsOut/uartTxBitsOut:
+   motif de bits complet de la trame (start + data + stop), deja serialise cote
+   C - Modelica en genere la forme d'onde en continu, sans va-et-vient au thread
+   Python a chaque front (meme principe que le PWM). La RECEPTION, elle, est
+   decodee cote C (echantillonnage au milieu de chaque bit, cadence par
+   nextWakeTime) : elle n'a aucune sortie ici, le script recupere les octets par
+   uart.any()/uart.read() - cf. requirements.md decision "UART electrique reel".
+   nextWakeTime: sortie scalaire. */
 void PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
+                     int* uartTxPinOut, int* uartTxActiveOut,
+                     double* uartTxStartOut, double* uartBitDurOut,
+                     int* uartTxNumBitsOut, double* uartTxBitsOut,
                      double* nextWakeTime);
 
 #endif
