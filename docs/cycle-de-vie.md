@@ -16,19 +16,19 @@ sequenceDiagram
 
     Sim->>MCU: initialisation du modèle
     MCU->>Ctor: PyRuntime(scriptPath, pythonHome)
-    Ctor->>CPy: Py_InitializeFromConfig(module_search_paths explicite)
-    Ctor->>CPy: PyImport_AppendInittab (shim natif machine/time)
+    Ctor->>CPy: pyhost_ensure() — Py_InitializeFromConfig + relais stdout,<br/>sauf si un périphérique série l'a déjà fait ; rend le GIL
+    Ctor->>CPy: PyGILState_Ensure()
+    Ctor->>CPy: enregistre _pyruntime_native dans sys.modules, complète sys.path
     Ctor->>CPy: PyRun_SimpleString(machine_time_shim.py)<br/>définit machine.Pin, time.sleep...
-    Ctor->>CPy: PySys_SetObject(stdout/stderr, relais)
-    Ctor->>CPy: PyEval_SaveThread() — libère le GIL
+    Ctor->>CPy: PyGILState_Release()
     Ctor->>Worker: _beginthreadex(worker_main)
-    Worker->>Worker: PyGILState_Ensure() — acquiert le GIL, le garde pour toute sa vie
-    Worker->>Worker: attend son tour (turn == TURN_MODELICA au départ)
+    Worker->>Worker: PyGILState_Ensure()
+    Worker->>Worker: attend son tour (turn == TURN_MODELICA au départ), GIL relâché pendant l'attente
     Ctor-->>MCU: handle
     Note over MCU: le `when {initial(), ...}` de MCU<br/>va déclencher le premier PyRuntime_sync juste après
 ```
 
-Point notable : le thread principal (celui qui vient d'appeler le constructeur) ne rappellera **plus jamais** l'API Python ensuite — tout le travail Python se fait sur le thread worker. C'est pour ça que le GIL peut être libéré une fois pour toutes ici (`PyEval_SaveThread`) plutôt que d'être acquis/libéré à chaque échange : il n'y a jamais deux threads qui veulent toucher l'interpréteur Python en même temps.
+Point notable : un **seul** interpréteur CPython existe dans le process, démarré par le premier composant construit (`pyhost_ensure`, dans `Resources/Include/pyhost.c`) — le `MCU` ou un périphérique série scripté, l'ordre de construction des External Objects n'étant pas garanti. Au retour, le thread Modelica **ne tient pas le GIL** : c'est un invariant. Tout code qui appelle Python depuis ce thread (construction du `MCU`, gestionnaires d'un périphérique scripté) l'encadre de `PyGILState_Ensure`/`Release`, et le worker le **relâche chaque fois qu'il se gare** — dans son attente initiale comme dans `yield_to_modelica`. Sans cela, le worker garderait le GIL pendant presque toute la simulation, et aucun périphérique ne pourrait exécuter une ligne de Python. Le protocole de tour garantit par ailleurs qu'un seul des deux threads travaille à un instant donné : le GIL ne fait qu'entériner cette alternance.
 
 ## 2. Le protocole de synchro, à chaque pas de temps
 
@@ -245,9 +245,56 @@ Le déclenchement d'un `Timer`/`Pin.irq()` ne nécessite **aucun changement** à
 
 **Le décodage de la réception série réutilise exactement ce mécanisme** : `machine.UART` programme ses instants d'échantillonnage (milieu de chaque bit) via `nextWakeTime`, comme un `Timer`, et **sans réveiller le worker** — le script récupère les octets à son rythme par `any()`/`read()`. C'est aussi pourquoi la broche affectée à la réception est exclue du calcul de « vraie transition d'entrée » : sans ça, chaque front reçu ferait retourner en avance le `sleep()` en cours. Détail complet : [peripherique-uart.md](peripherique-uart.md).
 
+## 3ter. Le cycle de vie d'un périphérique série externe
+
+Un appareil série externe (dérivé de `Internal.PartialUartDevice`) suit le **même** squelette — un External Object construit à `t = 0`, une fonction de synchro appelée depuis un `when`, une échéance republiée à chaque appel — mais sans thread, sans GIL et sans handshake, puisqu'il n'a aucun script libre à suspendre. Le détail complet vit dans [peripheriques-uart-externes.md](peripheriques-uart-externes.md) ; voici le déroulé.
+
+### Construction (`t = 0`)
+
+Modelica construit les External Objects du modèle **dans un ordre non garanti** — c'est pourquoi le démarrage de CPython est partagé et idempotent (`pyhost_ensure`) : un périphérique scripté peut être construit avant le `MCU`, ou exister sans lui. `UartDevice_new` borne le débit, découpe la table de commandes **une seule fois**, arme l'échéance périodique, et laisse délibérément `rx_last_level` à 0 (cf. le piège de l'octet fantôme). Puis le `when initial()` tire : premier appel de synchro.
+
+### Régime permanent
+
+Le `when` se déclenche sur quatre conditions :
+
+| Déclencheur | À quoi il sert |
+|---|---|
+| `initial()` | l'appel de `t = 0` |
+| `change(rxBoolIn)` | **voir le front de start** d'une trame entrante |
+| `time >= pre(nextWakeTime)` | honorer l'échéance demandée au tour précédent |
+| `sample(0, tickPeriod)` | filet de sécurité |
+
+### Le trajet d'un octet, minuté à 1200 bauds
+
+Un bit dure 833 µs, une trame 8N1 dure 8,333 ms.
+
+| Instant | Ce qui se passe |
+|---|---|
+| 5,000 ms | le script appelle `uart.write()` ; la tension chute sur la ligne |
+| 5,000 ms | `change(rxBoolIn)` → synchro. `rx_last_level = 1`, niveau lu = 0 ⇒ **front descendant**. `rx_next_sample = 6,250 ms` (½ start + ½ bit 0) |
+| 6,250 ms | `time >= pre(nextWakeTime)` → échantillonnage du bit de données 0 |
+| 7,083 … 12,083 ms | sept réveils de plus, un par bit |
+| 12,917 ms | bit de stop, niveau haut ⇒ octet valide, poussé dans la FIFO RX, retour à `IDLE` |
+| 13,333 ms | la trame suivante enchaîne sans trou : nouveau front de start |
+| ≈ 71,7 ms | le terminateur arrive ⇒ **la ligne est livrée** à `uartdev_on_line`, et l'accumulateur vidé dans le même geste |
+| + `responseDelay` | la réponse entre en FIFO d'émission, `txActive` passe à vrai |
+| pendant 8,333 ms | **aucun appel C** : Modelica joue seul la forme d'onde (`txPhase`, `floor`, `uartBitLevel`), exactement comme pour le PWM |
+| + 8,333 ms | fin de trame ⇒ synchro ⇒ octet suivant, démarré **à `tx_end_time`** et non à `now`, pour enchaîner sans trou |
+
+### Ce qui diffère du microcontrôleur
+
+| | Script du `MCU` | Gestionnaire d'un périphérique (mode Script) |
+|---|---|---|
+| Forme | programme libre, boucle infinie | fonction appelée, qui rend la main |
+| Doit se suspendre en pleine pile d'appels ? | **oui** (`sleep`) | non |
+| Donc pile propre nécessaire ? | oui → thread OS + jeton de synchro | non |
+| Qui possède le temps ? | le script le consomme | Modelica le lui donne |
+
+C'est cette ligne-là, et non « périphérique contre microcontrôleur », qui sépare le bon marché du coûteux : un second composant qui **va au bout de ses appels** ne demande ni thread ni second interpréteur ; un second composant qui peut **`sleep()`** exige les deux.
+
 ## 4. Fin de simulation
 
-`PyRuntime_destroy` **ne tente pas** de réveiller/joindre proprement le thread worker (probablement bloqué en plein `sleep()`), ni d'appeler `Py_FinalizeEx`. Choix délibéré, pas un oubli : chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé** qui se termine juste après cet appel — l'OS récupère tout (thread compris) à la sortie du process. Ça évite les pièges classiques d'un arrêt propre multi-thread pour un bénéfice nul dans ce contexte. C'est aussi pour ça qu'une relance de simulation redémarre le script à zéro sans rien de spécial à coder (scénario de vérification 5) : un nouveau process = un nouvel interpréteur CPython, sans aucun état résiduel.
+`PyRuntime_destroy` **ne tente pas** de réveiller/joindre proprement le thread worker (probablement bloqué en plein `sleep()`), ni d'appeler `Py_FinalizeEx`. Choix délibéré, pas un oubli : chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé** qui se termine juste après cet appel — l'OS récupère tout (thread compris) à la sortie du process. Ça évite les pièges classiques d'un arrêt propre multi-thread pour un bénéfice nul dans ce contexte. C'est aussi pour ça qu'une relance de simulation redémarre le script à zéro sans rien de spécial à coder (scénario de vérification 5) : un nouveau process = un nouvel interpréteur CPython, sans aucun état résiduel. `UartDevice_destroy` est un no-op pour exactement la même raison.
 
 ## Cinq pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
 

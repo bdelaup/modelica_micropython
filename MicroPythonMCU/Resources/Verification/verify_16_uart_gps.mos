@@ -1,0 +1,40 @@
+// Scénario de vérification v0 n°17 : émission périodique spontanée, décrite par
+// un SCRIPT (Examples.UartGps, gps.comportement = Script). Le périphérique parle
+// sans être sollicité ; le microcontrôleur vérifie les sommes de contrôle.
+//
+// Ce que ce scénario vérifie : le second mode d'émission et sa CADENCE, en mode
+// Script. Le script par défaut du module (uart_gps_device.py) produit de vraies
+// phrases NMEA RMC avec leur somme de contrôle - ce qu'une table ne sait pas
+// faire. Le témoin ne passe à l'état haut que si au moins 4 phrases à somme de
+// contrôle correcte sont arrivées en 500 ms ; outputs() publie en outre le
+// nombre de phrases émises, ce qui vérifie que l'état du script persiste.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartGps, stopTime = 0.6, numberOfIntervals = 12000, fileNamePrefix = "UartGps");
+b := getErrorString();
+
+f := "UartGps_res.mat";
+
+// --- Repos avant la premiere phrase : la premiere emission a lieu au bout
+// d'une periode (100 ms), pas a t=0.
+vReposAvant := val(mcu.GP4.v, 0.02, f);
+
+// --- Le module emet bien a ses echeances ---
+// Une phrase RMC de 68 caracteres a 9600 bauds dure 71 ms : elle est encore en
+// cours 10 ms apres son declenchement.
+vTx1 := val(gps.txActive, 0.11, f);
+vTx3 := val(gps.txActive, 0.31, f);
+
+// --- Le microcontroleur a valide au moins 4 phrases (somme de controle correcte) ---
+vTemoin := val(mcu.GP7.v, 0.58, f);
+
+// --- outputs() : compteur de phrases emises, tenu dans une variable du script.
+// Une phrase par periode de 100 ms : 5 emises a t=0.58.
+nPhrases := val(gps.valueOut[1], 0.58, f);
+
+if vReposAvant > 2.0 and vTx1 > 0.5 and vTx3 > 0.5 and vTemoin > 2.0 and abs(nPhrases - 5) < 0.5 then
+  print("PASS: verify_16_uart_gps (repos avant la 1ere phrase=" + String(vReposAvant) + "V ; emission en cours a t=0.11s et t=0.31s ; temoin GP7=" + String(vTemoin) + "V = au moins 4 phrases NMEA a somme de controle correcte ; " + String(nPhrases) + " phrases comptees par le script)\n");
+else
+  print("FAIL: verify_16_uart_gps (repos=" + String(vReposAvant) + " tx1=" + String(vTx1) + " tx3=" + String(vTx3) + " temoin=" + String(vTemoin) + " phrases=" + String(nPhrases) + ")\n" + b);
+end if;

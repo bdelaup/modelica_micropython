@@ -1,0 +1,42 @@
+// Scénario de vérification v0 n°21 : écho paramétré, mode Table
+// (Examples.UartEchoTable - même montage que UartEcho, echo.comportement = Table).
+//
+// Ce que ce scénario vérifie et que verify_14 ne vérifie plus : l'écho OCTET PAR
+// OCTET du mode Table (echoEnabled). Chaque octet repart dès qu'il est décodé,
+// sans attendre la fin de la ligne. verify_14 couvre le même montage en mode
+// Script, où l'appareil ne répond qu'après le saut de ligne : les deux scénarios
+// ensemble distinguent les deux modes sur le même schéma.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartEchoTable, stopTime = 0.1, numberOfIntervals = 20000, fileNamePrefix = "UartEchoTable");
+b := getErrorString();
+
+f := "UartEchoTable_res.mat";
+
+// --- Etat de repos des deux lignes, avant toute emission ---
+vReposTx := val(mcu.GP5.v, 0.002, f);
+vReposRx := val(mcu.GP4.v, 0.002, f);
+
+// --- Trame de 'H' (0x48) relue a l'entree du peripherique, au milieu de chaque bit ---
+vStart := val(echo.RX.v, 0.0054167, f);   // start : bas
+vB3    := val(echo.RX.v, 0.00875, f);     // bit 3 : haut
+vStop  := val(echo.RX.v, 0.0129167, f);   // stop  : haut
+
+// --- Mode Table : l'echo de 'H' part des le bit de stop de 'H' decode (~12,9 ms)
+// et dure une trame (8,3 ms). A 17 ms, le peripherique EMET DEJA - alors que la
+// ligne complete n'arrivera que vers 29,6 ms. En mode Script (verify_14), il
+// serait encore muet a cet instant.
+vTxAvantLigne := val(echo.txActive, 0.017, f);
+
+// --- Critere principal : le programme a relu exactement ce qu'il avait envoye ---
+vTemoin := val(mcu.GP7.v, 0.09, f);
+
+// --- Detecteur d'octet fantome : un faux octet decode avant la premiere trame
+// desynchroniserait l'echo, et le temoin resterait a l'etat bas.
+
+if vReposTx > 2.0 and vReposRx > 2.0 and vStart < 0.5 and vB3 > 2.0 and vStop > 2.0 and vTxAvantLigne > 0.5 and vTemoin > 2.0 then
+  print("PASS: verify_20_uart_echo_table (repos TX=" + String(vReposTx) + "V RX=" + String(vReposRx) + "V ; trame 'H' recue start=" + String(vStart) + "V b3=" + String(vB3) + "V stop=" + String(vStop) + "V ; echo octet par octet deja en cours a t=17ms (" + String(vTxAvantLigne) + "), avant la fin de ligne ; temoin GP7=" + String(vTemoin) + "V)\n");
+else
+  print("FAIL: verify_20_uart_echo_table (reposTX=" + String(vReposTx) + " reposRX=" + String(vReposRx) + " start=" + String(vStart) + " b3=" + String(vB3) + " stop=" + String(vStop) + " txAvantLigne=" + String(vTxAvantLigne) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;

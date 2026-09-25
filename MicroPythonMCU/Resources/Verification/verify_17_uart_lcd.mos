@@ -1,0 +1,42 @@
+// Scénario de vérification v0 n°18 : afficheur 20x2 alimenté par une VRAIE
+// trame série (Examples.UartLcdDemo), et non plus par la liaison logique
+// machine.Display de verify_12.
+//
+// Ce que ce scénario vérifie : le texte affiché est bien celui réellement
+// décodé bit à bit sur la broche RX, et le défilement à deux lignes fonctionne
+// sur l'icône factorisée Internal.TwoLineTextIcon, partagée avec Display.
+//
+// NB : val() sur un index de tableau via une variable de boucle .mos ne se
+// resout pas (NaN) - les indices sont donc ecrits en litteral.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartLcdDemo, stopTime = 0.2, numberOfIntervals = 20000, fileNamePrefix = "UartLcdDemo");
+b := getErrorString();
+
+f := "UartLcdDemo_res.mat";
+
+// --- Apres la seule premiere ligne : "Cuve 3   45.2 degC" occupe la ligne 1 ---
+p1 := val(lcd.line1CharCode[1], 0.04, f);    // 'C' = 67
+p2 := val(lcd.line1CharCode[2], 0.04, f);    // 'u' = 117
+
+// --- Apres la seconde ligne : "Debit    12.8 L-min" en ligne 1,
+//     la premiere ligne etant descendue en ligne 2 ---
+l1c1 := val(lcd.line1CharCode[1], 0.15, f);  // 'D' = 68
+l1c2 := val(lcd.line1CharCode[2], 0.15, f);  // 'e' = 101
+l1c3 := val(lcd.line1CharCode[3], 0.15, f);  // 'b' = 98
+l1c7 := val(lcd.line1CharCode[7], 0.15, f);  // ' ' = 32
+l2c1 := val(lcd.line2CharCode[1], 0.15, f);  // 'C' = 67
+l2c2 := val(lcd.line2CharCode[2], 0.15, f);  // 'u' = 117
+l2c3 := val(lcd.line2CharCode[3], 0.15, f);  // 'v' = 118
+
+// --- Au-dela du texte (19 caracteres), la ligne est completee par des espaces ---
+l1c20 := val(lcd.line1CharCode[20], 0.15, f); // ' ' = 32
+
+// Tolerance d'un demi-code : un Integer est stocke en double dans le .mat et
+// relu par interpolation (meme raison que le abs(...) < 0.5 des icones).
+if abs(p1 - 67) < 0.5 and abs(p2 - 117) < 0.5 and abs(l1c1 - 68) < 0.5 and abs(l1c2 - 101) < 0.5 and abs(l1c3 - 98) < 0.5 and abs(l1c7 - 32) < 0.5 and abs(l2c1 - 67) < 0.5 and abs(l2c2 - 117) < 0.5 and abs(l2c3 - 118) < 0.5 and abs(l1c20 - 32) < 0.5 then
+  print("PASS: verify_17_uart_lcd (1ere ligne affichee = 'Cu...' (" + String(p1) + "," + String(p2) + ") ; apres la 2e : ligne1='Deb' (" + String(l1c1) + "," + String(l1c2) + "," + String(l1c3) + ") avec espace en 7 et en 20, ligne2='Cuv' (" + String(l2c1) + "," + String(l2c2) + "," + String(l2c3) + ") - defilement correct)\n");
+else
+  print("FAIL: verify_17_uart_lcd (p=" + String(p1) + "," + String(p2) + " l1=" + String(l1c1) + "," + String(l1c2) + "," + String(l1c3) + ",[7]=" + String(l1c7) + ",[20]=" + String(l1c20) + " l2=" + String(l2c1) + "," + String(l2c2) + "," + String(l2c3) + ")\n" + b);
+end if;

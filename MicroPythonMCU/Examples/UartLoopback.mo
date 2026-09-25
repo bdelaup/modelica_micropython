@@ -3,7 +3,7 @@ within MicroPythonMCU.Examples;
 model UartLoopback "Liaison série électrique réelle bouclée sur elle-même : GP0 (TX) émet une trame, GP1 (RX) la reçoit et la décode, GP3 (LED) confirme que l'octet est arrivé intact"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_loopback.py")) "scriptPath = Resources/Scripts/uart_loopback.py" annotation(
-    Placement(transformation(origin = {2, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {1, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "Bouclage TX->RX : résistance de liaison. Un connect() direct entre deux broches du même MCU fait disparaître la tension pilotée des résultats de simulation (fusion d'alias, constaté empiriquement sur PinEcho) - contourné en donnant à RX un véritable état dynamique via loopC, cf. requirements.md" annotation(
@@ -16,19 +16,19 @@ model UartLoopback "Liaison série électrique réelle bouclée sur elle-même :
     Placement(transformation(origin = {-140, -50}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(
-    Line(points = {{2, -39}, {2, -57}, {0, -57}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{1, -39}, {1, -57}, {0, -57}, {0, -75}}, color = {0, 0, 255}));
 // Bouclage electrique TX -> RX (motif loopR/loopC de PinEcho, cf. requirements.md)
   connect(mcu.GP0, loopR.p) annotation(
-    Line(points = {{-29, 25}, {-110, 25}, {-110, 10}, {-100, 10}}, color = {0, 0, 255}));
+    Line(points = {{-30, 25}, {-110, 25}, {-110, 10}, {-100, 10}}, color = {0, 0, 255}));
   connect(loopR.n, mcu.GP1) annotation(
-    Line(points = {{-80, 10}, {-29, 10}}, color = {0, 0, 255}));
+    Line(points = {{-80, 10}, {-30, 10}}, color = {0, 0, 255}));
   connect(loopR.n, loopC.p) annotation(
     Line(points = {{-60, 10}, {-60, -20}}, color = {0, 0, 255}));
   connect(loopC.n, ground.p) annotation(
     Line(points = {{-60, -40}, {-60, -75}, {0, -75}}, color = {0, 0, 255}));
 // Temoin de reception
   connect(mcu.GP3, r3.n) annotation(
-    Line(points = {{-29, -25}, {-29, -40}, {-75, -40}, {-75, -50}}, color = {0, 0, 255}));
+    Line(points = {{-30, -25}, {-30, -40}, {-75, -40}, {-75, -50}}, color = {0, 0, 255}));
   connect(r3.p, led3.p) annotation(
     Line(points = {{-105, -50}, {-125, -50}}, color = {0, 0, 255}));
   connect(led3.n, ground.p) annotation(

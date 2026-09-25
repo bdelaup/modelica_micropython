@@ -54,8 +54,19 @@ modelica_micropython3/
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
     │   ├── PyRuntime_sync.mo       -- impure function : le point de synchro appelé depuis le `when` de MCU
-    │   └── StringToCharCodes.mo    -- function utilitaire (external "C", indépendante de PyRuntime) : String -> Integer[n] de codes ASCII, pour afficher du texte sur une icône (String non storable dans les résultats de simulation)
-    ├── Peripherals/                -- composants connectables à MCU : LED.mo (diode + icône réactive au courant, DynamicSelect colorOff→colorOn, utilisée par MCU et par les exemples) et Display.mo (périphérique d'affichage pédagogique, écriture seule, affiche le texte réellement reçu sur l'icône — 20 colonnes x 2 lignes, défilement à chaque réception, cf. Internal.StringToCharCodes — écran de couleur fixe + retour par print())
+    │   ├── StringToCharCodes.mo    -- function utilitaire (external "C", indépendante de PyRuntime) : String -> Integer[n] de codes ASCII, pour afficher du texte sur une icône (String non storable dans les résultats de simulation)
+    │   ├── UartDevice.mo           -- ExternalObject d'un périphérique série externe : files TX/RX, décodage, table de commandes, échéances. AUCUNE dépendance à Python (pas de Library = "python312")
+    │   ├── UartDevice_sync.mo      -- impure function : le point de synchro appelé depuis le `when` de Internal.PartialUartDevice
+    │   ├── TwoLineTextIcon.mo      -- partial model purement graphique : les 40 cellules de texte d'un afficheur 20x2, partagées par Display et UartLcd20x2
+    │   └── PartialUartDevice.mo    -- partial model : TOUTE la mécanique des appareils série externes (pont électrique, décodage, deux modes d'émission, ports réels). Non instanciable : Peripherals ne contient que des composants posables
+    ├── Peripherals/                -- composants connectables à MCU
+    │   ├── LED.mo                  -- diode + icône réactive au courant (DynamicSelect colorOff→colorOn), utilisée par MCU et par les exemples
+    │   ├── Display.mo              -- afficheur pédagogique à liaison LOGIQUE (machine.Display), écriture seule ; hérite de Internal.TwoLineTextIcon pour le rendu du texte
+    │   ├── UartGenericDevice.mo    -- appareil série entièrement décrit par ses paramètres (aucune classe à écrire)
+    │   ├── UartEchoDevice.mo       -- dérivé : renvoie tel quel chaque octet reçu
+    │   ├── UartTemperatureSensor.mo-- dérivé : répond AT+TEMP par la valeur de valueIn, et SET <n> capture n vers valueOut
+    │   ├── UartGpsModule.mo        -- dérivé : pousse une trame $GPGLL toutes les period secondes, sans sollicitation
+    │   └── UartLcd20x2.mo          -- dérivé : affiche sur son icône les lignes décodées sur RX (hérite aussi de Internal.TwoLineTextIcon)
     ├── Examples/                   -- un modèle par scénario de vérification de requirements.md, + un démonstrateur
     │   ├── BasicBlink.mo           -- scénario 1 : clignotement de base
     │   ├── SleepCompression.mo     -- scénario 2 : compression d'un sleep long
@@ -69,10 +80,20 @@ modelica_micropython3/
     │   ├── PinIrq.mo               -- scénario 11 : machine.Pin.irq() sur GP1 (front montant uniquement), bascule GP0 depuis le callback
     │   ├── TimerToggle.mo          -- scénario 12 : machine.Timer périodique bascule GP0 pendant un sleep() long, sans le faire retourner en avance
     │   ├── DisplayDemo.mo          -- cf. verify_12_display.mos : machine.Display(0).write() vers un Peripherals.Display câblé sur Display0
-    │   └── UartLoopback.mo         -- scénario 13 : machine.UART électrique réel, TX (GP0) bouclé sur RX (GP1) via loopR/loopC, témoin GP3 (voir peripherique-uart.md)
+    │   ├── UartLoopback.mo         -- scénario 14 : machine.UART électrique réel, TX (GP0) bouclé sur RX (GP1) via loopR/loopC, témoin GP3 (voir peripherique-uart.md)
+    │   ├── UartEcho.mo             -- scénario 15 : dialogue avec un VRAI périphérique externe (plus de bouclage artificiel : un simple fil dans chaque sens)
+    │   ├── UartEchoTable.mo        -- scénario 21 : même montage que UartEcho, en mode Table (écho octet par octet) - hérite de UartEcho
+    │   ├── UartSensor.mo           -- scénario 16 : requête/réponse dans les deux sens, avec une rampe sur valueIn et une consigne capturée sur valueOut
+    │   ├── UartGps.mo              -- scénario 17 : émission périodique spontanée en mode Script (phrases NMEA RMC avec somme de contrôle), le microcontrôleur écoute et vérifie
+    │   ├── UartStateMachine.mo     -- scénario 20 : appareil décrit par un script Python à machine d'état (la réponse dépend de ce qui précède)
+    │   ├── UartRegulation.mo       -- scénario 19 : boucle de régulation fermée à travers la seule liaison série (la sortie réelle pilote un procédé qui revient sur l'entrée)
+    │   └── UartLcdDemo.mo          -- scénario 18 : afficheur 20x2 alimenté par une vraie trame série (pendant électrique de DisplayDemo)
     └── Resources/
-        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c (fichier chapeau) + PyRuntimeImpl.h + StringToCharCodes.c
-        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _relay.c, _sync.c, _pin.c, _display.c, _uart.c, _timer.c, _module.c
+        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série, SANS Python), StringToCharCodes.c, et uartcore.h/.c
+        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : démarrage unique de l'interpréteur (le premier composant construit le démarre), relais stdout/stderr, lecture de fichier
+        │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame 8N1, décodage par échantillonnage, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
+        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _timer.c, _module.c
+        │   ├── uartdevice/         -- idem côté périphériques : uartdevice_core.h (struct UartDevice), _format.c ({vN} et {oN}), _match.c (table de commandes), _script.c (mode Script : chargement du .py dans un espace de noms propre, appel des gestionnaires), _engine.c (construction, ordonnancement, synchro)
         │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
         ├── Library/win64/          -- libpython312.a, bibliothèque d'import régénérée pour le compilateur MinGW d'OpenModelica
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md

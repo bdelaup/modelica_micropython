@@ -16,6 +16,7 @@ static int resolve_display_index(int id) {
 }
 
 static PyObject* native_display_write(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id;
     const char* text;
     if (!PyArg_ParseTuple(args, "is", &id, &text)) return NULL;

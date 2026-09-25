@@ -13,6 +13,7 @@ Pour le **pourquoi** (besoin, décisions d'architecture avec alternatives, restr
 5. [tests.md](tests.md) — comment relancer la suite de vérification (`Resources/Verification/*.mos`) de façon reproductible, ce que vérifie chaque script, et comment en ajouter un nouveau.
 6. [peripherique-display.md](peripherique-display.md) — le périphérique d'affichage pédagogique `Peripherals.Display` (`machine.Display`) : pourquoi il est modélisé en connecteur logique causal plutôt qu'électrique, comment le texte s'affiche réellement sur son icône, le déroulé d'un envoi.
 7. [peripherique-uart.md](peripherique-uart.md) — la liaison série électrique réelle `machine.UART` : pourquoi elle reste dans le domaine électrique (à l'inverse de `Display`), le partage émission-continue-Modelica / réception-décodée-en-C, la trame 8N1 et le câblage de bouclage.
+8. [peripheriques-uart-externes.md](peripheriques-uart-externes.md) — les appareils qui se branchent **à l'autre bout** du fil (un appareil `Peripherals.Uart*` et ses dérivés) : le moteur `uartcore` partagé avec le microcontrôleur, les deux modes d'émission et leurs échéances, le format des gabarits `{vN}`/`{oN}`, et les deux pièges rencontrés (les deux `when` mutuellement dépendants qui tuaient `omc`, et l'octet fantôme reproduit à l'envers).
 
 Voir aussi [`requirements-archive.md`](../requirements-archive.md) à la racine du dépôt : récits de débogage déjà refermés et propositions abandonnées, extraits de `requirements.md` pour garder ce dernier concentré sur l'architecture actuelle — consultation ponctuelle seulement.
 

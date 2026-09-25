@@ -6,6 +6,23 @@
    requirements.md, decision "Structure du package et interface C du runtime
    Python". Ce fichier n'est jamais compile seul. */
 
+/* --- Garde : les natives du shim n'appartiennent qu'au thread worker ---
+   Un script de peripherique serie s'execute sur le thread Modelica, dans le MEME
+   interpreteur. S'il importait machine ou time et appelait une native, celle-ci
+   tenterait de rendre la main a Modelica... depuis le thread Modelica lui-meme :
+   la simulation se figerait sans aucun message. Chaque native commence donc par
+   REQUIRE_WORKER(), qui transforme ce blocage en exception explicite. */
+static int worker_context_ok(void) {
+    if (!g_current || GetCurrentThreadId() != g_current->worker_thread_id) {
+        PyErr_SetString(PyExc_RuntimeError,
+            "machine et time ne sont utilisables que depuis le script du microcontroleur "
+            "- un script de peripherique serie s'execute hors de son thread");
+        return 0;
+    }
+    return 1;
+}
+#define REQUIRE_WORKER() do { if (!worker_context_ok()) return NULL; } while (0)
+
 /* --- Dispatch des callbacks IRQ/Timer dus ---
    Rassemble sous verrou (incref des references recuperees, purge des drapeaux
    "pending"/rearmement des Timer periodiques), RELACHE le verrou, puis appelle
@@ -83,6 +100,13 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
 static int yield_to_modelica(double wake_at) {
     struct PyRuntimeHandle* h = g_current;
     for (;;) {
+        /* GIL RELACHE pendant que le worker est gare. Sans cela, le thread
+           Modelica ne pourrait executer aucun Python (script d'un peripherique
+           serie) tant que le microcontroleur attend son tour - c'est-a-dire
+           presque tout le temps. Relache AVANT d'entrer dans cs et repris APRES
+           en etre sorti : aucun thread ne detient jamais cs en attendant le GIL,
+           donc pas d'inversion d'ordre de verrous possible. */
+        PyThreadState* saved = PyEval_SaveThread();
         EnterCriticalSection(&h->cs);
         h->wake_requested_at = wake_at;
         h->wake_pending = 1;
@@ -93,6 +117,7 @@ static int yield_to_modelica(double wake_at) {
         }
         int genuine = h->wake_had_input_change || (h->sim_time + PYRUNTIME_EPS >= wake_at);
         LeaveCriticalSection(&h->cs);
+        PyEval_RestoreThread(saved);
 
         if (run_due_callbacks(h) != 0) {
             return -1;

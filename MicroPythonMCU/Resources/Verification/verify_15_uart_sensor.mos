@@ -1,0 +1,37 @@
+// Scénario de vérification v0 n°16 : dialogue requête/réponse avec un capteur
+// série externe (Examples.UartSensor), DANS LES DEUX SENS.
+//
+// Ce que ce scénario vérifie et qu'aucun autre ne vérifie :
+//  - le périphérique reconnaît une commande dans sa table et y répond ;
+//  - la substitution {v1} insère dans la réponse une grandeur venue du MODELE
+//    (une rampe branchée sur valueIn), donc deux interrogations successives
+//    donnent deux valeurs différentes ;
+//  - la capture {o1} fait ressortir un nombre reçu dans une trame sur une
+//    SORTIE REELLE du composant, qui peut piloter le reste du modèle.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartSensor, stopTime = 0.5, numberOfIntervals = 10000, fileNamePrefix = "UartSensor");
+b := getErrorString();
+
+f := "UartSensor_res.mat";
+
+// --- Capture {o1} : la consigne "SET 42.5" doit ressortir sur valueOut ---
+// Avant l'envoi, la sortie vaut sa valeur initiale (valueOutStart = 0).
+vAvant := val(capteur.valueOut[1], 0.05, f);
+vApres := val(capteur.valueOut[1], 0.45, f);
+
+// --- Le capteur a bien émis : sa ligne TX a porté des trames ---
+vTxActif := val(capteur.txActive, 0.03, f);
+
+// --- Critère principal : le script a obtenu DEUX mesures valides ET croissantes.
+// Le témoin ne s'allume que si les deux réponses ont pu être analysées et que
+// la seconde est supérieure à la première - ce qui n'est possible que si la
+// substitution {v1} lit réellement la rampe du modèle à chaque interrogation.
+vTemoin := val(mcu.GP7.v, 0.45, f);
+
+if vAvant < 0.5 and vApres > 42.0 and vApres < 43.0 and vTxActif > 0.5 and vTemoin > 2.0 then
+  print("PASS: verify_15_uart_sensor (capture {o1} : valueOut " + String(vAvant) + " -> " + String(vApres) + " apres 'SET 42.5' ; capteur en emission=" + String(vTxActif) + " ; temoin GP7=" + String(vTemoin) + "V = deux mesures valides et croissantes lues via {v1})\n");
+else
+  print("FAIL: verify_15_uart_sensor (valueOut avant=" + String(vAvant) + " apres=" + String(vApres) + " txActif=" + String(vTxActif) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;

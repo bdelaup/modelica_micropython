@@ -29,6 +29,13 @@ omc verify_10_pin_irq.mos
 omc verify_11_timer.mos
 omc verify_12_display.mos
 omc verify_13_uart_loopback.mos
+omc verify_14_uart_echo.mos
+omc verify_15_uart_sensor.mos
+omc verify_16_uart_gps.mos
+omc verify_17_uart_lcd.mos
+omc verify_18_uart_regulation.mos
+omc verify_19_uart_state_machine.mos
+omc verify_20_uart_echo_table.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -49,6 +56,13 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_11_timer.mos` | `Examples.TimerToggle` | Minuteur logiciel (`machine.Timer`) | `GP0` bascule toutes les 500 ms pendant un `sleep` long, sans l'écourter (« pitstop ») |
 | `verify_12_display.mos` | `Examples.DisplayDemo` | Périphérique d'affichage pédagogique (`machine.Display`) | `seq` 0→1→2, `charCode` conformes au texte, défilement 20×2 (ancien message en ligne 2) |
 | `verify_13_uart_loopback.mos` | `Examples.UartLoopback` | Liaison série électrique réelle bouclée (`machine.UART`) | Trame 8N1 correcte sur `GP0` (start bas, données poids faible en tête, stop/repos hauts), deux trames enchaînées sans trou, témoin `GP3` allumé (octets relus intacts) |
+| `verify_14_uart_echo.mos` | `Examples.UartEcho` | Dialogue avec un périphérique série externe, **en mode Script** | Les deux lignes au repos haut, trame `'H'` correcte à l'entrée du périphérique, périphérique muet avant la fin de la ligne puis en émission, témoin `GP7` à l'état haut |
+| `verify_15_uart_sensor.mos` | `Examples.UartSensor` | Requête/réponse dans les deux sens (`{vN}` et `{oN}`) | Deux mesures **différentes** lues sur une rampe, et `valueOut[1]` passe à 42,5 après `SET 42.5` |
+| `verify_16_uart_gps.mos` | `Examples.UartGps` | Émission périodique spontanée, **en mode Script** | Rien avant la première échéance, émissions aux échéances, au moins 4 phrases NMEA à somme de contrôle correcte en 500 ms, compteur du script publié sur `valueOut` |
+| `verify_17_uart_lcd.mos` | `Examples.UartLcdDemo` | Afficheur 20x2 sur une vraie trame série | Codes ASCII conformes au texte décodé, défilement ligne 1 → ligne 2 (valide aussi l'icône factorisée `Internal.TwoLineTextIcon`) |
+| `verify_18_uart_regulation.mos` | `Examples.UartRegulation` | Boucle de régulation fermée par la liaison série | La température part de 20 °C et rejoint la consigne de 40 °C, avec une commande cohérente avec le gain statique du procédé — seule la **sortie réelle** de l'appareil peut produire ce résultat |
+| `verify_19_uart_state_machine.mos` | `Examples.UartStateMachine` | Appareil décrit par un script Python à machine d'état | État 0 → 1 → 0 et exactement 2 lectures servies : l'état persiste, et aucune transition n'est rejouée |
+| `verify_20_uart_echo_table.mos` | `Examples.UartEchoTable` | Même montage que `UartEcho`, **en mode Table** | Écho octet par octet : le périphérique émet déjà à t=17 ms, avant la fin de la ligne — complément exact de `verify_14` |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

@@ -22,6 +22,7 @@ static double earliest_timer_deadline(struct PyRuntimeHandle* h) {
 /* --- machine.Timer --- */
 
 static PyObject* native_timer_new(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int i;
     EnterCriticalSection(&g_current->cs);
     for (i = 0; i < MAX_TIMERS; i++) {
@@ -37,6 +38,7 @@ static PyObject* native_timer_new(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_timer_init(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int slot, mode;
     double period_seconds;
     PyObject* callback;
@@ -71,6 +73,7 @@ static PyObject* native_timer_init(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_timer_deinit(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int slot;
     if (!PyArg_ParseTuple(args, "i", &slot)) return NULL;
     if (slot < 0 || slot >= MAX_TIMERS) {

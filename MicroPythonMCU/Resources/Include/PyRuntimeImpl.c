@@ -35,8 +35,10 @@
 #include <string.h>
 #include "ModelicaUtilities.h"
 
+#include "uartcore.h"                      /* moteur UART generique (sans Python ni thread), partage avec UartDeviceImpl.c */
 #include "pyruntime/pyruntime_core.h"      /* constantes, PyRuntimeHandle, handle courant */
-#include "pyruntime/pyruntime_relay.c"     /* stdout/stderr -> journal de simulation */
+#include "uartcore.c"                      /* files TX/RX, trame 8N1, decodage - avant pyruntime_uart.c qui l'utilise */
+#include "pyhost.c"                        /* demarrage unique de CPython, relais stdout, lecture de fichier - partage avec UartDeviceImpl.c */
 #include "pyruntime/pyruntime_sync.c"      /* dispatch des callbacks + yield_to_modelica */
 #include "pyruntime/pyruntime_pin.c"       /* machine.Pin / ADC / PWM / Pin.irq + time.sleep */
 #include "pyruntime/pyruntime_display.c"   /* machine.Display */

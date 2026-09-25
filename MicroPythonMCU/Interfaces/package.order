@@ -5,5 +5,8 @@ VIL
 ROut
 DISPLAY_COLS
 UART_MAX_FRAME_BITS
+UART_DEV_MAX_VALUES
+UartBehaviour
+uartBitLevel
 DisplayLinkOutput
 DisplayLinkInput

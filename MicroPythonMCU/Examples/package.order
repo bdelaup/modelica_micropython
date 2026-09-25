@@ -12,3 +12,10 @@ PinIrq
 TimerToggle
 DisplayDemo
 UartLoopback
+UartEcho
+UartEchoTable
+UartSensor
+UartRegulation
+UartGps
+UartStateMachine
+UartLcdDemo

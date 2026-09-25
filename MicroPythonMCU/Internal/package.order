@@ -1,3 +1,7 @@
 PyRuntime
 PyRuntime_sync
+UartDevice
+UartDevice_sync
 StringToCharCodes
+TwoLineTextIcon
+PartialUartDevice

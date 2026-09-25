@@ -158,7 +158,7 @@ La forme d'onde est générée **en continu par Modelica** à partir du motif de
 
 | Méthode | Signature | Comportement | Synchronise ? |
 |---|---|---|---|
-| `.write(data)` | `bytes`, `str` (encodé UTF-8) ou tout objet convertible | Met les octets dans la file d'émission et retourne le nombre accepté. **Non bloquant** : le script continue pendant que Modelica joue la forme d'onde ; les trames s'enchaînent sans trou. File de 64 octets, au-delà les octets excédentaires sont perdus silencieusement | Oui |
+| `.write(data)` | `bytes`, `str` (encodé UTF-8) ou tout objet convertible | Met les octets dans la file d'émission et retourne le nombre accepté. **Non bloquant** : le script continue pendant que Modelica joue la forme d'onde ; les trames s'enchaînent sans trou. File de 256 octets, au-delà les octets excédentaires sont perdus silencieusement | Oui |
 | `.any()` | — | Nombre d'octets reçus en attente de lecture | Oui |
 | `.read(n=None)` | `n` octets, ou tout ce qui est disponible | Retourne des `bytes`, ou `None` si rien n'est disponible | Oui |
 | `.readline()` | — | Lit jusqu'au `\n` inclus ; retourne ce qui est disponible sinon, ou `None` si rien. Python pur au-dessus de `read()` | Oui |
@@ -190,7 +190,7 @@ Détails et justifications dans `requirements.md` (section Restrictions v0) :
 - `pull` (`Pin.PULL_UP`/`Pin.PULL_DOWN`) accepté en paramètre mais sans résistance de tirage réellement modélisée.
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).
 - Pas d'`I2C` ni de `SPI` — voir le TODO de `requirements.md` pour les extensions prévues.
-- `machine.UART` : un seul périphérique (`UART(0)`), **trame 8N1 figée** (`bits`/`parity`/`stop` acceptés mais sans effet), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 64 octets, débordement silencieux ; une trame dont le bit de stop n'est pas haut est ignorée sans erreur de framing. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
+- `machine.UART` : un seul périphérique (`UART(0)`), **trame 8N1 figée** (`bits`/`parity`/`stop` acceptés mais sans effet), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 256 octets, débordement silencieux ; une trame dont le bit de stop n'est pas haut est ignorée sans erreur de framing. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
 - `machine.Display` : une seule liaison logique, **écriture seule** (pas de réception), livraison instantanée du message entier (pas de bauds simulés) ; liaison modélisée comme un connecteur logique causal, pas électrique — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
 - `Pin.irq()` : tout callback tourne « soft » (déféré au prochain point de réveil du worker) ; `hard=` accepté mais sans effet — aucune notion de contexte d'interruption matérielle possible dans ce modèle mono-thread. Une exception levée dans un callback arrête toute la simulation (même politique que le script principal), pas d'isolation « le callback plante mais le reste continue ».
 - `machine.Timer` : pool fixe de 4 minuteurs partagé par tous les `Timer()` (au-delà, `Timer()` lève `RuntimeError`) ; période minimale 1 ms (`ValueError` en dessous, garde-fou contre une tempête d'événements à durée simulée nulle).

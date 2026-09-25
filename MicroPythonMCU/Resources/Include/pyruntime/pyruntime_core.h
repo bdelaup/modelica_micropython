@@ -20,14 +20,13 @@
 
 #define DISPLAY_MSG_MAX_LEN 128      /* tres au-dessus des 40 caracteres d'un afficheur 20x2, buffer fixe modeste (meme esprit que g_stdout_buf) */
 
-/* machine.UART : un seul peripherique (id 0) en v0, sur deux broches GPx au choix du script. */
-#define UART_TX_BUF_LEN 64           /* FIFO d'emission (le FIFO materiel du vrai RP2040 fait 32 octets) */
-#define UART_RX_BUF_LEN 64           /* FIFO de reception, meme dimensionnement */
-#define UART_MAX_FRAME_BITS 13       /* 1 start + 9 data + 1 parite + 2 stop : dimensionne pour un futur format parametrable, seul 8N1 (10 bits) est emis en v0 */
-#define UART_MIN_BAUD 50
-#define UART_MAX_BAUD 115200         /* garde-fou contre une tempete d'evenements Modelica (un evenement par front de bit), meme esprit que TIMER_MIN_PERIOD */
-#define UART_RX_IDLE 0
-#define UART_RX_RECEIVING 1
+/* machine.UART : un seul peripherique (id 0) en v0, sur deux broches GPx au choix
+   du script. Les constantes du protocole (UART_TX_BUF_LEN, UART_MAX_FRAME_BITS,
+   UART_MIN_BAUD/UART_MAX_BAUD, UART_RX_IDLE/RECEIVING) et la mecanique bit/octet
+   vivent desormais dans uartcore.h / uartcore.c, a la racine d'Include/ : le meme
+   moteur sert aux peripheriques serie externes (Peripherals.UartDevice), qui n'ont
+   ni Python ni thread. Ne restent ici que les notions propres au microcontroleur :
+   quelle broche fait TX, quelle broche fait RX, et le drapeau de reservation. */
 
 struct PyRuntimeHandle {
     char* scriptPath;
@@ -75,35 +74,21 @@ struct PyRuntimeHandle {
        par les natives (uart_init/uart_write) ET par PyRuntime_sync, qui fait
        avancer l'emission et le decodage de la reception a chaque point de synchro.
        La forme d'onde elle-meme est generee en continu par Modelica a partir de
-       uart_tx_bits/uart_tx_start_time (motif PWM), pas front par front depuis ici.
+       uart.tx_bits/uart.tx_start_time (motif PWM), pas front par front depuis ici.
        Cf. requirements.md, decision "UART electrique reel". */
     int uart_configured;
     int uart_tx_pin;             /* index interne 0-8, -1 si non affecte */
     int uart_rx_pin;
-    double uart_bit_dur;         /* 1/baudrate, en secondes */
     int uart_rx_claimed[NUM_PINS]; /* broche affectee a la reception UART : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO (fidele au materiel reel), cf. PyRuntime_sync */
 
-    unsigned char uart_tx_buf[UART_TX_BUF_LEN];
-    int uart_tx_head, uart_tx_tail;   /* file circulaire : head = prochaine ecriture, tail = prochaine lecture */
-    int uart_tx_active;               /* une trame est en cours d'emission */
-    double uart_tx_start_time;        /* instant du front de start de la trame en cours */
-    double uart_tx_end_time;          /* instant de fin de la trame en cours (rechargement de la suivante) */
-    double uart_tx_bits[UART_MAX_FRAME_BITS]; /* motif de bits complet (start + data + stop), publie tel quel vers Modelica */
-    int uart_tx_num_bits;
-
-    unsigned char uart_rx_buf[UART_RX_BUF_LEN];
-    int uart_rx_head, uart_rx_tail;
-    int uart_rx_state;                /* UART_RX_IDLE | UART_RX_RECEIVING */
-    int uart_rx_last_level;           /* niveau vu au dernier point de synchro : le start se detecte sur un FRONT descendant, pas sur un niveau bas (cf. uart_rx_step) */
-    double uart_rx_next_sample;       /* prochain instant d'echantillonnage, remonte a Modelica via nextWakeTime */
-    int uart_rx_bit_index;            /* 0-7 : bit de donnee en cours */
-    unsigned int uart_rx_shift;       /* registre a decalage */
+    struct UartEngine uart;      /* files TX/RX, trame 8N1, decodage : cf. uartcore.h (partage avec Peripherals.UartDevice) */
 
     int script_done;
     int script_error;
     char* error_message;
 
     HANDLE thread;
+    DWORD worker_thread_id;  /* thread autorise a appeler les natives du shim, cf. worker_context_ok */
 };
 
 /* Handle du PyRuntime en cours d'execution sur le thread worker courant.

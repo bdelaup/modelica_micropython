@@ -15,7 +15,7 @@ impure function PyRuntime_sync "Point de synchro entre le script Python et la si
   output Real uartTxStart "instant (temps simule) du front de start de la trame en cours";
   output Real uartBitDur "duree d'un bit (1/baudrate), en secondes";
   output Integer uartTxNumBits "nombre de bits utiles de la trame en cours (10 en 8N1)";
-  output Real uartTxBits[13] "motif de bits complet deja serialise cote C (start + data LSB first + stop) : Modelica n'a qu'a le rejouer dans le temps, le format de trame reste entierement cote C";
+  output Real uartTxBits[Interfaces.UART_MAX_FRAME_BITS] "motif de bits complet deja serialise cote C (start + data LSB first + stop) : Modelica n'a qu'a le rejouer dans le temps, le format de trame reste entierement cote C";
   output Real nextWakeTime;
   external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pwmFreq, pwmDuty, displaySeq, displayPayload, uartTxPin, uartTxActive, uartTxStart, uartBitDur, uartTxNumBits, uartTxBits, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",

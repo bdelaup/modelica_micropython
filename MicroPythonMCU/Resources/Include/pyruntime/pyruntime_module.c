@@ -29,50 +29,37 @@ static PyMethodDef native_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+/* Enregistre dans sys.modules APRES l'initialisation (pyhost_register_module),
+   et non plus par PyImport_AppendInittab : ce dernier n'est utilisable qu'avant
+   Py_Initialize, or l'interpreteur peut avoir ete demarre par un peripherique
+   serie construit avant le microcontroleur (cf. pyhost.c). */
 static struct PyModuleDef native_module_def = {
     PyModuleDef_HEAD_INIT, "_pyruntime_native", NULL, -1, native_methods,
     NULL, NULL, NULL, NULL
 };
 
-static PyObject* PyInit_pyruntime_native(void) {
-    return PyModule_Create(&native_module_def);
-}
-
-/* --- Lecture de fichier source (shim et script utilisateur) --- */
-
-/* Retourne le contenu entier du fichier dans un tampon alloue, termine par
-   '\0', ou NULL si le fichier ne peut pas etre ouvert. A liberer par
-   l'appelant (free). Sert au shim machine/time (Resources/Scripts/_shim/,
-   charge par PyRuntime_new) comme au script utilisateur (charge par le
-   thread worker) : les deux sont executes par PyRun_SimpleString. */
-static char* read_text_file(const char* path) {
-    FILE* f = fopen(path, "rb");
-    if (!f) {
-        return NULL;
-    }
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char* buf = (char*) malloc((size_t) size + 1);
-    size_t got = fread(buf, 1, (size_t) size, f);
-    buf[got] = '\0';
-    fclose(f);
-    return buf;
-}
+/* read_text_file, le relais stdout et le demarrage de CPython vivent dans
+   pyhost.c, partage avec les peripheriques serie. */
 
 /* --- Thread worker --- */
 
 static unsigned __stdcall worker_main(void* arg) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) arg;
+    h->worker_thread_id = GetCurrentThreadId();
     PyGILState_STATE gstate = PyGILState_Ensure();
     g_current = h;
 
-    /* Premier tour : attendre que Modelica nous cede la main (t=0, cf. MCU "when initial()"). */
+    /* Premier tour : attendre que Modelica nous cede la main (t=0, cf. MCU "when initial()").
+       GIL RELACHE pendant l'attente : le thread Modelica peut avoir a executer du
+       Python pendant ce temps (construction ou synchro d'un peripherique serie
+       pilote par script) - le garder ici bloquerait ce thread indefiniment. */
+    Py_BEGIN_ALLOW_THREADS
     EnterCriticalSection(&h->cs);
     while (h->turn != TURN_WORKER) {
         SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
     }
     LeaveCriticalSection(&h->cs);
+    Py_END_ALLOW_THREADS
 
     char* buf = read_text_file(h->scriptPath);
     if (!buf) {
@@ -125,92 +112,14 @@ static char* dirname_of(const char* path) {
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
                      const char* shimPath) {
-    PyStatus status;
-    PyConfig config;
+    char err[512];
 
-    PyConfig_InitPythonConfig(&config);
-    config.site_import = 0;
-    config.use_environment = 0;
-    config.module_search_paths_set = 1;
-
-    {
-        /* Distribution "embeddable" : le stdlib est dans <home>\python312.zip, les
-           modules d'extension .pyd sont directement dans <home>. */
-        size_t home_len = strlen(pythonHome);
-        char* zip_path = (char*) malloc(home_len + 32);
-        sprintf(zip_path, "%s\\python312.zip", pythonHome);
-        status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(zip_path, NULL));
-        free(zip_path);
-        if (PyStatus_Exception(status)) {
-            PyConfig_Clear(&config);
-            ModelicaFormatError("PyRuntime: echec d'ajout de python312.zip au sys.path");
-            return NULL;
-        }
-        status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(pythonHome, NULL));
-        if (PyStatus_Exception(status)) {
-            PyConfig_Clear(&config);
-            ModelicaFormatError("PyRuntime: echec d'ajout de %s au sys.path", pythonHome);
-            return NULL;
-        }
-    }
-
-    /* Import de modules auxiliaires (cf. requirements.md, decision "Import de
-       modules auxiliaires") : ajoute au sys.path le dossier du script
-       (addScriptDirToPath) et/ou celui d'une bibliotheque partagee
-       (libraryPath, desactive si chaine vide) - meme mecanisme que le zip et
-       pythonHome ci-dessus, juste 0-2 entrees de plus. */
-    if (addScriptDirToPath) {
-        char* dir = dirname_of(scriptPath);
-        if (dir[0] != '\0') {
-            status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(dir, NULL));
-            if (PyStatus_Exception(status)) {
-                free(dir);
-                PyConfig_Clear(&config);
-                ModelicaFormatError("PyRuntime: echec d'ajout du dossier du script au sys.path");
-                return NULL;
-            }
-        }
-        free(dir);
-    }
-    if (libraryPath && libraryPath[0] != '\0') {
-        char* dir = dirname_of(libraryPath);
-        if (dir[0] != '\0') {
-            status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(dir, NULL));
-            if (PyStatus_Exception(status)) {
-                free(dir);
-                PyConfig_Clear(&config);
-                ModelicaFormatError("PyRuntime: echec d'ajout de libraryPath ('%s') au sys.path", libraryPath);
-                return NULL;
-            }
-        }
-        free(dir);
-    }
-    status = PyConfig_SetBytesString(&config, &config.home, pythonHome);
-    if (PyStatus_Exception(status)) {
-        PyConfig_Clear(&config);
-        ModelicaFormatError("PyRuntime: echec de configuration de PYTHONHOME ('%s')", pythonHome);
+    /* Demarrage de CPython partage avec les peripheriques serie : l'un d'eux a
+       pu le faire avant nous (ordre de construction non garanti). Au retour, le
+       GIL n'est tenu par personne (cf. invariant de pyhost.c). */
+    if (pyhost_ensure(pythonHome, err, sizeof(err)) != 0) {
+        ModelicaFormatError("PyRuntime: %s", err);
         return NULL;
-    }
-
-    if (PyImport_AppendInittab("pyruntime_stdio", PyInit_pyruntime_stdio) != 0 ||
-        PyImport_AppendInittab("_pyruntime_native", PyInit_pyruntime_native) != 0) {
-        PyConfig_Clear(&config);
-        ModelicaFormatError("PyRuntime: echec d'enregistrement des modules shim");
-        return NULL;
-    }
-
-    status = Py_InitializeFromConfig(&config);
-    PyConfig_Clear(&config);
-    if (PyStatus_Exception(status)) {
-        ModelicaFormatError("PyRuntime: echec d'initialisation de CPython (home='%s')", pythonHome);
-        return NULL;
-    }
-
-    PyObject* relay = PyImport_ImportModule("pyruntime_stdio");
-    if (relay) {
-        PySys_SetObject("stdout", relay);
-        PySys_SetObject("stderr", relay);
-        Py_DECREF(relay);
     }
 
     struct PyRuntimeHandle* handle = (struct PyRuntimeHandle*) calloc(1, sizeof(struct PyRuntimeHandle));
@@ -233,19 +142,52 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
         ModelicaFormatError("PyRuntime: impossible de lire le shim machine/time ('%s')", shimPath);
         return NULL;
     }
-    g_current = handle;
-    int shim_rc = PyRun_SimpleString(shim_src);
+
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    const char* failure = NULL;
+
+    /* Module natif du shim : enregistre apres coup dans sys.modules. */
+    if (pyhost_register_module("_pyruntime_native", PyModule_Create(&native_module_def)) != 0) {
+        failure = "echec d'enregistrement du module natif du shim";
+    }
+
+    /* Import de modules auxiliaires (cf. requirements.md, decision "Import de
+       modules auxiliaires") : ajoute a sys.path le dossier du script
+       (addScriptDirToPath) et/ou celui d'une bibliotheque partagee
+       (libraryPath, desactive si chaine vide). Ajoutes a l'execution plutot que
+       dans la configuration d'initialisation, puisque l'interpreteur peut deja
+       etre demarre ; l'ordre obtenu dans sys.path est le meme. */
+    if (!failure && addScriptDirToPath) {
+        char* dir = dirname_of(scriptPath);
+        if (dir[0] != '\0' && pyhost_append_path(dir) != 0) {
+            failure = "echec d'ajout du dossier du script au sys.path";
+        }
+        free(dir);
+    }
+    if (!failure && libraryPath && libraryPath[0] != '\0') {
+        char* dir = dirname_of(libraryPath);
+        if (dir[0] != '\0' && pyhost_append_path(dir) != 0) {
+            failure = "echec d'ajout de libraryPath au sys.path";
+        }
+        free(dir);
+    }
+
+    if (!failure) {
+        g_current = handle;
+        if (PyRun_SimpleString(shim_src) != 0) {
+            failure = "echec d'initialisation du shim machine/time";
+        }
+        g_current = NULL;
+    }
     free(shim_src);
-    if (shim_rc != 0) {
-        ModelicaFormatError("PyRuntime: echec d'initialisation du shim machine/time");
+
+    /* Rend le GIL avant toute sortie en erreur : ModelicaFormatError ne revient
+       pas, et un GIL garde ici bloquerait tout autre composant. */
+    PyGILState_Release(gstate);
+    if (failure) {
+        ModelicaFormatError("PyRuntime: %s", failure);
         return NULL;
     }
-    g_current = NULL;
-
-    /* Le thread principal (celui-ci) ne rappellera plus l'API Python avant
-       PyRuntime_destroy : on libere le GIL pour que le worker puisse
-       l'acquerir via PyGILState_Ensure(). */
-    PyEval_SaveThread();
 
     handle->thread = (HANDLE) _beginthreadex(NULL, 0, worker_main, handle, 0, NULL);
     if (!handle->thread) {

@@ -1,0 +1,36 @@
+// Scénario de vérification v0 n°19 : boucle de régulation fermée à travers la
+// seule liaison série (Examples.UartRegulation).
+//
+// Ce que ce scénario vérifie et qu'aucun autre ne vérifie : la SORTIE REELLE de
+// l'appareil série pilote effectivement le reste du modèle. La commande capturée
+// par {o1} attaque un procédé du premier ordre, dont la sortie revient sur
+// l'entrée {v1} du même appareil. Si la sortie ne pilotait rien, ou si la mesure
+// ne remontait pas, la température resterait à sa valeur initiale (20 °C) au
+// lieu de rejoindre la consigne (40 °C).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartRegulation, stopTime = 1, numberOfIntervals = 10000, fileNamePrefix = "UartRegulation");
+b := getErrorString();
+
+f := "UartRegulation_res.mat";
+
+// --- Point de depart : le procede est a sa valeur initiale, la commande a la sienne ---
+vTdebut := val(procede.y, 0.005, f);          // ~20 degC
+vCmdDebut := val(capteur.valueOut[1], 0.005, f); // 0 (valueOutStart)
+
+// --- La commande a bien ete capturee et poussee sur la sortie reelle ---
+vCmdMilieu := val(capteur.valueOut[1], 0.3, f);
+
+// --- Regime etabli : la temperature a rejoint la consigne de 40 degC ---
+vTfin := val(procede.y, 0.95, f);
+vCmdFin := val(capteur.valueOut[1], 0.95, f);
+
+// Le gain statique du procede vaut 0.5, donc maintenir 40 degC demande une
+// commande voisine de 80. C'est la coherence entre les deux qui prouve que la
+// boucle est reellement fermee, et pas seulement que la temperature a bouge.
+if vTdebut > 19.0 and vTdebut < 21.0 and vCmdDebut < 1.0 and vCmdMilieu > 1.0 and vTfin > 37.0 and vTfin < 43.0 and vCmdFin > 60.0 and vCmdFin < 100.0 then
+  print("PASS: verify_18_uart_regulation (depart T=" + String(vTdebut) + " degC commande=" + String(vCmdDebut) + " ; la commande capturee par {o1} atteint " + String(vCmdMilieu) + " a t=0.3s ; regime etabli T=" + String(vTfin) + " degC pour une commande de " + String(vCmdFin) + " - coherent avec le gain statique de 0.5, la boucle est bien fermee par la liaison serie)\n");
+else
+  print("FAIL: verify_18_uart_regulation (Tdebut=" + String(vTdebut) + " cmdDebut=" + String(vCmdDebut) + " cmdMilieu=" + String(vCmdMilieu) + " Tfin=" + String(vTfin) + " cmdFin=" + String(vCmdFin) + ")\n" + b);
+end if;

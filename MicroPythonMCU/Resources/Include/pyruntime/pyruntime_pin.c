@@ -18,6 +18,7 @@ static int resolve_pin_index(int id) {
 }
 
 static PyObject* native_pin_init(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id, is_output;
     if (!PyArg_ParseTuple(args, "ii", &id, &is_output)) return NULL;
     int idx = resolve_pin_index(id);
@@ -33,6 +34,7 @@ static PyObject* native_pin_init(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_pin_write(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id, value;
     if (!PyArg_ParseTuple(args, "ii", &id, &value)) return NULL;
     int idx = resolve_pin_index(id);
@@ -50,6 +52,7 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_pin_read(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = resolve_pin_index(id);
@@ -65,6 +68,7 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_adc_read(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = resolve_pin_index(id);
@@ -80,6 +84,7 @@ static PyObject* native_adc_read(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id;
     double freq;
     if (!PyArg_ParseTuple(args, "id", &id, &freq)) return NULL;
@@ -106,6 +111,7 @@ static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_pwm_set_duty(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id;
     double duty;
     if (!PyArg_ParseTuple(args, "id", &id, &duty)) return NULL;
@@ -124,6 +130,7 @@ static PyObject* native_pwm_set_duty(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_pwm_deinit(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = resolve_pin_index(id);
@@ -139,6 +146,7 @@ static PyObject* native_pwm_deinit(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_sleep(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     double seconds;
     if (!PyArg_ParseTuple(args, "d", &seconds)) return NULL;
     double wake_at = g_current->sim_time + (seconds > 0 ? seconds : 0);
@@ -147,12 +155,14 @@ static PyObject* native_sleep(PyObject* self, PyObject* args) {
 }
 
 static PyObject* native_ticks_ms(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     return PyLong_FromLongLong((long long)(g_current->sim_time * 1000.0));
 }
 
 /* --- machine.Pin.irq() --- */
 
 static PyObject* native_pin_irq_set(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
     int id, trigger;
     PyObject* pin_self;
     PyObject* handler;

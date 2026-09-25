@@ -27,7 +27,7 @@ Un point mérite d'être connu, car il n'est pas une optimisation mais une **con
 
 **Côté C** (`pyruntime/pyruntime_uart.c`) : `uart_tx_begin_frame` est le **seul endroit qui connaît le format de trame** — start à 0, 8 bits de données poids faible en tête, stop à 1, le reste du tableau à l'état de repos. Passer un jour à un format paramétrable (parité, 7/9 bits, 2 stop) ne demandera de toucher ni Modelica ni le shim Python ; `UART_MAX_FRAME_BITS = 13` est déjà dimensionné pour ça.
 
-`write()` est non bloquant : les octets s'empilent dans une file circulaire de 64 octets (`UART_TX_BUF_LEN`) et `uart_tx_advance`, appelée à chaque point de synchro, démarre la trame suivante **pile à la fin de la précédente** (`uart_tx_begin_frame(h, next, h->uart_tx_end_time)`) — les trames s'enchaînent sans trou. File pleine : l'octet est perdu silencieusement, comme un FIFO matériel qui déborde.
+`write()` est non bloquant : les octets s'empilent dans une file circulaire de 256 octets (`UART_TX_BUF_LEN`) et `uart_tx_advance`, appelée à chaque point de synchro, démarre la trame suivante **pile à la fin de la précédente** (`uart_tx_begin_frame(h, next, h->uart_tx_end_time)`) — les trames s'enchaînent sans trou. File pleine : l'octet est perdu silencieusement, comme un FIFO matériel qui déborde.
 
 **Côté Modelica** (`MCU.mo`), la forme d'onde est une équation continue, transposition directe du motif PWM :
 
@@ -63,7 +63,7 @@ Deux corrections sans lesquelles le décodeur est faux, et qui méritent d'être
 - **Le bit de start se détecte sur un FRONT descendant, jamais sur un niveau bas** (`uart_rx_last_level`). Bug réel, resté masqué longtemps : au tout premier point de synchro, `PyRuntime_sync` reçoit l'état électrique d'**avant** que le script n'ait configuré l'UART — la broche TX n'est pas encore pilotée et la ligne est à 0 V. Un test sur le niveau y voyait un bit de start et fabriquait un octet fantôme qui polluait la file de réception. Le défaut était invisible tant que le script émettait dès `t=0` (le faux start coïncidait avec le vrai) ; il est apparu dès qu'un délai a précédé le premier `write()`. Exiger le front impose d'avoir vu la ligne au repos au moins une fois avant d'écouter — ce que fait aussi un vrai récepteur.
 - **Le décodeur attend le bit de stop** avant de repasser au repos, au lieu de s'arrêter au 8ᵉ bit de données : sinon un dernier bit de données à 0 (ligne basse) serait aussitôt relu comme un nouveau bit de start. Une trame dont le stop n'est pas haut est ignorée, sans remontée d'erreur de framing (simplification v0).
 
-La réception **ne réveille pas le script** : les octets s'accumulent dans un FIFO de 64 octets (`UART_RX_BUF_LEN`, débordement silencieux) que le script consulte à son rythme par `any()`/`read()`/`readline()`.
+La réception **ne réveille pas le script** : les octets s'accumulent dans un FIFO de 256 octets (`UART_RX_BUF_LEN`, débordement silencieux) que le script consulte à son rythme par `any()`/`read()`/`readline()`.
 
 ## 5. Câblage : pas de connecteur dédié
 
@@ -96,7 +96,7 @@ Le témoin `GP3` sert aussi de **détecteur d'octet fantôme** : un faux bit de 
 - Un seul périphérique (`UART(0)`), deux broches distinctes obligatoires parmi `GP0`-`GP7`.
 - **Format de trame 8N1 figé** : `bits`/`parity`/`stop` sont acceptés pour compatibilité d'API mais **sans effet**, comme `pull=` sur `Pin`.
 - Débit borné à 50-115200 bauds.
-- Files de 64 octets à débordement silencieux ; trame dont le stop n'est pas haut ignorée sans erreur de framing.
+- Files de 256 octets à débordement silencieux ; trame dont le stop n'est pas haut ignorée sans erreur de framing.
 - Pas de `uart.irq()` (la réception ne réveille pas le script), pas de contrôle de flux RTS/CTS.
 - Une broche affectée à la réception ne génère plus d'IRQ GPIO et ne réveille plus un `sleep()` — fidèle au matériel, et indispensable au fonctionnement (§2).
 
@@ -104,5 +104,6 @@ Le témoin `GP3` sert aussi de **détecteur d'octet fantôme** : un faux bit de 
 
 - **Format de trame paramétrable** : le coût est concentré sur le décodeur RX, l'émission est déjà prête (le format vit entièrement dans `uart_tx_begin_frame`). Intérêt pédagogique réel — montrer qu'un désaccord de configuration entre émetteur et récepteur produit des octets faux, l'erreur n°1 en TP série.
 - **`uart.irq()`** (réception pilotée par interruption) reste possible en réutilisant le mécanisme de `Pin.irq` déjà en place.
+- **Un interlocuteur au bout du fil existe désormais** : voir [peripheriques-uart-externes.md](peripheriques-uart-externes.md). Le bouclage `loopR`/`loopC` décrit ici reste utile pour observer la forme d'onde d'un `MCU` seul, mais un vrai dialogue passe maintenant par un un appareil `Peripherals.Uart*`.
 - **Multi-instances** : faire dialoguer deux `MCU` distincts par cette liaison se heurte à la restriction « une seule instance / un seul interpréteur CPython » (`requirements.md`, décision « Multi-instances »). Le bouclage sur un seul `MCU` valide tout le mécanisme sans y toucher.
 - À 115200 bauds sur une longue simulation, le coût des événements (un par front de bit) reste à surveiller — pas rencontré en pratique jusqu'ici.

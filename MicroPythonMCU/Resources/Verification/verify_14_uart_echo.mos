@@ -1,0 +1,60 @@
+// Scénario de vérification v0 n°15 : dialogue avec un vrai périphérique série externe
+// (Examples.UartEcho). Le microcontrôleur envoie "Hi\n" sur GP5 ; le périphérique,
+// en mode Script (uart_echo_device.py), renvoie la ligne sur GP4 ; le
+// microcontrôleur la relit et met GP7 à l'état haut.
+//
+// Ce que ce scénario vérifie et que verify_13 ne vérifie pas : la liaison relie
+// DEUX composants distincts (plus de bouclage du MCU sur lui-même, plus de réseau
+// R+C de contournement), le périphérique décode réellement les trames reçues, et
+// il en réémet de son côté avec son propre débit - ici sous le contrôle de son
+// script, qui ne voit que des LIGNES complètes.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartEcho, stopTime = 0.1, numberOfIntervals = 20000, fileNamePrefix = "UartEcho");
+b := getErrorString();
+
+f := "UartEcho_res.mat";
+
+// --- Etat de repos des deux lignes, avant toute emission ---
+// Les deux extremites tiennent leur ligne activement au niveau HAUT (sortie
+// push-pull) des que l'UART est configure, bien avant le premier write().
+vReposTx := val(mcu.GP5.v, 0.002, f);     // MCU -> peripherique
+vReposRx := val(mcu.GP4.v, 0.002, f);     // peripherique -> MCU
+
+// --- Trame de 'H' (0x48) emise par le microcontroleur sur GP5, relue a l'entree du
+// peripherique : sondes au MILIEU de chaque bit (5 ms + (k+0.5) * 833.33 us).
+// 'H' = 0x48 -> donnees poids faible en tete : 0,0,0,1,0,0,1,0
+vStart  := val(echo.RX.v, 0.0054167, f);  // start : bas
+vB3     := val(echo.RX.v, 0.00875, f);    // bit 3 : haut
+vB6     := val(echo.RX.v, 0.01125, f);    // bit 6 : haut
+vB7     := val(echo.RX.v, 0.0120833, f);  // bit 7 : bas
+vStop   := val(echo.RX.v, 0.0129167, f);  // stop  : haut
+
+// --- Mode Script : le peripherique attend la ligne COMPLETE avant de repondre ---
+// Le terminateur est decode vers 29,6 ms, la reponse part apres responseDelay
+// (2 ms) et dure 3 trames (25 ms). A 17 ms le peripherique doit donc etre MUET :
+// c'est ce qui distingue le script (lignes entieres) de l'echo parametre du mode
+// Table, qui aurait deja renvoye 'H' octet par octet a cet instant.
+vTxAvantLigne := val(echo.txActive, 0.017, f);
+vTxActif := val(echo.txActive, 0.04, f);
+
+// --- Le peripherique a bien decode : rxBusy est vrai pendant une reception ---
+vRxOccupe := val(echo.rxBusy, 0.00625, f);
+
+// --- Critere principal : le script a relu exactement ce qu'il avait envoye ---
+vTemoin := val(mcu.GP7.v, 0.09, f);
+
+// --- Detecteur d'octet fantome ---
+// Si le peripherique decodait un faux octet avant la premiere trame (front de
+// start detecte a tort a t=0, alors que la ligne n'est pas encore pilotee et
+// se trouve a ~0,3 V a cause du tirage RPullUp en diviseur avec la fuite de
+// l'interrupteur ouvert du MCU), il serait desynchronise pour toute la suite et
+// le temoin resterait eteint. C'est ainsi que le bug a ete trouve : b'Hi\n'
+// revenait alors en b'*K\xf8'. Le critere vTemoin couvre donc aussi ce cas.
+
+if vReposTx > 2.0 and vReposRx > 2.0 and vStart < 0.5 and vB3 > 2.0 and vB6 > 2.0 and vB7 < 0.5 and vStop > 2.0 and vTxAvantLigne < 0.5 and vTxActif > 0.5 and vRxOccupe > 0.5 and vTemoin > 2.0 then
+  print("PASS: verify_14_uart_echo (repos TX=" + String(vReposTx) + "V RX=" + String(vReposRx) + "V ; trame 'H' recue par le peripherique start=" + String(vStart) + "V b3=" + String(vB3) + "V b6=" + String(vB6) + "V b7=" + String(vB7) + "V stop=" + String(vStop) + "V ; script muet avant la fin de ligne (" + String(vTxAvantLigne) + "), en emission ensuite (" + String(vTxActif) + ") ; en reception=" + String(vRxOccupe) + " ; temoin GP7=" + String(vTemoin) + "V)\n");
+else
+  print("FAIL: verify_14_uart_echo (reposTX=" + String(vReposTx) + " reposRX=" + String(vReposRx) + " start=" + String(vStart) + " b3=" + String(vB3) + " b6=" + String(vB6) + " b7=" + String(vB7) + " stop=" + String(vStop) + " txAvantLigne=" + String(vTxAvantLigne) + " txActif=" + String(vTxActif) + " rxOccupe=" + String(vRxOccupe) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;

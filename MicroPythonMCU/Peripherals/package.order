@@ -1,2 +1,7 @@
 LED
 Display
+UartGenericDevice
+UartEchoDevice
+UartTemperatureSensor
+UartGpsModule
+UartLcd20x2

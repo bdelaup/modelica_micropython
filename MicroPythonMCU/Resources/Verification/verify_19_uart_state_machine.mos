@@ -1,0 +1,29 @@
+// Scénario de vérification v0 n°20 : périphérique série dont le comportement
+// est décrit par un SCRIPT PYTHON à machine d'état (Examples.UartStateMachine).
+//
+// Ce que ce scénario vérifie : le mode Script de bout en bout -
+//  - le script est chargé dans un espace de noms propre et son état PERSISTE
+//    d'un appel à l'autre (la réponse à READ dépend de ce qui précède) ;
+//  - on_receive() n'est appelé qu'UNE fois par ligne : si une transition était
+//    rejouée à chaque itération d'événement, le compteur dépasserait 2 et le
+//    second START ne serait pas refusé ;
+//  - outputs() publie l'état sur le connecteur valueOut.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.UartStateMachine, stopTime = 0.4, numberOfIntervals = 8000, fileNamePrefix = "UartStateMachine");
+b := getErrorString();
+
+f := "UartStateMachine_res.mat";
+
+eAvant := val(appareil.valueOut[1], 0.02, f);   // 0 : a l'arret avant START
+eMarche := val(appareil.valueOut[1], 0.15, f);  // 1 : en marche
+eApres := val(appareil.valueOut[1], 0.38, f);   // 0 : de nouveau a l'arret apres STOP
+nFin := val(appareil.valueOut[2], 0.38, f);     // 2 : exactement deux lectures servies
+vTemoin := val(mcu.GP7.v, 0.38, f);             // haut : chaque reponse conforme a l'etat
+
+if eAvant < 0.5 and eMarche > 0.5 and eApres < 0.5 and abs(nFin - 2) < 0.5 and vTemoin > 2.0 then
+  print("PASS: verify_19_uart_state_machine (etat " + String(eAvant) + " -> " + String(eMarche) + " -> " + String(eApres) + " ; exactement " + String(nFin) + " lectures servies, aucune transition rejouee ; temoin GP7=" + String(vTemoin) + "V = les 7 reponses correspondent a l'etat de l'appareil)\n");
+else
+  print("FAIL: verify_19_uart_state_machine (etat " + String(eAvant) + "/" + String(eMarche) + "/" + String(eApres) + " lectures=" + String(nFin) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;
