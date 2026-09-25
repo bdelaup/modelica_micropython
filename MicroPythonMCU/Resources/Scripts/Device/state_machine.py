@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# Script de peripherique a machine d'etat (Examples.UartStateMachine).
+# Script de peripherique a machine d'etat (Examples.Uart.StateMachinePy).
 #
 # L'appareil n'accepte une lecture que s'il a ete demarre, et compte les
 # lectures servies. C'est precisement ce que la table de commandes ne sait pas

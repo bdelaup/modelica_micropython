@@ -10,7 +10,7 @@ model UartTemperatureSensor "Capteur de température série : répond AT+TEMP pa
     nOut = 1,
     fixedValue = 20,
     periodicEnabled = false,
-    scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_temperature_device.py"));
+    scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/temperature_sensor.py"));
   annotation(
     Icon(graphics = {Text(textColor = {255, 255, 255}, extent = {{-90, -22}, {90, -40}}, textString = "TEMP", textStyle = {TextStyle.Bold})}),
     Documentation(info = "<html>
@@ -20,7 +20,7 @@ model UartTemperatureSensor "Capteur de température série : répond AT+TEMP pa
 <li><code>AT+ID</code> → une chaîne d'identification fixe, comme tout module AT réel.</li>
 <li><code>SET &lt;nombre&gt;</code> → <code>OK</code>, et le nombre reçu ressort sur <code>valueOut[1]</code>.</li>
 </ul>
-<p>Cette dernière commande est ce qui fait de l'appareil un <strong>actionneur autant qu'un capteur</strong> : le microcontrôleur lit la mesure par la liaison série et renvoie une consigne par la même liaison, ce qui permet de refermer une boucle de régulation à l'intérieur du modèle, sans aucun fil supplémentaire. Voir <code>Examples.UartRegulation</code>.</p>
+<p>Cette dernière commande est ce qui fait de l'appareil un <strong>actionneur autant qu'un capteur</strong> : le microcontrôleur lit la mesure par la liaison série et renvoie une consigne par la même liaison, ce qui permet de refermer une boucle de régulation à l'intérieur du modèle, sans aucun fil supplémentaire. Voir <code>Examples.Uart.Regulation</code>.</p>
 <p><code>responseDelay</code> vaut 5 ms : un appareil réel ne répond pas instantanément, et le programme embarqué doit donc attendre sa réponse plutôt que de la supposer déjà arrivée.</p>
 </html>"));
 end UartTemperatureSensor;

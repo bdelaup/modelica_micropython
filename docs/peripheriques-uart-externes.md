@@ -4,7 +4,7 @@ Cette page explique le **fonctionnement interne** des appareils qui se branchent
 
 ## 1. Ce que ça remplace
 
-`Examples.UartLoopback` renvoyait la trame du `MCU` vers lui-même à travers un réseau `loopR`/`loopC` qui n'existait que pour contourner une fusion d'alias entre deux broches du même composant. Il n'y avait donc **personne au bout du fil**.
+`Examples.Uart.Loopback` renvoyait la trame du `MCU` vers lui-même à travers un réseau `loopR`/`loopC` qui n'existait que pour contourner une fusion d'alias entre deux broches du même composant. Il n'y avait donc **personne au bout du fil**.
 
 Un appareil série externe est un véritable interlocuteur : deux composants distincts, un simple fil dans chaque sens, une masse commune.
 
@@ -97,7 +97,7 @@ Cause : le `change(rxBoolIn)` du périphérique dépend de la tension pilotée p
 
 Correction : une **capacité d'entrée `CIn` sur la broche RX** (1 nF par défaut). Physiquement honnête — toute broche d'entrée et tout câble en ont une — et elle donne au nœud un véritable état dynamique, ce qui coupe le cycle. Face aux 100 Ω de sortie, la constante de temps vaut 0,1 µs, soit 0,01 % d'un bit à 1200 bauds.
 
-> **Bénéfice inattendu** : puisque chaque extrémité réceptrice porte désormais sa propre capacité, le réseau R+C artificiel de `PinEcho`/`UartLoopback` devient inutile dès qu'un périphérique est en jeu.
+> **Bénéfice inattendu** : puisque chaque extrémité réceptrice porte désormais sa propre capacité, le réseau R+C artificiel de `PinEcho`/`Uart.Loopback` devient inutile dès qu'un périphérique est en jeu.
 
 ### (b) L'octet fantôme, reproduit à l'envers
 
@@ -119,7 +119,7 @@ Le test de réussite de la conception : chacun ne redéfinit que des **valeurs d
 | `UartGpsModule` | `periodicEnabled`, `nIn = 3`, gabarit NMEA | l'émission spontanée, et le polling qu'elle impose au script |
 | `UartLcd20x2` | tout à `false`, plus `extends Internal.TwoLineTextIcon` | le pendant électrique de `Peripherals.Display` |
 
-Deux exemples exploitent le port de **sortie** : `Examples.UartSensor` montre la capture `{o1}` isolée, et `Examples.UartRegulation` referme une boucle de régulation complète — la commande capturée pilote un procédé du premier ordre dont la sortie revient sur l'entrée du même appareil, sans un fil de plus que les deux de la liaison série.
+Deux exemples exploitent le port de **sortie** : `Examples.Uart.Sensor` montre la capture `{o1}` isolée, et `Examples.Uart.Regulation` referme une boucle de régulation complète — la commande capturée pilote un procédé du premier ordre dont la sortie revient sur l'entrée du même appareil, sans un fil de plus que les deux de la liaison série.
 
 `UartLcd20x2` hérite de **deux** classes : `Internal.PartialUartDevice` pour la mécanique série, `Internal.TwoLineTextIcon` pour les 40 cellules de texte de l'icône 20×2 — les mêmes que `Display`, écrites une seule fois. Ce partage a fait passer `Display.mo` de 159 Ko à 4,3 Ko.
 
@@ -127,7 +127,7 @@ Deux exemples exploitent le port de **sortie** : `Examples.UartSensor` montre la
 
 ## 8. Décrire un appareil par un script Python
 
-Basculer `comportement` sur `Script` remplace la table par un fichier `.py`. **Chaque périphérique fourni a son script par défaut** (`Resources/Scripts/*_device.py`), de comportement équivalent à sa table : le basculement fonctionne immédiatement, et le fichier sert de point de départ. `UartLcd20x2` fait exception (`final comportement = Table`) : un afficheur n'a pas de comportement programmable.
+Basculer `comportement` sur `Script` remplace la table par un fichier `.py`. **Chaque périphérique fourni a son script par défaut** (dossier `Resources/Scripts/Device/`, fichier nommé d'après l'appareil), de comportement équivalent à sa table : le basculement fonctionne immédiatement, et le fichier sert de point de départ. `UartLcd20x2` fait exception (`final comportement = Table`) : un afficheur n'a pas de comportement programmable.
 
 ```python
 etat = 'ARRET'          # variables de module : l'état de l'appareil,
@@ -169,5 +169,5 @@ Les trois sont facultatives. Le **contenu** des trames vient du script ; la **te
 
 ## 9. Notes pour plus tard
 
-- Le débit du périphérique est **le sien**. Un désaccord avec le microcontrôleur produit des octets faux — c'est voulu : c'est le symptôme exact d'un désaccord de configuration sur un montage réel, et `Examples.UartLcdDemo` permet de le reproduire sans matériel.
+- Le débit du périphérique est **le sien**. Un désaccord avec le microcontrôleur produit des octets faux — c'est voulu : c'est le symptôme exact d'un désaccord de configuration sur un montage réel, et `Examples.Uart.Lcd` permet de le reproduire sans matériel.
 - **Plusieurs fichiers par appareil** : le dossier du script n'est pas ajouté à `sys.path`, `sys.path` étant global à l'interpréteur. Un appareil complexe reste pour l'instant un fichier autonome.

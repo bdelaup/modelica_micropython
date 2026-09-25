@@ -1,9 +1,9 @@
 // Scénario de vérification v0 n°17 : émission périodique spontanée, décrite par
-// un SCRIPT (Examples.UartGps, gps.comportement = Script). Le périphérique parle
+// un SCRIPT (Examples.Uart.GpsPy, gps.comportement = Script). Le périphérique parle
 // sans être sollicité ; le microcontrôleur vérifie les sommes de contrôle.
 //
 // Ce que ce scénario vérifie : le second mode d'émission et sa CADENCE, en mode
-// Script. Le script par défaut du module (uart_gps_device.py) produit de vraies
+// Script. Le script par défaut du module (Device/gps.py) produit de vraies
 // phrases NMEA RMC avec leur somme de contrôle - ce qu'une table ne sait pas
 // faire. Le témoin ne passe à l'état haut que si au moins 4 phrases à somme de
 // contrôle correcte sont arrivées en 500 ms ; outputs() publie en outre le
@@ -11,7 +11,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.UartGps, stopTime = 0.6, numberOfIntervals = 12000, fileNamePrefix = "UartGps");
+simulate(MicroPythonMCU.Examples.Uart.GpsPy, stopTime = 0.6, numberOfIntervals = 12000, fileNamePrefix = "UartGps");
 b := getErrorString();
 
 f := "UartGps_res.mat";

@@ -1,5 +1,5 @@
 // Scénario de vérification v0 n°16 : dialogue requête/réponse avec un capteur
-// série externe (Examples.UartSensor), DANS LES DEUX SENS.
+// série externe (Examples.Uart.Sensor), DANS LES DEUX SENS.
 //
 // Ce que ce scénario vérifie et qu'aucun autre ne vérifie :
 //  - le périphérique reconnaît une commande dans sa table et y répond ;
@@ -11,7 +11,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.UartSensor, stopTime = 0.5, numberOfIntervals = 10000, fileNamePrefix = "UartSensor");
+simulate(MicroPythonMCU.Examples.Uart.Sensor, stopTime = 0.5, numberOfIntervals = 10000, fileNamePrefix = "UartSensor");
 b := getErrorString();
 
 f := "UartSensor_res.mat";

@@ -2,7 +2,7 @@ within MicroPythonMCU.Examples;
 
 model BasicBlink "Scénario de vérification v0 n°1 : le script de démo par défaut fait clignoter GP0 (LED externe) et la LED embarquée à 1 Hz"
   extends Modelica.Icons.Example;
-  MCU mcu "scriptPath par défaut = Resources/Scripts/demo.py" annotation(
+  MCU mcu "scriptPath par défaut = Resources/Scripts/MCU/demo.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));

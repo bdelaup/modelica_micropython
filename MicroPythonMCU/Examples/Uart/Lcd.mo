@@ -1,8 +1,8 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Uart;
 
-model UartLcdDemo "Le microcontrôleur écrit deux lignes sur un afficheur 20x2 par une vraie liaison série ; l'afficheur les montre sur son icône avec défilement"
+model Lcd "Le microcontrôleur écrit deux lignes sur un afficheur 20x2 par une vraie liaison série ; l'afficheur les montre sur son icône avec défilement"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_lcd.py")) "scriptPath = Resources/Scripts/uart_lcd.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_lcd.py")) "scriptPath = Resources/Scripts/MCU/uart_lcd.py" annotation(
     Placement(transformation(origin = {-90, 0}, extent = {{-50, -50}, {50, 50}})));
   MicroPythonMCU.Peripherals.UartLcd20x2 lcd(baudrate = 9600) "Affiche les lignes reçues sur sa broche RX" annotation(
     Placement(transformation(origin = {40, 0}, extent = {{-40, -40}, {40, 40}})));
@@ -27,8 +27,8 @@ equation
 <p>À comparer directement avec <code>Examples.DisplayDemo</code>, qui affiche le même genre de texte à travers la liaison <strong>logique</strong> <code>machine.Display</code>. Le résultat visuel est identique, le chemin ne l'est pas du tout :</p>
 <ul>
 <li><code>DisplayDemo</code> : le message est livré d'un bloc au point de synchro, sans durée ni tension. Pratique, mais rien à sonder.</li>
-<li><code>UartLcdDemo</code> : le texte traverse un vrai fil, un caractère toutes les 1,04 ms à 9600 bauds. Tracer <code>mcu.GP5.v</code> montre chaque caractère partir bit à bit, et c'est le saut de ligne qui déclenche l'affichage.</li>
+<li><code>Uart.Lcd</code> : le texte traverse un vrai fil, un caractère toutes les 1,04 ms à 9600 bauds. Tracer <code>mcu.GP5.v</code> montre chaque caractère partir bit à bit, et c'est le saut de ligne qui déclenche l'affichage.</li>
 </ul>
 <p>Régler le débit de l'afficheur sur une autre valeur que celle du microcontrôleur fait apparaître des caractères faux à l'écran — le symptôme exact d'un désaccord de configuration sur un montage réel, reproduit ici sans matériel.</p>
 </html>"));
-end UartLcdDemo;
+end Lcd;

@@ -1,7 +1,7 @@
 within MicroPythonMCU.Peripherals;
 
 model UartGenericDevice "Appareil série externe entièrement décrit par ses paramètres, sans créer de classe dédiée"
-  extends Internal.PartialUartDevice(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_generic_device.py"));
+  extends Internal.PartialUartDevice(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/generic.py"));
   annotation(
     Documentation(info = "<html>
 <p>Le composant à poser dans un schéma quand l'appareil à simuler ne correspond à aucun des modèles dérivés fournis et ne justifie pas d'en écrire un. Tout se règle dans le dialogue de paramètres : la table de commandes, l'émission périodique, les grandeurs échangées.</p>

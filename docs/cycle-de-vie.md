@@ -95,10 +95,10 @@ Chaque appel au shim (`Pin.value()`, `.on()`, `.off()`, `time.sleep*`) passe par
 
 ## 3. Le trajet d'un appel, couche par couche (extraits de code)
 
-Les diagrammes ci-dessus montrent le protocole ; voici le même mécanisme avec le code réel, en suivant un exemple concret tiré de `Resources/Scripts/demo.py` : `led.on()` puis `time.sleep(1)`.
+Les diagrammes ci-dessus montrent le protocole ; voici le même mécanisme avec le code réel, en suivant un exemple concret tiré de `Resources/Scripts/MCU/demo.py` : `led.on()` puis `time.sleep(1)`.
 
 ```python
-# Resources/Scripts/demo.py
+# Resources/Scripts/MCU/demo.py
 from machine import Pin
 import time
 

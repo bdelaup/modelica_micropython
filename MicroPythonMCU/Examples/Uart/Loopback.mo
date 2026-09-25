@@ -1,8 +1,8 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Uart;
 
-model UartLoopback "Liaison série électrique réelle bouclée sur elle-même : GP0 (TX) émet une trame, GP1 (RX) la reçoit et la décode, GP3 (LED) confirme que l'octet est arrivé intact"
+model Loopback "Liaison série électrique réelle bouclée sur elle-même : GP0 (TX) émet une trame, GP1 (RX) la reçoit et la décode, GP3 (LED) confirme que l'octet est arrivé intact"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_loopback.py")) "scriptPath = Resources/Scripts/uart_loopback.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_loopback.py")) "scriptPath = Resources/Scripts/MCU/uart_loopback.py" annotation(
     Placement(transformation(origin = {1, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
@@ -42,4 +42,4 @@ equation
 <p>La forme d'onde est générée <strong>en continu par Modelica</strong> à partir du motif de bits calculé une seule fois côté runtime C, sans que le thread Python pilote chaque front — comme le vrai périphérique UART du RP2040, qui tourne indépendamment du CPU une fois programmé (même principe que <code>machine.PWM</code>, cf. <code>requirements.md</code>). La réception, elle, est décodée côté C par échantillonnage au milieu de chaque bit.</p>
 <p>Le bouclage TX→RX reprend obligatoirement le motif <code>loopR</code>/<code>loopC</code> de <code>Examples.PinEcho</code> : relier deux broches du même <code>MCU</code> par un <code>connect()</code> direct fait disparaître la tension pilotée des résultats de simulation.</p>
 </html>"));
-end UartLoopback;
+end Loopback;

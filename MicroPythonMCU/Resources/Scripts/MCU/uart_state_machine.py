@@ -1,7 +1,7 @@
 from machine import Pin, UART
 import time
 
-# Programme du microcontroleur pour Examples.UartStateMachine : il deroule un
+# Programme du microcontroleur pour Examples.Uart.StateMachinePy : il deroule un
 # scenario de commandes et verifie que l'appareil repond selon son ETAT, et
 # pas seulement selon la commande recue.
 #

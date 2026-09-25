@@ -1,8 +1,8 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Uart;
 
-model UartSensor "Le microcontrôleur interroge un capteur de température série, lit deux mesures qui évoluent, puis lui transmet une consigne qui ressort sur une sortie réelle"
+model Sensor "Le microcontrôleur interroge un capteur de température série, lit deux mesures qui évoluent, puis lui transmet une consigne qui ressort sur une sortie réelle"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_sensor.py")) "scriptPath = Resources/Scripts/uart_sensor.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_sensor.py")) "scriptPath = Resources/Scripts/MCU/uart_sensor.py" annotation(
     Placement(transformation(origin = {-90, 0}, extent = {{-50, -50}, {50, 50}})));
   MicroPythonMCU.Peripherals.UartTemperatureSensor capteur(baudrate = 9600) "Répond AT+TEMP par la température présente sur son entrée, et SET par une consigne sur sa sortie" annotation(
     Placement(transformation(origin = {40, 0}, extent = {{-40, -40}, {40, 40}})));
@@ -30,6 +30,6 @@ equation
     Documentation(info = "<html>
 <p>Un <strong>dialogue requête / réponse</strong> complet, dans les deux sens, sur une liaison série électrique.</p>
 <p><strong>Ce que le port d'entrée apporte.</strong> La température n'est pas une constante figée dans le capteur : elle arrive par le connecteur <code>valueIn</code>, ici depuis une rampe. Le microcontrôleur interroge le capteur deux fois à 100 ms d'intervalle et lit deux valeurs différentes — on peut y brancher n'importe quel modèle thermique à la place de la rampe.</p>
-<p><strong>Et dans l'autre sens.</strong> Le programme termine par <code>SET 42.5</code>. Le capteur reconnaît ce motif grâce au marqueur de capture <code>{o1}</code> de sa table, et le nombre ressort sur <code>capteur.valueOut[1]</code>. Tracer cette variable montre la consigne apparaître à l'instant exact où la trame finit d'arriver. Pour une boucle complète où cette sortie pilote réellement un procédé, voir <code>Examples.UartRegulation</code>.</p>
+<p><strong>Et dans l'autre sens.</strong> Le programme termine par <code>SET 42.5</code>. Le capteur reconnaît ce motif grâce au marqueur de capture <code>{o1}</code> de sa table, et le nombre ressort sur <code>capteur.valueOut[1]</code>. Tracer cette variable montre la consigne apparaître à l'instant exact où la trame finit d'arriver. Pour une boucle complète où cette sortie pilote réellement un procédé, voir <code>Examples.Uart.Regulation</code>.</p>
 </html>"));
-end UartSensor;
+end Sensor;

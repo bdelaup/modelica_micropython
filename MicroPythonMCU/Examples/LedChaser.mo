@@ -2,7 +2,7 @@ within MicroPythonMCU.Examples;
 
 model LedChaser "Chenillard bidirectionnel : une LED (Peripherals.LED) par broche GP0-GP7, disposées en anneau autour du microcontrôleur, allumées une à la fois dans l'ordre GP0->GP3 (gauche) puis GP7->GP4 (droite), puis en sens inverse"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/led_chaser.py")) "scriptPath = Resources/Scripts/led_chaser.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/led_chaser.py")) "scriptPath = Resources/Scripts/MCU/led_chaser.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -110}, extent = {{-15, -15}, {15, 15}})));

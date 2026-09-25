@@ -2,7 +2,7 @@ within MicroPythonMCU.Examples;
 
 model AdcRead "GP1 utilisée en entrée analogique (machine.ADC), pilotée par un pont diviseur externe ; le script recopie un seuil sur GP0 (LED) pour rendre la lecture observable"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/adc_read.py")) "scriptPath = Resources/Scripts/adc_read.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/adc_read.py")) "scriptPath = Resources/Scripts/MCU/adc_read.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));

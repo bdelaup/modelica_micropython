@@ -1,6 +1,6 @@
 // Scénario de vérification v0 n°15 : dialogue avec un vrai périphérique série externe
-// (Examples.UartEcho). Le microcontrôleur envoie "Hi\n" sur GP5 ; le périphérique,
-// en mode Script (uart_echo_device.py), renvoie la ligne sur GP4 ; le
+// (Examples.Uart.EchoPy). Le microcontrôleur envoie "Hi\n" sur GP5 ; le périphérique,
+// en mode Script (Device/echo.py), renvoie la ligne sur GP4 ; le
 // microcontrôleur la relit et met GP7 à l'état haut.
 //
 // Ce que ce scénario vérifie et que verify_13 ne vérifie pas : la liaison relie
@@ -11,7 +11,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.UartEcho, stopTime = 0.1, numberOfIntervals = 20000, fileNamePrefix = "UartEcho");
+simulate(MicroPythonMCU.Examples.Uart.EchoPy, stopTime = 0.1, numberOfIntervals = 20000, fileNamePrefix = "UartEcho");
 b := getErrorString();
 
 f := "UartEcho_res.mat";

@@ -2,7 +2,7 @@ within MicroPythonMCU.Examples;
 
 model ImportDemo "Le script principal importe un module auxiliaire pose a cote de lui (addScriptDirToPath) et un module d'une bibliotheque partagee dans un dossier separe (libraryPath)"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/import_demo.py"), libraryPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/lib/shared_helper.py")) "scriptPath = Resources/Scripts/import_demo.py, libraryPath = Resources/Scripts/lib/shared_helper.py (addScriptDirToPath reste a sa valeur par defaut, true)" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/import_demo.py"), libraryPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/lib/shared_helper.py")) "scriptPath = Resources/Scripts/MCU/import_demo.py, libraryPath = Resources/Scripts/MCU/lib/shared_helper.py (addScriptDirToPath reste a sa valeur par defaut, true)" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -100}, extent = {{-15, -15}, {15, 15}})));
@@ -33,6 +33,6 @@ equation
     Diagram(coordinateSystem(extent = {{-200, -140}, {80, 100}})),
     experiment(StopTime = 0.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
-<p>Scénario de vérification 10 (cf. <code>requirements.md</code>) : le script principal <code>import_demo.py</code> importe deux modules auxiliaires — <code>companion.py</code>, posé à côté de lui dans <code>Resources/Scripts/</code> (rendu importable par <code>addScriptDirToPath</code>, activé par défaut sur <code>MCU</code>), et <code>shared_helper.py</code>, dans le sous-dossier séparé <code>Resources/Scripts/lib/</code> (rendu importable via le paramètre <code>libraryPath</code> de <code>mcu</code>, qui y pointe explicitement). Si l'un des deux imports échouait, le script lèverait une <code>ImportError</code> non rattrapée et la simulation s'arrêterait en erreur. <code>led0</code>/<code>led1</code> confirment visuellement que les deux imports ont réussi. Les broches <code>GP2</code>-<code>GP7</code>, non utilisées par ce scénario, sont laissées non connectées.</p>
+<p>Scénario de vérification 10 (cf. <code>requirements.md</code>) : le script principal <code>import_demo.py</code> importe deux modules auxiliaires — <code>companion.py</code>, posé à côté de lui dans <code>Resources/Scripts/</code> (rendu importable par <code>addScriptDirToPath</code>, activé par défaut sur <code>MCU</code>), et <code>shared_helper.py</code>, dans le sous-dossier séparé <code>Resources/Scripts/MCU/lib/</code> (rendu importable via le paramètre <code>libraryPath</code> de <code>mcu</code>, qui y pointe explicitement). Si l'un des deux imports échouait, le script lèverait une <code>ImportError</code> non rattrapée et la simulation s'arrêterait en erreur. <code>led0</code>/<code>led1</code> confirment visuellement que les deux imports ont réussi. Les broches <code>GP2</code>-<code>GP7</code>, non utilisées par ce scénario, sont laissées non connectées.</p>
 </html>"));
 end ImportDemo;

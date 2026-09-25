@@ -9,7 +9,7 @@ model UartGpsModule "Module GPS série : pousse spontanément une trame de posit
     useValueInput = true,
     nIn = 3,
     fixedValue = 0,
-    scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_gps_device.py"));
+    scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/gps.py"));
   annotation(
     Icon(graphics = {Text(textColor = {255, 255, 255}, extent = {{-90, -22}, {90, -40}}, textString = "GPS", textStyle = {TextStyle.Bold})}),
     Documentation(info = "<html>

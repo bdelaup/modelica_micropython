@@ -1,7 +1,7 @@
 within MicroPythonMCU;
 
 model MCU "Microcontrôleur programmable simulé (v0), piloté par un script Python compatible MicroPython"
-  parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/demo.py") "Chemin du script utilisateur (.py)" annotation(
+  parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/demo.py") "Chemin du script utilisateur (.py)" annotation(
     Dialog(group = "Script Python", loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un script Python")));
   parameter Boolean addScriptDirToPath = true "Rendre importables les fichiers .py situés à côté du script (ex. import mon_module) - reproduit le comportement du vrai Pico (dossier racine de la flash sur sys.path)" annotation(
     Dialog(group = "Script Python"));

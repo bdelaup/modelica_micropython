@@ -1,5 +1,5 @@
 // Scénario de vérification v0 n°18 : afficheur 20x2 alimenté par une VRAIE
-// trame série (Examples.UartLcdDemo), et non plus par la liaison logique
+// trame série (Examples.Uart.Lcd), et non plus par la liaison logique
 // machine.Display de verify_12.
 //
 // Ce que ce scénario vérifie : le texte affiché est bien celui réellement
@@ -11,7 +11,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.UartLcdDemo, stopTime = 0.2, numberOfIntervals = 20000, fileNamePrefix = "UartLcdDemo");
+simulate(MicroPythonMCU.Examples.Uart.Lcd, stopTime = 0.2, numberOfIntervals = 20000, fileNamePrefix = "UartLcdDemo");
 b := getErrorString();
 
 f := "UartLcdDemo_res.mat";

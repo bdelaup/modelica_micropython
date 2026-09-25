@@ -2,7 +2,7 @@ within MicroPythonMCU.Examples;
 
 model PwmLedFade "GP0 pilote une LED en PWM (machine.PWM), 200 Hz / ~30% de rapport cyclique, configuré une fois puis généré en continu côté Modelica"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/pwm_led_fade.py")) "scriptPath = Resources/Scripts/pwm_led.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/pwm_led_fade.py")) "scriptPath = Resources/Scripts/MCU/pwm_led.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));

@@ -1,5 +1,5 @@
 // Scénario de vérification v0 n°19 : boucle de régulation fermée à travers la
-// seule liaison série (Examples.UartRegulation).
+// seule liaison série (Examples.Uart.Regulation).
 //
 // Ce que ce scénario vérifie et qu'aucun autre ne vérifie : la SORTIE REELLE de
 // l'appareil série pilote effectivement le reste du modèle. La commande capturée
@@ -10,7 +10,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.UartRegulation, stopTime = 1, numberOfIntervals = 10000, fileNamePrefix = "UartRegulation");
+simulate(MicroPythonMCU.Examples.Uart.Regulation, stopTime = 1, numberOfIntervals = 10000, fileNamePrefix = "UartRegulation");
 b := getErrorString();
 
 f := "UartRegulation_res.mat";

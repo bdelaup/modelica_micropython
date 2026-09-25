@@ -1,5 +1,5 @@
 // Scénario de vérification v0 n°20 : périphérique série dont le comportement
-// est décrit par un SCRIPT PYTHON à machine d'état (Examples.UartStateMachine).
+// est décrit par un SCRIPT PYTHON à machine d'état (Examples.Uart.StateMachinePy).
 //
 // Ce que ce scénario vérifie : le mode Script de bout en bout -
 //  - le script est chargé dans un espace de noms propre et son état PERSISTE
@@ -11,7 +11,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.UartStateMachine, stopTime = 0.4, numberOfIntervals = 8000, fileNamePrefix = "UartStateMachine");
+simulate(MicroPythonMCU.Examples.Uart.StateMachinePy, stopTime = 0.4, numberOfIntervals = 8000, fileNamePrefix = "UartStateMachine");
 b := getErrorString();
 
 f := "UartStateMachine_res.mat";

@@ -2,7 +2,7 @@
 
 Cette page documente la liaison série `machine.UART` (cf. `requirements.md`, décision « UART électrique réel sur les broches GPIO »). Contrairement au périphérique d'affichage pédagogique ([peripherique-display.md](peripherique-display.md)), qui porte un message logique livré d'un bloc, l'UART produit un **vrai signal électrique** sur deux broches `GPx` : un élève peut tracer `mcu.GP0.v` dans OMEdit et y lire une trame comme à l'oscilloscope.
 
-**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, trame 8N1 figée, 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.UartLoopback`](../MicroPythonMCU/Examples/UartLoopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](api-machine.md) § `machine.UART`.
+**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, trame 8N1 figée, 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.Uart.Loopback`](../MicroPythonMCU/Examples/Uart/Loopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](api-machine.md) § `machine.UART`.
 
 ## 1. Pourquoi électrique ici, logique pour `Display`
 
@@ -69,7 +69,7 @@ La réception **ne réveille pas le script** : les octets s'accumulent dans un F
 
 Contrairement à `Display` et son connecteur `Display0`, l'UART n'introduit **aucun connecteur** : TX et RX sont deux broches `GPx` ordinaires (`Modelica.Electrical.Analog.Interfaces.PositivePin`), choisies par le script et donc pas visibles sur l'icône. Un vrai périphérique série se câblerait sur ces broches comme n'importe quel composant électrique.
 
-Pour un **bouclage sur le même `MCU`** (ce que fait `UartLoopback`), reprendre obligatoirement le motif `loopR`/`loopC` de `PinEcho` :
+Pour un **bouclage sur le même `MCU`** (ce que fait `Uart.Loopback`), reprendre obligatoirement le motif `loopR`/`loopC` de `PinEcho` :
 
 ```mermaid
 graph LR

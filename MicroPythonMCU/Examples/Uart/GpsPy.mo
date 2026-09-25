@@ -1,10 +1,10 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Uart;
 
-model UartGps "Un module GPS pousse spontanément ses trames de position ; le microcontrôleur les compte sans jamais rien demander"
+model GpsPy "Un module GPS pousse spontanément ses trames de position ; le microcontrôleur les compte sans jamais rien demander"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_gps.py")) "scriptPath = Resources/Scripts/uart_gps.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_gps.py")) "scriptPath = Resources/Scripts/MCU/uart_gps.py" annotation(
     Placement(transformation(origin = {-90, 0}, extent = {{-50, -50}, {50, 50}})));
-  MicroPythonMCU.Peripherals.UartGpsModule gps(baudrate = 9600, period = 0.1, comportement = MicroPythonMCU.Interfaces.UartBehaviour.Script, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_gps_device.py")) "Émet une phrase NMEA RMC toutes les 100 ms, sans sollicitation - comportement décrit par Resources/Scripts/uart_gps_device.py" annotation(
+  MicroPythonMCU.Peripherals.UartGpsModule gps(baudrate = 9600, period = 0.1, comportement = MicroPythonMCU.Interfaces.UartBehaviour.Script, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/gps.py")) "Émet une phrase NMEA RMC toutes les 100 ms, sans sollicitation - comportement décrit par Resources/Scripts/Device/gps.py" annotation(
     Placement(transformation(origin = {40, 0}, extent = {{-40, -40}, {40, 40}})));
   Modelica.Blocks.Sources.Ramp latitude(height = 0.01, duration = 1, offset = 47.24) "La position évolue : les trames successives ne sont pas identiques" annotation(
     Placement(transformation(origin = {160, 45}, extent = {{12, -12}, {-12, 12}})));
@@ -36,9 +36,9 @@ equation
     Diagram(coordinateSystem(extent = {{-160, -100}, {200, 80}})),
     experiment(StopTime = 0.6, Interval = 5e-5),
     Documentation(info = "<html>
-<p>Le miroir de <code>Examples.UartSensor</code> : ici l'appareil parle le premier et n'attend aucune question.</p>
+<p>Le miroir de <code>Examples.Uart.Sensor</code> : ici l'appareil parle le premier et n'attend aucune question.</p>
 <p>Conséquence côté programme embarqué : la réception ne le réveille jamais (pas de <code>uart.irq()</code> en v0), il doit donc <strong>surveiller</strong> son entrée avec <code>uart.any()</code> dans une boucle, en dormant entre deux passages. Un programme qui oublierait de dormir empêcherait le temps simulé d'avancer ; un programme qui dormirait trop longtemps manquerait des trames — les deux défauts se constatent immédiatement à l'exécution, ce qui en fait un banc d'essai utile pour valider une stratégie de scrutation avant de la porter sur la cible.</p>
-<p>Le module est en mode <strong>Script</strong> (<code>gps.comportement = Script</code>) : <code>uart_gps_device.py</code> produit des phrases NMEA RMC complètes — heure UTC, hémisphères, <strong>somme de contrôle</strong> —, ce que la table de commandes ne sait pas faire. Le programme du microcontrôleur vérifie chaque somme de contrôle, exactement comme le code embarqué d'un récepteur réel. Le script tient aussi un compteur de phrases émises, publié sur <code>gps.valueOut[1]</code>.</p>
+<p>Le module est en mode <strong>Script</strong> (<code>gps.comportement = Script</code>) : <code>Device/gps.py</code> produit des phrases NMEA RMC complètes — heure UTC, hémisphères, <strong>somme de contrôle</strong> —, ce que la table de commandes ne sait pas faire. Le programme du microcontrôleur vérifie chaque somme de contrôle, exactement comme le code embarqué d'un récepteur réel. Le script tient aussi un compteur de phrases émises, publié sur <code>gps.valueOut[1]</code>.</p>
 <p>La latitude est une rampe : les phrases successives diffèrent, ce qui permet de vérifier d'un coup d'œil dans le journal que le flux est bien vivant et pas répété.</p>
 </html>"));
-end UartGps;
+end GpsPy;

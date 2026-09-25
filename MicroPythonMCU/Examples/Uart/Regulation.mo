@@ -1,8 +1,8 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Uart;
 
-model UartRegulation "Boucle de régulation fermée à travers la seule liaison série : la sortie réelle du capteur pilote le procédé, dont la réponse revient sur son entrée"
+model Regulation "Boucle de régulation fermée à travers la seule liaison série : la sortie réelle du capteur pilote le procédé, dont la réponse revient sur son entrée"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/uart_regulation.py")) "scriptPath = Resources/Scripts/uart_regulation.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_regulation.py")) "scriptPath = Resources/Scripts/MCU/uart_regulation.py" annotation(
     Placement(transformation(origin = {-90, 0}, extent = {{-50, -50}, {50, 50}})));
   MicroPythonMCU.Peripherals.UartTemperatureSensor capteur(baudrate = 9600) "Capteur ET actionneur : {v1} publie la mesure, {o1} capture la commande" annotation(
     Placement(transformation(origin = {40, 0}, extent = {{-40, -40}, {40, 40}})));
@@ -41,4 +41,4 @@ equation
 </ol>
 <p>Tracer <code>procede.y</code> montre la température rejoindre la consigne de 40 °C, et <code>capteur.valueOut[1]</code> montre la commande évoluer en escalier — un palier par cycle de dialogue, puisque la régulation n'est rafraîchie qu'au rythme des échanges série. C'est précisément ce que ce montage permet d'étudier : l'effet de la <strong>période d'échantillonnage imposée par le débit de la liaison</strong> sur la dynamique de la boucle. Abaisser <code>baudrate</code> espace les cycles et dégrade visiblement la réponse.</p>
 </html>"));
-end UartRegulation;
+end Regulation;

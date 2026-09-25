@@ -2,7 +2,7 @@ within MicroPythonMCU.Examples;
 
 model PinEcho "GP1 oscille, GP2 relit son état électrique, GP3 reproduit ce qui a été lu (avec LED sur GP1 et GP3 pour la visualisation)"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/pin_echo.py")) "scriptPath = Resources/Scripts/pin_echo.py" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/pin_echo.py")) "scriptPath = Resources/Scripts/MCU/pin_echo.py" annotation(
     Placement(transformation(extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));

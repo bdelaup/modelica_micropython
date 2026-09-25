@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.UartLoopback, stopTime = 0.05, numberOfIntervals = 20000, fileNamePrefix = "UartLoopback");
+simulate(MicroPythonMCU.Examples.Uart.Loopback, stopTime = 0.05, numberOfIntervals = 20000, fileNamePrefix = "UartLoopback");
 b := getErrorString();
 
 // 1200 bauds -> un bit dure 1/1200 = 833.33 us ; trame 8N1 = 10 bits = 8.33 ms.
