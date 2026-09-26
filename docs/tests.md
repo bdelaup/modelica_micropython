@@ -14,6 +14,23 @@ export PATH="/d/Programmes/OpenModelica1.27.1-64bit/bin:$PATH"   # adapter le ch
 
 ## Lancer la suite
 
+### Toute la suite, en parallèle (recommandé)
+
+Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, ou le msys fourni avec OpenModelica) :
+```
+./run_all.sh                        # toute la suite, 4 exécutions simultanées
+./run_all.sh -j 2                   # autre degré de parallélisme
+./run_all.sh verify_08_pwm.mos ...  # seulement certains scripts
+./run_all.sh -k                     # garder artefacts et journaux (débogage)
+```
+Le script affiche un récapitulatif `PASS`/`FAIL`/`ERREUR` avec la durée de chaque `.mos`, puis la fin du journal de chaque script en échec ; il se termine avec le code 1 si un script n'a pas passé. Si `omc` n'est pas sur le `PATH` mais que `OPENMODELICAHOME` est positionné, il complète le `PATH` lui-même. Sauf `-k`, il supprime ensuite tous les artefacts générés, qui portent tous le nom du `fileNamePrefix` de leur script.
+
+Les scripts qui partagent des fichiers sont exécutés **à la suite l'un de l'autre**, jamais en même temps : même `fileNamePrefix` (`verify_01`/`verify_05`, tous deux `BasicBlink`), ou manipulation des copies de système de fichiers (`verify_25`/`verify_27`, qui effacent tous les `mcu_datalogger_*` et écrivent `fs_copies.txt`). Ce regroupement est automatique : un nouveau script en conflit est pris en compte sans modifier `run_all.sh`.
+
+**Durées mesurées** (i5-13420H, 4 cœurs performants + 4 basse consommation, 16 Go, dépôt dans OneDrive) : ~265 s en séquentiel, **~125 s** avec `run_all.sh`. Le gain plafonne à ~2× quel que soit `-j` (3, 4 ou 6 donnent le même temps) : chaque `omc` occupe déjà plusieurs cœurs, notamment en compilant en parallèle les fichiers C générés, et le processeur est saturé. Hors OneDrive, la suite est ~10–15 % plus rapide.
+
+### Un script à la fois
+
 Depuis `MicroPythonMCU/Resources/Verification/` :
 ```
 omc verify_01_basic_blink.mos
@@ -110,4 +127,4 @@ end if;
 
 ## Nettoyage
 
-Les artefacts de compilation générés par ces exécutions (`.exe`, `.o`, `.c` générés, `*_res.mat`, `*.makefile`, etc.) sont couverts par `.gitignore` — vérifier `git status` après une session de vérification pour confirmer qu'aucun artefact non couvert (ex. un nouveau motif de nom de fichier) ne traîne. Les copies de système de fichiers (`mcu_datalogger_*`) créées par `verify_25` et `verify_27` sont supprimées par les scripts eux-mêmes, qui désactivent aussi l'ouverture de l'Explorateur (`simflags = "-override=mcu.fsOpenExplorer=false"`) ; s'il est interrompu, elles restent dans ce dossier (et sont effacées au lancement suivant).
+`run_all.sh` les supprime lui-même à la fin (sauf `-k`). Lancés à la main, les artefacts de compilation générés par ces exécutions (`.exe`, `.o`, `.c` générés, `*_res.mat`, `*.makefile`, etc.) sont couverts par `.gitignore` — vérifier `git status` après une session de vérification pour confirmer qu'aucun artefact non couvert (ex. un nouveau motif de nom de fichier) ne traîne. Les copies de système de fichiers (`mcu_datalogger_*`) créées par `verify_25` et `verify_27` sont supprimées par les scripts eux-mêmes, qui désactivent aussi l'ouverture de l'Explorateur (`simflags = "-override=mcu.fsOpenExplorer=false"`) ; s'il est interrompu, elles restent dans ce dossier (et sont effacées au lancement suivant).

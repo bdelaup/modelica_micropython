@@ -6,6 +6,8 @@ __pycache__/
 *.exe
 *.o
 *.a
+# ... sauf l'import lib de Python, régénérée pour le MinGW d'OpenModelica : indispensable pour lier tout modèle
+!/MicroPythonMCU/Resources/Library/win64/libpython312.a
 *.bat
 *.log
 *.libs
@@ -47,3 +49,6 @@ __pycache__/
 *_18spd.c
 /MicroPythonMCU/MCU.c
 /MicroPythonMCU/Resources/Verification/*.c
+
+# Version distribuée construite par make_release.sh (reconstruite à la demande)
+/dist/

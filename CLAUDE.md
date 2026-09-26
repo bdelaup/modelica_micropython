@@ -35,9 +35,10 @@ MicroPythonMCU/
     ├── PythonRuntime/          -- distribution Python « embeddable » officielle vendorée (DLL + stdlib zip)
     ├── FileSystems/            -- images de flash fournies (un dossier = un système de fichiers, désigné par MCU.fsSource) : datalogger/ (boot.py, main.py, config.txt, lib/journal.py) sert à Examples.FileSystem et FileSystemScript
     ├── Scripts/                -- MCU/ (programmes du microcontrôleur, un par exemple ; demo.py est la valeur par défaut de MCU.scriptPath ; companion.py et lib/ servent à ImportDemo), Device/ (scripts des périphériques, nommés d'après l'appareil : série echo.py, gps.py, temperature_sensor.py, state_machine.py, generic.py ; I2C i2c_echo.py, i2c_generic.py, grove_lcd_rgb.py ; chaque périphérique fourni a le sien par défaut) et _shim/machine_time_shim.py (le shim machine/time lui-même, lu et exécuté par PyRuntime_new avant le script utilisateur — source unique ; il porte aussi toute la mécanique du système de fichiers : copie, open() et module os cloisonnés)
-    └── Verification/           -- scripts .py spécifiques à la vérification + scripts .mos exécutables via omc
+    └── Verification/           -- scripts .py spécifiques à la vérification + scripts .mos exécutables via omc + run_all.sh (lance toute la suite en parallèle)
 docs/                            -- documentation d'implémentation (architecture, intégration Python, cycle de vie), voir docs/README.md
 requirements.md                  -- source de vérité du cadrage et des décisions d'architecture
+make_release.sh                  -- construit la version distribuée dans dist/ (ignoré par git) : runtime C précompilé en libmicropythonmcu.a, sans sources C ; outil de distribution à peaufiner (TODO dans requirements.md), PAS utilisé pour les tests (gain de compilation négligeable)
 ```
 
 ## Stack technique
@@ -52,10 +53,11 @@ Pas de manifeste de dépendances ni de build séparé : `omc` compile `PyRuntime
 
 ```
 cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos        # et verify_02_.../verify_27_...
+./run_all.sh                         # toute la suite en parallèle (bash), récapitulatif + nettoyage
+omc verify_01_basic_blink.mos        # ou un script seul (verify_01_.../verify_27_...)
 ```
 
-Nécessite `omc` et le toolchain MinGW d'une installation OpenModelica sur le `PATH` (ex. `<OPENMODELICAHOME>/tools/msys/ucrt64/bin`), et `OPENMODELICAHOME` positionné. Chaque script affiche `PASS`/`FAIL` sur sa propre ligne. Les artefacts de compilation générés (`.exe`, `.o`, `.c` générés, `*_res.mat`, etc.) sont couverts par `.gitignore` — ne pas les committer. Détails, tableau des scénarios et prérequis pratiques (dont un piège de `PATH` déjà rencontré) : `docs/tests.md`.
+Nécessite `omc` et le toolchain MinGW d'une installation OpenModelica sur le `PATH` (ex. `<OPENMODELICAHOME>/tools/msys/ucrt64/bin`), et `OPENMODELICAHOME` positionné (`run_all.sh` complète le `PATH` à partir de `OPENMODELICAHOME` si besoin). Chaque script affiche `PASS`/`FAIL` sur sa propre ligne ; `run_all.sh` exécute à la suite les scripts qui partagent des fichiers (même `fileNamePrefix`, copies `mcu_datalogger_*`) et supprime les artefacts à la fin (sauf `-k`). Les artefacts de compilation générés (`.exe`, `.o`, `.c` générés, `*_res.mat`, etc.) sont couverts par `.gitignore` — ne pas les committer. Détails, tableau des scénarios et prérequis pratiques (dont un piège de `PATH` déjà rencontré) : `docs/tests.md`.
 
 ## Note pour les futures instances
 
