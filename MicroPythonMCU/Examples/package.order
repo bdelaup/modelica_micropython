@@ -12,3 +12,4 @@ PinIrq
 TimerToggle
 DisplayDemo
 Uart
+I2c

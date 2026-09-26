@@ -21,6 +21,9 @@ static PyMethodDef native_methods[] = {
     {"uart_any", native_uart_any, METH_VARARGS, "Nombre d'octets recus en attente de lecture"},
     {"uart_read", native_uart_read, METH_VARARGS, "Lit jusqu'a n octets recus (n < 0 = tout), None si rien"},
     {"uart_deinit", native_uart_deinit, METH_VARARGS, "Libere l'UART et ses broches"},
+    {"i2c_init", native_i2c_init, METH_VARARGS, "Configure le bus I2C (broches SCL/SDA, frequence) et prend les broches"},
+    {"i2c_xfer", native_i2c_xfer, METH_VARARGS, "Transaction I2C complete (ecriture, lecture apres START repete), bloquante"},
+    {"i2c_deinit", native_i2c_deinit, METH_VARARGS, "Libere le bus I2C et ses broches"},
     {"timer_new", native_timer_new, METH_VARARGS, "Alloue un slot de Timer() dans le pool fixe"},
     {"timer_init", native_timer_init, METH_VARARGS, "Arme un Timer (periode, mode, callback)"},
     {"timer_deinit", native_timer_deinit, METH_VARARGS, "Arrete et libere un Timer"},
@@ -131,6 +134,9 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
        broches UART doivent donc etre remises explicitement a "non affectee". */
     handle->uart_tx_pin = -1;
     handle->uart_rx_pin = -1;
+    handle->i2c_scl_pin = -1;
+    handle->i2c_sda_pin = -1;
+    handle->i2cm.next_time = 1.0e300;
 
     /* Le shim doit exister dans l'interprete AVANT que le script ne fasse
        "import machine"/"import time" sur le thread worker. Il vit dans un vrai
@@ -271,7 +277,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
            cours - a 1200 bauds, une dizaine de sleep() casses par octet recu.
            Fidele au materiel reel, ou une broche prise par le peripherique UART
            ne genere plus d'interruption GPIO. */
-        if (!h->pin_is_output[i] && !h->uart_rx_claimed[i] && old_val != new_val) {
+        if (!h->pin_is_output[i] && !h->uart_rx_claimed[i] && !h->i2c_claimed[i] && old_val != new_val) {
             input_changed = 1;
             if (h->pin_irq_handler[i] != NULL) {
                 int edge = new_val ? IRQ_TRIGGER_RISING : IRQ_TRIGGER_FALLING;
@@ -293,6 +299,11 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     uart_tx_advance(h, currentTime);
     uart_rx_step(h, currentTime, pinBoolIn);
 
+    /* Fait avancer le maitre I2C d'un pas (un quart de periode d'horloge) si son
+       echeance est atteinte. S'il vient de terminer la transaction sur laquelle
+       le script est bloque, c'est un reveil a honorer (i2c_done_wake). */
+    i2c_step(h, currentTime, pinBoolIn);
+
     /* Un Timer actif dont l'echeance est atteinte doit aussi faire rendre la
        main au worker (sinon son callback ne se declencherait jamais) - meme
        si ni une entree n'a change, ni le propre reveil du worker n'est du.
@@ -305,7 +316,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
        appel de PyRuntime_sync qui arrive plus tot (tick periodique) ne doit
        faire que rafraichir l'etat observe, sans laisser le script avancer
        avant l'heure - sinon un sleep(1) pourrait etre ecourte a tort. */
-    if (input_changed || !h->wake_pending || currentTime + PYRUNTIME_EPS >= h->wake_requested_at || timer_due) {
+    if (input_changed || h->i2c_done_wake || !h->wake_pending || currentTime + PYRUNTIME_EPS >= h->wake_requested_at || timer_due) {
         /* Boucle interne : tant que le worker redemande un reveil immediat
            (ex. plusieurs Pin(...) construits/pilotes a la suite, sans sleep
            entre deux), on lui redonne la main tout de suite plutot que de
@@ -362,6 +373,11 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     double uart_only = next_uart;
     if (next_uart < wake_at) {
         wake_at = next_uart;
+    }
+    /* Meme raison : le script a pu lancer une transaction I2C pendant le drain. */
+    double next_i2c = earliest_i2c_deadline(h);
+    if (next_i2c < wake_at) {
+        wake_at = next_i2c;
     }
     LeaveCriticalSection(&h->cs);
 

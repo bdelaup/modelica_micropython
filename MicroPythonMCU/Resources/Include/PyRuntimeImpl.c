@@ -43,5 +43,6 @@
 #include "pyruntime/pyruntime_pin.c"       /* machine.Pin / ADC / PWM / Pin.irq + time.sleep */
 #include "pyruntime/pyruntime_display.c"   /* machine.Display */
 #include "pyruntime/pyruntime_uart.c"      /* machine.UART (TX/RX, trame 8N1) */
+#include "pyruntime/pyruntime_i2c.c"       /* machine.I2C (maitre, drain ouvert) */
 #include "pyruntime/pyruntime_timer.c"     /* machine.Timer */
 #include "pyruntime/pyruntime_module.c"    /* module natif, thread worker, API exportee */

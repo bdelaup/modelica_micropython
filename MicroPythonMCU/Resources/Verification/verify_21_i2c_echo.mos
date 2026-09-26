@@ -1,0 +1,47 @@
+// Scénario de vérification v0 n°21 : bus I2C électrique, un maître et un
+// esclave (Examples.I2c.Echo). Le microcontrôleur écrit b'Hello I2C' (9 octets)
+// à l'écho 0x42, la relit, puis lit un registre derrière un START répété
+// (readfrom_mem) ; GP7 passe à l'état haut si les trois échanges sont conformes.
+//
+// Ce que ce scénario vérifie : la séquence I2C complète en drain ouvert (START,
+// adresse, ACK de l'esclave, données, STOP, START répété), des trames de
+// plusieurs octets dans les deux sens, et la livraison au script du
+// périphérique au niveau transaction (on_write / on_read).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.I2c.Echo, stopTime = 0.005, numberOfIntervals = 50000, fileNamePrefix = "I2cEcho");
+b := getErrorString();
+
+f := "I2cEcho_res.mat";
+
+// --- Bus au repos avant la premiere transaction (lancee a t = 1 ms) : les deux
+// lignes sont tenues hautes par les tirages de l'echo, personne ne les tire ---
+vScl := val(mcu.GP4.v, 0.0005, f);
+vSda := val(mcu.GP5.v, 0.0005, f);
+
+// --- START de la premiere transaction (sleep_ms(1) puis un quart de periode
+// de bus libre) : SDA est descendue pendant que SCL est encore haute ---
+vStartScl := val(mcu.GP4.v, 0.001004, f);
+vStartSda := val(mcu.GP5.v, 0.001004, f);
+
+// --- Acquittement de l'adresse, au 9e coup d'horloge (SCL haute de 1,090 a
+// 1,095 ms a 100 kHz) : SDA est basse, et c'est l'ESCLAVE qui la tient ---
+vAckScl := val(mcu.GP4.v, 0.0010925, f);
+vAckSda := val(mcu.GP5.v, 0.0010925, f);
+vAckEsclave := val(echo.sdaDriveLow, 0.0010925, f);
+
+// --- Cote peripherique : 2 phases d'ecriture (la trame, puis le numero de
+// registre avant le START repete), 10 octets en tout, dernier premier octet 0x5A ---
+nEcr := val(echo.valueOut[1], 0.0048, f);
+nOct := val(echo.valueOut[2], 0.0048, f);
+prem := val(echo.valueOut[3], 0.0048, f);
+
+// --- Critere principal : le script du microcontroleur a tout relu correctement ---
+vTemoin := val(mcu.GP7.v, 0.0048, f);
+
+if vScl > 3.0 and vSda > 3.0 and vStartScl > 3.0 and vStartSda < 0.5 and vAckScl > 3.0 and vAckSda < 0.5 and vAckEsclave > 0.5 and abs(nEcr - 2) < 0.5 and abs(nOct - 10) < 0.5 and abs(prem - 90) < 0.5 and vTemoin > 2.0 then
+  print("PASS: verify_21_i2c_echo (repos SCL=" + String(vScl) + "V SDA=" + String(vSda) + "V ; START SCL=" + String(vStartScl) + "V SDA=" + String(vStartSda) + "V ; ACK de l'esclave SDA=" + String(vAckSda) + "V (tenue par l'esclave : " + String(vAckEsclave) + ") ; echo : " + String(nEcr) + " ecritures, " + String(nOct) + " octets, premier octet " + String(prem) + " ; temoin GP7=" + String(vTemoin) + "V)\n");
+else
+  print("FAIL: verify_21_i2c_echo (SCL=" + String(vScl) + " SDA=" + String(vSda) + " startScl=" + String(vStartScl) + " startSda=" + String(vStartSda) + " ackScl=" + String(vAckScl) + " ackSda=" + String(vAckSda) + " ackEsclave=" + String(vAckEsclave) + " ecritures=" + String(nEcr) + " octets=" + String(nOct) + " premier=" + String(prem) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;

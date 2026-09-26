@@ -165,6 +165,41 @@ La forme d'onde est générée **en continu par Modelica** à partir du motif de
 | `.init(baudrate, tx, rx)` | idem constructeur | Reconfigure la liaison | Oui |
 | `.deinit()` | — | Libère la liaison et ses broches | Oui |
 
+## `machine.I2C`
+
+```python
+from machine import Pin, I2C
+i2c = I2C(0, scl=Pin(4), sda=Pin(5), freq=100000)   # ou I2C(scl=Pin(4), sda=Pin(5))
+print(i2c.scan())                                   # ex. [66]
+i2c.writeto(0x42, b'Hello')
+print(i2c.readfrom(0x42, 5))
+print(i2c.readfrom_mem(0x42, 0x10, 2))              # registre 0x10, derrière un START répété
+```
+
+Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le microcontrôleur est le **maître**, il génère l'horloge et ne fait que tirer SDA/SCL à la masse ou les relâcher. Les lignes ne remontent que grâce aux résistances de tirage portées par un périphérique (`usePullUp = true`) — sans elles, toute transaction lève `OSError(ETIMEDOUT)`. Les périphériques se branchent sur les deux mêmes fils (`Internal.PartialI2cDevice` et ses dérivés). Cf. [peripheriques-i2c.md](peripheriques-i2c.md) et `requirements.md`, décision « Bus I2C électrique en drain ouvert ».
+
+**Chaque transaction est bloquante** : le script ne reprend la main qu'à la fin réelle de la séquence sur le bus, en temps simulé (environ 9 bits par octet, à `1/freq` le bit). **Les deux broches sont réservées** : leurs fronts ne génèrent pas d'interruption GPIO et ne réveillent pas un `sleep()`.
+
+### Constructeur
+
+`I2C(id=0, *, scl, sda, freq=400000)` — `id` facultatif (seul un bus existe : `0`, ou `1` accepté comme alias), ce qui rend compatibles la forme rp2 `I2C(0, scl=..., sda=...)` et celle de drivers écrits pour d'autres ports, `I2C(scl=..., sda=...)`. `scl`/`sda` : obligatoires, un objet `Pin` ou un numéro, deux broches distinctes parmi `0`-`7`. `freq` : 1 kHz à 1 MHz (`ValueError` hors bornes). `SoftI2C` est un alias de `I2C`. Synchronise.
+
+### Méthodes
+
+| Méthode | Comportement | Synchronise ? |
+|---|---|---|
+| `.scan()` | Liste des adresses (0x08-0x77) qui acquittent une sonde (écriture vide) ; `[]` si le bus est bloqué | Oui (une transaction par adresse) |
+| `.writeto(addr, buf, stop=True)` | Écrit `buf` ; retourne le nombre d'octets acquittés. `stop=False` garde le bus : la transaction suivante commence par un START répété | Oui, bloquant |
+| `.readfrom(addr, nbytes, stop=True)` | Lit `nbytes` octets (`bytes`) | Oui, bloquant |
+| `.readfrom_into(addr, buf, stop=True)` | Idem, dans un tampon existant | Oui, bloquant |
+| `.writevto(addr, vector, stop=True)` | Écrit la concaténation des tampons de `vector` | Oui, bloquant |
+| `.writeto_mem(addr, memaddr, buf, *, addrsize=8)` | Écrit `buf` à partir du registre `memaddr` | Oui, bloquant |
+| `.readfrom_mem(addr, memaddr, nbytes, *, addrsize=8)` | Écrit le numéro de registre, puis lit derrière un START répété | Oui, bloquant |
+| `.readfrom_mem_into(addr, memaddr, buf, *, addrsize=8)` | Idem, dans un tampon existant | Oui, bloquant |
+| `.init(scl=, sda=, freq=)` / `.deinit()` | Reconfigure / libère le bus et ses broches | Oui |
+
+**Erreurs** : `OSError(EIO)` (errno 5) si l'adresse n'est pas acquittée ; `OSError(ETIMEDOUT)` (errno 110) si une ligne reste basse (pas de tirage, bus bloqué) ; `OSError(EBUSY)` (errno 16) pour un appel depuis un callback de Timer/IRQ pendant une transaction.
+
 ## `time`
 
 ```python
@@ -189,7 +224,8 @@ Détails et justifications dans `requirements.md` (section Restrictions v0) :
 
 - `pull` (`Pin.PULL_UP`/`Pin.PULL_DOWN`) accepté en paramètre mais sans résistance de tirage réellement modélisée.
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).
-- Pas d'`I2C` ni de `SPI` — voir le TODO de `requirements.md` pour les extensions prévues.
+- Pas de `SPI` — voir le TODO de `requirements.md` pour les extensions prévues.
+- `machine.I2C` : **maître uniquement**, un seul bus, pas de clock stretching (SCL tenue basse = `ETIMEDOUT`) ni d'arbitrage multi-maître, 256 octets au plus par transaction, tirages internes du RP2040 non modélisés (il faut `usePullUp` sur un périphérique).
 - `machine.UART` : un seul périphérique (`UART(0)`), **trame 8N1 figée** (`bits`/`parity`/`stop` acceptés mais sans effet), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 256 octets, débordement silencieux ; une trame dont le bit de stop n'est pas haut est ignorée sans erreur de framing. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
 - `machine.Display` : une seule liaison logique, **écriture seule** (pas de réception), livraison instantanée du message entier (pas de bauds simulés) ; liaison modélisée comme un connecteur logique causal, pas électrique — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
 - `Pin.irq()` : tout callback tourne « soft » (déféré au prochain point de réveil du worker) ; `hard=` accepté mais sans effet — aucune notion de contexte d'interruption matérielle possible dans ce modèle mono-thread. Une exception levée dans un callback arrête toute la simulation (même politique que le script principal), pas d'isolation « le callback plante mais le reste continue ».

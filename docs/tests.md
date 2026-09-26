@@ -36,6 +36,10 @@ omc verify_17_uart_lcd.mos
 omc verify_18_uart_regulation.mos
 omc verify_19_uart_state_machine.mos
 omc verify_20_uart_echo_table.mos
+omc verify_21_i2c_echo.mos
+omc verify_22_i2c_multi.mos
+omc verify_23_i2c_nopullup.mos
+omc verify_24_i2c_grove_lcd.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -63,6 +67,10 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_18_uart_regulation.mos` | `Examples.Uart.Regulation` | Boucle de régulation fermée par la liaison série | La température part de 20 °C et rejoint la consigne de 40 °C, avec une commande cohérente avec le gain statique du procédé — seule la **sortie réelle** de l'appareil peut produire ce résultat |
 | `verify_19_uart_state_machine.mos` | `Examples.Uart.StateMachinePy` | Appareil décrit par un script Python à machine d'état | État 0 → 1 → 0 et exactement 2 lectures servies : l'état persiste, et aucune transition n'est rejouée |
 | `verify_20_uart_echo_table.mos` | `Examples.Uart.Echo` | Même montage que `Uart.EchoPy`, **en mode Table** | Écho octet par octet : le périphérique émet déjà à t=17 ms, avant la fin de la ligne — complément exact de `verify_14` |
+| `verify_21_i2c_echo.mos` | `Examples.I2c.Echo` | Bus I2C électrique, un maître et un esclave | Bus au repos haut, START conforme, ACK de l'adresse tenu par l'esclave, trame de 9 octets écrite puis relue, registre lu derrière un START répété, témoin `GP7` allumé |
+| `verify_22_i2c_multi.mos` | `Examples.I2c.MultiDevice` | Trois esclaves sur le même bus, deux paires de tirages en parallèle, 400 kHz | `scan()` exact, chaque écho ne reçoit que sa trame (pas de diaphonie), `EIO` sur une adresse absente, témoin `GP7` allumé |
+| `verify_23_i2c_nopullup.mos` | `Examples.I2c.NoPullUp` | Même bus sans aucune résistance de tirage | Lignes à 0 V, `ETIMEDOUT`, `scan()` vide, aucun esclave sollicité, témoin `GP7` allumé |
+| `verify_24_i2c_grove_lcd.mos` | `Examples.I2c.GroveLcd` | Écran Grove LCD RGB piloté par un driver du commerce, sans modification | Écran éteint et noir avant l'initialisation, puis « hello World » en ligne 1 dès la colonne 2, rétroéclairage rouge, vert, bleu |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

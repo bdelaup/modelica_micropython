@@ -115,7 +115,7 @@ static int yield_to_modelica(double wake_at) {
         while (h->turn != TURN_WORKER) {
             SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
         }
-        int genuine = h->wake_had_input_change || (h->sim_time + PYRUNTIME_EPS >= wake_at);
+        int genuine = h->wake_had_input_change || h->i2c_done_wake || (h->sim_time + PYRUNTIME_EPS >= wake_at);
         LeaveCriticalSection(&h->cs);
         PyEval_RestoreThread(saved);
 

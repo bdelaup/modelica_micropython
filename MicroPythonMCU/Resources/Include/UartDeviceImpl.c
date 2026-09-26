@@ -44,6 +44,7 @@
 #include "uartdevice/uartdevice_core.h"         /* struct UartDevice */
 #include "uartcore.c"                           /* files TX/RX, trame 8N1, decodage */
 #include "pyhost.c"                             /* demarrage unique de CPython, relais stdout - partage avec PyRuntimeImpl.c */
+#include "devscript.c"                          /* script de peripherique : espace de noms propre, conversions - partage avec I2cDeviceImpl.c */
 #include "uartdevice/uartdevice_format.c"       /* substitution {vN} et analyse des marqueurs */
 #include "uartdevice/uartdevice_match.c"        /* table de commandes + capture {oN} */
 #include "uartdevice/uartdevice_script.c"       /* mode Script : chargement et appel des gestionnaires Python */

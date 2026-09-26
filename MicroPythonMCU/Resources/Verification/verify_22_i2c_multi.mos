@@ -1,0 +1,43 @@
+// Scénario de vérification v0 n°22 : trois périphériques I2C sur le même bus
+// (Examples.I2c.MultiDevice), aux adresses 0x10, 0x11 et 0x12, dont deux
+// portent des résistances de tirage (en parallèle). Le microcontrôleur, à
+// 400 kHz, les retrouve par scan(), écrit à chacun une trame de longueur
+// différente, les relit un par un, puis s'adresse à 0x20 où personne ne répond.
+//
+// Ce que ce scénario vérifie : le « ET câblé » d'un vrai bus partagé (un seul
+// fil SDA, un seul fil SCL, quatre acteurs), le filtrage par adresse (chaque
+// périphérique ne reçoit que ce qui lui est destiné, les sondes de scan() ne
+// déclenchent pas on_write), et l'erreur EIO sur une adresse absente.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.I2c.MultiDevice, stopTime = 0.008, numberOfIntervals = 8000, fileNamePrefix = "I2cMulti");
+b := getErrorString();
+
+f := "I2cMulti_res.mat";
+
+// --- Bus au repos : deux paires de tirages en parallele, lignes hautes ---
+vScl := val(mcu.GP4.v, 0.0005, f);
+vSda := val(mcu.GP5.v, 0.0005, f);
+
+// --- Chaque echo : 1 ecriture (les sondes de scan() ne comptent pas), longueur
+// et premier octet de SA trame : b'un' (2, 'u'=117), b'deux!' (5, 'd'=100),
+// b'trois..' (7, 't'=116) ---
+e1n := val(e1.valueOut[1], 0.0075, f);
+e1o := val(e1.valueOut[2], 0.0075, f);
+e1p := val(e1.valueOut[3], 0.0075, f);
+e2n := val(e2.valueOut[1], 0.0075, f);
+e2o := val(e2.valueOut[2], 0.0075, f);
+e2p := val(e2.valueOut[3], 0.0075, f);
+e3n := val(e3.valueOut[1], 0.0075, f);
+e3o := val(e3.valueOut[2], 0.0075, f);
+e3p := val(e3.valueOut[3], 0.0075, f);
+
+// --- Critere principal : scan exact, relectures sans diaphonie, EIO sur 0x20 ---
+vTemoin := val(mcu.GP7.v, 0.0075, f);
+
+if vScl > 3.0 and vSda > 3.0 and abs(e1n - 1) < 0.5 and abs(e1o - 2) < 0.5 and abs(e1p - 117) < 0.5 and abs(e2n - 1) < 0.5 and abs(e2o - 5) < 0.5 and abs(e2p - 100) < 0.5 and abs(e3n - 1) < 0.5 and abs(e3o - 7) < 0.5 and abs(e3p - 116) < 0.5 and vTemoin > 2.0 then
+  print("PASS: verify_22_i2c_multi (repos SCL=" + String(vScl) + "V SDA=" + String(vSda) + "V ; e1 " + String(e1n) + "/" + String(e1o) + "/" + String(e1p) + " ; e2 " + String(e2n) + "/" + String(e2o) + "/" + String(e2p) + " ; e3 " + String(e3n) + "/" + String(e3o) + "/" + String(e3p) + " ; temoin GP7=" + String(vTemoin) + "V)\n");
+else
+  print("FAIL: verify_22_i2c_multi (SCL=" + String(vScl) + " SDA=" + String(vSda) + " e1=" + String(e1n) + "/" + String(e1o) + "/" + String(e1p) + " e2=" + String(e2n) + "/" + String(e2o) + "/" + String(e2p) + " e3=" + String(e3n) + "/" + String(e3o) + "/" + String(e3p) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;

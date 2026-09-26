@@ -5,3 +5,6 @@ UartEchoDevice
 UartTemperatureSensor
 UartGpsModule
 UartLcd20x2
+I2cGenericDevice
+I2cEchoDevice
+I2cGroveLcdRgb

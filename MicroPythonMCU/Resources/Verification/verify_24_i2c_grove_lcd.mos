@@ -1,0 +1,52 @@
+// Scénario de vérification v0 n°24 : écran Grove - LCD RGB Backlight
+// (Examples.I2c.GroveLcd) piloté par un driver MicroPython du commerce
+// (Scripts/MCU/driver_grove_lcd_rgb.py, importé par le programme principal
+// Scripts/MCU/i2c_grove_lcd_rgb.py), exécuté SANS MODIFICATION.
+//
+// Ce que ce scénario vérifie : la compatibilité de machine.I2C avec un driver
+// écrit pour le vrai matériel (constructeur I2C(scl=..., sda=..., freq=...)
+// sans identifiant, writeto), un composant à DEUX adresses (JHD1313 à 0x3E,
+// PCA9633 à 0x62), et l'émulation des deux circuits d'après leurs fiches
+// techniques : écran éteint et noir à la mise sous tension, texte positionné
+// par la commande d'adresse DDRAM, couleurs par les registres PWM.
+//
+// NB : val() sur un index de tableau via une variable de boucle .mos ne se
+// resout pas (NaN) - les indices sont donc ecrits en litteral.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.I2c.GroveLcd, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "I2cGroveLcd");
+b := getErrorString();
+
+f := "I2cGroveLcd_res.mat";
+
+// --- Pendant l'attente de 50 ms du driver, avant l'initialisation de l'ecran :
+// ecran eteint (valueOut[4] = 0), rien d'affiche, retroeclairage noir ---
+off4 := val(lcd.valueOut[4], 0.03, f);
+offC3 := val(lcd.lcdLine1[3], 0.03, f);   // ' ' = 32
+offR := val(lcd.backlight[1], 0.03, f);
+
+// --- Premier tour de boucle : "  hello World" (setCursor(2, 0)), rouge ---
+c1 := val(lcd.lcdLine1[1], 0.3, f);       // ' ' = 32
+c3 := val(lcd.lcdLine1[3], 0.3, f);       // 'h' = 104
+c7 := val(lcd.lcdLine1[7], 0.3, f);       // 'o' = 111
+c9 := val(lcd.lcdLine1[9], 0.3, f);       // 'W' = 87
+c13 := val(lcd.lcdLine1[13], 0.3, f);     // 'd' = 100
+c14 := val(lcd.lcdLine1[14], 0.3, f);     // ' ' = 32
+l2c1 := val(lcd.lcdLine2[1], 0.3, f);     // ' ' = 32 (ligne 2 vide)
+on4 := val(lcd.valueOut[4], 0.3, f);
+r1 := val(lcd.backlight[1], 0.3, f);
+g1 := val(lcd.backlight[2], 0.3, f);
+b1 := val(lcd.backlight[3], 0.3, f);
+
+// --- 500 ms plus tard : vert, puis bleu ---
+r2 := val(lcd.backlight[1], 0.8, f);
+g2 := val(lcd.backlight[2], 0.8, f);
+r3 := val(lcd.backlight[1], 1.3, f);
+b3 := val(lcd.backlight[3], 1.3, f);
+
+if abs(off4) < 0.5 and abs(offC3 - 32) < 0.5 and abs(offR) < 0.5 and abs(c1 - 32) < 0.5 and abs(c3 - 104) < 0.5 and abs(c7 - 111) < 0.5 and abs(c9 - 87) < 0.5 and abs(c13 - 100) < 0.5 and abs(c14 - 32) < 0.5 and abs(l2c1 - 32) < 0.5 and abs(on4 - 1) < 0.5 and abs(r1 - 255) < 0.5 and abs(g1) < 0.5 and abs(b1) < 0.5 and abs(r2) < 0.5 and abs(g2 - 255) < 0.5 and abs(r3) < 0.5 and abs(b3 - 255) < 0.5 then
+  print("PASS: verify_24_i2c_grove_lcd (avant init : ecran " + String(off4) + ", rouge " + String(offR) + " ; ligne 1 = '  hello World' (" + String(c1) + "," + String(c3) + "," + String(c7) + "," + String(c9) + "," + String(c13) + "," + String(c14) + "), ligne 2 vide (" + String(l2c1) + ") ; RGB " + String(r1) + "/" + String(g1) + "/" + String(b1) + " puis vert " + String(g2) + " puis bleu " + String(b3) + ")\n");
+else
+  print("FAIL: verify_24_i2c_grove_lcd (off4=" + String(off4) + " offC3=" + String(offC3) + " offR=" + String(offR) + " c=" + String(c1) + "," + String(c3) + "," + String(c7) + "," + String(c9) + "," + String(c13) + "," + String(c14) + " l2c1=" + String(l2c1) + " on4=" + String(on4) + " rgb1=" + String(r1) + "/" + String(g1) + "/" + String(b1) + " r2=" + String(r2) + " g2=" + String(g2) + " r3=" + String(r3) + " b3=" + String(b3) + ")\n" + b);
+end if;

@@ -58,7 +58,11 @@ modelica_micropython3/
     │   ├── UartDevice.mo           -- ExternalObject d'un périphérique série externe : files TX/RX, décodage, table de commandes, échéances. AUCUNE dépendance à Python (pas de Library = "python312")
     │   ├── UartDevice_sync.mo      -- impure function : le point de synchro appelé depuis le `when` de Internal.PartialUartDevice
     │   ├── TwoLineTextIcon.mo      -- partial model purement graphique : les 40 cellules de texte d'un afficheur 20x2, partagées par Display et UartLcd20x2
-    │   └── PartialUartDevice.mo    -- partial model : TOUTE la mécanique des appareils série externes (pont électrique, décodage, deux modes d'émission, ports réels). Non instanciable : Peripherals ne contient que des composants posables
+    │   ├── PartialUartDevice.mo    -- partial model : TOUTE la mécanique des appareils série externes (pont électrique, décodage, deux modes d'émission, ports réels). Non instanciable : Peripherals ne contient que des composants posables
+    │   ├── I2cDevice.mo            -- ExternalObject d'un périphérique I2C esclave : décodeur du bus piloté par les fronts, script Python (on_write / on_read / outputs / lines)
+    │   ├── I2cDevice_sync.mo       -- impure function : le point de synchro appelé à chaque front de SCL ou de SDA depuis le `when` de Internal.PartialI2cDevice
+    │   ├── PartialI2cDevice.mo     -- partial model : TOUTE la mécanique des périphériques I2C (pont en drain ouvert sur SDA, capacités d'entrée, tirages conditionnels usePullUp, décodage). Non instanciable
+    │   └── Lcd16x2RgbIcon.mo       -- partial model purement graphique : 32 cellules de texte d'un écran 16x2 et fond à la couleur du rétroéclairage RGB (généré mécaniquement)
     ├── Peripherals/                -- composants connectables à MCU
     │   ├── LED.mo                  -- diode + icône réactive au courant (DynamicSelect colorOff→colorOn), utilisée par MCU et par les exemples
     │   ├── Display.mo              -- afficheur pédagogique à liaison LOGIQUE (machine.Display), écriture seule ; hérite de Internal.TwoLineTextIcon pour le rendu du texte
@@ -66,7 +70,10 @@ modelica_micropython3/
     │   ├── UartEchoDevice.mo       -- dérivé : renvoie tel quel chaque octet reçu
     │   ├── UartTemperatureSensor.mo-- dérivé : répond AT+TEMP par la valeur de valueIn, et SET <n> capture n vers valueOut
     │   ├── UartGpsModule.mo        -- dérivé : pousse une trame $GPGLL toutes les period secondes, sans sollicitation
-    │   └── UartLcd20x2.mo          -- dérivé : affiche sur son icône les lignes décodées sur RX (hérite aussi de Internal.TwoLineTextIcon)
+    │   ├── UartLcd20x2.mo          -- dérivé : affiche sur son icône les lignes décodées sur RX (hérite aussi de Internal.TwoLineTextIcon)
+    │   ├── I2cGenericDevice.mo     -- périphérique I2C dont tout le comportement vient d'un script (gabarit Device/i2c_generic.py : banc de registres)
+    │   ├── I2cEchoDevice.mo        -- périphérique I2C de test (0x42) : relit au maître sa dernière écriture
+    │   └── I2cGroveLcdRgb.mo       -- écran Grove - LCD RGB Backlight : JHD1313 à 0x3E + PCA9633 à 0x62, tirages activés (hérite aussi de Internal.Lcd16x2RgbIcon)
     ├── Examples/                   -- un modèle par scénario de vérification de requirements.md ; la liaison série dans le sous-paquetage Uart/
     │   ├── BasicBlink.mo           -- scénario 1 : clignotement de base
     │   ├── LedChaser.mo            -- chenillard bidirectionnel sur les 8 GPIO (démonstrateur, pas un scénario de requirements.md)
@@ -81,27 +88,34 @@ modelica_micropython3/
     │   ├── PinIrq.mo               -- scénario 11 : machine.Pin.irq() sur GP1 (front montant uniquement), bascule GP0 depuis le callback
     │   ├── TimerToggle.mo          -- scénario 12 : machine.Timer périodique bascule GP0 pendant un sleep() long, sans le faire retourner en avance
     │   ├── DisplayDemo.mo          -- scénario 13 : machine.Display(0).write() vers un Peripherals.Display câblé sur Display0
-    │   └── Uart/                   -- liaison série ; suffixe Py = appareil dont le comportement est décrit par un script Python
-    │       ├── Loopback.mo         -- scénario 14 : machine.UART électrique réel, TX (GP0) bouclé sur RX (GP1) via loopR/loopC (voir peripherique-uart.md)
-    │       ├── Echo.mo             -- scénario 21 : écho paramétré (mode Table), octet par octet - hérite de EchoPy, dont il ne change que le mode
-    │       ├── EchoPy.mo           -- scénario 15 : dialogue avec un vrai périphérique externe, écho décrit par Device/echo.py
-    │       ├── Sensor.mo           -- scénario 16 : requête/réponse dans les deux sens, avec une rampe sur valueIn et une consigne capturée sur valueOut
-    │       ├── Regulation.mo       -- scénario 19 : boucle de régulation fermée à travers la seule liaison série (la sortie réelle pilote un procédé qui revient sur l'entrée)
-    │       ├── GpsPy.mo            -- scénario 17 : émission périodique spontanée (phrases NMEA RMC avec somme de contrôle, Device/gps.py), le microcontrôleur écoute et vérifie
-    │       ├── StateMachinePy.mo   -- scénario 20 : appareil à machine d'état décrit par Device/state_machine.py (la réponse dépend de ce qui précède)
-    │       └── Lcd.mo              -- scénario 18 : afficheur 20x2 alimenté par une vraie trame série (pendant électrique de DisplayDemo)
+    │   ├── Uart/                   -- liaison série ; suffixe Py = appareil dont le comportement est décrit par un script Python
+    │   │   ├── Loopback.mo         -- scénario 14 : machine.UART électrique réel, TX (GP0) bouclé sur RX (GP1) via loopR/loopC (voir peripherique-uart.md)
+    │   │   ├── Echo.mo             -- scénario 21 : écho paramétré (mode Table), octet par octet - hérite de EchoPy, dont il ne change que le mode
+    │   │   ├── EchoPy.mo           -- scénario 15 : dialogue avec un vrai périphérique externe, écho décrit par Device/echo.py
+    │   │   ├── Sensor.mo           -- scénario 16 : requête/réponse dans les deux sens, avec une rampe sur valueIn et une consigne capturée sur valueOut
+    │   │   ├── Regulation.mo       -- scénario 19 : boucle de régulation fermée à travers la seule liaison série (la sortie réelle pilote un procédé qui revient sur l'entrée)
+    │   │   ├── GpsPy.mo            -- scénario 17 : émission périodique spontanée (phrases NMEA RMC avec somme de contrôle, Device/gps.py), le microcontrôleur écoute et vérifie
+    │   │   ├── StateMachinePy.mo   -- scénario 20 : appareil à machine d'état décrit par Device/state_machine.py (la réponse dépend de ce qui précède)
+    │   │   └── Lcd.mo              -- scénario 18 : afficheur 20x2 alimenté par une vraie trame série (pendant électrique de DisplayDemo)
+    │   └── I2c/                    -- bus I2C électrique en drain ouvert (voir peripheriques-i2c.md)
+    │       ├── Echo.mo             -- un maître, un écho : trame de 9 octets écrite puis relue, registre lu derrière un START répété
+    │       ├── MultiDevice.mo      -- trois échos sur le même bus : scan(), pas de diaphonie, EIO sur une adresse absente
+    │       ├── NoPullUp.mo         -- hérite de MultiDevice, sans aucun tirage : lignes à 0 V, ETIMEDOUT
+    │       └── GroveLcd.mo         -- écran Grove LCD RGB piloté par un driver MicroPython du commerce, sans modification
     └── Resources/
-        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série, SANS Python), StringToCharCodes.c, et uartcore.h/.c
+        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), StringToCharCodes.c, uartcore.h/.c et devscript.c
+        │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
         │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : démarrage unique de l'interpréteur (le premier composant construit le démarre), relais stdout/stderr, lecture de fichier
         │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame 8N1, décodage par échantillonnage, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
-        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _timer.c, _module.c
+        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _timer.c, _module.c
         │   ├── uartdevice/         -- idem côté périphériques : uartdevice_core.h (struct UartDevice), _format.c ({vN} et {oN}), _match.c (table de commandes), _script.c (mode Script : chargement du .py dans un espace de noms propre, appel des gestionnaires), _engine.c (construction, ordonnancement, synchro)
+        │   ├── i2cdevice/          -- idem côté I2C : i2cdevice_core.h (struct I2cDevice), _script.c (contrat on_write / on_read / outputs / lines), _engine.c (décodeur piloté par les fronts, construction, synchro)
         │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
         ├── Library/win64/          -- libpython312.a, bibliothèque d'import régénérée pour le compilateur MinGW d'OpenModelica
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md
         ├── Scripts/
         │   ├── MCU/                -- programmes du microcontrôleur, un par exemple (dont demo.py, valeur par défaut de `MCU.scriptPath`) ; companion.py et lib/ servent à ImportDemo
-        │   ├── Device/             -- scripts des périphériques série (mode Script), nommés d'après l'appareil : echo.py, gps.py, temperature_sensor.py, state_machine.py, generic.py - chaque périphérique fourni a le sien par défaut
+        │   ├── Device/             -- scripts des périphériques, nommés d'après l'appareil : série (mode Script) echo.py, gps.py, temperature_sensor.py, state_machine.py, generic.py ; I2C i2c_echo.py, i2c_generic.py, grove_lcd_rgb.py - chaque périphérique fourni a le sien par défaut
         │   └── _shim/              -- machine_time_shim.py : le shim machine/time lui-même (source unique, exécuté par PyRuntime_new avant le script utilisateur)
         └── Verification/           -- scripts Python spécifiques à la vérification + scripts `.mos` exécutables via `omc` (scénarios de requirements.md)
 ```

@@ -136,6 +136,73 @@ class UART:
     def deinit(self):
         _native.uart_deinit(self.id)
 
+class I2C:
+    # Maitre I2C en drain ouvert (un seul bus en v0). L'identifiant est
+    # facultatif : I2C(0, scl=..., sda=...) (forme rp2) et I2C(scl=..., sda=...)
+    # (forme des drivers ecrits pour d'autres ports) sont acceptes tous les deux.
+    # Chaque transaction est BLOQUANTE jusqu'a la fin de la sequence sur le bus,
+    # en temps simule. Erreurs : OSError(EIO) si l'adresse n'est pas acquittee,
+    # OSError(ETIMEDOUT) si une ligne reste basse (bus sans tirage).
+    def __init__(self, id=0, *, scl=None, sda=None, freq=400000, **kwargs):
+        self.id = id
+        self.init(scl=scl, sda=sda, freq=freq, **kwargs)
+
+    def init(self, scl=None, sda=None, freq=400000, **kwargs):
+        if scl is None or sda is None:
+            raise ValueError('scl et sda doivent etre precises (ex. I2C(0, scl=Pin(4), sda=Pin(5)))')
+        if isinstance(scl, Pin):
+            scl = scl.id
+        if isinstance(sda, Pin):
+            sda = sda.id
+        self.scl = scl
+        self.sda = sda
+        self._freq = freq
+        _native.i2c_init(self.id, scl, sda, float(freq))
+
+    def deinit(self):
+        _native.i2c_deinit(self.id)
+
+    def scan(self):
+        trouves = []
+        for addr in range(0x08, 0x78):
+            try:
+                _native.i2c_xfer(self.id, addr, b'', 0, True)
+                trouves.append(addr)
+            except OSError as e:
+                if e.errno == 110:   # ETIMEDOUT : bus bloque, inutile d'insister
+                    break
+        return trouves
+
+    def writeto(self, addr, buf, stop=True):
+        acks, _ = _native.i2c_xfer(self.id, addr, bytes(buf), 0, bool(stop))
+        return acks
+
+    def writevto(self, addr, vector, stop=True):
+        return self.writeto(addr, b''.join(bytes(b) for b in vector), stop)
+
+    def readfrom(self, addr, nbytes, stop=True):
+        _, data = _native.i2c_xfer(self.id, addr, None, int(nbytes), bool(stop))
+        return data
+
+    def readfrom_into(self, addr, buf, stop=True):
+        data = self.readfrom(addr, len(buf), stop)
+        buf[:len(data)] = data
+
+    @staticmethod
+    def _memaddr(memaddr, addrsize):
+        return int(memaddr).to_bytes(addrsize // 8, 'big')
+
+    def writeto_mem(self, addr, memaddr, buf, *, addrsize=8):
+        self.writeto(addr, I2C._memaddr(memaddr, addrsize) + bytes(buf))
+
+    def readfrom_mem(self, addr, memaddr, nbytes, *, addrsize=8):
+        _, data = _native.i2c_xfer(self.id, addr, I2C._memaddr(memaddr, addrsize), int(nbytes), True)
+        return data
+
+    def readfrom_mem_into(self, addr, memaddr, buf, *, addrsize=8):
+        data = self.readfrom_mem(addr, memaddr, len(buf), addrsize=addrsize)
+        buf[:len(data)] = data
+
 class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
@@ -155,6 +222,8 @@ _machine.ADC = ADC
 _machine.PWM = PWM
 _machine.Display = Display
 _machine.UART = UART
+_machine.I2C = I2C
+_machine.SoftI2C = I2C   # meme maitre : en simulation, logiciel ou materiel ne se distinguent pas
 _machine.Timer = Timer
 sys.modules['machine'] = _machine
 

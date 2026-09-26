@@ -10,6 +10,7 @@ package Interfaces "Niveaux de tension logiques de référence (approximation RP
   constant Integer DISPLAY_COLS = 20 "Nombre de colonnes affichées sur l'icône du périphérique pédagogique Peripherals.Display (fidèle à un vrai afficheur caractère 20x2) - tronque les messages plus longs sur l'icône uniquement (le texte complet reste disponible dans le journal de simulation)";
   constant Integer UART_MAX_FRAME_BITS = 13 "Taille du motif de bits d'une trame série (1 start + 9 data + 1 parité + 2 stop) - doit rester aligné sur UART_MAX_FRAME_BITS côté C (Resources/Include/uartcore.h, partagé par le microcontrôleur et par les périphériques série externes). Seul le format 8N1 (10 bits utiles) est émis en v0, cf. machine.UART";
   constant Integer UART_DEV_MAX_VALUES = 4 "Nombre de grandeurs réelles qu'un appareil série externe peut échanger avec le reste du modèle ({v1}..{v4} substituées dans une trame émise, {o1}..{o4} capturées dans une trame reçue) - doit rester aligné sur UARTDEV_MAX_VALUES côté C (Resources/Include/uartdevice/uartdevice_core.h)";
+  constant Integer I2C_DEV_MAX_VALUES = 4 "Nombre de grandeurs réelles qu'un périphérique I2C externe peut échanger avec le reste du modèle (argument v de ses gestionnaires Python, valeur de retour de outputs()) - doit rester aligné sur I2CDEV_MAX_VALUES côté C (Resources/Include/i2cdevice/i2cdevice_core.h)";
 
   annotation(
     Documentation(info = "<html>

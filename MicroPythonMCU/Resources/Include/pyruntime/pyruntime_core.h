@@ -28,6 +28,47 @@
    ni Python ni thread. Ne restent ici que les notions propres au microcontroleur :
    quelle broche fait TX, quelle broche fait RX, et le drapeau de reservation. */
 
+/* machine.I2C : maitre unique (un seul bus en v0), sur deux broches GPx au choix
+   du script, en DRAIN OUVERT - la broche est soit tiree a la masse, soit relachee
+   (haute impedance), jamais forcee a l'etat haut : ce sont les resistances de
+   tirage du bus qui remontent la ligne. Cf. pyruntime_i2c.c et requirements.md,
+   decision "Bus I2C electrique en drain ouvert". */
+#define I2C_XFER_MAX 256             /* octets ecrits ou lus par transaction (meme ordre que la file UART) */
+#define I2C_MIN_FREQ 1000.0          /* garde-fou : evite une horloge si lente qu'une trame durerait des secondes */
+#define I2C_MAX_FREQ 1000000.0       /* garde-fou contre une tempete d'evenements Modelica (Fast-mode Plus) */
+#define I2C_ERR_EIO 5                /* valeurs errno de MicroPython (OSError(errno)) */
+#define I2C_ERR_EBUSY 16
+#define I2C_ERR_ETIMEDOUT 110
+
+struct I2cMaster {
+    int busy;                        /* transaction en cours */
+    int done;                        /* transaction terminee (resultat disponible) */
+    int error;                       /* 0 ou errno (EIO : adresse sans ACK, ETIMEDOUT : ligne bloquee basse) */
+    int held;                        /* bus garde apres writeto(stop=False) : SCL tenue basse, la suite commencera par un START repete */
+    int phase;                       /* action a executer a next_time, cf. I2CM_* dans pyruntime_i2c.c */
+    double next_time;                /* 1e300 si rien n'est programme */
+    double quarter;                  /* quart de periode d'horloge (1/(4 freq)) : pas elementaire de la sequence */
+
+    /* description de la transaction : [START adr+W, donnees] [START repete adr+R, lecture] STOP */
+    int addr;
+    int has_write;                   /* segment d'ecriture present (meme vide : sonde d'adresse, cf. scan) */
+    unsigned char wbuf[I2C_XFER_MAX];
+    int nwrite;
+    int nread;
+    int stop;                        /* 0 : garder le bus (START repete a la transaction suivante) */
+
+    /* avancement */
+    int segment;                     /* 0 = ecriture, 1 = lecture */
+    int index;                       /* -1 = octet d'adresse, sinon rang de l'octet de donnees dans le segment */
+    unsigned char cur;               /* octet en cours (emis ou recu) */
+    int bit;                         /* 0-7 = bits de donnees (poids fort en tete), 8 = bit d'acquittement */
+    int rx;                          /* l'octet en cours est recu par le maitre (segment de lecture, hors adresse) */
+    int ack;                         /* dernier acquittement lu (1 = ACK, SDA basse) */
+    unsigned char rbuf[I2C_XFER_MAX];
+    int rcount;
+    int acks;                        /* octets de donnees acquittes (valeur de retour de writeto) */
+};
+
 struct PyRuntimeHandle {
     char* scriptPath;
 
@@ -82,6 +123,17 @@ struct PyRuntimeHandle {
     int uart_rx_claimed[NUM_PINS]; /* broche affectee a la reception UART : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO (fidele au materiel reel), cf. PyRuntime_sync */
 
     struct UartEngine uart;      /* files TX/RX, trame 8N1, decodage : cf. uartcore.h (partage avec Peripherals.UartDevice) */
+
+    /* machine.I2C : sequence cadencee par echeances (nextWakeTime), comme la
+       reception UART. Le script est bloque dans i2c_xfer jusqu'a la fin de la
+       transaction ; i2c_done_wake rend son reveil "authentique" (cf.
+       yield_to_modelica), sans quoi il serait pris pour un simple pitstop. */
+    int i2c_configured;
+    int i2c_scl_pin;             /* index interne 0-7, -1 si non affecte */
+    int i2c_sda_pin;
+    int i2c_claimed[NUM_PINS];   /* broche prise par le bus : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO */
+    int i2c_done_wake;
+    struct I2cMaster i2cm;
 
     int script_done;
     int script_error;

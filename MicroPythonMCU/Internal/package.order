@@ -5,3 +5,7 @@ UartDevice_sync
 StringToCharCodes
 TwoLineTextIcon
 PartialUartDevice
+I2cDevice
+I2cDevice_sync
+PartialI2cDevice
+Lcd16x2RgbIcon

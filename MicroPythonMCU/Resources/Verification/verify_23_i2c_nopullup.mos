@@ -1,0 +1,36 @@
+// Scénario de vérification v0 n°23 : bus I2C SANS résistance de tirage
+// (Examples.I2c.NoPullUp, même schéma que MultiDevice avec usePullUp = false
+// partout). Le microcontrôleur tente une écriture puis un scan().
+//
+// Ce que ce scénario vérifie : en drain ouvert, personne ne force une ligne à
+// l'état haut - sans tirage, SDA et SCL restent basses ; le maître le détecte
+// (OSError(ETIMEDOUT)) au lieu de dialoguer avec un bus mort, scan() ne trouve
+// personne, et aucun périphérique ne reçoit quoi que ce soit. Pendant de
+// verify_22, qui vérifie le même bus AVEC tirages.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.I2c.NoPullUp, stopTime = 0.003, numberOfIntervals = 3000, fileNamePrefix = "I2cNoPullUp");
+b := getErrorString();
+
+f := "I2cNoPullUp_res.mat";
+
+// --- Lignes basses avant ET apres la tentative de dialogue ---
+vScl1 := val(mcu.GP4.v, 0.0005, f);
+vSda1 := val(mcu.GP5.v, 0.0005, f);
+vScl2 := val(mcu.GP4.v, 0.0028, f);
+vSda2 := val(mcu.GP5.v, 0.0028, f);
+
+// --- Aucun peripherique n'a rien recu ---
+e1n := val(e1.valueOut[1], 0.0028, f);
+e2n := val(e2.valueOut[1], 0.0028, f);
+e3n := val(e3.valueOut[1], 0.0028, f);
+
+// --- Critere principal : ETIMEDOUT leve et scan() vide ---
+vTemoin := val(mcu.GP7.v, 0.0028, f);
+
+if vScl1 < 0.5 and vSda1 < 0.5 and vScl2 < 0.5 and vSda2 < 0.5 and abs(e1n) < 0.5 and abs(e2n) < 0.5 and abs(e3n) < 0.5 and vTemoin > 2.0 then
+  print("PASS: verify_23_i2c_nopullup (lignes basses SCL=" + String(vScl1) + "/" + String(vScl2) + "V SDA=" + String(vSda1) + "/" + String(vSda2) + "V ; ecritures recues " + String(e1n) + "/" + String(e2n) + "/" + String(e3n) + " ; temoin GP7=" + String(vTemoin) + "V)\n");
+else
+  print("FAIL: verify_23_i2c_nopullup (SCL=" + String(vScl1) + "/" + String(vScl2) + " SDA=" + String(vSda1) + "/" + String(vSda2) + " ecritures=" + String(e1n) + "/" + String(e2n) + "/" + String(e3n) + " temoin=" + String(vTemoin) + ")\n" + b);
+end if;
