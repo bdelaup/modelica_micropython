@@ -28,6 +28,7 @@ static PyObject* native_pin_init(PyObject* self, PyObject* args) {
     }
     EnterCriticalSection(&g_current->cs);
     g_current->pin_is_output[idx] = is_output;
+    g_current->adc_claimed[idx] = 0;   /* Pin(n, mode) rend la broche au GPIO, meme apres un ADC(n) - comme sur le RP2040 */
     LeaveCriticalSection(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
@@ -65,6 +66,27 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
     int v = g_current->pin_sensed_value[idx];
     LeaveCriticalSection(&g_current->cs);
     return PyBool_FromLong(v);
+}
+
+/* machine.ADC(n) : la broche passe en entree analogique. Sur le RP2040, cela
+   coupe son etage d'entree numerique : ses variations ne declenchent plus
+   d'IRQ et ne reveillent plus un sleep(), meme quand la tension franchit le
+   seuil logique (cf. adc_claimed dans PyRuntime_sync). Pin(n, mode) la rend
+   au GPIO (native_pin_init). */
+static PyObject* native_adc_init(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
+    int id;
+    if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
+    int idx = resolve_pin_index(id);
+    if (idx < 0 || idx == LED_PIN_INDEX) {
+        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte comme entree ADC pour la v0 (0-%d uniquement)", id, LED_PIN_INDEX - 1);
+        return NULL;
+    }
+    EnterCriticalSection(&g_current->cs);
+    g_current->adc_claimed[idx] = 1;
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyObject* native_adc_read(PyObject* self, PyObject* args) {
@@ -154,9 +176,22 @@ static PyObject* native_sleep(PyObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
+/* Arrondi, surtout pas troncature : l'heure simulee d'un reveil est souvent un
+   poil sous la valeur ronde (0.2 atteint en 0.19999999999999998 par le tick
+   periodique, accepte grace a PYRUNTIME_EPS ; 0.7 + 0.1 = 0.79999999999999993
+   en double) - un cast en entier rendait alors 199 ou 799 au lieu de 200 ou
+   800, une milliseconde d'erreur dans les calculs du script. */
 static PyObject* native_ticks_ms(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
-    return PyLong_FromLongLong((long long)(g_current->sim_time * 1000.0));
+    return PyLong_FromLongLong(llround(g_current->sim_time * 1000.0));
+}
+
+/* Vraie resolution a la microseconde (et non ticks_ms() * 1000), arrondie pour
+   la meme raison. Un double garde ici bien plus que la microseconde : 1 h de
+   temps simule = 3,6e9 us, a 16 chiffres significatifs. */
+static PyObject* native_ticks_us(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
+    return PyLong_FromLongLong(llround(g_current->sim_time * 1000000.0));
 }
 
 /* --- machine.Pin.irq() --- */

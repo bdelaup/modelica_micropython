@@ -11,7 +11,8 @@ static PyMethodDef native_methods[] = {
     {"pin_write", native_pin_write, METH_VARARGS, "Pilote une broche (si en sortie)"},
     {"pin_read", native_pin_read, METH_VARARGS, "Lit l'etat resolu d'une broche"},
     {"pin_irq_set", native_pin_irq_set, METH_VARARGS, "Enregistre/efface le callback IRQ d'une broche"},
-    {"adc_read", native_adc_read, METH_VARARGS, "Lit la tension brute (V) mesuree sur une broche ADC"},
+    {"adc_init", native_adc_init, METH_VARARGS, "Passe une broche en entree analogique (coupe son entree numerique : ni IRQ ni reveil)"},
+    {"adc_read",native_adc_read, METH_VARARGS, "Lit la tension brute (V) mesuree sur une broche ADC"},
     {"pwm_set_freq", native_pwm_set_freq, METH_VARARGS, "Configure la frequence PWM (Hz) d'une broche, la prend en sortie"},
     {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Configure le rapport cyclique PWM (0-1) d'une broche"},
     {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Arrete le PWM sur une broche (retombe en sortie numerique classique)"},
@@ -29,6 +30,10 @@ static PyMethodDef native_methods[] = {
     {"timer_deinit", native_timer_deinit, METH_VARARGS, "Arrete et libere un Timer"},
     {"sleep", native_sleep, METH_VARARGS, "Attend N secondes de temps simule"},
     {"ticks_ms", native_ticks_ms, METH_VARARGS, "Horloge simulee, en millisecondes"},
+    {"ticks_us", native_ticks_us, METH_VARARGS, "Horloge simulee, en microsecondes"},
+    {"fs_config", native_fs_config, METH_VARARGS, "Configuration du systeme de fichiers (source, espace de travail, instance, pythonHome)"},
+    {"fs_set_root", native_fs_set_root, METH_VARARGS, "Enregistre la racine de la copie horodatee (dossier hote)"},
+    {"on_worker", native_on_worker, METH_VARARGS, "Vrai si l'appelant est le thread du microcontroleur"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -45,6 +50,36 @@ static struct PyModuleDef native_module_def = {
    pyhost.c, partage avec les peripheriques serie. */
 
 /* --- Thread worker --- */
+
+/* Execute un fichier du programme (dir\name, ou name seul si dir est NULL)
+   dans __main__. Retourne 0 si le fichier n'existe pas (rien d'execute), 1
+   sinon ; une exception pose script_error et un message nommant le fichier. */
+static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const char* name) {
+    char* path;
+    if (dir) {
+        size_t len = strlen(dir) + strlen(name) + 2;
+        path = (char*) malloc(len);
+        snprintf(path, len, "%s\\%s", dir, name);
+    } else {
+        path = strdup(name);
+    }
+    char* buf = read_text_file(path);
+    free(path);
+    if (!buf) {
+        return 0;
+    }
+    int rc = PyRun_SimpleString(buf);
+    free(buf);
+    relay_emit_pending();
+    if (rc != 0) {
+        char msg[128];
+        snprintf(msg, sizeof(msg), "%s a leve une exception non geree - trace ci-dessus",
+                 dir ? name : "le script");
+        h->script_error = 1;
+        h->error_message = strdup(msg);
+    }
+    return 1;
+}
 
 static unsigned __stdcall worker_main(void* arg) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) arg;
@@ -64,18 +99,29 @@ static unsigned __stdcall worker_main(void* arg) {
     LeaveCriticalSection(&h->cs);
     Py_END_ALLOW_THREADS
 
-    char* buf = read_text_file(h->scriptPath);
-    if (!buf) {
-        h->script_error = 1;
-        h->error_message = strdup("impossible d'ouvrir le script");
-    } else {
-        int rc = PyRun_SimpleString(buf);
-        free(buf);
-        if (rc != 0) {
-            h->script_error = 1;
-            h->error_message = strdup("le script a leve une exception non geree - trace ci-dessus");
+    /* Sequence de demarrage, comme sur la carte : boot.py de la flash s'il
+       existe, puis le programme - le script (scriptPath) s'il est renseigne, a
+       la place de main.py comme Thonny sur une carte deja demarree, sinon
+       main.py de la flash s'il existe. Tous dans le meme espace de noms
+       (__main__). Une exception arrete la sequence. PyRuntime_new garantit
+       qu'il y a un script ou un systeme de fichiers. */
+    int ran = 0;
+    if (h->fs_root) {
+        ran |= run_program_file(h, h->fs_root, "boot.py");
+    }
+    if (!h->script_error) {
+        if (h->scriptPath[0] != '\0') {
+            if (!run_program_file(h, NULL, h->scriptPath)) {
+                h->script_error = 1;
+                h->error_message = strdup("impossible d'ouvrir le script");
+            }
+            ran = 1;
+        } else if (h->fs_root) {
+            ran |= run_program_file(h, h->fs_root, "main.py");
         }
-        relay_emit_pending();
+    }
+    if (!ran) {
+        ModelicaFormatMessage("PyRuntime: ni boot.py ni main.py a la racine du systeme de fichiers - microcontroleur inactif\n");
     }
 
     EnterCriticalSection(&h->cs);
@@ -114,8 +160,18 @@ static char* dirname_of(const char* path) {
 
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
-                     const char* shimPath) {
+                     const char* shimPath, int fsEnabled, const char* fsSource,
+                     const char* fsWorkspace, int fsOpenExplorer,
+                     const char* instanceName) {
     char err[512];
+
+    /* Sans script, le programme est main.py du systeme de fichiers : il en
+       faut un. Verifie avant tout demarrage, l'erreur est de configuration. */
+    if (scriptPath[0] == '\0' && !fsEnabled) {
+        ModelicaFormatError("PyRuntime: scriptPath est vide et le systeme de fichiers est inactif - "
+                            "indiquer un script, ou activer un systeme de fichiers contenant main.py");
+        return NULL;
+    }
 
     /* Demarrage de CPython partage avec les peripheriques serie : l'un d'eux a
        pu le faire avant nous (ordre de construction non garanti). Au retour, le
@@ -127,6 +183,12 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
 
     struct PyRuntimeHandle* handle = (struct PyRuntimeHandle*) calloc(1, sizeof(struct PyRuntimeHandle));
     handle->scriptPath = strdup(scriptPath);
+    handle->pythonHome = strdup(pythonHome);
+    handle->fsEnabled = fsEnabled;
+    handle->fsSource = strdup(fsSource);
+    handle->fsWorkspace = strdup(fsWorkspace);
+    handle->fsOpenExplorer = fsOpenExplorer;
+    handle->instanceName = strdup(instanceName);
     InitializeCriticalSection(&handle->cs);
     InitializeConditionVariable(&handle->cv);
     handle->turn = TURN_MODELICA;
@@ -181,7 +243,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     if (!failure) {
         g_current = handle;
         if (PyRun_SimpleString(shim_src) != 0) {
-            failure = "echec d'initialisation du shim machine/time";
+            failure = "echec d'initialisation du shim machine/time ou du systeme de fichiers - trace ci-dessus";
         }
         g_current = NULL;
     }
@@ -215,8 +277,11 @@ void PyRuntime_destroy(void* handle_) {
        principe de revisabilite, requirements.md). Les references Python
        accumulees par les callbacks IRQ/Timer (pin_irq_handler/timer_callback
        etc.) suivent le meme principe : jamais decref explicitement, le
-       process recupere tout. */
-    (void) handle_;
+       process recupere tout. Seule action : signaler la copie du systeme de
+       fichiers (journal, Explorateur), cf. fs_at_exit. */
+    if (handle_) {
+        fs_at_exit((struct PyRuntimeHandle*) handle_);
+    }
 }
 
 void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
@@ -276,8 +341,11 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
            (cf. yield_to_modelica) et ferait retourner en avance le sleep() en
            cours - a 1200 bauds, une dizaine de sleep() casses par octet recu.
            Fidele au materiel reel, ou une broche prise par le peripherique UART
-           ne genere plus d'interruption GPIO. */
-        if (!h->pin_is_output[i] && !h->uart_rx_claimed[i] && !h->i2c_claimed[i] && old_val != new_val) {
+           ne genere plus d'interruption GPIO. Meme exclusion pour une broche
+           prise par l'ADC (etage d'entree numerique coupe sur le RP2040) : un
+           signal analogique qui traverse le seuil logique casserait sinon le
+           sleep() en cours a chaque passage. */
+        if (!h->pin_is_output[i] && !h->uart_rx_claimed[i] && !h->i2c_claimed[i] && !h->adc_claimed[i] && old_val != new_val) {
             input_changed = 1;
             if (h->pin_irq_handler[i] != NULL) {
                 int edge = new_val ? IRQ_TRIGGER_RISING : IRQ_TRIGGER_FALLING;
@@ -382,7 +450,8 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     LeaveCriticalSection(&h->cs);
 
     if (error) {
-        ModelicaFormatError("PyRuntime (%s): %s", h->scriptPath, error_message ? error_message : "erreur inconnue");
+        ModelicaFormatError("PyRuntime (%s): %s", h->scriptPath[0] != '\0' ? h->scriptPath : h->fs_root,
+                            error_message ? error_message : "erreur inconnue");
         return;
     }
     /* Script termine : seul l'UART peut encore demander un reveil (il finit de

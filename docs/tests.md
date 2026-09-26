@@ -40,6 +40,9 @@ omc verify_21_i2c_echo.mos
 omc verify_22_i2c_multi.mos
 omc verify_23_i2c_nopullup.mos
 omc verify_24_i2c_grove_lcd.mos
+omc verify_25_filesystem.mos
+omc verify_26_adc_sleep.mos
+omc verify_27_filesystem_script.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -53,7 +56,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_04_script_error.mos` | `Examples.ScriptError` | Exception non gérée dans le script | La simulation s'arrête en erreur (`getErrorString() <> ""`) |
 | `verify_05_reset.mos` | `Examples.BasicBlink` (relancé deux fois) | Cycle de vie de l'External Object | Deux relances produisent des résultats strictement identiques |
 | `verify_06_pin_echo.mos` | `Examples.PinEcho` | Bouclage entre deux broches du même `MCU` | `GP3` suit `GP1` (relu via `GP2`) à chaque phase, sans lecture périmée |
-| `verify_07_adc_read.mos` | `Examples.AdcRead` | Entrée analogique (`machine.ADC`) | `GP1` reflète le pont diviseur (~2,2 V), `GP0` (LED) s'allume (seuil franchi) |
+| `verify_07_adc_read.mos` | `Examples.AdcRead` | Entrée analogique (`machine.ADC`) | `GP1` reflète le pont diviseur (~2,2 V), `GP0` (LED) allumée à t=0,3 s, après la 2e lecture (la 1re, à t=0, voit encore 0 V) |
 | `verify_08_pwm.mos` | `Examples.PwmLed` | Sortie PWM (`machine.PWM`) | `GP0` suit le créneau attendu (haut/bas conformes à la période/rapport cyclique), y compris bien après la fin du script |
 | `verify_09_import.mos` | `Examples.ImportDemo` | Import de modules auxiliaires (`addScriptDirToPath`/`libraryPath`) | `GP0`/`GP1` (LED) s'allument, confirmant que les deux imports (dossier du script, bibliothèque partagée) ont réussi |
 | `verify_10_pin_irq.mos` | `Examples.PinIrq` | Interruption sur broche (`machine.Pin.irq`) | `GP0` bascule au front montant, reste inchangée au front descendant (filtrage par sens de front) |
@@ -71,6 +74,9 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_22_i2c_multi.mos` | `Examples.I2c.MultiDevice` | Trois esclaves sur le même bus, deux paires de tirages en parallèle, 400 kHz | `scan()` exact, chaque écho ne reçoit que sa trame (pas de diaphonie), `EIO` sur une adresse absente, témoin `GP7` allumé |
 | `verify_23_i2c_nopullup.mos` | `Examples.I2c.NoPullUp` | Même bus sans aucune résistance de tirage | Lignes à 0 V, `ETIMEDOUT`, `scan()` vide, aucun esclave sollicité, témoin `GP7` allumé |
 | `verify_24_i2c_grove_lcd.mos` | `Examples.I2c.GroveLcd` | Écran Grove LCD RGB piloté par un driver du commerce, sans modification | Écran éteint et noir avant l'initialisation, puis « hello World » en ligne 1 dès la colonne 2, rétroéclairage rouge, vert, bleu |
+| `verify_25_filesystem.mos` | `Examples.FileSystem` | Système de fichiers, démarrage `boot.py`/`main.py`, déterminisme | Deux simulations : `GP1` allumée (auto-contrôle de `main.py`), deux copies horodatées distinctes aux `mesures.csv` identiques, `..` bloqué à la racine de la flash, image source intacte. Le script supprime lui-même ses copies en fin de scénario |
+| `verify_27_filesystem_script.mos` | `Examples.FileSystemScript` | `boot.py` de la flash, puis un script à la place de `main.py` | `GP1` allumée, la copie contient `data/notes.txt` et pas `data/mesures.csv` (main.py n'a pas tourné) |
+| `verify_26_adc_sleep.mos` | `Examples.AdcSleep` | Entrée ADC traversant le seuil logique (correctif « l'ADC coupe l'entrée numérique ») | Cinq `sleep(0.2)` de 200 000 µs exactement (`ticks_us()`) malgré 10 franchissements du seuil par seconde, `sleep_us(250)` mesuré à 250 µs, aucune IRQ, témoin `GP1` allumé à la fin seulement |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 
@@ -104,4 +110,4 @@ end if;
 
 ## Nettoyage
 
-Les artefacts de compilation générés par ces exécutions (`.exe`, `.o`, `.c` générés, `*_res.mat`, `*.makefile`, etc.) sont couverts par `.gitignore` — vérifier `git status` après une session de vérification pour confirmer qu'aucun artefact non couvert (ex. un nouveau motif de nom de fichier) ne traîne.
+Les artefacts de compilation générés par ces exécutions (`.exe`, `.o`, `.c` générés, `*_res.mat`, `*.makefile`, etc.) sont couverts par `.gitignore` — vérifier `git status` après une session de vérification pour confirmer qu'aucun artefact non couvert (ex. un nouveau motif de nom de fichier) ne traîne. Les copies de système de fichiers (`mcu_datalogger_*`) créées par `verify_25` et `verify_27` sont supprimées par les scripts eux-mêmes, qui désactivent aussi l'ouverture de l'Explorateur (`simflags = "-override=mcu.fsOpenExplorer=false"`) ; s'il est interrompu, elles restent dans ce dossier (et sont effacées au lancement suivant).

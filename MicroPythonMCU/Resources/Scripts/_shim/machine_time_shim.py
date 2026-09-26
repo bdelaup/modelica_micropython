@@ -9,6 +9,10 @@
 # docs/integration-python.md pour le contexte d'integration.
 
 import sys, types, _pyruntime_native as _native
+# Pour le systeme de fichiers (fin de fichier) : importes avant que le faux
+# module time ne remplace le vrai dans sys.modules.
+import builtins as _builtins, errno as _errno, os as _host_os
+import datetime as _host_datetime, shutil as _host_shutil
 
 class Pin:
     IN = 0
@@ -48,6 +52,7 @@ class ADC:
         if isinstance(id, Pin):
             id = id.id
         self.id = id
+        _native.adc_init(self.id)   # coupe l'entree numerique de la broche, comme sur le RP2040
 
     def read_u16(self):
         v = _native.adc_read(self.id)
@@ -240,7 +245,7 @@ def ticks_ms():
     return _native.ticks_ms()
 
 def ticks_us():
-    return _native.ticks_ms() * 1000
+    return _native.ticks_us()
 
 def ticks_diff(a, b):
     return a - b
@@ -253,3 +258,246 @@ _time.ticks_ms = ticks_ms
 _time.ticks_us = ticks_us
 _time.ticks_diff = ticks_diff
 sys.modules['time'] = _time
+
+# --- Systeme de fichiers (flash simulee) ---
+#
+# Si MCU.fsEnabled, le dossier MCU.fsSource (vide = flash vierge) est recopie a
+# l'initialisation dans un nouveau dossier de l'espace de travail MCU.fsWorkspace
+# (vide ou relatif = depuis le dossier de simulation), nomme
+# <instance>_<nom du FS>_<date>_<heure>. La source n'est jamais
+# touchee : chaque simulation repart du meme etat. Le script voit cette copie
+# comme la racine "/" de la flash : open() et le module os facon MicroPython y
+# sont cloisonnes, et rien de ce qu'il peut observer ne depend de l'horodatage
+# ni du disque hote (chemins, dates de modification, ordre des listdir), pour
+# que la simulation reste deterministe. Cf. requirements.md, decision
+# "Systeme de fichiers".
+#
+# Le cloisonnement ne vise que le code du microcontroleur : les appels venant
+# d'un autre thread (scripts de peripheriques, qui partagent l'interpreteur) ou
+# de la stdlib (qui a besoin du vrai disque, ex. linecache pour les traces)
+# passent au vrai open()/os. Pedagogique, pas une barriere de securite : io.open
+# ou pathlib restent des echappatoires pour qui les cherche.
+
+_FS_BLOCK = 4096
+_FS_BLOCKS = 352          # 1,4 Mo : taille de la flash utilisateur du Pico sous MicroPython
+_FS_DIR = 0x4000          # types de os.stat()/os.ilistdir(), valeurs MicroPython
+_FS_FILE = 0x8000
+_fs_root = None           # dossier hote de la copie ; None = pas de systeme de fichiers
+_fs_cwd = '/'
+_fs_stdlib = ()           # prefixes de co_filename du code de la stdlib, jamais cloisonne
+_host_open = _builtins.open
+_host_import = _builtins.__import__
+
+def _fs_err(code):
+    # Message MicroPython ("[Errno 2] ENOENT") plutot que celui de l'hote, qui
+    # contiendrait le chemin reel de la copie, donc l'horodatage.
+    return OSError(code, _errno.errorcode.get(code, 'EIO'))
+
+def _fs_call(fn, *args):
+    try:
+        return fn(*args)
+    except OSError as e:
+        raise _fs_err(e.errno or _errno.EIO) from None
+
+def _fs_host_dir(p):
+    if p[:8].lower() == 'file:///':
+        p = p[8:]
+    p = _host_os.path.abspath(p.strip())
+    return _host_os.path.dirname(p) if _host_os.path.isfile(p) else p
+
+def _fs_name(s):
+    return ''.join(c if c.isalnum() or c in '-_' else '_' for c in s) or 'fs'
+
+def _fs_mount():
+    global _fs_root, _fs_stdlib
+    enabled, source, workspace, instance, home = _native.fs_config()
+    _fs_stdlib = (_host_os.path.normcase(_host_os.path.abspath(home)) + _host_os.sep, '<frozen ')
+    if not enabled:
+        return
+    ws = _fs_host_dir(workspace or '.')
+    src = None
+    name = 'vierge'
+    if source:
+        src = _fs_host_dir(source)
+        if not _host_os.path.isdir(src):
+            raise OSError('systeme de fichiers source introuvable : %s' % src)
+        nsrc, nws = _host_os.path.normcase(src), _host_os.path.normcase(ws)
+        if nws == nsrc or nws.startswith(nsrc.rstrip(_host_os.sep) + _host_os.sep):
+            # Chaque copie serait recopiee dans la suivante : le contenu de la
+            # flash dependrait des simulations precedentes.
+            raise OSError("l'espace de travail (%s) ne doit pas etre dans le systeme de fichiers source (%s)" % (ws, src))
+        name = _host_os.path.basename(src.rstrip('\\/'))
+    d = _host_datetime.datetime.now()
+    base = '%s_%s_%04d-%02d-%02d_%02d-%02d-%02d' % (
+        _fs_name(instance.split('.')[-1]), _fs_name(name),
+        d.year, d.month, d.day, d.hour, d.minute, d.second)
+    _host_os.makedirs(ws, exist_ok=True)
+    dest = _host_os.path.join(ws, base)
+    n = 2
+    while _host_os.path.exists(dest):
+        dest = _host_os.path.join(ws, '%s_%d' % (base, n))
+        n += 1
+    if src:
+        _host_shutil.copytree(src, dest, ignore=_host_shutil.ignore_patterns('__pycache__'))
+    else:
+        _host_os.mkdir(dest)
+    _fs_root = dest
+    _native.fs_set_root(dest)
+    # Pas de __pycache__ dans la copie : il apparaitrait dans os.listdir('/lib').
+    sys.dont_write_bytecode = True
+    # Comme sur la carte : la racine et /lib de la flash sont sur le chemin d'import.
+    sys.path.append(dest)
+    sys.path.append(_host_os.path.join(dest, 'lib'))
+    print('Systeme de fichiers : espace de travail %s' % ws)
+    print('Systeme de fichiers : copie de %s creee dans %s' % (src or 'la flash vierge', dest))
+
+def _fs_user(depth):
+    # Vrai si le code appelant (depth cadres au-dessus de l'appelant de
+    # _fs_user) est celui du microcontroleur et pas celui de la stdlib.
+    if not _native.on_worker():
+        return False
+    try:
+        f = sys._getframe(depth + 1)
+    except ValueError:
+        return False
+    return not _host_os.path.normcase(f.f_code.co_filename).startswith(_fs_stdlib)
+
+def _fs_path(path):
+    # Chemin MicroPython (absolu ou relatif au dossier courant) -> (chemin
+    # normalise vu du script, chemin reel dans la copie). ".." s'arrete a la
+    # racine : impossible de sortir de la copie.
+    if _fs_root is None:
+        raise _fs_err(_errno.ENODEV)
+    if isinstance(path, (bytes, bytearray)):
+        path = bytes(path).decode()
+    if not isinstance(path, str):
+        raise TypeError('chemin attendu (str), pas %s' % type(path).__name__)
+    if any(c in path for c in '\\:*?"<>|\0'):
+        raise _fs_err(_errno.EINVAL)   # separateurs et caracteres propres a Windows
+    parts = []
+    for part in (path if path.startswith('/') else _fs_cwd + '/' + path).split('/'):
+        if part in ('', '.'):
+            continue
+        if part == '..':
+            if parts:
+                parts.pop()
+        else:
+            parts.append(part)
+    return '/' + '/'.join(parts), _host_os.path.join(_fs_root, *parts)
+
+def _fs_open(file, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None):
+    if isinstance(file, int) or not _fs_user(1):
+        return _host_open(file, mode, buffering, encoding, errors, newline, closefd, opener)
+    real = _fs_path(file)[1]
+    if _host_os.path.isdir(real):
+        raise _fs_err(_errno.EISDIR)
+    if 'b' not in mode:
+        # Comme MicroPython : UTF-8, et aucune traduction des fins de ligne
+        # (sinon "\n" deviendrait "\r\n" sur un hote Windows).
+        encoding = encoding or 'utf-8'
+        newline = '' if newline is None else newline
+    return _fs_call(_host_open, real, mode, buffering, encoding, errors, newline)
+
+def _fs_import(name, globals=None, locals=None, fromlist=(), level=0):
+    # "import os" (ou uos) depuis le code du microcontroleur donne le module os
+    # de MicroPython ; la stdlib, elle, garde le vrai.
+    if level == 0 and (name in ('os', 'uos') or name.startswith('os.')) and _fs_user(1):
+        return _fs_os
+    return _host_import(name, globals, locals, fromlist, level)
+
+def _os_getcwd():
+    _fs_path('/')
+    return _fs_cwd
+
+def _os_chdir(path):
+    global _fs_cwd
+    virt, real = _fs_path(path)
+    if not _host_os.path.isdir(real):
+        raise _fs_err(_errno.ENOENT)
+    _fs_cwd = virt
+
+def _os_listdir(path='.'):
+    return sorted(_fs_call(_host_os.listdir, _fs_path(path)[1]))
+
+def _os_ilistdir(path='.'):
+    real = _fs_path(path)[1]
+    for name in _os_listdir(path):
+        p = _host_os.path.join(real, name)
+        if _host_os.path.isdir(p):
+            yield (name, _FS_DIR, 0, 0)
+        else:
+            yield (name, _FS_FILE, 0, _host_os.path.getsize(p))
+
+def _os_mkdir(path):
+    _fs_call(_host_os.mkdir, _fs_path(path)[1])
+
+def _os_rmdir(path):
+    virt, real = _fs_path(path)
+    if virt == '/':
+        raise _fs_err(_errno.EACCES)
+    _fs_call(_host_os.rmdir, real)
+
+def _os_remove(path):
+    real = _fs_path(path)[1]
+    if _host_os.path.isdir(real):
+        raise _fs_err(_errno.EISDIR)
+    _fs_call(_host_os.remove, real)
+
+def _os_rename(old, new):
+    old_virt, old_real = _fs_path(old)
+    new_virt, new_real = _fs_path(new)
+    if old_virt == '/' or new_virt == '/':
+        raise _fs_err(_errno.EACCES)
+    _fs_call(_host_os.replace, old_real, new_real)   # remplace une cible existante, comme littlefs
+
+def _os_stat(path):
+    # Dates a zero : celles de l'hote dependraient de l'instant de la copie.
+    real = _fs_path(path)[1]
+    if _host_os.path.isdir(real):
+        return (_FS_DIR, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    return (_FS_FILE, 0, 0, 0, 0, 0, _fs_call(_host_os.path.getsize, real), 0, 0, 0)
+
+def _os_statvfs(path='/'):
+    # Taille de la flash du Pico ; blocs occupes calcules d'apres le contenu
+    # (un bloc par dossier, arrondi au bloc pour chaque fichier), donc stables
+    # d'une simulation a l'autre.
+    _fs_path(path)
+    used = 0
+    for dirpath, dirnames, filenames in _host_os.walk(_fs_root):
+        used += 1
+        for f in filenames:
+            used += -(-_host_os.path.getsize(_host_os.path.join(dirpath, f)) // _FS_BLOCK)
+    free = max(0, _FS_BLOCKS - used)
+    return (_FS_BLOCK, _FS_BLOCK, _FS_BLOCKS, free, free, 0, 0, 0, 0, 255)
+
+def _os_sync():
+    pass
+
+class _Uname(tuple):
+    sysname = property(lambda self: self[0])
+    nodename = property(lambda self: self[1])
+    release = property(lambda self: self[2])
+    version = property(lambda self: self[3])
+    machine = property(lambda self: self[4])
+
+def _os_uname():
+    return _Uname(('rp2', 'rp2', '1.23.0', 'v1.23.0 (simulation MicroPythonMCU)', 'MCU simule (API RP2040)'))
+
+_fs_os = types.ModuleType('os')
+_fs_os.sep = '/'
+_fs_os.getcwd = _os_getcwd
+_fs_os.chdir = _os_chdir
+_fs_os.listdir = _os_listdir
+_fs_os.ilistdir = _os_ilistdir
+_fs_os.mkdir = _os_mkdir
+_fs_os.rmdir = _os_rmdir
+_fs_os.remove = _os_remove
+_fs_os.rename = _os_rename
+_fs_os.stat = _os_stat
+_fs_os.statvfs = _os_statvfs
+_fs_os.sync = _os_sync
+_fs_os.uname = _os_uname
+
+_fs_mount()
+_builtins.open = _fs_open
+_builtins.__import__ = _fs_import

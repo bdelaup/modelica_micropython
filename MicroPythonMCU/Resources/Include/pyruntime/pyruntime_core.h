@@ -70,7 +70,19 @@ struct I2cMaster {
 };
 
 struct PyRuntimeHandle {
-    char* scriptPath;
+    char* scriptPath;            /* chaine vide : main.py du systeme de fichiers tient lieu de programme */
+
+    /* Systeme de fichiers (flash simulee) : la configuration est lue par le shim
+       (native fs_config), qui fait la copie horodatee puis renvoie sa racine
+       (native fs_set_root) ; fs_root reste NULL si le FS est desactive. Cf.
+       pyruntime_fs.c et requirements.md, decision "Systeme de fichiers". */
+    char* pythonHome;            /* sert au shim a reconnaitre le code de la stdlib, jamais cloisonne */
+    int fsEnabled;
+    char* fsSource;              /* vide : flash vierge */
+    char* fsWorkspace;           /* vide ou relatif : depuis le dossier de simulation */
+    int fsOpenExplorer;          /* ouvrir l'Explorateur sur la copie a la fin de la simulation */
+    char* instanceName;
+    char* fs_root;
 
     CRITICAL_SECTION cs;
     CONDITION_VARIABLE cv;
@@ -85,6 +97,7 @@ struct PyRuntimeHandle {
     int pin_driven_value[NUM_PINS];
     int pin_sensed_value[NUM_PINS];
     double pin_analog_value[NUM_PINS];
+    int adc_claimed[NUM_PINS];   /* broche passee en ADC : ses franchissements du seuil logique ne reveillent pas le script et ne declenchent pas d'IRQ GPIO, cf. native_adc_init */
     double pwm_freq[NUM_PINS];   /* 0 = pas en mode PWM */
     double pwm_duty[NUM_PINS];   /* 0-1, pertinent seulement si pwm_freq > 0 */
 

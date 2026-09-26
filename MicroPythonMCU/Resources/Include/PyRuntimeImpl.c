@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>        /* llround (ticks_ms) */
 #include "ModelicaUtilities.h"
 
 #include "uartcore.h"                      /* moteur UART generique (sans Python ni thread), partage avec UartDeviceImpl.c */
@@ -45,4 +46,5 @@
 #include "pyruntime/pyruntime_uart.c"      /* machine.UART (TX/RX, trame 8N1) */
 #include "pyruntime/pyruntime_i2c.c"       /* machine.I2C (maitre, drain ouvert) */
 #include "pyruntime/pyruntime_timer.c"     /* machine.Timer */
+#include "pyruntime/pyruntime_fs.c"        /* systeme de fichiers : liaison shim <-> handle */
 #include "pyruntime/pyruntime_module.c"    /* module natif, thread worker, API exportee */

@@ -9,10 +9,19 @@
    un module auxiliaire depuis le dossier du script et/ou une bibliotheque
    partagee - cf. requirements.md, decision "Import de modules auxiliaires".
    shimPath : chemin du shim machine/time (Resources/Scripts/_shim/
-   machine_time_shim.py), execute avant le script utilisateur. */
+   machine_time_shim.py), execute avant le script utilisateur.
+   fsEnabled/fsSource/fsWorkspace : systeme de fichiers (flash simulee), copie de
+   fsSource (vide = flash vierge) dans un dossier horodate de fsWorkspace (vide ou
+   relatif = depuis le dossier de simulation) ; fsOpenExplorer : ouvrir
+   l'Explorateur sur cette copie a la fin ; instanceName (getInstanceName())
+   entre dans le nom du dossier. Programme : boot.py de la flash s'il existe,
+   puis scriptPath, ou main.py de la flash si scriptPath est vide - cf.
+   requirements.md, decision "Systeme de fichiers". */
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
-                     const char* shimPath);
+                     const char* shimPath, int fsEnabled, const char* fsSource,
+                     const char* fsWorkspace, int fsOpenExplorer,
+                     const char* instanceName);
 void PyRuntime_destroy(void* handle);
 
 /* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,

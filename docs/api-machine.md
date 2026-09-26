@@ -52,7 +52,7 @@ v = adc.read_u16()             # 0-65535
 
 ### Constructeur
 
-`ADC(id)` — `id` : `0`-`7` (n'importe laquelle des broches `GP0`-`GP7`, utilisées en analogique plutôt qu'en numérique — v0 : **toutes** ADC-capables, contrairement au vrai Pico où seules `GP26`-`GP28` le sont) ou un objet `Pin` (son `.id` est utilisé). La LED embarquée (`25`/`Pin.LED`) n'est pas ADC-capable. Ne synchronise pas et ne modifie ni la direction ni l'état piloté de la broche — la construction seule n'a aucun effet électrique.
+`ADC(id)` — `id` : `0`-`7` (n'importe laquelle des broches `GP0`-`GP7`, utilisées en analogique plutôt qu'en numérique — v0 : **toutes** ADC-capables, contrairement au vrai Pico où seules `GP26`-`GP28` le sont) ou un objet `Pin` (son `.id` est utilisé). La LED embarquée (`25`/`Pin.LED`) n'est pas ADC-capable. Synchronise. Ne modifie ni la direction ni l'état piloté de la broche, mais **coupe son entrée numérique**, comme sur le RP2040 : les franchissements du seuil logique par la tension analogique ne réveillent plus un `sleep()` en cours et ne déclenchent plus d'IRQ (`Pin.irq()`). Un `Pin(id, mode)` ultérieur rend la broche au GPIO.
 
 ### Méthodes
 
@@ -200,6 +200,31 @@ Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le 
 
 **Erreurs** : `OSError(EIO)` (errno 5) si l'adresse n'est pas acquittée ; `OSError(ETIMEDOUT)` (errno 110) si une ligne reste basse (pas de tirage, bus bloqué) ; `OSError(EBUSY)` (errno 16) pour un appel depuis un callback de Timer/IRQ pendant une transaction.
 
+## Système de fichiers : `open()` et `os`
+
+```python
+import os
+
+with open('/data/mesures.csv', 'a') as f:
+    f.write('%d;%.3f\n' % (t, u))
+print(os.listdir('/data'))
+```
+
+Actif seulement si la case `MCU.fsEnabled` est cochée (onglet « Système de fichiers »). Chaque simulation recopie `MCU.fsSource` (vide = flash vierge) dans un nouveau dossier `<instance>_<nom du FS>_<date>_<heure>` de l'espace de travail `MCU.fsWorkspace` (`"."` par défaut : le dossier de simulation), dont le chemin est affiché dans le journal au début et à la fin de la simulation ; l'Explorateur Windows s'ouvre dessus à la fin (`MCU.fsOpenExplorer`) ; le script voit cette copie comme la racine `/` de la flash, sans pouvoir en sortir (`..` s'arrête à la racine). Sans système de fichiers, `open()` et les fonctions de `os` lèvent `OSError(ENODEV)` (errno 19). La racine et `/lib` sont sur le chemin d'import. Programme exécuté : `boot.py` de la copie s'il existe, puis `MCU.scriptPath` à la place de `main.py`, ou `main.py` de la copie si `scriptPath` est vide.
+
+| Appel | Effet | Point de synchro ? |
+|---|---|---|
+| `open(chemin, mode='r')` | Fichier de la flash. Texte en UTF-8, fins de ligne jamais traduites | **Non** (écriture instantanée) |
+| `os.listdir(dossier='.')` / `os.ilistdir(dossier='.')` | Noms triés / tuples `(nom, type, 0, taille)`, type `0x4000` (dossier) ou `0x8000` (fichier) | **Non** |
+| `os.mkdir(chemin)` / `os.rmdir(chemin)` / `os.remove(chemin)` | Crée un dossier / supprime un dossier vide / supprime un fichier | **Non** |
+| `os.rename(ancien, nouveau)` | Renomme, en remplaçant une cible existante | **Non** |
+| `os.stat(chemin)` | Tuple de 10 : `[0]` type, `[6]` taille ; dates à 0 | **Non** |
+| `os.statvfs('/')` | Flash de 1,4 Mo en blocs de 4 Ko, blocs libres d'après le contenu | **Non** |
+| `os.chdir(dossier)` / `os.getcwd()` | Dossier courant (`/` au démarrage) | **Non** |
+| `os.sync()`, `os.uname()`, `os.sep` | Sans effet / identité `rp2` / `'/'` | **Non** |
+
+`import uos` donne le même module. **Erreurs** : celles de MicroPython (`OSError: [Errno 2] ENOENT`, `EEXIST`, `EISDIR`...), jamais le chemin réel sur l'hôte ; `EINVAL` pour un chemin contenant `\`, `:` ou un caractère interdit par Windows. Rien de ce que le script observe ne dépend de l'horodatage de la copie : deux simulations produisent les mêmes fichiers.
+
 ## `time`
 
 ```python
@@ -212,8 +237,8 @@ time.sleep(1)
 | `sleep(s)` | secondes (`float`/`int`) | Suspend le script jusqu'à `sim_time + s` ; le temps simulé peut être avancé directement jusqu'à ce point (compression du sleep, cf. `cycle-de-vie.md`) | Oui |
 | `sleep_ms(ms)` | millisecondes | Équivalent à `sleep(ms/1000)` | Oui |
 | `sleep_us(us)` | microsecondes | Équivalent à `sleep(us/1e6)` | Oui |
-| `ticks_ms()` | — | Horloge simulée courante, en ms (`sim_time * 1000`) | **Non** — simple lecture |
-| `ticks_us()` | — | Horloge simulée courante, en µs | **Non** |
+| `ticks_ms()` | — | Horloge simulée courante, en ms (`sim_time * 1000`, **arrondi** à la ms la plus proche : un réveil prévu à 200 ms donne 200, jamais 199) | **Non** — simple lecture |
+| `ticks_us()` | — | Horloge simulée courante, en µs (vraie résolution à la microseconde, arrondie : un `sleep_us(250)` mesure 250) | **Non** |
 | `ticks_diff(a, b)` | — | `a - b` (fonction Python pure, pas d'appel natif) | **Non** |
 
 `ticks_ms()`/`ticks_us()` sont délibérément exclus de la synchronisation : une boucle de polling non bloquante (`while ticks_diff(...) < ...`) resterait ainsi bon marché plutôt que de déclencher un point de synchro à chaque itération.
@@ -225,11 +250,12 @@ Détails et justifications dans `requirements.md` (section Restrictions v0) :
 - `pull` (`Pin.PULL_UP`/`Pin.PULL_DOWN`) accepté en paramètre mais sans résistance de tirage réellement modélisée.
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).
 - Pas de `SPI` — voir le TODO de `requirements.md` pour les extensions prévues.
+- Système de fichiers : une copie neuve de l'image à chaque simulation (pas de persistance d'un run à l'autre ; pour enchaîner, pointer `fsSource` sur une copie précédente). Cloisonnement pédagogique limité à `open()` et `os` — `io.open` ou `pathlib` n'y sont pas soumis. Hôte insensible à la casse (Windows), pas d'`os.urandom`, ni `mount`/`VfsLfs2`/`dupterm`.
 - `machine.I2C` : **maître uniquement**, un seul bus, pas de clock stretching (SCL tenue basse = `ETIMEDOUT`) ni d'arbitrage multi-maître, 256 octets au plus par transaction, tirages internes du RP2040 non modélisés (il faut `usePullUp` sur un périphérique).
 - `machine.UART` : un seul périphérique (`UART(0)`), **trame 8N1 figée** (`bits`/`parity`/`stop` acceptés mais sans effet), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 256 octets, débordement silencieux ; une trame dont le bit de stop n'est pas haut est ignorée sans erreur de framing. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
 - `machine.Display` : une seule liaison logique, **écriture seule** (pas de réception), livraison instantanée du message entier (pas de bauds simulés) ; liaison modélisée comme un connecteur logique causal, pas électrique — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
 - `Pin.irq()` : tout callback tourne « soft » (déféré au prochain point de réveil du worker) ; `hard=` accepté mais sans effet — aucune notion de contexte d'interruption matérielle possible dans ce modèle mono-thread. Une exception levée dans un callback arrête toute la simulation (même politique que le script principal), pas d'isolation « le callback plante mais le reste continue ».
 - `machine.Timer` : pool fixe de 4 minuteurs partagé par tous les `Timer()` (au-delà, `Timer()` lève `RuntimeError`) ; période minimale 1 ms (`ValueError` en dessous, garde-fou contre une tempête d'événements à durée simulée nulle).
-- `ADC.read_u16()` : référence de conversion (3,3 V) codée en dur dans le shim, pas liée au paramètre `VOH` de `MCU` ; pas d'échantillonnage périodique ni d'événement de seuil (contrairement à une broche numérique en entrée, une variation sur l'ADC ne réveille jamais le script — il faut l'interroger explicitement).
+- `ADC.read_u16()` : référence de conversion (3,3 V) codée en dur dans le shim, pas liée au paramètre `VOH` de `MCU` ; pas d'échantillonnage périodique ni d'événement de seuil (contrairement à une broche numérique en entrée, une variation sur l'ADC ne réveille jamais le script, même en traversant le seuil logique — il faut l'interroger explicitement ; cf. `verify_26`).
 - `PWM` : chaque broche a sa fréquence/rapport cyclique indépendants (le vrai RP2040 partage un canal de fréquence entre deux broches voisines, pas modélisé ici) ; `deinit()` repasse la broche en sortie numérique **basse**, pas en haute impédance.
 - **Relire une broche juste après avoir écrit sur une autre (même physiquement reliées) peut renvoyer l'état d'*avant* l'écriture.** Plusieurs appels au shim qui s'enchaînent sans qu'aucun ne demande un vrai délai restent dans le même passage côté runtime C, sans repasser par la résolution du circuit Modelica entre-temps — la lecture voit alors un instantané pris avant l'écriture qui vient de se produire. Il faut un point de synchro explicite entre les deux (n'importe quel `sleep`/`sleep_ms`/`sleep_us` non nul suffit, même très court) pour forcer ce passage. Exemple concret : [`Examples/PinEcho.mo`](../MicroPythonMCU/Examples/PinEcho.mo) (script [`pin_echo.py`](../MicroPythonMCU/Resources/Scripts/MCU/pin_echo.py)), où `GP2` relit électriquement ce que le script vient d'écrire sur `GP1`.

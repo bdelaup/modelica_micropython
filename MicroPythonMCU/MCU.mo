@@ -1,19 +1,35 @@
 within MicroPythonMCU;
 
 model MCU "Microcontrôleur programmable simulé (v0), piloté par un script Python compatible MicroPython"
-  parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/demo.py") "Chemin du script utilisateur (.py)" annotation(
+  parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/demo.py") "Chemin du script utilisateur (.py) - avec un système de fichiers actif, exécuté après boot.py à la place de main.py ; vide = main.py de la flash" annotation(
     Dialog(group = "Script Python", loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un script Python")));
   parameter Boolean addScriptDirToPath = true "Rendre importables les fichiers .py situés à côté du script (ex. import mon_module) - reproduit le comportement du vrai Pico (dossier racine de la flash sur sys.path)" annotation(
     Dialog(group = "Script Python"));
   parameter String libraryPath = "" "Optionnel : fichier .py d'un dossier de bibliothèque partagée à rendre importable (le dossier contenant ce fichier est ajouté au chemin de recherche des modules) - laisser vide si non utilisé" annotation(
     Dialog(group = "Script Python", loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un fichier de la bibliothèque à ajouter")));
+  parameter Boolean fsEnabled = false "Activer le système de fichiers (flash simulée) - inactif : open() et os lèvent OSError" annotation(
+    Dialog(tab = "Système de fichiers", group = "Flash simulée"),
+    choices(checkBox = true));
+  parameter String fsSource = "" "Image initiale de la flash (dossier : données, boot.py, main.py, lib/), recopiée à chaque simulation et jamais modifiée - n'importe quel fichier du dossier, le chemin du dossier ou une URI modelica:// ; vide = flash vierge, seul le script s'exécute" annotation(
+    Dialog(tab = "Système de fichiers", group = "Flash simulée", enable = fsEnabled, loadSelector(filter = "Tous les fichiers (*)", caption = "Sélectionner un fichier du dossier du système de fichiers")));
+  parameter String fsWorkspace = "." "Espace de travail : dossier où chaque simulation crée sa copie, nommée <instance>_<nom du FS>_<date>_<heure> (créé s'il n'existe pas) - « . » ou chemin relatif = depuis le dossier de simulation ; chemin complet de la copie affiché dans le journal" annotation(
+    Dialog(tab = "Système de fichiers", group = "Flash simulée", enable = fsEnabled, saveSelector(filter = "Tous les fichiers (*)", caption = "Choisir (ou nommer) le dossier de l'espace de travail")));
+  parameter Boolean fsOpenExplorer = true "Ouvrir l'Explorateur Windows sur la copie à la fin de la simulation" annotation(
+    Dialog(tab = "Système de fichiers", group = "Flash simulée", enable = fsEnabled),
+    choices(checkBox = true));
   parameter Modelica.Units.SI.Time tickPeriod = 0.1 "Période du point de synchro minimal (fraîcheur des sorties si le script ne dort jamais)";
-  parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Tension logique haute";
-  parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Tension logique basse";
-  parameter Modelica.Units.SI.Voltage VIH = Interfaces.VIH "Seuil de reconnaissance d'une entrée haute";
-  parameter Modelica.Units.SI.Voltage VIL = Interfaces.VIL "Seuil de reconnaissance d'une entrée basse";
-  parameter Modelica.Units.SI.Resistance ROut = Interfaces.ROut "Résistance série de sortie (drive strength)";
-  parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Résistance série de la LED embarquée (interne, GP25)";
+  parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Tension logique haute" annotation(
+    Dialog(tab = "Électrique", group = "Niveaux logiques"));
+  parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Tension logique basse" annotation(
+    Dialog(tab = "Électrique", group = "Niveaux logiques"));
+  parameter Modelica.Units.SI.Voltage VIH = Interfaces.VIH "Seuil de reconnaissance d'une entrée haute" annotation(
+    Dialog(tab = "Électrique", group = "Niveaux logiques"));
+  parameter Modelica.Units.SI.Voltage VIL = Interfaces.VIL "Seuil de reconnaissance d'une entrée basse" annotation(
+    Dialog(tab = "Électrique", group = "Niveaux logiques"));
+  parameter Modelica.Units.SI.Resistance ROut = Interfaces.ROut "Résistance série de sortie (drive strength)" annotation(
+    Dialog(tab = "Électrique", group = "Étages de sortie"));
+  parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Résistance série de la LED embarquée (interne, GP25)" annotation(
+    Dialog(tab = "Électrique", group = "Étages de sortie"));
   Modelica.Electrical.Analog.Interfaces.PositivePin GP0 "GPIO 0 (machine.Pin(0), machine.ADC(0) ou machine.PWM(0))" annotation(
     Placement(transformation(origin = {-62, 50}, extent = {{-7, -7}, {7, 7}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin GP1 "GPIO 1 (machine.Pin(1), machine.ADC(1) ou machine.PWM(1))" annotation(
@@ -54,7 +70,7 @@ protected
   Real uartTxBitIdx[9] "Index du bit en cours d'émission (-1 hors trame)";
   Boolean uartTxLevel[9] "Niveau logique à émettre sur la broche (repos = haut)";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochain réveil demandé par le script (sleep) ou +inf si terminé";
-  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py")) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
+  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName()) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Source de tension pilotée par le script (VOH/VOL) quand la broche est en sortie ; index 9 = LED embarquée" annotation(
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));
@@ -112,6 +128,8 @@ equation
     Documentation(info = "<html>
 <p>Modèle v0 complet : pont électrique GPIO (source de tension pilotée, résistance série, interrupteur idéal, capteur de tension) piloté par <code>PyRuntime</code>, qui exécute le script Python de l'utilisateur (compatible MicroPython, API <code>machine.Pin</code>/<code>machine.ADC</code>/<code>machine.PWM</code>/<code>time</code>) dans un thread avec interception de <code>sleep()</code>. Référence d'API : Raspberry Pi Pico (RP2040), cf. <code>requirements.md</code> — non affichée sur l'icône pour rester générique. Chaque broche <code>GP0</code>-<code>GP7</code> est utilisable au choix du script en numérique (<code>machine.Pin</code>), en analogique (<code>machine.ADC</code>, lecture 16 bits de la tension mesurée par le capteur déjà présent dans le pont) ou en PWM (<code>machine.PWM</code>, créneau généré en continu côté Modelica une fois fréquence/rapport cyclique configurés — pas de va-et-vient avec le thread Python à chaque front, cf. <code>requirements.md</code>) — contrairement au vrai Pico où seules certaines broches sont ADC-capables, cf. restrictions dans <code>requirements.md</code>.</p>
 <p>Le script peut importer un module auxiliaire (<code>import mon_module</code>) : par défaut (<code>addScriptDirToPath</code>), le dossier du script est ajouté au chemin de recherche Python, et <code>libraryPath</code> permet de désigner en plus un fichier <code>.py</code> d'une bibliothèque partagée (son dossier est alors ajouté aussi) — cf. <code>requirements.md</code>, décision « Import de modules auxiliaires ».</p>
+<p>Système de fichiers (flash simulée, onglet « Système de fichiers ») : inactif par défaut (<code>fsEnabled</code>), <code>open()</code> et <code>os</code> lèvent alors <code>OSError</code>. Actif, chaque simulation recopie le dossier <code>fsSource</code> (vide = flash vierge) dans un nouveau dossier de <code>fsWorkspace</code> (« . » par défaut : le dossier de simulation), nommé <code>&lt;instance&gt;_&lt;nom du FS&gt;_&lt;date&gt;_&lt;heure&gt;</code> ; son chemin complet est affiché dans le journal au début et à la fin de la simulation, et l'Explorateur Windows s'ouvre dessus à la fin (<code>fsOpenExplorer</code>). Le script y voit la racine <code>/</code> de la flash : <code>open()</code> et le module <code>os</code> façon MicroPython (<code>listdir</code>, <code>mkdir</code>, <code>remove</code>, <code>rename</code>, <code>stat</code>, <code>statvfs</code>, <code>chdir</code>, <code>getcwd</code>...) y sont cloisonnés, et la racine ainsi que <code>/lib</code> sont sur le chemin d'import. La source n'est jamais modifiée : chaque simulation repart du même état, elle reste déterministe (l'horodatage ne sert qu'à nommer la copie, le script ne le voit pas). Programme exécuté, comme sur une carte : <code>boot.py</code> de la flash s'il existe, puis <code>scriptPath</code> à la place de <code>main.py</code> (comme Thonny sur une carte déjà démarrée), ou <code>main.py</code> de la flash si <code>scriptPath</code> est vide. Cf. <code>requirements.md</code>, décision « Système de fichiers ».</p>
+<p>Les paramètres électriques (niveaux logiques, résistances de sortie) sont regroupés dans l'onglet « Électrique ».</p>
 <p>Le connecteur <code>Display0</code> expose une liaison logique vers un périphérique d'affichage pédagogique (<code>machine.Display(0).write(texte)</code>) : contrairement aux broches <code>GPx</code>, ce n'est pas un connecteur électrique (<code>Modelica.Electrical.Analog</code>) mais un connecteur logique causal (<code>Interfaces.DisplayLinkOutput</code>, message livré instantanément au point de synchro, pas de forme d'onde série ni de bauds simulés) — à câbler sur le <code>displayLink</code> (<code>Interfaces.DisplayLinkInput</code>) d'un <code>Peripherals.Display</code>, composant optionnel (brancher ou non selon le circuit). Cf. <code>requirements.md</code>, décision « Périphérique d'affichage pédagogique ».</p>
 <p>La pastille sur l'icône représente la LED embarquée du Raspberry Pi Pico (câblée sur <code>GP25</code> sur la vraie carte). Elle est traitée comme une broche normale, avec le même pont électrique interne que <code>GP0</code>-<code>GP7</code> (<code>SignalVoltage</code>/<code>Resistor</code>/<code>IdealOpeningSwitch</code>/<code>VoltageSensor</code>, indice 9 des mêmes tableaux) — simplement sans connecteur externe : la sortie de ce pont interne alimente directement, à demeure, une résistance série (<code>ledResistor</code>) et une vraie <code>Peripherals.LED</code> (<code>builtinLed</code>) reliée à <code>GND</code>, fidèle au câblage réel du Pico. Pilotable depuis le script exactement comme les 8 broches GPIO (<code>machine.Pin(25, machine.Pin.OUT).on()</code>/<code>.off()</code>) ; ce n'est pas l'une des 8 broches GPIO exposées en v0 (cf. restrictions dans <code>requirements.md</code>), donc aucun circuit externe ne peut s'y connecter. Vert vif quand allumée, vert éteint sinon — visible pendant la lecture animée d'un résultat de simulation dans OMEdit (<code>DynamicSelect</code> sur <code>builtinLed.mean.y</code>), pas sur un rendu statique.</p>
 <p><em>Schéma interne (Diagram) volontairement vide en v0 : les blocs du pont électrique sont masqués (<code>visible = false</code>) plutôt que routés proprement — un schéma lisible sera redessiné plus tard, cf. requirements.md.</em></p>

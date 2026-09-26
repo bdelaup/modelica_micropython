@@ -1,0 +1,2 @@
+periode_ms=100
+mesures=10

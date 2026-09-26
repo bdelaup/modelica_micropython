@@ -1,0 +1,21 @@
+// Scénario de vérification v0 n°26 (cf. requirements.md, décision « ADC (entrées analogiques) »).
+// omc verify_26_adc_sleep.mos   (depuis ce dossier)
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.AdcSleep, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "AdcSleep");
+b := getErrorString();
+
+// La sinusoïde sur GP0 (ADC) traverse le seuil logique 10 fois par seconde.
+// Le script allume GP1 seulement si ses cinq sleep(0.2) ont duré 200 ms et si
+// l'IRQ armée sur Pin(0) n'a vu aucun front : il ne l'allume qu'à la fin (t=1 s).
+vLedBefore := val(mcu.GP1.v, 0.9, "AdcSleep_res.mat");
+vLed := val(mcu.GP1.v, 1.3, "AdcSleep_res.mat");
+vMin := val(mcu.GP0.v, 0.15, "AdcSleep_res.mat");
+vMax := val(mcu.GP0.v, 0.05, "AdcSleep_res.mat");
+
+if vLedBefore < 0.5 and vLed > 2.0 and vMin < 0.5 and vMax > 2.8 then
+  print("PASS: verify_26_adc_sleep (GP0 de " + String(vMin) + "V a " + String(vMax) + "V ; sleep() entiers et aucune IRQ : GP1(led)=" + String(vLed) + "V)\n");
+else
+  print("FAIL: verify_26_adc_sleep (GP1 avant=" + String(vLedBefore) + "V apres=" + String(vLed) + "V ; GP0 min=" + String(vMin) + "V max=" + String(vMax) + "V)\n" + b);
+end if;

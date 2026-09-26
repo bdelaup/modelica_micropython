@@ -3,6 +3,7 @@ PyRuntime_sync
 UartDevice
 UartDevice_sync
 StringToCharCodes
+ResolvePath
 TwoLineTextIcon
 PartialUartDevice
 I2cDevice

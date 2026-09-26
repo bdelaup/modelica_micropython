@@ -2,6 +2,7 @@ BasicBlink
 LedChaser
 PinEcho
 AdcRead
+AdcSleep
 PwmLed
 PwmLedFade
 ImportDemo
@@ -11,5 +12,7 @@ ScriptError
 PinIrq
 TimerToggle
 DisplayDemo
+FileSystem
+FileSystemScript
 Uart
 I2c

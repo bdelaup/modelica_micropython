@@ -107,12 +107,13 @@ modelica_micropython3/
         │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
         │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : démarrage unique de l'interpréteur (le premier composant construit le démarre), relais stdout/stderr, lecture de fichier
         │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame 8N1, décodage par échantillonnage, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
-        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _timer.c, _module.c
+        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _timer.c, _fs.c (système de fichiers : liaison shim <-> handle), _module.c
         │   ├── uartdevice/         -- idem côté périphériques : uartdevice_core.h (struct UartDevice), _format.c ({vN} et {oN}), _match.c (table de commandes), _script.c (mode Script : chargement du .py dans un espace de noms propre, appel des gestionnaires), _engine.c (construction, ordonnancement, synchro)
         │   ├── i2cdevice/          -- idem côté I2C : i2cdevice_core.h (struct I2cDevice), _script.c (contrat on_write / on_read / outputs / lines), _engine.c (décodeur piloté par les fronts, construction, synchro)
         │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
         ├── Library/win64/          -- libpython312.a, bibliothèque d'import régénérée pour le compilateur MinGW d'OpenModelica
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md
+        ├── FileSystems/            -- images de flash fournies, désignées par MCU.fsSource (datalogger/ : boot.py, main.py, config.txt, lib/ — Examples.FileSystem)
         ├── Scripts/
         │   ├── MCU/                -- programmes du microcontrôleur, un par exemple (dont demo.py, valeur par défaut de `MCU.scriptPath`) ; companion.py et lib/ servent à ImportDemo
         │   ├── Device/             -- scripts des périphériques, nommés d'après l'appareil : série (mode Script) echo.py, gps.py, temperature_sensor.py, state_machine.py, generic.py ; I2C i2c_echo.py, i2c_generic.py, grove_lcd_rgb.py - chaque périphérique fourni a le sien par défaut
