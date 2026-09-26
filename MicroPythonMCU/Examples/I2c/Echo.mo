@@ -31,7 +31,7 @@ equation
     Line(points = {{-7, -45}, {0, -45}, {0, -70}, {-25, -70}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-160, -100}, {120, 80}})),
-    experiment(StopTime = 0.005, Interval = 1e-7),
+    experiment(StopTime = 0.5, Interval = 0.01, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
 <p>Premier dialogue I2C : le microcontrôleur (maître) écrit la trame <code>b'Hello I2C'</code> (9 octets) au périphérique d'écho à l'adresse <code>0x42</code>, la relit, puis lit un « registre » derrière un <strong>START répété</strong> (<code>readfrom_mem</code>). <code>GP7</code> passe à l'état haut si les trois échanges sont conformes, ce qu'indique la LED <code>led7</code>.</p>
 <p>Le bus est <strong>électrique</strong> : tracer <code>mcu.GP4.v</code> (SCL) et <code>mcu.GP5.v</code> (SDA) montre la vraie séquence — START (SDA descend pendant que SCL est haute), adresse sur 7 bits + bit R/W, acquittement de l'esclave (SDA tirée basse au 9ᵉ coup d'horloge), octets de données, STOP. <code>echo.sdaDriveLow</code> montre les instants où c'est l'esclave, et non le maître, qui tient SDA.</p>
