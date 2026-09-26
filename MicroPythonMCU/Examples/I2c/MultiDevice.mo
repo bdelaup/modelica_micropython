@@ -12,6 +12,10 @@ model MultiDevice "Trois périphériques I2C sur le même bus : le microcontrôl
     Placement(transformation(origin = {40, -60}, extent = {{-25, -25}, {25, 25}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-25, -100}, extent = {{-10, -10}, {10, 10}})));
+  Modelica.Electrical.Analog.Basic.Resistor r7(R = 330) "limite le courant de led7 (GP7)" annotation(
+    Placement(transformation(origin = {-74, -65}, extent = {{-8, -8}, {8, 8}})));
+  MicroPythonMCU.Peripherals.LED led7 "GP7 : s'allume si les trois échanges I2C sont conformes" annotation(
+    Placement(transformation(origin = {-49, -65}, extent = {{-8, -8}, {8, 8}})));
 equation
 // SDA (GP5) : un seul fil, partagé par les trois périphériques
   connect(mcu.GP5, e1.SDA) annotation(
@@ -35,9 +39,15 @@ equation
     Line(points = {{40, -18}, {70, -18}, {70, -90}, {-25, -90}}, color = {0, 0, 255}));
   connect(e3.GND, ground.p) annotation(
     Line(points = {{40, -78}, {40, -90}, {-25, -90}}, color = {0, 0, 255}));
+  connect(r7.n, led7.p) annotation(
+    Line(points = {{-66, -65}, {-57, -65}}, color = {0, 0, 255}));
+  connect(r7.p, mcu.GP7) annotation(
+    Line(points = {{-82, -64}, {-84, -64}, {-84, -42}, {-50, -42}, {-50, -24}, {-58, -24}}, color = {0, 0, 255}));
+  connect(led7.n, ground.p) annotation(
+    Line(points = {{-40, -64}, {-38, -64}, {-38, -80}, {-24, -80}, {-24, -90}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-160, -120}, {120, 100}})),
-    experiment(StopTime = 0.008, Interval = 1e-6),
+    experiment(StopTime = 0.3, Interval = 1e-05, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
 <p>Trois <code>I2cEchoDevice</code> se partagent les deux mêmes fils <code>SDA</code>/<code>SCL</code>, aux adresses <code>0x10</code>, <code>0x11</code> et <code>0x12</code>. Le programme (<code>Scripts/MCU/i2c_multi.py</code>, à 400 kHz) :</p>
 <ol>
