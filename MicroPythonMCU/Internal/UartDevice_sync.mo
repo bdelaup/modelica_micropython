@@ -6,16 +6,14 @@ impure function UartDevice_sync "Point de synchro d'un périphérique série ext
   input Boolean rxLevel "Niveau logique lu sur la broche de réception (tension seuillée côté Modelica)";
   input Real valueIn[Interfaces.UART_DEV_MAX_VALUES] "Grandeurs venues du modèle, substituées par {vN} dans les trames émises";
   output Real valueOut[Interfaces.UART_DEV_MAX_VALUES] "Grandeurs capturées par {oN} dans les trames reçues (maintenues entre deux trames)";
-  output Boolean txActive "Une trame est en cours d'émission";
-  output Real txStart "Instant du front de start de la trame en cours";
-  output Integer txNumBits "Nombre de bits utiles de la trame (10 en 8N1)";
-  output Real txBits[Interfaces.UART_MAX_FRAME_BITS] "Motif de bits déjà sérialisé côté C : Modelica n'a qu'à le rejouer dans le temps";
+  output Boolean txActive "Une trame est en cours d'émission (témoin de l'icône)";
+  output Boolean txLevel "Niveau à tenir sur TX jusqu'au point de synchro suivant (repos = haut) : nextWakeTime tombe sur le prochain CHANGEMENT de niveau de la trame";
   output Boolean rxBusy "Une trame est en cours de réception (témoin d'activité de l'icône)";
   output Integer eventSeq "Incrémenté à chaque ligne reçue et à chaque charge utile émise - déclencheur d'edge-detection change(eventSeq), motif de Display0.seq";
   output String lastRx "Dernière ligne complète reçue (journal, afficheur)";
   output String lastTx "Dernière charge utile émise (journal)";
-  output Real nextWakeTime "Plus proche échéance : fin de trame, échantillon de réception, réponse armée ou tick périodique";
-  external "C" UartDevice_sync(dev, currentTime, rxLevel, valueIn, valueOut, txActive, txStart, txNumBits, txBits, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) annotation(
+  output Real nextWakeTime "Plus proche échéance : front à émettre, fin de trame, milieu du bit de stop d'une trame reçue, réponse armée ou tick périodique";
+  external "C" UartDevice_sync(dev, currentTime, rxLevel, valueIn, valueOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) annotation(
     Include = "#include \"UartDeviceImpl.c\"",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
     Library = "python312",

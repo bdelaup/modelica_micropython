@@ -18,7 +18,7 @@ Un appareil série externe est un véritable interlocuteur : deux composants dis
 
 ## 2. Le moteur est partagé, pas dupliqué
 
-Le travail bit/octet vit dans **`Resources/Include/uartcore.h` + `uartcore.c`**, à la racine d'`Include/` : files circulaires, sérialisation 8N1, décodage par échantillonnage au milieu de chaque bit, calcul d'échéance. Ce code ne connaît ni Python, ni les threads, ni les broches — il n'a donc rien coûté à extraire de `pyruntime_uart.c`, où il vivait déjà sous cette forme.
+Le travail bit/octet vit dans **`Resources/Include/uartcore.h` + `uartcore.c`**, à la racine d'`Include/` : files circulaires, sérialisation 8N1, niveau de la ligne d'émission, décodage de la réception à partir des fronts, calcul d'échéance (fonctionnement détaillé dans [peripherique-uart.md](peripherique-uart.md) §§ 3-4). Ce code ne connaît ni Python, ni les threads, ni les broches — il n'a donc rien coûté à extraire de `pyruntime_uart.c`, où il vivait déjà sous cette forme.
 
 | | Microcontrôleur | Périphérique |
 |---|---|---|
@@ -37,8 +37,8 @@ Les deux modes n'ont pas deux implémentations. Ils alimentent **la même file d
 
 | Source d'échéance | Rôle |
 |---|---|
-| `io.tx_end_time` | fin de trame → charger l'octet suivant |
-| `io.rx_next_sample` | échantillonner le milieu du bit suivant |
+| prochain front de `io` (`uartcore_tx_next_edge`) | changement de niveau à émettre, ou fin de trame → charger l'octet suivant |
+| `io.rx_stop_sample` | milieu du bit de stop de la trame reçue → livrer l'octet (les bits de données, eux, se résolvent aux fronts, sans réveil programmé) |
 | `pending_time` | réponse armée, après `responseDelay` |
 | `next_emit_time` | tick d'émission périodique |
 
@@ -51,16 +51,16 @@ L'ordre compte, et il ne change pas :
 ```
 1. recopier valueIn[] -> value_in[]
 2. tx_advance(now)        -- trame close ? charger l'octet suivant
-3. rx_step(now, level)    -- front -> armer ; échéance -> échantillonner
+3. rx_step(now, level)    -- front de start -> armer ; appel suivant -> résoudre les bits passés
 4. drainer la FIFO RX vers l'accumulateur de ligne
       octet != terminateur -> empiler
       octet == terminateur -> LIVRER la ligne -> uartdev_on_line()
 5. échéances d'émission (réponse armée, tick périodique -> uartdev_on_tick())
-6. publier txActive / txStart / txBits[] / valueOut[] / rxBusy / eventSeq / lastRx / lastTx
+6. publier txActive / txLevel / valueOut[] / rxBusy / eventSeq / lastRx / lastTx
 7. nextWakeTime = min des échéances
 ```
 
-**Toutes ces étapes sont rejouables.** Les étapes 2, 3 et 5 sont de la forme `while (now >= échéance)` ; l'étape 4 consomme les octets. C'est indispensable : Modelica rappelle une fonction externe plusieurs fois au même instant simulé (2 à 3 itérations d'événement). C'est aussi ce qui permettra à la phase 2 d'y loger une machine d'état sans qu'elle rejoue ses transitions.
+**Toutes ces étapes sont rejouables.** Les étapes 2, 3 et 5 sont de la forme `while (now >= échéance)` (pour l'étape 3 : le milieu du bit suivant à résoudre) ; l'étape 4 consomme les octets. C'est indispensable : Modelica rappelle une fonction externe plusieurs fois au même instant simulé (2 à 3 itérations d'événement). C'est aussi ce qui permettra à la phase 2 d'y loger une machine d'état sans qu'elle rejoue ses transitions.
 
 Le `when` qui déclenche tout ça :
 
@@ -95,7 +95,23 @@ Câbler **les deux** sens entre un `MCU` et un périphérique faisait échouer l
 
 Cause : le `change(rxBoolIn)` du périphérique dépend de la tension pilotée par le MCU, et le `change(pinBoolIn[k])` du MCU dépend de celle pilotée par le périphérique. Les deux `when` forment un cycle.
 
-Correction : une **capacité d'entrée `CIn` sur la broche RX** (1 nF par défaut). Physiquement honnête — toute broche d'entrée et tout câble en ont une — et elle donne au nœud un véritable état dynamique, ce qui coupe le cycle. Face aux 100 Ω de sortie, la constante de temps vaut 0,1 µs, soit 0,01 % d'un bit à 1200 bauds.
+Correction : une **capacité d'entrée `CIn` sur la broche RX** (1 nF). Physiquement honnête — toute broche d'entrée et tout câble en ont une — et elle donne au nœud un véritable état dynamique, ce qui coupe le cycle. Face aux 100 Ω de sortie, la constante de temps vaut 0,1 µs, soit 0,01 % d'un bit à 1200 bauds.
+
+**Pourquoi une seule capacité, et de ce côté.** Le cycle fait un seul tour, qui emprunte les deux fils l'un après l'autre :
+
+```
+        fil MCU -> périphérique (CIn : la tension devient un état)
+when MCU ───────────────────────────────────────────► when périphérique
+    ▲                                                        │
+    └────────────────────────────────────────────────────────┘
+        fil périphérique -> MCU (algébrique, sans capacité)
+```
+
+Il suffit de le couper à un endroit. Avec `CIn`, la sortie du MCU n'agit plus sur la tension du RX du périphérique, seulement sur sa **dérivée** : son effet ne passe plus que par l'intégration dans le temps. Le fil retour peut rester instantané, car il ne referme plus rien : `omc` évalue le `when` du périphérique, puis la tension de la broche du MCU, puis le `when` du MCU, au même instant. Une capacité sur la broche du MCU casserait le cycle tout aussi bien, mais le pont des broches du MCU est partagé par toutes les fonctions (sortie, PWM, ADC, I2C, LED) : l'y ajouter toucherait les 8 broches, même sans UART. L'entrée RX du périphérique, toujours en entrée, est l'endroit neutre.
+
+**Un détail d'implémentation, pas un paramètre.** `CIn` est déclarée dans la partie `protected` de `PartialUartDevice` : elle n'apparaît pas dans la boîte de paramètres et ne se modifie pas depuis un schéma. Face à une sortie push-pull, sa constante de temps n'a aucun effet visible sur la trame, et un utilisateur n'aurait aucune raison d'y toucher — sauf à la mettre à zéro, ce qui empêcherait le modèle de se construire. C'est la différence avec le `CIn` des périphériques I2C ([peripheriques-i2c.md](peripheriques-i2c.md)), qui reste un paramètre : face aux résistances de tirage, il fixe le temps de montée des fronts, et l'augmenter montre ce qu'est un bus trop chargé.
+
+**Son coût.** Le franchissement du seuil logique par la tension de `CIn` survient environ 0,06 µs (front montant) à 0,09 µs (front descendant) après le front émis par le MCU : c'est un second événement, distinct de celui de l'émission. Dans le sens MCU → périphérique, chaque front coûte donc deux événements ; dans l'autre sens, un seul.
 
 > **Bénéfice inattendu** : puisque chaque extrémité réceptrice porte désormais sa propre capacité, le réseau R+C artificiel de `PinEcho`/`Uart.Loopback` devient inutile dès qu'un périphérique est en jeu.
 

@@ -243,7 +243,7 @@ Un point de verrouillage est **impératif**, pas une question de style : `run_du
 
 Le déclenchement d'un `Timer`/`Pin.irq()` ne nécessite **aucun changement** à `MCU.mo` ni à `Internal/PyRuntime_sync.mo` : le `when` de `MCU.mo` appelle déjà `PyRuntime_sync` sur toute transition d'entrée, et Modelica réagit déjà à n'importe quelle valeur de `nextWakeTime` — il suffit que `PyRuntime_sync` intègre les échéances de `Timer` actifs dans son calcul de `nextWakeTime` (`min` avec l'échéance propre du worker) et dans sa condition de réveil du worker.
 
-**Le décodage de la réception série réutilise exactement ce mécanisme** : `machine.UART` programme ses instants d'échantillonnage (milieu de chaque bit) via `nextWakeTime`, comme un `Timer`, et **sans réveiller le worker** — le script récupère les octets à son rythme par `any()`/`read()`. C'est aussi pourquoi la broche affectée à la réception est exclue du calcul de « vraie transition d'entrée » : sans ça, chaque front reçu ferait retourner en avance le `sleep()` en cours. Détail complet : [peripherique-uart.md](peripherique-uart.md).
+**La liaison série réutilise exactement ce mécanisme** : `machine.UART` programme via `nextWakeTime`, comme un `Timer`, les changements de niveau de la trame émise et le milieu du bit de stop de la trame reçue (les autres bits reçus se résolvent aux fronts de la ligne, qui déclenchent déjà un appel), **sans réveiller le worker** — le script récupère les octets à son rythme par `any()`/`read()`. C'est aussi pourquoi la broche affectée à la réception est exclue du calcul de « vraie transition d'entrée » : sans ça, chaque front reçu ferait retourner en avance le `sleep()` en cours. Détail complet : [peripherique-uart.md](peripherique-uart.md).
 
 ## 3ter. Le cycle de vie d'un périphérique série externe
 
@@ -260,7 +260,7 @@ Le `when` se déclenche sur quatre conditions :
 | Déclencheur | À quoi il sert |
 |---|---|
 | `initial()` | l'appel de `t = 0` |
-| `change(rxBoolIn)` | **voir le front de start** d'une trame entrante |
+| `change(rxBoolIn)` | **voir chaque front** d'une trame entrante : le start arme le décodeur, les suivants résolvent les bits dont le milieu est passé |
 | `time >= pre(nextWakeTime)` | honorer l'échéance demandée au tour précédent |
 | `sample(0, tickPeriod)` | filet de sécurité |
 
@@ -271,14 +271,13 @@ Un bit dure 833 µs, une trame 8N1 dure 8,333 ms.
 | Instant | Ce qui se passe |
 |---|---|
 | 5,000 ms | le script appelle `uart.write()` ; la tension chute sur la ligne |
-| 5,000 ms | `change(rxBoolIn)` → synchro. `rx_last_level = 1`, niveau lu = 0 ⇒ **front descendant**. `rx_next_sample = 6,250 ms` (½ start + ½ bit 0) |
-| 6,250 ms | `time >= pre(nextWakeTime)` → échantillonnage du bit de données 0 |
-| 7,083 … 12,083 ms | sept réveils de plus, un par bit |
-| 12,917 ms | bit de stop, niveau haut ⇒ octet valide, poussé dans la FIFO RX, retour à `IDLE` |
+| 5,000 ms | `change(rxBoolIn)` → synchro. `rx_last_level = 1`, niveau lu = 0 ⇒ **front descendant**. Milieu du bit 0 à 6,250 ms (½ start + ½ bit), milieu du stop à 12,917 ms : c'est le **seul** réveil programmé |
+| 5,833 … 12,500 ms | à chaque front de la ligne, `change(rxBoolIn)` → synchro : les bits dont le milieu est passé se lisent au niveau tenu depuis l'appel précédent, sans réveil dédié |
+| 12,917 ms | `time >= pre(nextWakeTime)` → derniers bits résolus, stop au niveau haut ⇒ octet valide, poussé dans la FIFO RX, retour à `IDLE` |
 | 13,333 ms | la trame suivante enchaîne sans trou : nouveau front de start |
 | ≈ 71,7 ms | le terminateur arrive ⇒ **la ligne est livrée** à `uartdev_on_line`, et l'accumulateur vidé dans le même geste |
-| + `responseDelay` | la réponse entre en FIFO d'émission, `txActive` passe à vrai |
-| pendant 8,333 ms | **aucun appel C** : Modelica joue seul la forme d'onde (`txPhase`, `floor`, `uartBitLevel`), exactement comme pour le PWM |
+| + `responseDelay` | la réponse entre en FIFO d'émission, `txActive` passe à vrai, `txLevel` à bas (bit de start) |
+| pendant 8,333 ms | **un appel C par changement de niveau seulement** : `nextWakeTime` tombe sur le prochain front de la trame, et Modelica tient `txLevel` entre deux — des bits identiques consécutifs ne coûtent aucun événement |
 | + 8,333 ms | fin de trame ⇒ synchro ⇒ octet suivant, démarré **à `tx_end_time`** et non à `now`, pour enchaîner sans trou |
 
 ### Ce qui diffère du microcontrôleur

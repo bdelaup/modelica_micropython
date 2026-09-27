@@ -289,9 +289,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
                      int* pinBoolOut, int* pinIsOutput,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
-                     int* uartTxPinOut, int* uartTxActiveOut,
-                     double* uartTxStartOut, double* uartBitDurOut,
-                     int* uartTxNumBitsOut, double* uartTxBitsOut,
+                     int* uartTxPinOut, int* uartTxLevelOut,
                      double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
@@ -311,11 +309,10 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
            ici, le worker est mort (meme raison que le reste de cette branche). */
         uart_tx_advance(h, currentTime);
         uart_rx_step(h, currentTime, pinBoolIn);
-        uart_publish(h, uartTxPinOut, uartTxActiveOut, uartTxStartOut, uartBitDurOut,
-                     uartTxNumBitsOut, uartTxBitsOut);
+        uart_publish(h, currentTime, uartTxPinOut, uartTxLevelOut);
         /* Seule une echeance UART peut encore demander un reveil apres la fin
-           du script (trame suivante a charger, bit a echantillonner). */
-        *nextWakeTime = earliest_uart_deadline(h);
+           du script (prochain front a emettre, octet recu a clore). */
+        *nextWakeTime = earliest_uart_deadline(h, currentTime);
         return;
     }
 
@@ -360,10 +357,11 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     h->wake_had_input_change = input_changed;
 
     /* Fait avancer le peripherique UART : l'emission passe a la trame suivante
-       quand la courante arrive a echeance, et la reception echantillonne la
-       ligne au milieu de chaque bit. Les deux se cadencent via nextWakeTime
-       (cf. earliest_uart_deadline), sans jamais reveiller le worker : le script
-       recupere les octets a son rythme, par uart.any()/uart.read(). */
+       quand la courante arrive a echeance, et la reception resout les bits
+       dont le milieu est passe a partir des fronts de la ligne. Les deux se
+       cadencent via nextWakeTime (cf. earliest_uart_deadline), sans jamais
+       reveiller le worker : le script recupere les octets a son rythme, par
+       uart.any()/uart.read(). */
     uart_tx_advance(h, currentTime);
     uart_rx_step(h, currentTime, pinBoolIn);
 
@@ -426,8 +424,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
     strcpy((char*) *displayPayloadOut, h->display_payload);
     /* Publie apres le drain : le script a pu lancer une emission pendant celui-ci. */
-    uart_publish(h, uartTxPinOut, uartTxActiveOut, uartTxStartOut, uartBitDurOut,
-                 uartTxNumBitsOut, uartTxBitsOut);
+    uart_publish(h, currentTime, uartTxPinOut, uartTxLevelOut);
     int done = h->script_done;
     int error = h->script_error;
     char* error_message = h->error_message;
@@ -437,7 +434,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
         wake_at = next_timer;
     }
     /* Meme raison : une emission/reception a pu demarrer pendant le drain. */
-    double next_uart = earliest_uart_deadline(h);
+    double next_uart = earliest_uart_deadline(h, currentTime);
     double uart_only = next_uart;
     if (next_uart < wake_at) {
         wake_at = next_uart;

@@ -53,13 +53,6 @@ partial model PartialUartDevice "Base des appareils série externes : liaison é
   // n'est jamais indéterminé quand rien n'y est câblé.
   parameter Modelica.Units.SI.Resistance RPullUp = 1e6 "Tirage de l'entrée RX vers VOH" annotation(
     Dialog(tab = "Électrique", group = "Impédances"));
-  // CIn n'est pas cosmétique : elle donne au nœud de réception un état dynamique
-  // réel, ce qui rompt la dépendance mutuelle entre le when de cet appareil et
-  // celui du microcontrôleur lorsque les deux sens sont câblés — sans elle, le
-  // modèle combiné ne se construit pas. Face aux 100 Ω de sortie, la constante de
-  // temps vaut 0,1 µs. Détail dans docs/peripheriques-uart-externes.md.
-  parameter Modelica.Units.SI.Capacitance CIn = 1e-9 "Capacité d'entrée de la broche RX (broche + câble)" annotation(
-    Dialog(tab = "Électrique", group = "Impédances"));
 
   Modelica.Electrical.Analog.Interfaces.PositivePin TX "Émission du périphérique - à câbler sur la broche de réception du microcontrôleur" annotation(
     Placement(transformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}})));
@@ -81,22 +74,26 @@ partial model PartialUartDevice "Base des appareils série externes : liaison é
   String lastTx "Dernière charge utile émise";
 protected
   constant Integer NV = Interfaces.UART_DEV_MAX_VALUES "Taille fixe attendue par l'interface externe C";
-  parameter Modelica.Units.SI.Time bitDur = 1/baudrate "Durée d'un bit - connue côté Modelica, le C n'a pas à la republier";
+  // CIn n'est pas cosmétique : elle donne au nœud de réception un état dynamique
+  // réel, ce qui rompt la dépendance mutuelle entre le when de cet appareil et
+  // celui du microcontrôleur lorsque les deux sens sont câblés — sans elle, le
+  // modèle combiné ne se construit pas. Protégée, donc absente de la boîte de
+  // paramètres : face à une sortie push-pull de 100 Ω, la constante de temps
+  // (0,1 µs) n'a aucun effet visible sur la trame, et la modifier n'apprendrait
+  // rien à l'utilisateur (contrairement au CIn des périphériques I2C, qui fixe le
+  // temps de montée face aux tirages et reste un paramètre). Détail dans
+  // docs/peripheriques-uart-externes.md.
+  parameter Modelica.Units.SI.Capacitance CIn = 1e-9 "Capacité d'entrée de la broche RX (broche + câble) - interne, rompt le cycle entre les when de cet appareil et du microcontrôleur";
 
   Modelica.Blocks.Interfaces.RealInput valueIn_internal[nIn] "Connecteur interne : un connecteur conditionnel ne peut pas être lu directement dans une équation (idiome MSL)";
 
   discrete Real vOut[NV](each start = 0, each fixed = true) "Grandeurs capturées, telles que publiées par le C";
   Real vIn[NV] "Grandeurs transmises au C, complétées par fixedValue au-delà de nIn";
 
-  discrete Modelica.Units.SI.Time txStart(start = 0, fixed = true) "Instant du front de start de la trame en cours";
-  discrete Integer txNumBits(start = 10, fixed = true) "Nombre de bits utiles de la trame (10 en 8N1)";
-  discrete Real txBits[Interfaces.UART_MAX_FRAME_BITS](each start = 1, each fixed = true) "Motif de bits déjà sérialisé côté C : Modelica ne fait que le rejouer dans le temps";
+  discrete Boolean txLevel(start = true, fixed = true) "Niveau logique à tenir sur TX (repos = haut), publié par le C : le point de synchro suivant tombe sur le prochain CHANGEMENT de niveau de la trame, donc des bits identiques consécutifs ne coûtent aucun événement";
   discrete Integer eventSeq(start = 0, fixed = true) "Incrémenté à chaque ligne reçue et à chaque charge utile émise";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochaine échéance demandée par le moteur";
 
-  Real txPhase "Position temporelle dans la trame, en nombre de bits. Vaut -1 (constante) hors trame : floor() ne croise alors jamais rien, donc aucun événement parasite au repos";
-  Real txBitIdx "Index du bit en cours d'émission (-1 hors trame)";
-  Boolean txLevel "Niveau logique à émettre (repos = haut)";
   Modelica.Units.SI.Voltage rxVoltage "Tension effective sur la broche de réception";
   Boolean rxBoolIn "Valeur logique lue sur RX (tension comparée aux seuils VIL/VIH)";
 
@@ -145,13 +142,10 @@ equation
 
   rxVoltage = sns.v;
   rxBoolIn = rxVoltage > (VIL + VIH)/2 "seuil logique médian, même approximation que le microcontrôleur";
-  txPhase = if txActive then (time - txStart)/bitDur else -1.0;
-  txBitIdx = floor(txPhase);
-  txLevel = Interfaces.uartBitLevel(txBitIdx, txNumBits, txBits) "c'est floor() ci-dessus, pas la fonction, qui engendre l'événement à chaque front de bit";
   src.v = if txLevel then VOH else VOL "la ligne est tenue activement au repos HAUT hors trame, comme une sortie push-pull réelle";
 
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(rxBoolIn)} then
-    (vOut, txActive, txStart, txNumBits, txBits, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) = Internal.UartDevice_sync(dev, time, rxBoolIn, vIn);
+    (vOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) = Internal.UartDevice_sync(dev, time, rxBoolIn, vIn);
   end when;
   when change(eventSeq) then
     Modelica.Utilities.Streams.print("[" + getInstanceName() + "] t=" + String(time) + " s - reçu: \"" + lastRx + "\" / émis: \"" + lastTx + "\"");

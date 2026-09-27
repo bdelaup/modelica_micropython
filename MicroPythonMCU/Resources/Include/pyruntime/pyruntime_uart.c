@@ -14,17 +14,18 @@
    (Peripherals.UartDevice) qui n'ont ni Python ni thread. Ne reste ici que ce
    qui est propre au microcontroleur.
 
-   L'emission est generee en continu par Modelica a partir du motif de bits publie
-   ici (comme le PWM, et comme le vrai peripherique UART du RP2040 qui tourne
-   independamment du CPU une fois programme) ; la reception est decodee dans
-   PyRuntime_sync, par echantillonnage au milieu de chaque bit. */
+   L'emission tourne independamment du script, comme le vrai peripherique UART
+   du RP2040 une fois programme : PyRuntime_sync publie le niveau courant de la
+   ligne et demande un reveil au prochain changement de niveau. La reception
+   est decodee dans PyRuntime_sync a partir des fronts de la ligne (cf.
+   uartcore_rx_step). */
 
 /* Plus proche echeance UART, ou 1e300 si l'UART n'est pas configure. */
-static double earliest_uart_deadline(struct PyRuntimeHandle* h) {
+static double earliest_uart_deadline(struct PyRuntimeHandle* h, double now) {
     if (!h->uart_configured) {
         return 1.0e300;
     }
-    return uartcore_deadline(&h->uart);
+    return uartcore_deadline(&h->uart, now);
 }
 
 /* Fait avancer l'emission et le decodage. Appelees par PyRuntime_sync a chaque
@@ -186,20 +187,12 @@ static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
-/* Publie l'etat UART vers Modelica, qui genere la forme d'onde en continu a
-   partir de ces valeurs. uartTxPin vaut 0 tant qu'aucune broche n'est affectee
-   en TX ; une fois affectee, elle le reste meme hors trame (la ligne au repos
-   doit etre HAUTE, pas retomber sur pinBoolOut qui vaut bas par defaut). */
-static void uart_publish(struct PyRuntimeHandle* h, int* uartTxPinOut, int* uartTxActiveOut,
-                          double* uartTxStartOut, double* uartBitDurOut,
-                          int* uartTxNumBitsOut, double* uartTxBitsOut) {
-    int k;
+/* Publie l'etat UART vers Modelica : la broche d'emission et le niveau a y
+   tenir jusqu'au point de synchro suivant. uartTxPin vaut 0 tant qu'aucune
+   broche n'est affectee en TX ; une fois affectee, elle le reste meme hors
+   trame (la ligne au repos doit etre HAUTE, pas retomber sur pinBoolOut qui
+   vaut bas par defaut). */
+static void uart_publish(struct PyRuntimeHandle* h, double now, int* uartTxPinOut, int* uartTxLevelOut) {
     *uartTxPinOut = (h->uart_configured && h->uart_tx_pin >= 0) ? h->uart_tx_pin + 1 : 0;
-    *uartTxActiveOut = h->uart.tx_active;
-    *uartTxStartOut = h->uart.tx_start_time;
-    *uartBitDurOut = (h->uart.bit_dur > 0) ? h->uart.bit_dur : 1.0;
-    *uartTxNumBitsOut = h->uart.tx_num_bits;
-    for (k = 0; k < UART_MAX_FRAME_BITS; k++) {
-        uartTxBitsOut[k] = h->uart.tx_bits[k];
-    }
+    *uartTxLevelOut = uartcore_tx_level(&h->uart, now);
 }

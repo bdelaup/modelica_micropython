@@ -3,11 +3,15 @@
 # le runtime C est précompilé une fois pour toutes en
 # Resources/Library/win64/libmicropythonmcu.a, et les sources C ne sont pas
 # livrées. Outil de DISTRIBUTION, encore à peaufiner (cf. requirements.md, TODO
-# « Version distribuée ») - pas utilisé par les tests, qui tournent sur le dépôt :
-# le gain de temps de compilation mesuré est négligeable (~0,3 s par modèle, le
-# fichier principal généré par omc reste le plus long à compiler, en parallèle).
+# « Version distribuée »), et support de la NON-RÉGRESSION : run_all.sh --release
+# l'appelle puis lance la suite dans dist/, pour tester ce qui est réellement
+# livré. Il n'accélère pas les tests : le gain de compilation mesuré est
+# négligeable (~0,3 s par modèle, le fichier principal généré par omc reste le
+# plus long à compiler, en parallèle) - pendant le travail, la suite tourne sur
+# le dépôt.
 #
 #   ./make_release.sh
+#   MicroPythonMCU/Resources/Verification/run_all.sh --release   # release + suite
 #
 # Le dépôt reste la version de développement (sources C incluses à la volée par
 # les annotations Include) ; dist/ est ignoré par git et se reconstruit à la

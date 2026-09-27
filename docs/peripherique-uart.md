@@ -14,49 +14,72 @@ Cette page documente la liaison série `machine.UART` (cf. `requirements.md`, d�
 
 | | Où ça vit | Pourquoi |
 |---|---|---|
-| **Émission** | Équation continue Modelica | Le C sérialise l'octet en motif de bits une fois ; Modelica rejoue ce motif dans le temps, sans un seul appel à la fonction externe par front — comme le vrai périphérique UART du RP2040, qui tourne indépendamment du CPU une fois programmé |
-| **Réception** | Machine à états entièrement en C | Modelica est peu commode pour un compteur de bits conditionnel, et le mécanisme de réveil programmé (`nextWakeTime`) existait déjà : **aucune équation ni aucun `when` supplémentaire côté Modelica pour la réception** |
+| **Émission** | C (motif de bits + niveau courant), Modelica ne fait que le tenir | Le C sérialise l'octet une fois, publie le niveau de la ligne et ne demande un réveil qu'au **prochain changement de niveau** — sans jamais réveiller le thread Python, comme le vrai périphérique UART du RP2040, qui tourne indépendamment du CPU une fois programmé |
+| **Réception** | Machine à états entièrement en C, pilotée par les fronts | Modelica est peu commode pour un compteur de bits conditionnel, et chaque front de la ligne déclenche déjà un point de synchro : **aucune équation ni aucun `when` supplémentaire côté Modelica pour la réception**, et un seul réveil programmé par octet |
+
+**Pourquoi compter les événements** : chaque événement Modelica (réveil programmé, franchissement de seuil) fait redémarrer le solveur DASSL avec de petits pas. Sur une liaison série, c'est ce qui domine la durée de simulation — d'où les deux choix ci-dessus, qui ne créent d'événement qu'aux fronts réels de la ligne, plus un par octet reçu.
 
 ## 2. Configuration : `native_uart_init`
 
-`machine.UART(0, baudrate=1200, tx=Pin(0), rx=Pin(1))` appelle `_native.uart_init`, qui valide le débit (`UART_MIN_BAUD` = 50, `UART_MAX_BAUD` = 115200 — garde-fou contre une tempête d'événements, un événement Modelica étant généré par front de bit, même esprit que `TIMER_MIN_PERIOD`), passe les deux broches en sortie/entrée et vide les deux files.
+`machine.UART(0, baudrate=1200, tx=Pin(0), rx=Pin(1))` appelle `_native.uart_init`, qui valide le débit (`UART_MIN_BAUD` = 50, `UART_MAX_BAUD` = 115200 — garde-fou contre une tempête d'événements, un événement Modelica étant généré par front, même esprit que `TIMER_MIN_PERIOD`), passe les deux broches en sortie/entrée et vide les deux files.
 
 Un point mérite d'être connu, car il n'est pas une optimisation mais une **condition de fonctionnement** : la broche de réception est marquée `uart_rx_claimed[rx] = 1`, ce qui l'exclut du calcul d'`input_changed` dans `PyRuntime_sync`. Sans ça, chaque front reçu réveillerait le worker et **ferait retourner en avance le `sleep()` en cours** — comportement voulu pour un bouton (la « réactivité en entrée », scénario 3), désastreux pour une broche série : à 1200 bauds, chaque octet reçu casserait une dizaine de `sleep()`. L'exclusion emporte aussi l'armement des IRQ GPIO sur cette broche, ce qui est fidèle au matériel réel : une broche prise par le périphérique UART ne génère plus d'interruption GPIO. `PyRuntime_sync` continue d'être appelée à ces instants (la condition du `when` vit côté Modelica et ignore cette réservation), donc le décodage se fait — c'est seulement le worker qui n'est plus réveillé pour rien.
 
-## 3. Émission : le C sérialise, Modelica rejoue
+## 3. Émission : le C sérialise et publie le niveau, Modelica le tient
 
-**Côté C** (`pyruntime/pyruntime_uart.c`) : `uart_tx_begin_frame` est le **seul endroit qui connaît le format de trame** — start à 0, 8 bits de données poids faible en tête, stop à 1, le reste du tableau à l'état de repos. Passer un jour à un format paramétrable (parité, 7/9 bits, 2 stop) ne demandera de toucher ni Modelica ni le shim Python ; `UART_MAX_FRAME_BITS = 13` est déjà dimensionné pour ça.
+**Côté C** (moteur partagé `uartcore.c`, appelé par `pyruntime/pyruntime_uart.c`) : `uartcore_tx_begin_frame` est le **seul endroit qui connaît le format de trame** — start à 0, 8 bits de données poids faible en tête, stop à 1, le reste du tableau à l'état de repos. Passer un jour à un format paramétrable (parité, 7/9 bits, 2 stop) ne demandera de toucher ni Modelica ni le shim Python ; `UART_MAX_FRAME_BITS = 13` est déjà dimensionné pour ça.
 
-`write()` est non bloquant : les octets s'empilent dans une file circulaire de 256 octets (`UART_TX_BUF_LEN`) et `uart_tx_advance`, appelée à chaque point de synchro, démarre la trame suivante **pile à la fin de la précédente** (`uart_tx_begin_frame(h, next, h->uart_tx_end_time)`) — les trames s'enchaînent sans trou. File pleine : l'octet est perdu silencieusement, comme un FIFO matériel qui déborde.
+`write()` est non bloquant : les octets s'empilent dans une file circulaire de 256 octets (`UART_TX_BUF_LEN`) et `uartcore_tx_advance`, appelée à chaque point de synchro, démarre la trame suivante **pile à la fin de la précédente** — les trames s'enchaînent sans trou. File pleine : l'octet est perdu silencieusement, comme un FIFO matériel qui déborde.
 
-**Côté Modelica** (`MCU.mo`), la forme d'onde est une équation continue, transposition directe du motif PWM :
+À chaque point de synchro, `PyRuntime_sync` publie deux choses seulement : la broche d'émission (`uartTxPin`) et le **niveau à y tenir** (`uartTxLevel`, calculé par `uartcore_tx_level` à partir du motif et de l'instant). Puis `uartcore_deadline` place le réveil suivant sur le **prochain changement de niveau** de la trame (`uartcore_tx_next_edge`), ou sur sa fin s'il n'y en a plus, pour charger l'octet suivant :
 
-```modelica
-uartTxPhase[i]  = if uartTxPin == i and uartTxActive then (time - uartTxStart)/uartBitDur else -1.0;
-uartTxBitIdx[i] = floor(uartTxPhase[i]);
-uartTxLevel[i]  = if uartTxBitIdx[i] < -0.5 or uartTxBitIdx[i] > uartTxNumBits - 0.5 then true
-                  elseif uartTxBitIdx[i] < 0.5 then uartTxBits[1] > 0.5
-                  elseif ... /* une branche par bit */
-                  else true;
+```
+octet 0xF0 (LSB en tête)   start b0 b1 b2 b3 b4 b5 b6 b7 stop
+niveau                       0   0  0  0  0  1  1  1  1   1
+réveils demandés             ^                ^              ^ (fin de trame)
 ```
 
-Deux détails valent d'être notés :
-- La sélection du bit courant passe par un `if/elseif` explicite plutôt qu'une indexation par variable (`uartTxBits[uartTxBitIdx+1]`), qu'un solveur Modelica n'apprécie pas sur une variable continue.
-- **Hors trame, `uartTxPhase` vaut la constante `-1.0`** : `floor()` ne croise alors jamais rien, donc aucun événement parasite pendant les longues périodes de repos. C'est la transposition du plancher `max(pwmFreq, 1e-6)` du PWM, et un pré-check isolé a mesuré 10 s de temps simulé (dont 99,8 % au repos) en 0,31 s.
+Des bits identiques consécutifs ne coûtent donc rien : `0xF0` comme `0xFF` n'en demandent que trois (start, unique changement de niveau, fin de trame), et seul un octet qui alterne à chaque bit (`0x55`) en demande dix. Ces réveils ne réveillent pas le script : le worker ne reprend la main que si son propre `sleep()` est échu (cf. [cycle-de-vie.md](cycle-de-vie.md)).
 
-**L'état de repos est tenu par le TX, et aucune résistance de tirage n'intervient.** Une sortie TX est *push-pull* : elle pilote activement les deux niveaux — bas pour le start et les données à 0, **haut en permanence le reste du temps** (stop, puis état « mark »). Le RX n'est qu'une entrée haute impédance qui n'impose jamais rien. Contrairement à un bus I²C en drain ouvert, un pull-up n'a donc aucun rôle ici ; sur une liaison réelle on n'en met que côté RX, pour qu'une entrée débranchée ne prenne pas du bruit pour un bit de start — cas sans objet dans un bouclage. Concrètement, une broche affectée en TX **reste** pilotée par la branche UART même hors trame (`uartTxPin == i`, sans condition sur `uartTxActive`) : sans ça on retomberait sur `pinBoolOut`, bas par défaut, et le récepteur verrait un bit de start permanent.
+**Côté Modelica** (`MCU.mo`), il ne reste qu'à tenir le niveau publié :
 
-## 4. Réception : machine à états en C
+```modelica
+src[i].v = if pinIsOutputD[i] then (if uartTxPin == i then (if uartTxLevel then VOH else VOL) elseif ... ) else 0;
+```
 
-`uart_rx_step` échantillonne la ligne **au milieu de chaque bit**. Elle est rappelée aux bons instants via `earliest_uart_deadline` → `nextWakeTime`, exactement le mécanisme déjà utilisé par `machine.Timer`.
+`uartTxLevel` est une variable `discrete`, affectée dans le `when` du point de synchro : entre deux réveils, la ligne est constante et le solveur avance à grands pas. Au repos, aucun réveil n'est demandé, donc aucun événement.
+
+> Jusqu'au 2026-09-27, Modelica rejouait lui-même le motif de bits (`floor((time - uartTxStart)/uartBitDur)`), ce qui engendrait un événement à **chaque frontière de bit**, que le niveau change ou non. Le passage aux seuls changements de niveau, joint à la réception par les fronts (§ 4), a divisé le nombre d'événements par 1,9 à 2,6 sur les exemples UART — cf. `requirements.md`, décision « UART électrique réel », Alternatives.
+
+**L'état de repos est tenu par le TX, et aucune résistance de tirage n'intervient.** Une sortie TX est *push-pull* : elle pilote activement les deux niveaux — bas pour le start et les données à 0, **haut en permanence le reste du temps** (stop, puis état « mark »). Le RX n'est qu'une entrée haute impédance qui n'impose jamais rien. Contrairement à un bus I²C en drain ouvert, un pull-up n'a donc aucun rôle ici ; sur une liaison réelle on n'en met que côté RX, pour qu'une entrée débranchée ne prenne pas du bruit pour un bit de start — cas sans objet dans un bouclage. Concrètement, une broche affectée en TX **reste** pilotée par la branche UART même hors trame (`uartTxPin == i`, sans autre condition, le C publiant alors un niveau HAUT) : sans ça on retomberait sur `pinBoolOut`, bas par défaut, et le récepteur verrait un bit de start permanent.
+
+## 4. Réception : machine à états en C, pilotée par les fronts
+
+`uartcore_rx_step` lit chaque bit **en son milieu**, comme un vrai récepteur — mais **sans s'y réveiller**. Le raisonnement tient en une phrase : chaque front de la ligne déclenche déjà un point de synchro (`change(pinBoolIn[k])` dans le `when` de `MCU`, la broche étant en entrée), donc **entre deux appels, la ligne n'a pas bougé**. À chaque appel, tous les bits dont le milieu est passé se lisent avec le niveau tenu depuis l'appel précédent (`rx_last_level`) — ou avec le niveau courant si ce milieu tombe pile sur l'appel.
+
+```
+octet 0x9C (LSB en tête)  start b0 b1 b2 b3 b4 b5 b6 b7 stop
+niveau                      0    0  0  1  1  1  0  0  1   1
+appels                      1          2        3     4   5
+```
+
+1. front descendant du start : armement, réveil programmé au milieu du stop ;
+2. front montant (début de b2) : b0 et b1, dont le milieu est passé, se lisent au niveau tenu, 0 ;
+3. front descendant (début de b5) : b2, b3, b4 se lisent à 1 ;
+4. front montant (début de b7) : b5, b6 se lisent à 0 ;
+5. réveil au milieu du stop, **le seul programmé** : b7 se lit au niveau tenu (1), le stop au niveau courant (1) — l'octet `0x9C` est livré.
+
+Le résultat est **exactement** celui d'un échantillonnage au milieu de chaque bit — mêmes octets, y compris les octets faux d'un débit mal accordé —, mais un seul réveil est programmé par octet, au milieu du bit de stop, pour livrer l'octet sans attendre le front suivant.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Repos
-    Repos --> Reception : front DESCENDANT (start)<br/>next_sample = now + 1.5 x bitDur
-    Reception --> Reception : échéance atteinte, bit < 8<br/>shift |= level << index (LSB first)<br/>next_sample += bitDur
-    Reception --> Repos : échéance atteinte, bit 8 = stop<br/>si stop HAUT : octet poussé dans le FIFO RX<br/>sinon : trame ignorée
+    Repos --> Reception : front DESCENDANT (start)<br/>next_sample = now + 1.5 x bitDur<br/>stop_sample = now + 9.5 x bitDur (réveil)
+    Reception --> Reception : appel sur un front<br/>chaque milieu de bit passé : shift |= niveau tenu << index (LSB first)
+    Reception --> Repos : appel au milieu du stop<br/>si stop HAUT : octet poussé dans le FIFO RX<br/>sinon : trame ignorée
 ```
+
+Rappelée plusieurs fois au même instant (itérations d'événement de Modelica), la fonction ne refait rien : les bits déjà résolus ne le sont plus, et le niveau n'a pas changé.
 
 Deux corrections sans lesquelles le décodeur est faux, et qui méritent d'être comprises avant de toucher à ce code :
 

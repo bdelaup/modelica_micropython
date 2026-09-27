@@ -6,7 +6,7 @@
    ORDRE DES OPERATIONS DANS UartDevice_sync (ne pas le changer a la legere) :
      1. recopier les grandeurs venues du modele
      2. faire avancer l'emission (trame close -> octet suivant)
-     3. faire avancer le decodage de la reception
+     3. faire avancer le decodage de la reception (bits resolus aux fronts)
      4. drainer les octets recus vers l'accumulateur de ligne
      5. echeances d'emission (reponse armee, tick periodique)
      6. publier vers Modelica
@@ -111,7 +111,7 @@ static void uartdev_arm_response(struct UartDevice* dev, const char* payload, in
 
 /* Plus proche echeance, toutes sources confondues. */
 static double uartdev_deadline(struct UartDevice* dev) {
-    double best = uartcore_deadline(&dev->io);
+    double best = uartcore_deadline(&dev->io, dev->now);
     if (dev->pending_armed && dev->pending_time < best) {
         best = dev->pending_time;
     }
@@ -215,8 +215,7 @@ void UartDevice_destroy(void* dev_) {
 }
 
 void UartDevice_sync(void* dev_, double currentTime, int rxLevel, const double* valueIn,
-                      double* valueOut, int* txActiveOut, double* txStartOut,
-                      int* txNumBitsOut, double* txBitsOut, int* rxBusyOut,
+                      double* valueOut, int* txActiveOut, int* txLevelOut, int* rxBusyOut,
                       int* eventSeqOut, const char** lastRxOut, const char** lastTxOut,
                       double* nextWakeTime) {
     struct UartDevice* dev = (struct UartDevice*) dev_;
@@ -234,7 +233,7 @@ void UartDevice_sync(void* dev_, double currentTime, int rxLevel, const double* 
     /* 2. emission : clore la trame arrivee a echeance, charger la suivante */
     uartcore_tx_advance(&dev->io, currentTime);
 
-    /* 3. reception : front de start, puis un echantillon par bit */
+    /* 3. reception : front de start, puis bits resolus aux fronts suivants */
     uartcore_rx_step(&dev->io, currentTime, rxLevel);
 
     /* 4. drainer les octets recus vers l'accumulateur de ligne */
@@ -281,11 +280,7 @@ void UartDevice_sync(void* dev_, double currentTime, int rxLevel, const double* 
 
     /* 6. publier */
     *txActiveOut = dev->io.tx_active;
-    *txStartOut = dev->io.tx_start_time;
-    *txNumBitsOut = dev->io.tx_num_bits;
-    for (k = 0; k < UART_MAX_FRAME_BITS; k++) {
-        txBitsOut[k] = dev->io.tx_bits[k];
-    }
+    *txLevelOut = uartcore_tx_level(&dev->io, currentTime);
     for (k = 0; k < UARTDEV_MAX_VALUES; k++) {
         valueOut[k] = dev->value_out[k];
     }

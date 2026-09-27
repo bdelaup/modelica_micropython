@@ -29,15 +29,16 @@ void UartDevice_destroy(void* dev);
    rxLevel : niveau logique lu sur la broche de reception (seuille cote Modelica).
    valueIn/valueOut : [UARTDEV_MAX_VALUES], grandeurs reelles echangees avec le
    reste du modele - {vN} les substitue dans une trame emise, {oN} les capture
-   dans une trame recue. txActiveOut/txStartOut/txNumBitsOut/txBitsOut : motif de
-   la trame en cours, dont Modelica genere la forme d'onde en continu (meme
-   principe que le PWM et que machine.UART). rxBusyOut : temoin d'activite pour
-   l'icone. eventSeqOut/lastRxOut/lastTxOut : observabilite (journal, afficheur),
-   sur le motif de displaySeq/displayPayload. nextWakeTime : plus proche echeance
-   (fin de trame, echantillon de reception, reponse armee, tick periodique). */
+   dans une trame recue. txActiveOut : une trame est en cours d'emission (temoin
+   de l'icone) ; txLevelOut : niveau a tenir sur TX jusqu'au point de synchro
+   suivant, que nextWakeTime place sur le prochain CHANGEMENT de niveau (meme
+   principe que machine.UART). rxBusyOut : temoin d'activite pour l'icone.
+   eventSeqOut/lastRxOut/lastTxOut : observabilite (journal, afficheur), sur le
+   motif de displaySeq/displayPayload. nextWakeTime : plus proche echeance
+   (front a emettre, fin de trame, milieu du stop d'une trame recue, reponse
+   armee, tick periodique). */
 void UartDevice_sync(void* dev, double currentTime, int rxLevel, const double* valueIn,
-                      double* valueOut, int* txActiveOut, double* txStartOut,
-                      int* txNumBitsOut, double* txBitsOut, int* rxBusyOut,
+                      double* valueOut, int* txActiveOut, int* txLevelOut, int* rxBusyOut,
                       int* eventSeqOut, const char** lastRxOut, const char** lastTxOut,
                       double* nextWakeTime);
 

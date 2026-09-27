@@ -37,23 +37,20 @@ void PyRuntime_destroy(void* handle);
    transmis (livraison instantanee, pas de bauds simules, cf. requirements.md
    decision "Périphérique d'affichage pédagogique"). uartTxPinOut: broche
    affectee a l'emission serie (0 = aucune, sinon 1-9 aligne sur pinBoolOut) ;
-   uartTxActiveOut: une trame est en cours ; uartTxStartOut: instant de son
-   front de start ; uartBitDurOut: 1/baudrate ; uartTxNumBitsOut/uartTxBitsOut:
-   motif de bits complet de la trame (start + data + stop), deja serialise cote
-   C - Modelica en genere la forme d'onde en continu, sans va-et-vient au thread
-   Python a chaque front (meme principe que le PWM). La RECEPTION, elle, est
-   decodee cote C (echantillonnage au milieu de chaque bit, cadence par
-   nextWakeTime) : elle n'a aucune sortie ici, le script recupere les octets par
-   uart.any()/uart.read() - cf. requirements.md decision "UART electrique reel".
-   nextWakeTime: sortie scalaire. */
+   uartTxLevelOut: niveau a tenir sur cette broche jusqu'au point de synchro
+   suivant, que nextWakeTime place sur le prochain CHANGEMENT de niveau de la
+   trame - sans va-et-vient au thread Python (le worker n'est pas reveille). La
+   RECEPTION, elle, est decodee cote C a partir des fronts de la ligne (un seul
+   reveil programme par octet, au milieu du stop) : elle n'a aucune sortie ici,
+   le script recupere les octets par uart.any()/uart.read() - cf.
+   requirements.md decision "UART electrique reel". nextWakeTime: sortie
+   scalaire. */
 void PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
-                     int* uartTxPinOut, int* uartTxActiveOut,
-                     double* uartTxStartOut, double* uartBitDurOut,
-                     int* uartTxNumBitsOut, double* uartTxBitsOut,
+                     int* uartTxPinOut, int* uartTxLevelOut,
                      double* nextWakeTime);
 
 #endif

@@ -6,8 +6,17 @@
 #   ./run_all.sh -j 2                  # 2 exécutions simultanées
 #   ./run_all.sh verify_08_pwm.mos ... # seulement ces scripts
 #   ./run_all.sh -k                    # garder artefacts de compilation et journaux
+#   ./run_all.sh --release             # non-régression : construit la release
+#                                      # locale (make_release.sh) et y lance la suite
 #
-# Code de sortie : 0 si tout passe, 1 sinon.
+# Code de sortie : 0 si tout passe, 1 sinon (2 si la suite n'a pas pu démarrer).
+#
+# Pendant le travail, la suite tourne sur le dépôt (sources C incluses à la
+# volée). La NON-RÉGRESSION après une modification qui le mérite se fait avec
+# --release, sur ce qui est réellement livré : runtime C précompilé, en-têtes
+# publics, annotations réécrites par make_release.sh - des défauts que la suite
+# sur le dépôt ne peut pas voir. Même durée de suite dans les deux cas (cf.
+# requirements.md, décision « Structure du package et interface C »).
 #
 # Les .mos restent autonomes et lançables un par un (omc verify_0X_....mos) ; ce
 # script ne fait que les orchestrer. Deux scripts qui partagent des fichiers ne
@@ -19,11 +28,18 @@
 
 JOBS=4
 KEEP=0
+RELEASE=0
+# getopts ne connaît pas les options longues : --release est retiré à part.
+ARGS=()
+for a in "$@"; do
+  if [ "$a" = "--release" ]; then RELEASE=1; else ARGS+=("$a"); fi
+done
+set -- "${ARGS[@]}"
 while getopts "j:kh" opt; do
   case $opt in
     j) JOBS=$OPTARG ;;
     k) KEEP=1 ;;
-    *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
   esac
 done
 shift $((OPTIND - 1))
@@ -39,6 +55,29 @@ fi
 if ! command -v omc >/dev/null 2>&1; then
   echo "omc introuvable : l'ajouter au PATH ou positionner OPENMODELICAHOME (cf. docs/tests.md)" >&2
   exit 2
+fi
+
+# --release : reconstruire dist/ depuis l'état COURANT du dépôt (modifications
+# non commitées comprises), puis déléguer à la copie de ce script dans la
+# release, avec les mêmes options et les mêmes scripts. BUILD_INFO.txt est
+# réaffiché après le récapitulatif : un résultat doit dire sur quoi il a tourné.
+if [ $RELEASE -eq 1 ]; then
+  ROOT=$(cd ../../.. && pwd)
+  if [ ! -f "$ROOT/make_release.sh" ]; then
+    echo "--release se lance depuis le dépôt (make_release.sh introuvable) - dans une release, lancer ./run_all.sh sans --release" >&2
+    exit 2
+  fi
+  s=$(date +%s%N)
+  "$ROOT/make_release.sh" || { echo "Construction de la release en échec : suite non lancée" >&2; exit 2; }
+  printf "Release construite en %.1f s\n\n" "$(awk "BEGIN{print ($(date +%s%N)-$s)/1e9}")"
+  FWD=(-j "$JOBS")
+  [ $KEEP -eq 1 ] && FWD+=(-k)
+  "$ROOT/dist/MicroPythonMCU/Resources/Verification/run_all.sh" "${FWD[@]}" "$@"
+  status=$?
+  echo
+  echo "Suite exécutée sur la release locale :"
+  sed 's/^/  /' "$ROOT/dist/BUILD_INFO.txt"
+  exit $status
 fi
 
 if [ $# -gt 0 ]; then TESTS=("$@"); else TESTS=(verify_*.mos); fi

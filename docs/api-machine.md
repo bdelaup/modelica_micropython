@@ -146,7 +146,7 @@ if uart.any():
 
 Liaison série **électriquement réelle**, sur deux vraies broches `GPx` — contrairement à `machine.Display`, qui est une liaison logique. La broche TX porte une vraie trame 8N1 (bit de start à 0, 8 bits de données poids faible en tête, bit de stop à 1, repos au niveau haut), chaque bit durant `1/baudrate` : la tracer dans OMEdit revient à la regarder à l'oscilloscope.
 
-La forme d'onde est générée **en continu par Modelica** à partir du motif de bits calculé une seule fois côté C, sans que le thread Python pilote chaque front — comme le vrai périphérique UART du RP2040, qui tourne indépendamment du CPU une fois programmé (même principe que `machine.PWM`). La réception est décodée côté C par échantillonnage au milieu de chaque bit. Cf. `requirements.md`, décision « UART électrique réel ».
+La forme d'onde est produite par le C, qui publie le niveau de la ligne et ne demande un point de synchro qu'à ses **changements**, sans que le thread Python pilote chaque front — comme le vrai périphérique UART du RP2040, qui tourne indépendamment du CPU une fois programmé. La réception est décodée côté C à partir des fronts de la ligne, avec la même lecture au milieu de chaque bit qu'un vrai récepteur. Cf. `requirements.md`, décision « UART électrique réel ».
 
 **Une broche affectée à la réception UART ne génère plus d'interruption GPIO et ne réveille plus un `sleep()` en cours** : ses fronts appartiennent au périphérique série, pas au script — fidèle au matériel réel.
 

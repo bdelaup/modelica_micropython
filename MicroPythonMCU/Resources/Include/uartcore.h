@@ -1,6 +1,13 @@
 /* Moteur UART generique : files circulaires TX/RX, serialisation d'une trame
-   8N1, decodage de la reception par echantillonnage au milieu de chaque bit,
-   et calcul de la prochaine echeance.
+   8N1, niveau de la ligne d'emission, decodage de la reception a partir des
+   fronts, et calcul de la prochaine echeance.
+
+   ECONOMIE D'EVENEMENTS (chaque evenement Modelica fait redemarrer le
+   solveur) : l'emission ne demande un reveil qu'aux CHANGEMENTS de niveau, pas
+   a chaque frontiere de bit ; la reception ne programme qu'UN reveil par
+   octet (milieu du bit de stop), les bits de donnees etant reconstitues a
+   partir des fronts, qui reveillent deja la synchro de toute facon - cf.
+   requirements.md, decision "UART electrique reel".
 
    CE FICHIER NE DEPEND NI DE PYTHON NI DES THREADS, et c'est tout son interet :
    le meme moteur sert au peripherique UART du microcontroleur (machine.UART,
@@ -23,9 +30,9 @@
 
 #define UART_TX_BUF_LEN 256          /* file d'emission : une phrase NMEA complete (82 caracteres au plus selon la norme) doit y tenir d'un bloc - a 64, sa fin etait perdue */
 #define UART_RX_BUF_LEN 256          /* file de reception, meme dimensionnement */
-#define UART_MAX_FRAME_BITS 13       /* 1 start + 9 data + 1 parite + 2 stop : dimensionne pour un futur format parametrable, seul 8N1 (10 bits) est emis en v0 - doit rester aligne sur Interfaces.UART_MAX_FRAME_BITS cote Modelica */
+#define UART_MAX_FRAME_BITS 13       /* 1 start + 9 data + 1 parite + 2 stop : dimensionne pour un futur format parametrable, seul 8N1 (10 bits) est emis en v0 */
 #define UART_MIN_BAUD 50
-#define UART_MAX_BAUD 115200         /* garde-fou contre une tempete d'evenements Modelica (un evenement par front de bit), meme esprit que TIMER_MIN_PERIOD */
+#define UART_MAX_BAUD 115200         /* garde-fou contre une tempete d'evenements Modelica (jusqu'a un evenement par front de bit), meme esprit que TIMER_MIN_PERIOD */
 #define UART_RX_IDLE 0
 #define UART_RX_RECEIVING 1
 
@@ -42,15 +49,16 @@ struct UartEngine {
     int tx_active;                    /* une trame est en cours d'emission */
     double tx_start_time;             /* instant du front de start de la trame en cours */
     double tx_end_time;               /* instant de fin de la trame en cours (rechargement de la suivante) */
-    double tx_bits[UART_MAX_FRAME_BITS]; /* motif de bits complet (start + data + stop), publie tel quel vers Modelica */
+    double tx_bits[UART_MAX_FRAME_BITS]; /* motif de bits complet (start + data + stop) ; Modelica ne recoit que le niveau courant (uartcore_tx_level) */
     int tx_num_bits;
 
     unsigned char rx_buf[UART_RX_BUF_LEN];
     int rx_head, rx_tail;
     int rx_state;                     /* UART_RX_IDLE | UART_RX_RECEIVING */
-    int rx_last_level;                /* niveau vu au dernier point de synchro : le start se detecte sur un FRONT descendant, pas sur un niveau bas (cf. uartcore_rx_step) */
-    double rx_next_sample;            /* prochain instant d'echantillonnage, que l'appelant remonte a Modelica via nextWakeTime */
-    int rx_bit_index;                 /* 0-7 : bit de donnee en cours */
+    int rx_last_level;                /* niveau vu au dernier point de synchro : c'est le niveau TENU depuis le dernier front, et le start se detecte sur un FRONT descendant, pas sur un niveau bas (cf. uartcore_rx_step) */
+    double rx_next_sample;            /* milieu du prochain bit a resoudre (pas un reveil : les bits se resolvent aux fronts, cf. uartcore_rx_step) */
+    double rx_stop_sample;            /* milieu du bit de stop : SEUL reveil programme par octet, remonte a Modelica via nextWakeTime */
+    int rx_bit_index;                 /* 0-7 : bit de donnee en cours, 8 : bit de stop */
     unsigned int rx_shift;            /* registre a decalage */
 };
 

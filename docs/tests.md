@@ -22,12 +22,24 @@ Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, o
 ./run_all.sh -j 2                   # autre degré de parallélisme
 ./run_all.sh verify_08_pwm.mos ...  # seulement certains scripts
 ./run_all.sh -k                     # garder artefacts et journaux (débogage)
+./run_all.sh --release              # non-régression sur une release locale (voir ci-dessous)
 ```
 Le script affiche un récapitulatif `PASS`/`FAIL`/`ERREUR` avec la durée de chaque `.mos`, puis la fin du journal de chaque script en échec ; il se termine avec le code 1 si un script n'a pas passé. Si `omc` n'est pas sur le `PATH` mais que `OPENMODELICAHOME` est positionné, il complète le `PATH` lui-même. Sauf `-k`, il supprime ensuite tous les artefacts générés, qui portent tous le nom du `fileNamePrefix` de leur script.
 
 Les scripts qui partagent des fichiers sont exécutés **à la suite l'un de l'autre**, jamais en même temps : même `fileNamePrefix` (`verify_01`/`verify_05`, tous deux `BasicBlink`), ou manipulation des copies de système de fichiers (`verify_25`/`verify_27`, qui effacent tous les `mcu_datalogger_*` et écrivent `fs_copies.txt`). Ce regroupement est automatique : un nouveau script en conflit est pris en compte sans modifier `run_all.sh`.
 
 **Durées mesurées** (i5-13420H, 4 cœurs performants + 4 basse consommation, 16 Go, dépôt dans OneDrive) : ~265 s en séquentiel, **~125 s** avec `run_all.sh`. Le gain plafonne à ~2× quel que soit `-j` (3, 4 ou 6 donnent le même temps) : chaque `omc` occupe déjà plusieurs cœurs, notamment en compilant en parallèle les fichiers C générés, et le processeur est saturé. Hors OneDrive, la suite est ~10–15 % plus rapide.
+
+### Pendant le travail ou en non-régression : dépôt ou release
+
+| Quand | Commande | Ce qui est testé |
+|---|---|---|
+| Pendant le travail (itération) | `./run_all.sh`, ou quelques scripts ciblés | le **dépôt** : sources C incluses à la volée par les annotations `Include`, comme dans OMEdit au quotidien |
+| Non-régression, après une modification qui le mérite | `./run_all.sh --release` | ce qui est **livré** : `make_release.sh` reconstruit `dist/` depuis l'état courant du dépôt (modifications non commitées comprises), puis la suite tourne dans `dist/MicroPythonMCU/Resources/Verification/` |
+
+La release a des défauts propres, invisibles depuis le dépôt : en-têtes livrés désaccordés des déclarations Modelica (cas typique : une signature de `PyRuntime_sync` ou `UartDevice_sync` qui change), annotation mal réécrite par `make_release.sh`, fichier `.c` absent de l'unité de compilation unique du `.a`, compilateur différent (`clang -O2` pour le `.a`, compilateur d'`omc` en `-Os` sinon).
+
+`--release` se combine avec les autres options (`-j`, `-k`, liste de scripts), transmises à la copie de `run_all.sh` de la release. Il affiche la durée de construction (18 s mesurées), puis, sous le récapitulatif, le contenu de `dist/BUILD_INFO.txt` : commit, mention « + modifications non commitées », compilateur — un résultat doit dire sur quoi il a tourné. Si la construction échoue, la suite n'est pas lancée (code de sortie 2). Lancé depuis une release (sans `make_release.sh` à portée), `--release` refuse de démarrer. La suite elle-même dure autant dans les deux cas : précompiler le runtime ne l'accélère pas (cf. `requirements.md`, décision « Structure du package et interface C du runtime Python »).
 
 ### Un script à la fois
 
