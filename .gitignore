@@ -52,3 +52,7 @@ __pycache__/
 
 # Version distribuée construite par make_release.sh (reconstruite à la demande)
 /dist/
+
+# Site de documentation construit par Zensical (zensical build / serve) et son cache
+/public/
+/.cache/

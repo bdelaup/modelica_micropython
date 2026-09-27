@@ -15,6 +15,8 @@
 - [OpenModelica](https://openmodelica.org/download/download-windows/) avec OMEdit (testé avec `1.27.1-64bit`) — le toolchain de compilation est déjà inclus, rien d'autre à installer (le runtime Python est vendoré dans la bibliothèque).
 - Windows uniquement pour cette v0.
 
+Versions publiées, prêtes à installer (runtime précompilé) : [page des releases](https://gitlab.com/bdelaup/modelica_micropython3/-/releases) — mode d'emploi dans [`docs/installation.md`](docs/installation.md). Depuis le dépôt :
+
 Dans OMEdit : *File → Open Model/Library File(s)…* → sélectionner `MicroPythonMCU/package.mo`. La bibliothèque et ses exemples (`MicroPythonMCU.Examples`) apparaissent dans l'explorateur.
 
 <p align="center"><img src="docs/images/library_tree.png" alt="Tree" width=""></p>
@@ -153,6 +155,8 @@ Merci d'utiliser le dépôt GitLab pour vos communications et pull requests.
 
 - [OpenModelica](https://openmodelica.org/download/download-windows/) with OMEdit (developed and tested with `1.27.1-64bit`) — the build toolchain is already included, nothing else to install (the Python runtime is vendored inside the library).
 - Windows only for this v0.
+
+Published versions, ready to install (precompiled runtime): [releases page](https://gitlab.com/bdelaup/modelica_micropython3/-/releases) — instructions (in French) in [`docs/installation.md`](docs/installation.md). From the repository:
 
 In OMEdit: *File → Open Model/Library File(s)…* → select `MicroPythonMCU/package.mo`. The library and its examples (`MicroPythonMCU.Examples`) appear in the explorer.
 

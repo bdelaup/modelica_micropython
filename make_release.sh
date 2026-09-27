@@ -2,8 +2,9 @@
 # Construit la version distribuée de la bibliothèque dans dist/MicroPythonMCU :
 # le runtime C est précompilé une fois pour toutes en
 # Resources/Library/win64/libmicropythonmcu.a, et les sources C ne sont pas
-# livrées. Outil de DISTRIBUTION, encore à peaufiner (cf. requirements.md, TODO
-# « Version distribuée »), et support de la NON-RÉGRESSION : run_all.sh --release
+# livrées. Outil de DISTRIBUTION (make_packages.sh en tire ensuite les archives
+# téléchargeables, cf. docs/publication.md), et support de la
+# NON-RÉGRESSION : run_all.sh --release
 # l'appelle puis lance la suite dans dist/, pour tester ce qui est réellement
 # livré. Il n'accélère pas les tests : le gain de compilation mesuré est
 # négligeable (~0,3 s par modèle, le fichier principal généré par omc reste le
@@ -12,6 +13,14 @@
 #
 #   ./make_release.sh
 #   MicroPythonMCU/Resources/Verification/run_all.sh --release   # release + suite
+#
+# Numéro de version : $VERSION s'il est fourni (livraison : export VERSION=X.Y.Z),
+# sinon déduit de git describe (1.2.0 sur un tag, 1.2.0-3-gabc1234 trois commits
+# plus loin, 0.0.0-gabc1234 avant le premier tag ; suffixe -dirty si le dépôt a
+# des modifications non commitées). Il est injecté dans l'annotation version de
+# package.mo de la release seulement : le dépôt n'en porte pas, le tag fait foi.
+# Il est aussi écrit dans dist/release.env, avec la version d'OpenModelica, pour
+# make_packages.sh.
 #
 # Le dépôt reste la version de développement (sources C incluses à la volée par
 # les annotations Include) ; dist/ est ignoré par git et se reconstruit à la
@@ -37,6 +46,12 @@ fi
 OMH=$(cygpath -u "$OPENMODELICAHOME" 2>/dev/null || echo "$OPENMODELICAHOME")
 CC="$OMH/tools/msys/ucrt64/bin/clang"
 AR="$OMH/tools/msys/ucrt64/bin/llvm-ar"
+OM_VERSION=$("$OMH/bin/omc" --version | sed -E 's/^[^0-9]*([0-9][0-9.]*).*/\1/')
+
+if [ -z "$VERSION" ]; then
+  VERSION=$(git describe --tags --match 'v[0-9]*' --dirty 2>/dev/null | sed 's/^v//')
+  [ -n "$VERSION" ] || VERSION="0.0.0-g$(git describe --always --dirty)"
+fi
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
@@ -45,6 +60,10 @@ STAGE="$WORK/MicroPythonMCU"
 # 1. Copie des fichiers du dépôt (suivis ou nouveaux, jamais les ignorés : pas
 #    d'artefact de compilation ni de copie de système de fichiers).
 git ls-files -co --exclude-standard -z MicroPythonMCU | tar --null -T - -cf - | tar -xf - -C "$WORK"
+sed -i "s/^  uses(Modelica(/  version = \"$VERSION\",\n  uses(Modelica(/" "$STAGE/package.mo"
+if [ "$(grep -c '^  version = ' "$STAGE/package.mo")" != 1 ]; then
+  echo "package.mo : annotation version non injectée (ligne uses(Modelica(...)) introuvable ?)" >&2; exit 1
+fi
 
 # 2. Runtime C compilé en UNE unité, comme lorsqu'omc inclut les chapeaux dans un
 #    même fichier : les parties partagées (pyhost.c, uartcore.c, devscript.c) n'y
@@ -112,9 +131,12 @@ removed=$(wc -l < "$WORK/remove.lst")
 # 6. Traçabilité : de quel état du dépôt vient cette release.
 {
   echo "MicroPythonMCU - version distribuée (runtime C précompilé)"
+  echo "Version      : $VERSION"
   echo "Construite le : $(date '+%Y-%m-%d %H:%M')"
   echo "Commit       : $(git rev-parse --short HEAD)$(git diff --quiet HEAD -- MicroPythonMCU || echo ' + modifications non commitées')"
   echo "Compilateur  : $("$CC" --version | head -1)"
+  echo "OpenModelica : $OM_VERSION"
 } > "$DIST/BUILD_INFO.txt"
+printf 'VERSION=%s\nOM_VERSION=%s\n' "$VERSION" "$OM_VERSION" > "$DIST/release.env"
 
-echo "Release à jour : $LIB ($changed fichier(s) copié(s), $removed supprimé(s))"
+echo "Release $VERSION à jour : $LIB ($changed fichier(s) copié(s), $removed supprimé(s))"

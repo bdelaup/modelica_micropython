@@ -1,0 +1,14 @@
+# Publication du site de documentation sur GitLab Pages, à chaque push sur main
+# (runner partagé de GitLab). Configuration du site : zensical.toml. Les
+# livraisons de la bibliothèque se font à la main : docs/publication.md.
+
+pages:
+  image: python:3.12-slim
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - pip install --quiet --root-user-action=ignore zensical
+    - zensical build --clean --strict
+  artifacts:
+    paths:
+      - public
