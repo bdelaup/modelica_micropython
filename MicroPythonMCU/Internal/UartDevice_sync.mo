@@ -15,9 +15,7 @@ impure function UartDevice_sync "Point de synchro d'un périphérique série ext
   output Real nextWakeTime "Plus proche échéance : front à émettre, fin de trame, milieu du bit de stop d'une trame reçue, réponse armée ou tick périodique";
   external "C" UartDevice_sync(dev, currentTime, rxLevel, valueIn, valueOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) annotation(
     Include = "#include \"UartDeviceImpl.c\"",
-    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-    Library = "python312",
-    LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>
 <p><code>impure</code> : la fonction porte l'état du périphérique et ne renvoie pas la même chose pour les mêmes arguments — comme <code>PyRuntime_sync</code>. Elle n'est appelée que depuis un <code>when</code>, jamais sur une évaluation d'essai du solveur.</p>

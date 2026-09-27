@@ -3,7 +3,7 @@
 ## Vue d'ensemble
 
 `MicroPythonMCU` est une bibliothèque OpenModelica classique (dossier = package Modelica), avec deux ajouts par rapport à une bibliothèque purement Modelica :
-- un morceau de code C (`Resources/Include/PyRuntimeImpl.c`) compilé par `omc` lui-même via les annotations `Include`/`Library` d'un *External Object* ;
+- un morceau de code C (`Resources/Include/PyRuntimeImpl.c`) compilé par `omc` lui-même via l'annotation `Include` d'un *External Object*, qui charge à l'exécution la DLL de la distribution Python embarquée par son chemin absolu ;
 - une distribution Python complète vendorée dans `Resources/PythonRuntime/`, pour que le modèle n'ait besoin d'aucun Python installé sur le poste qui l'exécute.
 
 ```mermaid
@@ -16,8 +16,7 @@ graph TD
         Examples["Examples (package)<br/>13 scénarios de vérification + LedChaser (démonstrateur)"]
     end
     subgraph RES["Resources"]
-        Include["Include/<br/>PyRuntimeImpl.c (chapeau) + .h<br/>+ pyruntime/ (parties incluses)<br/>+ cpython312/ (en-têtes vendorés)"]
-        Library["Library/win64/<br/>libpython312.a<br/>(import lib régénérée MinGW)"]
+        Include["Include/<br/>PyRuntimeImpl.c (chapeau) + .h<br/>+ pyruntime/ (parties incluses)<br/>+ pyhost.c : charge python312.dll de PythonRuntime/<br/>+ cpython312/ (en-têtes vendorés)"]
         PythonRuntime["PythonRuntime/<br/>distribution Python « embeddable »<br/>(DLL + stdlib zip)"]
         Scripts["Scripts/<br/>MCU/ + Device/ + _shim/machine_time_shim.py"]
         Verification["Verification/<br/>scripts .py + .mos de test"]
@@ -32,7 +31,6 @@ graph TD
     Examples -- "Peripherals.Display (DisplayDemo)" --> Peripherals
     Peripherals -- "displayLink (Interfaces.DisplayLinkInput)" --> Interfaces
     Internal -- "Include = PyRuntimeImpl.c" --> Include
-    Internal -- "LibraryDirectory" --> Library
     Internal -- "pythonHome (loadResource, runtime)" --> PythonRuntime
     MCU -- "scriptPath par défaut + shimPath (loadResource)" --> Scripts
     Verification -. "scripts appelés par les Examples" .-> Examples
@@ -55,7 +53,7 @@ modelica_micropython3/
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
     │   ├── PyRuntime_sync.mo       -- impure function : le point de synchro appelé depuis le `when` de MCU
     │   ├── StringToCharCodes.mo    -- function utilitaire (external "C", indépendante de PyRuntime) : String -> Integer[n] de codes ASCII, pour afficher du texte sur une icône (String non storable dans les résultats de simulation)
-    │   ├── UartDevice.mo           -- ExternalObject d'un périphérique série externe : files TX/RX, décodage, table de commandes, échéances. AUCUNE dépendance à Python (pas de Library = "python312")
+    │   ├── UartDevice.mo           -- ExternalObject d'un périphérique série externe : files TX/RX, décodage, table de commandes, échéances. AUCUNE dépendance à Python en mode Table (python312.dll n'est pas chargée)
     │   ├── UartDevice_sync.mo      -- impure function : le point de synchro appelé depuis le `when` de Internal.PartialUartDevice
     │   ├── TwoLineTextIcon.mo      -- partial model purement graphique : les 40 cellules de texte d'un afficheur 20x2, partagées par Display et UartLcd20x2
     │   ├── PartialUartDevice.mo    -- partial model : TOUTE la mécanique des appareils série externes (pont électrique, décodage, deux modes d'émission, ports réels). Non instanciable : Peripherals ne contient que des composants posables
@@ -105,13 +103,12 @@ modelica_micropython3/
     └── Resources/
         ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), StringToCharCodes.c, uartcore.h/.c et devscript.c
         │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
-        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : démarrage unique de l'interpréteur (le premier composant construit le démarre), relais stdout/stderr, lecture de fichier
+        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de python312.dll par son chemin absolu dans PythonRuntime/ (table d'import pyimports.h, générée par make_pyimports.sh), démarrage unique de l'interpréteur (le premier composant construit le démarre), relais stdout/stderr, lecture de fichier
         │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame 8N1, niveau de la ligne d'émission, décodage de la réception à partir des fronts, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
         │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _timer.c, _fs.c (système de fichiers : liaison shim <-> handle), _module.c
         │   ├── uartdevice/         -- idem côté périphériques : uartdevice_core.h (struct UartDevice), _format.c ({vN} et {oN}), _match.c (table de commandes), _script.c (mode Script : chargement du .py dans un espace de noms propre, appel des gestionnaires), _engine.c (construction, ordonnancement, synchro)
         │   ├── i2cdevice/          -- idem côté I2C : i2cdevice_core.h (struct I2cDevice), _script.c (contrat on_write / on_read / outputs / lines), _engine.c (décodeur piloté par les fronts, construction, synchro)
         │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
-        ├── Library/win64/          -- libpython312.a, bibliothèque d'import régénérée pour le compilateur MinGW d'OpenModelica
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md
         ├── FileSystems/            -- images de flash fournies, désignées par MCU.fsSource (datalogger/ : boot.py, main.py, config.txt, lib/ — Examples.FileSystem)
         ├── Scripts/

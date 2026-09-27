@@ -77,6 +77,7 @@ cat > "$WORK/micropythonmcu.c" <<'EOF'
 EOF
 "$CC" -O2 -msse2 -mfpmath=sse -mstackrealign -I"$INC" -I"$OMH/include/omc/c" \
   -c -o "$WORK/micropythonmcu.o" "$WORK/micropythonmcu.c"
+mkdir -p "$STAGE/Resources/Library/win64"   # absent du dépôt, qui ne lie aucune bibliothèque
 "$AR" rcsD "$STAGE/Resources/Library/win64/libmicropythonmcu.a" "$WORK/micropythonmcu.o"
 
 # 3. Sources C retirées : seuls restent les en-têtes publics, inclus par le code
@@ -86,17 +87,23 @@ find "$STAGE/Resources/Include" -mindepth 1 -maxdepth 1 \
   -exec rm -rf {} +
 
 # 4. Annotations des fonctions externes : en-tête au lieu de la source, et
-#    bibliothèque précompilée liée avant python312 (dont elle dépend).
-#    StringToCharCodes n'a pas d'en-tête : son prototype tient dans l'annotation.
+#    bibliothèque précompilée ajoutée à la suite de chaque IncludeDirectory. Pas
+#    de python312 à lier : le .a charge lui-même la DLL de Resources/PythonRuntime
+#    (pyhost.c). StringToCharCodes n'a pas d'en-tête : son prototype tient dans
+#    l'annotation.
 for f in "$STAGE"/Internal/*.mo; do
   sed -i \
     -e 's/Include = "#include \\"\(PyRuntimeImpl\|UartDeviceImpl\|I2cDeviceImpl\)\.c\\""/Include = "#include \\"\1.h\\""/' \
-    -e 's/Library = "python312"/Library = {"micropythonmcu", "python312"}/' \
-    -e 's/Include = "#include \\"StringToCharCodes\.c\\"",/Include = "void string_to_char_codes(const char* s, int n, int* codes);",\n    Library = {"micropythonmcu", "python312"},\n    LibraryDirectory = "modelica:\/\/MicroPythonMCU\/Resources\/Library\/win64",/' \
+    -e 's/Include = "#include \\"StringToCharCodes\.c\\""/Include = "void string_to_char_codes(const char* s, int n, int* codes);"/' \
+    -e 's/IncludeDirectory = "modelica:\/\/MicroPythonMCU\/Resources\/Include")/IncludeDirectory = "modelica:\/\/MicroPythonMCU\/Resources\/Include",\n      Library = "micropythonmcu",\n      LibraryDirectory = "modelica:\/\/MicroPythonMCU\/Resources\/Library\/win64")/' \
     "$f"
 done
 if grep -rn 'Impl\.c\|StringToCharCodes\.c' "$STAGE" --include=*.mo; then
   echo "Annotation non convertie ci-dessus : la release incluerait une source absente" >&2; exit 1
+fi
+if [ "$(grep -rc 'IncludeDirectory' "$STAGE"/Internal/*.mo | awk -F: '{s+=$2} END {print s}')" != \
+     "$(grep -rc 'Library = "micropythonmcu"' "$STAGE"/Internal/*.mo | awk -F: '{s+=$2} END {print s}')" ]; then
+  echo "Annotation IncludeDirectory sans Library = \"micropythonmcu\" : la release ne lierait pas son runtime" >&2; exit 1
 fi
 
 # 5. Synchronisation vers dist/ : copie des seuls fichiers changés, suppression

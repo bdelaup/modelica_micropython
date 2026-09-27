@@ -20,8 +20,8 @@
    un fichier .py dont les gestionnaires s'executent sur le thread Modelica,
    dans l'interpreteur partage avec le microcontroleur (pyhost.c) - sans thread
    worker ni sleep(), puisqu'un peripherique reagit sans jamais se suspendre.
-   En mode Table, aucun code Python n'est execute, mais l'unite de compilation
-   est liee a python312 dans tous les cas. Le moteur bit/octet (uartcore) est
+   En mode Table, aucun code Python n'est execute et python312.dll n'est meme
+   pas chargee (pyhost.c la charge au premier demarrage de CPython). Le moteur bit/octet (uartcore) est
    exactement celui du microcontroleur, partage et non duplique.
 
    NOTE : omc dedoublonne les annotations Include par leur texte, mais rien ne

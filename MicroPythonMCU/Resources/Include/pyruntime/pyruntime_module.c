@@ -29,6 +29,9 @@ static PyMethodDef native_methods[] = {
     {"timer_init", native_timer_init, METH_VARARGS, "Arme un Timer (periode, mode, callback)"},
     {"timer_deinit", native_timer_deinit, METH_VARARGS, "Arrete et libere un Timer"},
     {"sleep", native_sleep, METH_VARARGS, "Attend N secondes de temps simule"},
+    {"idle", native_idle, METH_VARARGS, "Attend la prochaine milliseconde ronde (ou une transition d'entree)"},
+    {"disable_irq", native_disable_irq, METH_VARARGS, "Masque les callbacks IRQ/Timer, rend l'etat precedent"},
+    {"enable_irq", native_enable_irq, METH_VARARGS, "Retablit l'etat de masquage rendu par disable_irq"},
     {"ticks_ms", native_ticks_ms, METH_VARARGS, "Horloge simulee, en millisecondes"},
     {"ticks_us", native_ticks_us, METH_VARARGS, "Horloge simulee, en microsecondes"},
     {"fs_config", native_fs_config, METH_VARARGS, "Configuration du systeme de fichiers (source, espace de travail, instance, pythonHome)"},
@@ -162,7 +165,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
                      const char* shimPath, int fsEnabled, const char* fsSource,
                      const char* fsWorkspace, int fsOpenExplorer,
-                     const char* instanceName) {
+                     const char* instanceName, double gpioOpTime) {
     char err[512];
 
     /* Sans script, le programme est main.py du systeme de fichiers : il en
@@ -189,6 +192,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     handle->fsWorkspace = strdup(fsWorkspace);
     handle->fsOpenExplorer = fsOpenExplorer;
     handle->instanceName = strdup(instanceName);
+    handle->gpio_op_time = gpioOpTime > 0 ? gpioOpTime : 0;
     InitializeCriticalSection(&handle->cs);
     InitializeConditionVariable(&handle->cv);
     handle->turn = TURN_MODELICA;

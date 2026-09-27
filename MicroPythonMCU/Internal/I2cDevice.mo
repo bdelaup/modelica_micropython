@@ -11,18 +11,14 @@ class I2cDevice "External Object encapsulant l'état d'un périphérique I2C esc
     output I2cDevice dev;
     external "C" dev = I2cDevice_new(addresses, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"I2cDeviceImpl.c\"",
-      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-      Library = "python312",
-      LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
   function destructor
     input I2cDevice dev;
     external "C" I2cDevice_destroy(dev) annotation(
       Include = "#include \"I2cDeviceImpl.c\"",
-      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-      Library = "python312",
-      LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 
   annotation(

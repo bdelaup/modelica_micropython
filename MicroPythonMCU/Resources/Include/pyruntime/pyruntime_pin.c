@@ -48,7 +48,10 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
         g_current->pin_driven_value[idx] = value;
     }
     LeaveCriticalSection(&g_current->cs);
-    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    /* La broche change tout de suite (publiee a sim_time), puis le processeur
+       reste occupe gpio_op_time : c'est ce qui donne une largeur a l'impulsion
+       de on(); off(). Attente non interruptible, cf. yield_until. */
+    if (yield_until(g_current->sim_time + g_current->gpio_op_time, 0) != 0) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -61,7 +64,11 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
-    if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
+    /* Duree d'execution d'abord, lecture ensuite : on lit l'etat de la broche
+       a la fin de l'acces, comme le processeur echantillonne son registre
+       d'entree - la reponse d'un peripherique au front emis juste avant est
+       alors visible. */
+    if (yield_until(g_current->sim_time + g_current->gpio_op_time, 0) != 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     int v = g_current->pin_sensed_value[idx];
     LeaveCriticalSection(&g_current->cs);
@@ -173,6 +180,42 @@ static PyObject* native_sleep(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "d", &seconds)) return NULL;
     double wake_at = g_current->sim_time + (seconds > 0 ? seconds : 0);
     if (yield_to_modelica(wake_at) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
+/* machine.idle() : sur le RP2040, le coeur s'endort jusqu'a la prochaine
+   interruption - au plus tard le tic systeme de 1 ms. Ici : attente jusqu'a la
+   prochaine milliseconde ronde, ecourtee par une transition d'entree comme un
+   sleep(). */
+static PyObject* native_idle(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
+    double wake_at = (floor(g_current->sim_time * 1000.0 + PYRUNTIME_EPS) + 1.0) / 1000.0;
+    if (yield_to_modelica(wake_at) != 0) return NULL;
+    Py_RETURN_NONE;
+}
+
+/* machine.disable_irq() / enable_irq(state) : masque les callbacks IRQ et
+   Timer (differes, pas perdus - cf. run_due_callbacks) et rend l'etat
+   precedent, a repasser a enable_irq() comme en MicroPython. Pas de point de
+   synchro : rien ne change cote Modelica. */
+static PyObject* native_disable_irq(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
+    EnterCriticalSection(&g_current->cs);
+    int previous = g_current->irq_disabled;
+    g_current->irq_disabled = 1;
+    LeaveCriticalSection(&g_current->cs);
+    return PyLong_FromLong(previous);
+}
+
+static PyObject* native_enable_irq(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
+    int state = 0;
+    if (!PyArg_ParseTuple(args, "|i", &state)) return NULL;
+    EnterCriticalSection(&g_current->cs);
+    g_current->irq_disabled = state ? 1 : 0;
+    LeaveCriticalSection(&g_current->cs);
+    /* Demasquees : ce qui est arrive pendant le masquage s'execute tout de suite. */
+    if (!state && run_due_callbacks(g_current) != 0) return NULL;
     Py_RETURN_NONE;
 }
 

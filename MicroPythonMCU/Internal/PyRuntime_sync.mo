@@ -15,7 +15,5 @@ impure function PyRuntime_sync "Point de synchro entre le script Python et la si
   output Real nextWakeTime;
   external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pwmFreq, pwmDuty, displaySeq, displayPayload, uartTxPin, uartTxLevel, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
-    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-    Library = "python312",
-    LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
 end PyRuntime_sync;

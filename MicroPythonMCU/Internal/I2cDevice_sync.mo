@@ -15,9 +15,7 @@ impure function I2cDevice_sync "Point de synchro d'un périphérique I2C esclave
   output String line2 "Seconde ligne rendue par lines()";
   external "C" I2cDevice_sync(dev, currentTime, sclLevel, sdaLevel, valueIn, valueOut, sdaDriveLow, busy, eventSeq, lastEvent, line1, line2) annotation(
     Include = "#include \"I2cDeviceImpl.c\"",
-    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-    Library = "python312",
-    LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>
 <p><code>impure</code> : la fonction porte l'état du périphérique — comme <code>UartDevice_sync</code>. Elle n'est appelée que depuis un <code>when</code> déclenché par un front de SCL ou de SDA, jamais sur une évaluation d'essai du solveur.</p>

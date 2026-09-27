@@ -16,7 +16,7 @@ sequenceDiagram
 
     Sim->>MCU: initialisation du modèle
     MCU->>Ctor: PyRuntime(scriptPath, pythonHome)
-    Ctor->>CPy: pyhost_ensure() — Py_InitializeFromConfig + relais stdout,<br/>sauf si un périphérique série l'a déjà fait ; rend le GIL
+    Ctor->>CPy: pyhost_ensure() — LoadLibraryExW(PythonRuntime/python312.dll),<br/>Py_InitializeFromConfig + relais stdout,<br/>sauf si un périphérique série l'a déjà fait ; rend le GIL
     Ctor->>CPy: PyGILState_Ensure()
     Ctor->>CPy: enregistre _pyruntime_native dans sys.modules, complète sys.path
     Ctor->>CPy: PyRun_SimpleString(machine_time_shim.py)<br/>définit machine.Pin, time.sleep...
@@ -179,9 +179,7 @@ end when;
 // PyRuntime_sync.mo — le pont entre l'appel Modelica ci-dessus et la fonction C
 external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pwmFreq, pwmDuty, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
-    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-    Library = "python312",
-    LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+    IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
 ```
 
 `pinAnalogIn` (`pinNodeVoltage` côté `MCU.mo`) est arrivé avec `machine.ADC` : la tension brute, déjà calculée pour le seuillage numérique, est transmise en plus sous forme continue — `Pin.value()` lit `pinBoolIn` (seuillé), `ADC.read_u16()` lit `pinAnalogIn` (brut, mis à l'échelle sur 16 bits côté shim). Même point de synchro, même tableau d'index (0-7 = `GP0`-`GP7`, 8 = LED embarquée jamais utilisé côté ADC), aucun nouveau déclencheur de `when` requis (cf. `requirements.md`, décision « ADC »).

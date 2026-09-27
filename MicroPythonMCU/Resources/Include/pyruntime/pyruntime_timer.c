@@ -11,6 +11,13 @@
 static double earliest_timer_deadline(struct PyRuntimeHandle* h) {
     double best = 1.0e300;
     int i;
+    /* IRQ masquees : un Timer echu ne peut pas tirer. Le laisser dans
+       l'echeancier figerait nextWakeTime dans le passe, et le when
+       "time >= pre(nextWakeTime)" de MCU.mo ne se redeclencherait plus. Il
+       tire des enable_irq() (native_enable_irq -> run_due_callbacks). */
+    if (h->irq_disabled) {
+        return best;
+    }
     for (i = 0; i < MAX_TIMERS; i++) {
         if (h->timer_active[i] && h->timer_next_fire[i] < best) {
             best = h->timer_next_fire[i];

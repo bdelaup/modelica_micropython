@@ -11,6 +11,7 @@ InputReactivity
 ScriptError
 PinIrq
 TimerToggle
+GpioTiming
 DisplayDemo
 FileSystem
 FileSystemScript

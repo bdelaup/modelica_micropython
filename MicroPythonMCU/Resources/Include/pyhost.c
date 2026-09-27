@@ -14,6 +14,13 @@
    thread l'encadre de PyGILState_Ensure/PyGILState_Release ; le thread worker
    du microcontroleur le relache chaque fois qu'il se gare (cf. yield_to_modelica).
 
+   SECOND INVARIANT : aucun appel a l'API Python avant pyhost_load_dll(), que
+   pyhost_ensure() fait en premier. Le modele n'est PAS lie a python312 : la DLL
+   est chargee ici par son chemin absolu dans la distribution embarquee, jamais
+   cherchee par Windows (qui prendrait celle d'un Python installe sur le poste
+   s'il la trouve dans le PATH) - cf. requirements.md, decision "Distribution
+   Python embarquee".
+
    Inclus TEXTUELLEMENT par un chapeau, jamais compile seul. Garde d'inclusion
    obligatoire : omc dedoublonne les annotations Include par leur texte, donc les
    deux chapeaux peuvent se retrouver dans la meme unite de compilation - et si
@@ -21,6 +28,100 @@
    garde a l'execution (Py_IsInitialized) est, elle, globale au process. */
 #ifndef PYHOST_C_INCLUDED
 #define PYHOST_C_INCLUDED
+
+#include <windows.h>
+
+/* --- Table d'import de python312.dll ---
+   L'API Python est declaree dllimport (pyconfig.h Windows : Py_ENABLE_SHARED) :
+   le code compile n'appelle pas Py_Foo directement, il lit le pointeur
+   __imp_Py_Foo - fonctions comme donnees (Py_None, PyExc_*, Py*_Type). Au lieu
+   de laisser l'import lib et le chargeur de Windows fournir ces pointeurs, on
+   les definit ici et on les remplit par GetProcAddress. Liste generee par
+   make_pyimports.sh (qui compile avec PYHOST_NO_IMPORT_TABLE pour relever les
+   references non resolues) ; un symbole manquant se traduit par
+   "undefined reference to `__imp_...'" a l'edition de liens.
+   selectany : si les chapeaux tombent dans des unites de compilation
+   distinctes, chacune porte la table et l'editeur de liens n'en garde qu'une. */
+#ifdef PYHOST_NO_IMPORT_TABLE
+#define PYHOST_IMPORTS(X)
+#else
+#include "pyimports.h"
+#endif
+
+#define PYHOST_IMP_DEFINE(n) __declspec(selectany) void* __imp_##n = NULL;
+PYHOST_IMPORTS(PYHOST_IMP_DEFINE)
+
+static const struct { const char* name; void** slot; } pyhost_import_table[] = {
+#define PYHOST_IMP_ENTRY(n) { #n, &__imp_##n },
+    PYHOST_IMPORTS(PYHOST_IMP_ENTRY)
+    { NULL, NULL }
+};
+
+/* Chemin (UTF-8 le plus souvent, sinon page de code ANSI) -> UTF-16 alloue. */
+static wchar_t* pyhost_widen(const char* s, size_t extra) {
+    UINT cp = CP_UTF8;
+    DWORD flags = MB_ERR_INVALID_CHARS;
+    int n = MultiByteToWideChar(cp, flags, s, -1, NULL, 0);
+    if (n <= 0) {
+        cp = CP_ACP;
+        flags = 0;
+        n = MultiByteToWideChar(cp, flags, s, -1, NULL, 0);
+    }
+    if (n <= 0) {
+        return NULL;
+    }
+    wchar_t* w = (wchar_t*) malloc(((size_t) n + extra) * sizeof(wchar_t));
+    MultiByteToWideChar(cp, flags, s, -1, w, n);
+    return w;
+}
+
+/* Charge <pythonHome>\python312.dll et remplit la table d'import. Idempotent.
+   Retourne 0, ou -1 avec un message dans err. LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR :
+   les dependances de la DLL (vcruntime140.dll...) sont cherchees d'abord a cote
+   d'elle. Les modules d'extension .pyd importent ensuite python312.dll par son
+   nom : Windows leur donne celle-ci, deja chargee. */
+static int pyhost_load_dll(const char* pythonHome, char* err, size_t errlen) {
+    static HMODULE dll = NULL;
+    if (dll) {
+        return 0;
+    }
+
+    static const wchar_t dll_name[] = L"\\python312.dll";
+    wchar_t* path = pyhost_widen(pythonHome, sizeof(dll_name) / sizeof(wchar_t));
+    if (!path) {
+        snprintf(err, errlen, "chemin de la distribution Python illisible ('%s')", pythonHome);
+        return -1;
+    }
+    size_t len = wcslen(path);
+    for (size_t i = 0; i < len; ++i) {
+        if (path[i] == L'/') {
+            path[i] = L'\\';       /* LoadLibraryExW refuse les '/' avec les drapeaux LOAD_LIBRARY_SEARCH_* */
+        }
+    }
+    while (len > 0 && path[len - 1] == L'\\') {
+        path[--len] = L'\0';
+    }
+    wcscat(path, dll_name);
+
+    HMODULE h = LoadLibraryExW(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+    free(path);
+    if (!h) {
+        snprintf(err, errlen, "impossible de charger %s\\python312.dll (erreur Windows %lu)",
+                 pythonHome, (unsigned long) GetLastError());
+        return -1;
+    }
+    for (int i = 0; pyhost_import_table[i].name; ++i) {
+        void* p = (void*) GetProcAddress(h, pyhost_import_table[i].name);
+        if (!p) {
+            snprintf(err, errlen, "symbole %s absent de %s\\python312.dll (version inattendue ?)",
+                     pyhost_import_table[i].name, pythonHome);
+            return -1;
+        }
+        *pyhost_import_table[i].slot = p;
+    }
+    dll = h;
+    return 0;
+}
 
 /* --- Lecture de fichier source (shim, script du microcontroleur, script de
    peripherique) --- Retourne le contenu entier dans un tampon alloue, termine
@@ -126,6 +227,9 @@ static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
     PyStatus status;
     PyConfig config;
 
+    if (pyhost_load_dll(pythonHome, err, errlen) != 0) {
+        return -1;
+    }
     if (Py_IsInitialized()) {
         return 0;
     }

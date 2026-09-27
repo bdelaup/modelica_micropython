@@ -42,6 +42,12 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
     int i;
 
     EnterCriticalSection(&h->cs);
+    /* machine.disable_irq() : rien n'est consomme, les drapeaux "pending" et
+       les echeances restent en place jusqu'a enable_irq(). */
+    if (h->irq_disabled) {
+        LeaveCriticalSection(&h->cs);
+        return 0;
+    }
     for (i = 0; i < NUM_PINS; i++) {
         if (h->pin_irq_pending[i]) {
             h->pin_irq_pending[i] = 0;
@@ -96,8 +102,16 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
    (un Timer/IRQ du dispatch qui n'implique pas de reprendre l'appel bloquant
    en cours, ex. un Timer periodique pendant un sleep() long) : on reposte le
    MEME wake_at et on rattend le prochain appel de PyRuntime_sync, sans
-   laisser l'appelant (native_sleep, etc.) reprendre la main trop tot. */
-static int yield_to_modelica(double wake_at) {
+   laisser l'appelant (native_sleep, etc.) reprendre la main trop tot.
+
+   interruptible = 0 : attente "processeur occupe" (duree d'execution d'un
+   acces GPIO, cf. native_pin_write), et non un sleep(). Une transition
+   d'entree ne l'ecourte pas - sinon, quand un peripherique repond au front
+   que l'on vient d'emettre (HX711 qui pose DOUT sur le front montant de
+   PD_SCK), l'impulsion retomberait a duree nulle. Ce reveil reste un pitstop
+   : les callbacks IRQ dus s'executent, comme une interruption entre deux
+   instructions. */
+static int yield_until(double wake_at, int interruptible) {
     struct PyRuntimeHandle* h = g_current;
     for (;;) {
         /* GIL RELACHE pendant que le worker est gare. Sans cela, le thread
@@ -115,7 +129,7 @@ static int yield_to_modelica(double wake_at) {
         while (h->turn != TURN_WORKER) {
             SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
         }
-        int genuine = h->wake_had_input_change || h->i2c_done_wake || (h->sim_time + PYRUNTIME_EPS >= wake_at);
+        int genuine = (interruptible && h->wake_had_input_change) || h->i2c_done_wake || (h->sim_time + PYRUNTIME_EPS >= wake_at);
         LeaveCriticalSection(&h->cs);
         PyEval_RestoreThread(saved);
 
@@ -127,4 +141,8 @@ static int yield_to_modelica(double wake_at) {
         }
         /* pitstop pur : reposter le meme wake_at au tour suivant de la boucle */
     }
+}
+
+static int yield_to_modelica(double wake_at) {
+    return yield_until(wake_at, 1);
 }

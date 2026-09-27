@@ -16,12 +16,14 @@
    l'Explorateur sur cette copie a la fin ; instanceName (getInstanceName())
    entre dans le nom du dossier. Programme : boot.py de la flash s'il existe,
    puis scriptPath, ou main.py de la flash si scriptPath est vide - cf.
-   requirements.md, decision "Systeme de fichiers". */
+   requirements.md, decision "Systeme de fichiers". gpioOpTime : duree
+   d'execution (s) d'un acces a une broche (Pin.value()/on()/off()), 0 = acces
+   instantanes - cf. requirements.md, decision "Cout temporel des acces GPIO". */
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
                      const char* shimPath, int fsEnabled, const char* fsSource,
                      const char* fsWorkspace, int fsOpenExplorer,
-                     const char* instanceName);
+                     const char* instanceName, double gpioOpTime);
 void PyRuntime_destroy(void* handle);
 
 /* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,

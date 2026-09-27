@@ -35,6 +35,10 @@ class Pin:
             return 1 if _native.pin_read(self.id) else 0
         _native.pin_write(self.id, 1 if x else 0)
 
+    def __call__(self, x=None):
+        # pin() lit, pin(1) ecrit - raccourci de MicroPython, courant dans les drivers
+        return self.value(x)
+
     def on(self):
         _native.pin_write(self.id, 1)
 
@@ -230,6 +234,9 @@ _machine.UART = UART
 _machine.I2C = I2C
 _machine.SoftI2C = I2C   # meme maitre : en simulation, logiciel ou materiel ne se distinguent pas
 _machine.Timer = Timer
+_machine.idle = _native.idle
+_machine.disable_irq = _native.disable_irq
+_machine.enable_irq = _native.enable_irq
 sys.modules['machine'] = _machine
 
 def sleep(s):
@@ -360,7 +367,12 @@ def _fs_user(depth):
         f = sys._getframe(depth + 1)
     except ValueError:
         return False
-    return not _host_os.path.normcase(f.f_code.co_filename).startswith(_fs_stdlib)
+    # __file__ du module plutot que co_filename : les modules de la stdlib
+    # charges depuis python312.zip ont un co_filename relatif ("ctypes\
+    # __init__.py"), mais un __file__ dans le zip, donc sous home. Le programme
+    # du microcontroleur tourne dans __main__, sans __file__ : "<string>".
+    name = f.f_globals.get('__file__') or f.f_code.co_filename
+    return not _host_os.path.normcase(name).startswith(_fs_stdlib)
 
 def _fs_path(path):
     # Chemin MicroPython (absolu ou relatif au dossier courant) -> (chemin

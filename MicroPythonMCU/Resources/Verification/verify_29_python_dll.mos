@@ -1,0 +1,25 @@
+// Scénario de vérification v0 n°29 : origine de python312.dll.
+// omc verify_29_python_dll.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : la DLL Python chargée dans le process de
+// simulation est celle de Resources/PythonRuntime, même quand un Python système
+// est sur le PATH (cas du poste de développement). Le script
+// Verification/python_dll_origin.py compare le chemin de sys.dllhandle à
+// sys.prefix : GP0 passe à 1 s'ils concordent, sinon la simulation échoue.
+// Le modèle est défini ici plutôt que dans Examples : il n'a rien de pédagogique.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model PythonDll
+  extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/python_dll_origin.py\")));
+end PythonDll;"); getErrorString();
+
+simulate(PythonDll, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "PythonDll");
+b := getErrorString();
+
+v := val(mcu.GP0.v, 0.4, "PythonDll_res.mat");
+
+if v > 2 then
+  print("PASS: verify_29_python_dll (python312.dll chargee depuis Resources/PythonRuntime)\n");
+else
+  print("FAIL: verify_29_python_dll (GP0.v=" + String(v) + " : DLL d'une autre distribution, cf. journal)\n" + b);
+end if;

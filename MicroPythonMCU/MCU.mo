@@ -18,6 +18,8 @@ model MCU "Microcontrôleur programmable simulé (v0), piloté par un script Pyt
     Dialog(tab = "Système de fichiers", group = "Flash simulée", enable = fsEnabled),
     choices(checkBox = true));
   parameter Modelica.Units.SI.Time tickPeriod = 0.1 "Période du point de synchro minimal (fraîcheur des sorties si le script ne dort jamais)";
+  parameter Modelica.Units.SI.Time gpioOpTime = 5e-6 "Durée d'exécution d'un accès à une broche (Pin.value(), on(), off()) : deux écritures sans sleep() donnent une impulsion de cette largeur (bit-banging) - ordre de grandeur de MicroPython sur RP2040 ; 0 = accès instantanés" annotation(
+    Dialog(tab = "Temps d'exécution"));
   parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Tension logique haute" annotation(
     Dialog(tab = "Électrique", group = "Niveaux logiques"));
   parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Tension logique basse" annotation(
@@ -63,7 +65,7 @@ protected
   discrete Integer uartTxPin(start = 0, fixed = true) "Broche affectée à l'émission série (0 = aucune) ; une fois affectée elle le reste, même hors trame, car la ligne au repos doit être HAUTE - cf. machine.UART";
   discrete Boolean uartTxLevel(start = true, fixed = true) "Niveau logique à tenir sur la broche d'émission (repos = haut), publié par le C : le point de synchro suivant tombe sur le prochain CHANGEMENT de niveau de la trame, donc des bits identiques consécutifs ne coûtent aucun événement";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochain réveil demandé par le script (sleep) ou +inf si terminé";
-  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName()) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
+  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName(), gpioOpTime) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Source de tension pilotée par le script (VOH/VOL) quand la broche est en sortie ; index 9 = LED embarquée" annotation(
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));

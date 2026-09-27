@@ -21,18 +21,14 @@ class UartDevice "External Object encapsulant l'état d'un périphérique série
     output UartDevice dev;
     external "C" dev = UartDevice_new(baudrate, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, mode, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
-      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-      Library = "python312",
-      LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
   function destructor
     input UartDevice dev;
     external "C" UartDevice_destroy(dev) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
-      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-      Library = "python312",
-      LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 
   annotation(

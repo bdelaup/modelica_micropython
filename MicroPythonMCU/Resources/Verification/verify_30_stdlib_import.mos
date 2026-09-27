@@ -1,0 +1,26 @@
+// Scénario de vérification v0 n°30 : modules de la stdlib importés par le script.
+// omc verify_30_stdlib_import.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : le cloisonnement de os (le script du
+// microcontrôleur reçoit l'os de MicroPython) ne s'applique pas au code de la
+// stdlib, y compris aux modules chargés depuis python312.zip, dont le
+// co_filename est relatif. Le script Verification/stdlib_import.py importe
+// ctypes, random et tempfile (qui se servent du vrai os), puis vérifie que son
+// propre import os reste cloisonné : GP0 passe à 1 si tout est conforme, sinon
+// la simulation échoue. Modèle défini ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model StdlibImport
+  extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/stdlib_import.py\")));
+end StdlibImport;"); getErrorString();
+
+simulate(StdlibImport, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "StdlibImport");
+b := getErrorString();
+
+v := val(mcu.GP0.v, 0.4, "StdlibImport_res.mat");
+
+if v > 2 then
+  print("PASS: verify_30_stdlib_import (ctypes, random, tempfile importes avec le vrai os ; os du script cloisonne)\n");
+else
+  print("FAIL: verify_30_stdlib_import (GP0.v=" + String(v) + ", cf. journal)\n" + b);
+end if;

@@ -13,20 +13,17 @@ class PyRuntime "External Object encapsulant l'interpréteur CPython qui exécut
     input String fsWorkspace "Dossier où est créée la copie horodatée du système de fichiers (vide ou relatif : depuis le dossier de simulation)";
     input Boolean fsOpenExplorer "Ouvrir l'Explorateur Windows sur la copie à la fin de la simulation";
     input String instanceName "Nom de l'instance (getInstanceName()), repris dans le nom de la copie";
+    input Real gpioOpTime "Durée d'exécution (s) d'un accès à une broche (Pin.value()/on()/off()) ; 0 = accès instantanés";
     output PyRuntime handle;
-    external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName) annotation(
+    external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
-      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-      Library = "python312",
-      LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
   function destructor
     input PyRuntime handle;
     external "C" PyRuntime_destroy(handle) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
-      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
-      Library = "python312",
-      LibraryDirectory = "modelica://MicroPythonMCU/Resources/Library/win64");
+      IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 end PyRuntime;

@@ -93,6 +93,14 @@ struct PyRuntimeHandle {
     int wake_pending;
     int wake_had_input_change;  /* pose par PyRuntime_sync avant de reveiller le worker : distingue un reveil "authentique" (deadline propre du worker atteinte, ou vraie transition d'entree) d'un simple "pitstop" (callback de Timer/IRQ a executer, sans faire revenir l'appel bloquant en cours), cf. yield_to_modelica */
 
+    /* Duree d'execution d'un acces a une broche (Pin.value()/on()/off()), en
+       secondes de temps simule (MCU.gpioOpTime). 0 : acces instantanes, comme
+       avant ; > 0 : deux ecritures successives sans sleep() donnent une vraie
+       impulsion, visible electriquement (bit-banging). Cf. native_pin_write et
+       requirements.md, decision "Cout temporel des acces GPIO". */
+    double gpio_op_time;
+    int irq_disabled;            /* machine.disable_irq() : callbacks IRQ/Timer differes (pas perdus) jusqu'a enable_irq() */
+
     int pin_is_output[NUM_PINS];
     int pin_driven_value[NUM_PINS];
     int pin_sensed_value[NUM_PINS];

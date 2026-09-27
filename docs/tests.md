@@ -72,6 +72,8 @@ omc verify_24_i2c_grove_lcd.mos
 omc verify_25_filesystem.mos
 omc verify_26_adc_sleep.mos
 omc verify_27_filesystem_script.mos
+omc verify_29_python_dll.mos
+omc verify_30_stdlib_import.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -106,6 +108,8 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_25_filesystem.mos` | `Examples.FileSystem` | Système de fichiers, démarrage `boot.py`/`main.py`, déterminisme | Deux simulations : `GP1` allumée (auto-contrôle de `main.py`), deux copies horodatées distinctes aux `mesures.csv` identiques, `..` bloqué à la racine de la flash, image source intacte. Le script supprime lui-même ses copies en fin de scénario |
 | `verify_27_filesystem_script.mos` | `Examples.FileSystemScript` | `boot.py` de la flash, puis un script à la place de `main.py` | `GP1` allumée, la copie contient `data/notes.txt` et pas `data/mesures.csv` (main.py n'a pas tourné) |
 | `verify_26_adc_sleep.mos` | `Examples.AdcSleep` | Entrée ADC traversant le seuil logique (correctif « l'ADC coupe l'entrée numérique ») | Cinq `sleep(0.2)` de 200 000 µs exactement (`ticks_us()`) malgré 10 franchissements du seuil par seconde, `sleep_us(250)` mesuré à 250 µs, aucune IRQ, témoin `GP1` allumé à la fin seulement |
+| `verify_29_python_dll.mos` | `PythonDll`, défini dans le script (`Examples.BasicBlink` avec `Verification/python_dll_origin.py`) | Distribution Python embarquée : `python312.dll` chargée par son chemin absolu, pas par le PATH | `GP0` allumée : la DLL chargée (`sys.dllhandle`) est dans `sys.prefix`, soit `Resources/PythonRuntime`, même avec un Python système dans le PATH ; sinon exception, simulation en erreur |
+| `verify_30_stdlib_import.mos` | `StdlibImport`, défini dans le script (`Examples.BasicBlink` avec `Verification/stdlib_import.py`) | Cloisonnement de `os` limité au code du microcontrôleur, y compris pour les modules de `python312.zip` | `GP0` allumée : `ctypes`, `random`, `tempfile` importés et utilisables (vrai `os`), alors que l'`import os` du script reste celui de MicroPython (refus sans système de fichiers) |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 
