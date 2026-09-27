@@ -1,5 +1,7 @@
 <p align="center"><strong>🇫🇷 Français</strong> — <a href="#english">Below in English ↓</a></p>
 
+<p align="center">📖 Plus d'info / More info : <a href="https://bdelaup.gitlab.io/modelica_micropython3/">bdelaup.gitlab.io/modelica_micropython3</a></p>
+
 ## MicroPythonMCU
 
 **Modèle de microcontrôleur programmable en python pour OpenModelica**
