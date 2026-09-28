@@ -1,10 +1,10 @@
-# API `machine` / `time` côté script (v0)
+# API `machine` / `time`
 
-Cette page documente, du point de vue de qui **écrit un script** pour `MCU`, le sous-ensemble de l'API MicroPython `machine`/`time` réellement implémenté en v0. Pour savoir *comment* ce shim est construit et intégré à CPython, voir [integration-python.md](integration-python.md) ; pour le protocole de synchronisation qui se cache derrière chaque appel, voir [cycle-de-vie.md](cycle-de-vie.md). L'implémentation exacte (source de vérité) est le fichier [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté tel quel par `PyRuntime_new` avant le script utilisateur.
+Cette page liste ce qu'un programme exécuté par le [`MCU`](mcu.md) peut appeler : le sous-ensemble de l'API MicroPython `machine`/`time` du Raspberry Pi Pico réellement implémenté. Un programme écrit pour la carte fonctionne tel quel s'il s'en tient à ce sous-ensemble. Pour savoir *comment* ces modules sont construits, voir la référence interne : [Intégration de Python](../interne/integration-python.md) et [Cycle de vie](../interne/cycle-de-vie.md). L'implémentation exacte (source de vérité) est le fichier [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté tel quel par `PyRuntime_new` avant le script utilisateur.
 
 **Notion clé** : un appel qui *synchronise* rend la main à Modelica (le solveur peut avancer le temps simulé, éventuellement jusqu'à un `sleep` en cours) avant de continuer le script — c'est ce qui rend une transition d'entrée ou un `sleep` visibles/compressibles côté simulation. Un appel qui ne synchronise pas est une simple lecture immédiate de l'état déjà connu du script.
 
-**Coût temporel des accès aux broches** : chaque `value()`, `on()`, `off()` ou `pin(x)` occupe le processeur pendant `MCU.gpioOpTime` de temps simulé (onglet « Temps d'exécution », **5 µs par défaut**, l'ordre de grandeur de MicroPython sur RP2040). Deux écritures sans `sleep` entre elles donnent donc une vraie impulsion, visible par le circuit : c'est ce qui permet le *bit-banging* (driver HX711, cf. [peripheriques-pesee.md](peripheriques-pesee.md)), et ce qui fait avancer le temps dans une boucle d'attente active (`while not bouton(): pass`). Le calcul Python pur, `Pin()`, `irq()`, l'ADC, le PWM et `ticks_*` restent instantanés. `gpioOpTime = 0` rend tous les accès instantanés (comportement d'avant le 2026-09-27).
+**Coût temporel des accès aux broches** : chaque `value()`, `on()`, `off()` ou `pin(x)` occupe le processeur pendant `MCU.gpioOpTime` de temps simulé (onglet « Temps d'exécution », **5 µs par défaut**, l'ordre de grandeur de MicroPython sur RP2040). Deux écritures sans `sleep` entre elles donnent donc une vraie impulsion, visible par le circuit : c'est ce qui permet le *bit-banging* (driver HX711, cf. [Chaîne de pesée](peripheriques/pesee.md)), et ce qui fait avancer le temps dans une boucle d'attente active (`while not bouton(): pass`). Le calcul Python pur, `Pin()`, `irq()`, l'ADC, le PWM et `ticks_*` restent instantanés. `gpioOpTime = 0` rend tous les accès instantanés (comportement d'avant le 2026-09-27).
 
 ## `machine.Pin`
 
@@ -41,9 +41,9 @@ led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
 | `.on()` | `on()` | Équivalent à `value(1)` | Oui |
 | `.off()` | `off()` | Équivalent à `value(0)` | Oui |
 | `.toggle()` | `toggle()` | Inverse l'état courant (lit puis réécrit l'opposé) — implémenté en Python pur au-dessus de `value()`, pas d'appel natif dédié | Oui (via `value()`, deux fois) |
-| `.irq(handler, trigger)` | `irq(handler=None, trigger=IRQ_RISING\|IRQ_FALLING, **kwargs)` | Enregistre (ou efface, si `handler=None`) un callback appelé sur un front correspondant au `trigger`. Le callback reçoit l'objet `Pin` en argument (`handler(pin)`), comme sur le vrai MicroPython. `**kwargs` absorbe `hard=`/`priority=`/`wake=` pour compatibilité de signature, sans effet (cf. Limitations). | Oui |
+| `.irq(handler, trigger)` | `irq(handler=None, trigger=IRQ_RISING|IRQ_FALLING, **kwargs)` | Enregistre (ou efface, si `handler=None`) un callback appelé sur un front correspondant au `trigger`. Le callback reçoit l'objet `Pin` en argument (`handler(pin)`), comme sur le vrai MicroPython. `**kwargs` absorbe `hard=`/`priority=`/`wake=` pour compatibilité de signature, sans effet (cf. Limitations). | Oui |
 
-Constantes de `trigger` : `Pin.IRQ_RISING = 1`, `Pin.IRQ_FALLING = 2` (à combiner par `|` pour les deux sens ; valeurs propres à ce shim, pas garanties identiques à un port MicroPython réel — sans conséquence, un script utilise toujours les noms symboliques). Le callback tourne « soft » : il est exécuté au prochain point de réveil du worker (celui qui a déclenché la transition, ou tout point de synchro ultérieur si le worker était déjà occupé), jamais en préemption immédiate du script — cf. `cycle-de-vie.md` pour le mécanisme exact (« pitstop »). Une transition d'entrée réveille le script même sans `irq()` enregistré (comportement déjà existant, « réactivité en entrée ») : enregistrer un `irq()` ajoute l'appel du callback à ce réveil, ça ne change pas le fait que le `sleep()` en cours retourne quand même en avance.
+Constantes de `trigger` : `Pin.IRQ_RISING = 1`, `Pin.IRQ_FALLING = 2` (à combiner par `|` pour les deux sens ; valeurs propres à ce shim, pas garanties identiques à un port MicroPython réel — sans conséquence, un script utilise toujours les noms symboliques). Le callback tourne « soft » : il est exécuté au prochain point de réveil du worker (celui qui a déclenché la transition, ou tout point de synchro ultérieur si le worker était déjà occupé), jamais en préemption immédiate du script — cf. [Cycle de vie](../interne/cycle-de-vie.md) pour le mécanisme exact (« pitstop »). Une transition d'entrée réveille le script même sans `irq()` enregistré (comportement déjà existant, « réactivité en entrée ») : enregistrer un `irq()` ajoute l'appel du callback à ce réveil, ça ne change pas le fait que le `sleep()` en cours retourne quand même en avance.
 
 ## `machine.ADC`
 
@@ -125,7 +125,7 @@ display = Display(0)
 display.write("Bonjour")        # vers un Peripherals.Display cable sur MCU.Display0
 ```
 
-Liaison logique unique et **écriture seule** vers un périphérique d'affichage pédagogique (`Display0` côté `MCU`). Ce n'est pas un vrai protocole UART/Serial : pas de réception, pas d'adressage. Contrairement aux broches `GPx`, la liaison n'est pas électrique (`Modelica.Electrical.Analog`) mais un connecteur logique causal (`Interfaces.DisplayLinkOutput`/`DisplayLinkInput`) : le message est livré **instantanément** au point de synchro suivant, pas de simulation de bauds ni de forme d'onde série bit-à-bit — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
+Liaison logique unique et **écriture seule** vers un périphérique d'affichage pédagogique (`Display0` côté `MCU`). Ce n'est pas un vrai protocole UART/Serial : pas de réception, pas d'adressage. Contrairement aux broches `GPx`, la liaison n'est pas électrique (`Modelica.Electrical.Analog`) mais un connecteur logique causal (`Interfaces.DisplayLinkOutput`/`DisplayLinkInput`) : le message est livré **instantanément** au point de synchro suivant, pas de simulation de bauds ni de forme d'onde série bit-à-bit — composant et câblage : [LED et afficheur](peripheriques/led-afficheur.md).
 
 ### Constructeur
 
@@ -153,6 +153,8 @@ La forme d'onde est produite par le C, qui publie le niveau de la ligne et ne de
 
 **Une broche affectée à la réception UART ne génère plus d'interruption GPIO et ne réveille plus un `sleep()` en cours** : ses fronts appartiennent au périphérique série, pas au script — fidèle au matériel réel.
 
+Câblage et appareils à brancher au bout de la liaison : [Appareils série](peripheriques/uart.md).
+
 ### Constructeur
 
 `UART(id=0, baudrate=1200, tx=None, rx=None, **kwargs)` — `id` : seul `0` est supporté. `tx`/`rx` : obligatoires, un objet `Pin` ou un numéro de broche, deux broches distinctes parmi `0`-`7`. `baudrate` : 50 à 115200 (`ValueError` hors bornes). `**kwargs` absorbe `bits`/`parity`/`stop`, acceptés pour compatibilité d'API mais **sans effet** (seul 8N1 est émis en v0). Synchronise.
@@ -179,7 +181,7 @@ print(i2c.readfrom(0x42, 5))
 print(i2c.readfrom_mem(0x42, 0x10, 2))              # registre 0x10, derrière un START répété
 ```
 
-Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le microcontrôleur est le **maître**, il génère l'horloge et ne fait que tirer SDA/SCL à la masse ou les relâcher. Les lignes ne remontent que grâce aux résistances de tirage portées par un périphérique (`usePullUp = true`) — sans elles, toute transaction lève `OSError(ETIMEDOUT)`. Les périphériques se branchent sur les deux mêmes fils (`Internal.PartialI2cDevice` et ses dérivés). Cf. [peripheriques-i2c.md](peripheriques-i2c.md) et `requirements.md`, décision « Bus I2C électrique en drain ouvert ».
+Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le microcontrôleur est le **maître**, il génère l'horloge et ne fait que tirer SDA/SCL à la masse ou les relâcher. Les lignes ne remontent que grâce aux résistances de tirage portées par un périphérique (`usePullUp = true`) — sans elles, toute transaction lève `OSError(ETIMEDOUT)`. Les périphériques se branchent sur les deux mêmes fils (`Internal.PartialI2cDevice` et ses dérivés). Câblage et composants : [Périphériques I2C](peripheriques/i2c.md).
 
 **Chaque transaction est bloquante** : le script ne reprend la main qu'à la fin réelle de la séquence sur le bus, en temps simulé (environ 9 bits par octet, à `1/freq` le bit). **Les deux broches sont réservées** : leurs fronts ne génèrent pas d'interruption GPIO et ne réveillent pas un `sleep()`.
 
@@ -213,7 +215,7 @@ with open('/data/mesures.csv', 'a') as f:
 print(os.listdir('/data'))
 ```
 
-Actif seulement si la case `MCU.fsEnabled` est cochée (onglet « Système de fichiers »). Chaque simulation recopie `MCU.fsSource` (vide = flash vierge) dans un nouveau dossier `<instance>_<nom du FS>_<date>_<heure>` de l'espace de travail `MCU.fsWorkspace` (`"."` par défaut : le dossier de simulation), dont le chemin est affiché dans le journal au début et à la fin de la simulation ; l'Explorateur Windows s'ouvre dessus à la fin (`MCU.fsOpenExplorer`) ; le script voit cette copie comme la racine `/` de la flash, sans pouvoir en sortir (`..` s'arrête à la racine). Sans système de fichiers, `open()` et les fonctions de `os` lèvent `OSError(ENODEV)` (errno 19). La racine et `/lib` sont sur le chemin d'import. Programme exécuté : `boot.py` de la copie s'il existe, puis `MCU.scriptPath` à la place de `main.py`, ou `main.py` de la copie si `scriptPath` est vide.
+Actif seulement si la case `MCU.fsEnabled` est cochée (onglet « Système de fichiers », cf. [paramètres du MCU](mcu.md#systeme-de-fichiers)). Chaque simulation recopie `MCU.fsSource` (vide = flash vierge) dans un nouveau dossier `<instance>_<nom du FS>_<date>_<heure>` de l'espace de travail `MCU.fsWorkspace` (`"."` par défaut : le dossier de simulation), dont le chemin est affiché dans le journal au début et à la fin de la simulation ; l'Explorateur Windows s'ouvre dessus à la fin (`MCU.fsOpenExplorer`) ; le script voit cette copie comme la racine `/` de la flash, sans pouvoir en sortir (`..` s'arrête à la racine). Sans système de fichiers, `open()` et les fonctions de `os` lèvent `OSError(ENODEV)` (errno 19). La racine et `/lib` sont sur le chemin d'import. Programme exécuté : `boot.py` de la copie s'il existe, puis `MCU.scriptPath` à la place de `main.py`, ou `main.py` de la copie si `scriptPath` est vide.
 
 | Appel | Effet | Point de synchro ? |
 |---|---|---|
@@ -227,6 +229,17 @@ Actif seulement si la case `MCU.fsEnabled` est cochée (onglet « Système de fi
 | `os.sync()`, `os.uname()`, `os.sep` | Sans effet / identité `rp2` / `'/'` | **Non** |
 
 `import uos` donne le même module. **Erreurs** : celles de MicroPython (`OSError: [Errno 2] ENOENT`, `EEXIST`, `EISDIR`...), jamais le chemin réel sur l'hôte ; `EINVAL` pour un chemin contenant `\`, `:` ou un caractère interdit par Windows. Rien de ce que le script observe ne dépend de l'horodatage de la copie : deux simulations produisent les mêmes fichiers.
+
+## Modules, `print()` et erreurs
+
+```python
+import mon_module              # fichier mon_module.py posé à côté du programme
+import capteurs                # /lib/capteurs.py de la flash, ou dossier désigné par libraryPath
+```
+
+- **Import** : le dossier du programme est dans le chemin d'import (`MCU.addScriptDirToPath`, actif par défaut), comme la racine de la flash sur la carte. `MCU.libraryPath` y ajoute un dossier de bibliothèque partagée. Avec un système de fichiers actif, la racine de la flash et `/lib` y sont aussi. La bibliothèque standard de CPython 3.12 est disponible, mais un programme destiné à la carte doit s'en tenir à ce que MicroPython propose.
+- **`print()`** : s'affiche dans la fenêtre de sortie de la simulation d'OMEdit.
+- **Exception non rattrapée** : arrête la simulation ; la trace Python s'affiche dans le journal (exemple `ScriptError`).
 
 ## Fonctions de `machine`
 

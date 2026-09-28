@@ -14,7 +14,7 @@
 #
 # ainsi que dist/packages/release.env (version et noms des archives). <om> est
 # la version d'OpenModelica dont la toolchain a compilé le .a. Procédure de
-# livraison complète : docs/publication.md.
+# livraison complète : docs/fr/interne/publication.md.
 #
 #   ./make_release.sh && ./make_packages.sh
 #   MicroPythonMCU/Resources/Verification/run_all.sh --release && ./make_packages.sh
@@ -40,7 +40,7 @@ fi
 . "$DIST/release.env"
 
 if [ -z "$OPENMODELICAHOME" ]; then
-  echo "OPENMODELICAHOME non positionné (cf. docs/tests.md)" >&2; exit 2
+  echo "OPENMODELICAHOME non positionné (cf. docs/fr/interne/tests.md)" >&2; exit 2
 fi
 OMH=$(cygpath -u "$OPENMODELICAHOME" 2>/dev/null || echo "$OPENMODELICAHOME")
 export PATH="$OMH/bin:$OMH/tools/msys/ucrt64/bin:$PATH"

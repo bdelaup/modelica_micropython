@@ -5,8 +5,8 @@
 # script utilisateur, par-dessus le module natif `_pyruntime_native`.
 # Son chemin est resolu depuis MCU.shimPath (Modelica.Utilities.Files.loadResource).
 #
-# Voir docs/api-machine.md pour la reference de l'API cote script, et
-# docs/integration-python.md pour le contexte d'integration.
+# Voir docs/fr/guide/api.md pour la reference de l'API cote script, et
+# docs/fr/interne/integration-python.md pour le contexte d'integration.
 
 import sys, types, _pyruntime_native as _native
 # Pour le systeme de fichiers (fin de fichier) : importes avant que le faux

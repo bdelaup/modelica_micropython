@@ -1,6 +1,6 @@
 #!/bin/bash
 # Lance les scénarios de vérification (verify_*.mos) en parallèle et affiche un
-# récapitulatif PASS/FAIL avec la durée de chaque script. Voir docs/tests.md.
+# récapitulatif PASS/FAIL avec la durée de chaque script. Voir docs/fr/interne/tests.md.
 #
 #   ./run_all.sh                       # toute la suite, 4 exécutions simultanées
 #   ./run_all.sh -j 2                  # 2 exécutions simultanées
@@ -47,13 +47,13 @@ shift $((OPTIND - 1))
 cd "$(dirname "$0")" || exit 2
 
 # omc absent du PATH mais OPENMODELICAHOME positionné : compléter le PATH (omc et
-# le toolchain MinGW qu'il appelle pour compiler), cf. docs/tests.md.
+# le toolchain MinGW qu'il appelle pour compiler), cf. docs/fr/interne/tests.md.
 if ! command -v omc >/dev/null 2>&1 && [ -n "$OPENMODELICAHOME" ]; then
   OMH=$(cygpath -u "$OPENMODELICAHOME" 2>/dev/null || echo "$OPENMODELICAHOME")
   export PATH="$OMH/bin:$OMH/tools/msys/ucrt64/bin:$PATH"
 fi
 if ! command -v omc >/dev/null 2>&1; then
-  echo "omc introuvable : l'ajouter au PATH ou positionner OPENMODELICAHOME (cf. docs/tests.md)" >&2
+  echo "omc introuvable : l'ajouter au PATH ou positionner OPENMODELICAHOME (cf. docs/fr/interne/tests.md)" >&2
   exit 2
 fi
 

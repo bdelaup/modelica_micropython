@@ -14,10 +14,10 @@
 # seconde, pourtant la simulation s'execute en une fraction de seconde. Le temps
 # du script est le temps SIMULE, pas le temps reel : un sleep(1) rend la main au
 # solveur, qui avance d'un coup jusqu'a l'echeance. C'est tout l'interet du
-# couplage - voir docs/cycle-de-vie.md.
+# couplage - voir docs/fr/interne/cycle-de-vie.md.
 #
 # API disponible : machine.Pin / ADC / PWM / Timer / UART / Display et time,
-# calquees sur MicroPython (reference : Raspberry Pi Pico). Voir docs/api-machine.md.
+# calquees sur MicroPython (reference : Raspberry Pi Pico). Voir docs/fr/guide/api.md.
 # ---------------------------------------------------------------------------
 from machine import Pin
 import time

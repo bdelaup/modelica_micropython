@@ -3,7 +3,7 @@
 # le runtime C est précompilé une fois pour toutes en
 # Resources/Library/win64/libmicropythonmcu.a, et les sources C ne sont pas
 # livrées. Outil de DISTRIBUTION (make_packages.sh en tire ensuite les archives
-# téléchargeables, cf. docs/publication.md), et support de la
+# téléchargeables, cf. docs/fr/interne/publication.md), et support de la
 # NON-RÉGRESSION : run_all.sh --release
 # l'appelle puis lance la suite dans dist/, pour tester ce qui est réellement
 # livré. Il n'accélère pas les tests : le gain de compilation mesuré est
@@ -41,7 +41,7 @@ LIB="$DIST/MicroPythonMCU"
 # Toolchain d'OpenModelica : le .a doit être produit par le même compilateur que
 # celui qui liera les modèles.
 if [ -z "$OPENMODELICAHOME" ]; then
-  echo "OPENMODELICAHOME non positionné (cf. docs/tests.md)" >&2; exit 2
+  echo "OPENMODELICAHOME non positionné (cf. docs/fr/interne/tests.md)" >&2; exit 2
 fi
 OMH=$(cygpath -u "$OPENMODELICAHOME" 2>/dev/null || echo "$OPENMODELICAHOME")
 CC="$OMH/tools/msys/ucrt64/bin/clang"

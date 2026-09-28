@@ -25,7 +25,7 @@ Chaque version est publiée sur la [page des releases](https://gitlab.com/bdelau
 
     Il doit y apparaître un dossier `MicroPythonMCU <version>` (par exemple `MicroPythonMCU 1.0.0`), qui contient directement `package.mo`.
 3. Rouvrir OMEdit, puis *File → System Libraries → MicroPythonMCU*. En script : `loadModel(MicroPythonMCU);`.
-4. Vérifier : ouvrir `MicroPythonMCU.Examples.BasicBlink` et le simuler. `GP0` clignote.
+4. Vérifier : ouvrir `MicroPythonMCU.Examples.BasicBlink` et le simuler. `GP0` clignote (voir [Premiers pas](premiers-pas.md)).
 
 Plusieurs versions peuvent cohabiter dans ce dossier. Un modèle qui déclare `uses(MicroPythonMCU(version = "1.0.0"))` (OMEdit l'ajoute de lui-même lorsqu'on utilise la bibliothèque) charge la version qu'il demande.
 
@@ -33,7 +33,7 @@ Plusieurs versions peuvent cohabiter dans ce dossier. Un modèle qui déclare `u
 
 Décompresser l'archive n'importe où (de préférence hors d'un dossier synchronisé comme OneDrive), puis dans OMEdit : *File → Open Model/Library File(s)…* et sélectionner `MicroPythonMCU/package.mo`.
 
-La suite de vérification de l'archive compilée se lance comme décrit dans [Suite de vérification](tests.md).
+La suite de vérification de l'archive compilée se lance comme décrit dans [Suite de vérification](../interne/tests.md).
 
 ## Version de développement
 

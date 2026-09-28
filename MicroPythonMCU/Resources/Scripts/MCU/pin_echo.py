@@ -9,7 +9,7 @@ pin3 = Pin(3, Pin.OUT)
 
 while True:
     pin1.on()
-    time.sleep_ms(1)               # force un aller-retour Modelica avant de relire GP2 (cf. requirements.md / docs/api-machine.md)
+    time.sleep_ms(1)               # force un aller-retour Modelica avant de relire GP2 (cf. requirements.md / docs/fr/guide/api.md)
     pin3.value(pin2.value())
     time.sleep(PERIOD)
     pin1.off()

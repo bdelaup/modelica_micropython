@@ -77,7 +77,7 @@ void  PyRuntime_destroy(void* handle);
 void  PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn /*[9]*/,
                       int* pinBoolOut /*[9]*/, int* pinIsOutput /*[9]*/, double* nextWakeTime);
 ```
-La structure et l'interface C **actuelles** sont documentées dans `CLAUDE.md` et `docs/architecture.md`, tenues à jour à chaque évolution — ce snapshot n'est conservé ici que pour l'historique.
+La structure et l'interface C **actuelles** sont documentées dans `CLAUDE.md` et `docs/fr/interne/architecture.md`, tenues à jour à chaque évolution — ce snapshot n'est conservé ici que pour l'historique.
 
 ## Comportement en cas d'exception non gérée dans le script
 

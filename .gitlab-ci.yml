@@ -1,6 +1,7 @@
 # Publication du site de documentation sur GitLab Pages, à chaque push sur main
-# (runner partagé de GitLab). Configuration du site : zensical.toml. Les
-# livraisons de la bibliothèque se font à la main : docs/publication.md.
+# (runner partagé de GitLab). make_docs.sh construit les deux langues
+# (zensical.fr.toml, zensical.en.toml) dans public/. Les livraisons de la
+# bibliothèque se font à la main : docs/fr/interne/publication.md.
 
 pages:
   image: python:3.12-slim
@@ -8,7 +9,7 @@ pages:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - pip install --quiet --root-user-action=ignore zensical
-    - zensical build --clean --strict
+    - bash make_docs.sh
   artifacts:
     paths:
       - public

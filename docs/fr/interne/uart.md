@@ -1,8 +1,11 @@
 # Liaison série électrique réelle — `machine.UART`
 
-Cette page documente la liaison série `machine.UART` (cf. `requirements.md`, décision « UART électrique réel sur les broches GPIO »). Contrairement au périphérique d'affichage pédagogique ([peripherique-display.md](peripherique-display.md)), qui porte un message logique livré d'un bloc, l'UART produit un **vrai signal électrique** sur deux broches `GPx` : un élève peut tracer `mcu.GP0.v` dans OMEdit et y lire une trame comme à l'oscilloscope.
+!!! info "Référence interne"
+    Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Appareils série](../guide/peripheriques/uart.md) et [API, `machine.UART`](../guide/api.md#machineuart).
 
-**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, trame 8N1 figée, 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.Uart.Loopback`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Examples/Uart/Loopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](api-machine.md) § `machine.UART`.
+Cette page documente la liaison série `machine.UART` (cf. `requirements.md`, décision « UART électrique réel sur les broches GPIO »). Contrairement au périphérique d'affichage pédagogique ([peripherique-display.md](display.md)), qui porte un message logique livré d'un bloc, l'UART produit un **vrai signal électrique** sur deux broches `GPx` : un élève peut tracer `mcu.GP0.v` dans OMEdit et y lire une trame comme à l'oscilloscope.
+
+**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, trame 8N1 figée, 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.Uart.Loopback`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Examples/Uart/Loopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](../guide/api.md) § `machine.UART`.
 
 ## 1. Pourquoi électrique ici, logique pour `Display`
 
@@ -127,6 +130,6 @@ Le témoin `GP3` sert aussi de **détecteur d'octet fantôme** : un faux bit de 
 
 - **Format de trame paramétrable** : le coût est concentré sur le décodeur RX, l'émission est déjà prête (le format vit entièrement dans `uart_tx_begin_frame`). Intérêt pédagogique réel — montrer qu'un désaccord de configuration entre émetteur et récepteur produit des octets faux, l'erreur n°1 en TP série.
 - **`uart.irq()`** (réception pilotée par interruption) reste possible en réutilisant le mécanisme de `Pin.irq` déjà en place.
-- **Un interlocuteur au bout du fil existe désormais** : voir [peripheriques-uart-externes.md](peripheriques-uart-externes.md). Le bouclage `loopR`/`loopC` décrit ici reste utile pour observer la forme d'onde d'un `MCU` seul, mais un vrai dialogue passe maintenant par un un appareil `Peripherals.Uart*`.
+- **Un interlocuteur au bout du fil existe désormais** : voir [peripheriques-uart-externes.md](uart-peripheriques.md). Le bouclage `loopR`/`loopC` décrit ici reste utile pour observer la forme d'onde d'un `MCU` seul, mais un vrai dialogue passe maintenant par un un appareil `Peripherals.Uart*`.
 - **Multi-instances** : faire dialoguer deux `MCU` distincts par cette liaison se heurte à la restriction « une seule instance / un seul interpréteur CPython » (`requirements.md`, décision « Multi-instances »). Le bouclage sur un seul `MCU` valide tout le mécanisme sans y toucher.
 - À 115200 bauds sur une longue simulation, le coût des événements (un par front de bit) reste à surveiller — pas rencontré en pratique jusqu'ici.

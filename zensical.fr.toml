@@ -1,0 +1,113 @@
+# Site de documentation, version FRANÇAISE (complète : guide utilisateur +
+# référence interne), construit par Zensical à partir de docs/fr/ et publié sur
+# GitLab Pages sous /fr/. La version anglaise (guide utilisateur seulement) est
+# décrite par zensical.en.toml ; les deux sont construites par make_docs.sh,
+# appelé aussi par .gitlab-ci.yml (docs/fr/interne/publication.md) :
+#
+#   ./make_docs.sh              # les deux langues dans public/
+#   ./make_docs.sh serve fr     # aperçu http://localhost:8000
+#
+# Toute nouvelle page de docs/fr/ doit aussi être ajoutée à nav ci-dessous ; une
+# page du guide utilisateur a sa traduction dans docs/en/, SOUS LE MÊME CHEMIN
+# (le sélecteur de langue retrouve la même page dans l'autre langue par ce chemin).
+
+[project]
+site_name = "MicroPythonMCU"
+site_description = "Microcontrôleur programmable en Python (API MicroPython) pour OpenModelica"
+site_author = "Benoit Delaup"
+site_url = "https://bdelaup.gitlab.io/modelica_micropython3/fr/"
+copyright = "Copyright &copy; 2026 Benoit Delaup — licence MIT"
+repo_url = "https://gitlab.com/bdelaup/modelica_micropython3"
+repo_name = "bdelaup/modelica_micropython3"
+edit_uri = "-/edit/main/docs/fr/"
+docs_dir = "docs/fr"
+site_dir = "public/fr"
+
+nav = [
+  { "Accueil" = "index.md" },
+  { "Guide utilisateur" = [
+    { "Installation" = "guide/installation.md" },
+    { "Premiers pas" = "guide/premiers-pas.md" },
+    { "Le bloc MCU" = "guide/mcu.md" },
+    { "API machine / time" = "guide/api.md" },
+    { "Périphériques" = [
+      { "LED et afficheur" = "guide/peripheriques/led-afficheur.md" },
+      { "Appareils série (UART)" = "guide/peripheriques/uart.md" },
+      { "Périphériques I2C" = "guide/peripheriques/i2c.md" },
+      { "Chaîne de pesée (HX711)" = "guide/peripheriques/pesee.md" },
+    ] },
+    { "Exemples" = "guide/exemples.md" },
+    { "Limites et dépannage" = "guide/limites.md" },
+  ] },
+  { "Référence interne" = [
+    { "Architecture" = "interne/architecture.md" },
+    { "Intégration de Python" = "interne/integration-python.md" },
+    { "Cycle de vie" = "interne/cycle-de-vie.md" },
+    { "Afficheur pédagogique" = "interne/display.md" },
+    { "Liaison série (UART)" = "interne/uart.md" },
+    { "Appareils série" = "interne/uart-peripheriques.md" },
+    { "Bus I2C" = "interne/i2c.md" },
+    { "Chaîne de pesée" = "interne/pesee.md" },
+    { "Suite de vérification" = "interne/tests.md" },
+    { "Documentation et livraisons" = "interne/publication.md" },
+  ] },
+]
+
+[project.extra]
+alternate = [
+  { name = "Français", link = "/modelica_micropython3/fr/", lang = "fr" },
+  { name = "English", link = "/modelica_micropython3/en/", lang = "en" },
+]
+
+[project.theme]
+language = "fr"
+# Miroirs SVG/PNG de l'icône du package (images/, cf. interne/architecture.md).
+logo = "images/logo.svg"
+favicon = "images/logo.png"
+features = [
+  "content.action.edit",
+  "content.code.copy",
+  "content.tabs.link",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Thème clair"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Thème sombre"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Thème du système"
+
+[project.markdown_extensions]
+admonition = {}
+attr_list = {}
+md_in_html = {}
+tables = {}
+toc.permalink = true
+pymdownx.details = {}
+pymdownx.highlight.anchor_linenums = true
+pymdownx.inlinehilite = {}
+pymdownx.tabbed.alternate_style = true
+# Sans cette fence, les blocs ```mermaid sont publiés comme du code brut.
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]

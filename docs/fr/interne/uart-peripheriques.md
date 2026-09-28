@@ -1,6 +1,9 @@
 # Les périphériques série externes (`Internal.PartialUartDevice` et ses dérivés)
 
-Cette page explique le **fonctionnement interne** des appareils qui se branchent à l'autre bout de la liaison série. Pour la liaison elle-même (trame 8N1, génération de la forme d'onde, décodage), voir [peripherique-uart.md](peripherique-uart.md), dont celle-ci est la suite directe. Pour le *pourquoi* des choix, voir la décision « Périphériques UART externes connectables » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+!!! info "Référence interne"
+    Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Appareils série](../guide/peripheriques/uart.md).
+
+Cette page explique le **fonctionnement interne** des appareils qui se branchent à l'autre bout de la liaison série. Pour la liaison elle-même (trame 8N1, génération de la forme d'onde, décodage), voir [peripherique-uart.md](uart.md), dont celle-ci est la suite directe. Pour le *pourquoi* des choix, voir la décision « Périphériques UART externes connectables » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
 
 ## 1. Ce que ça remplace
 
@@ -18,7 +21,7 @@ Un appareil série externe est un véritable interlocuteur : deux composants dis
 
 ## 2. Le moteur est partagé, pas dupliqué
 
-Le travail bit/octet vit dans **`Resources/Include/uartcore.h` + `uartcore.c`**, à la racine d'`Include/` : files circulaires, sérialisation 8N1, niveau de la ligne d'émission, décodage de la réception à partir des fronts, calcul d'échéance (fonctionnement détaillé dans [peripherique-uart.md](peripherique-uart.md) §§ 3-4). Ce code ne connaît ni Python, ni les threads, ni les broches — il n'a donc rien coûté à extraire de `pyruntime_uart.c`, où il vivait déjà sous cette forme.
+Le travail bit/octet vit dans **`Resources/Include/uartcore.h` + `uartcore.c`**, à la racine d'`Include/` : files circulaires, sérialisation 8N1, niveau de la ligne d'émission, décodage de la réception à partir des fronts, calcul d'échéance (fonctionnement détaillé dans [peripherique-uart.md](uart.md) §§ 3-4). Ce code ne connaît ni Python, ni les threads, ni les broches — il n'a donc rien coûté à extraire de `pyruntime_uart.c`, où il vivait déjà sous cette forme.
 
 | | Microcontrôleur | Périphérique |
 |---|---|---|
@@ -109,7 +112,7 @@ when MCU ───────────────────────�
 
 Il suffit de le couper à un endroit. Avec `CIn`, la sortie du MCU n'agit plus sur la tension du RX du périphérique, seulement sur sa **dérivée** : son effet ne passe plus que par l'intégration dans le temps. Le fil retour peut rester instantané, car il ne referme plus rien : `omc` évalue le `when` du périphérique, puis la tension de la broche du MCU, puis le `when` du MCU, au même instant. Une capacité sur la broche du MCU casserait le cycle tout aussi bien, mais le pont des broches du MCU est partagé par toutes les fonctions (sortie, PWM, ADC, I2C, LED) : l'y ajouter toucherait les 8 broches, même sans UART. L'entrée RX du périphérique, toujours en entrée, est l'endroit neutre.
 
-**Un détail d'implémentation, pas un paramètre.** `CIn` est déclarée dans la partie `protected` de `PartialUartDevice` : elle n'apparaît pas dans la boîte de paramètres et ne se modifie pas depuis un schéma. Face à une sortie push-pull, sa constante de temps n'a aucun effet visible sur la trame, et un utilisateur n'aurait aucune raison d'y toucher — sauf à la mettre à zéro, ce qui empêcherait le modèle de se construire. C'est la différence avec le `CIn` des périphériques I2C ([peripheriques-i2c.md](peripheriques-i2c.md)), qui reste un paramètre : face aux résistances de tirage, il fixe le temps de montée des fronts, et l'augmenter montre ce qu'est un bus trop chargé.
+**Un détail d'implémentation, pas un paramètre.** `CIn` est déclarée dans la partie `protected` de `PartialUartDevice` : elle n'apparaît pas dans la boîte de paramètres et ne se modifie pas depuis un schéma. Face à une sortie push-pull, sa constante de temps n'a aucun effet visible sur la trame, et un utilisateur n'aurait aucune raison d'y toucher — sauf à la mettre à zéro, ce qui empêcherait le modèle de se construire. C'est la différence avec le `CIn` des périphériques I2C ([peripheriques-i2c.md](i2c.md)), qui reste un paramètre : face aux résistances de tirage, il fixe le temps de montée des fronts, et l'augmenter montre ce qu'est un bus trop chargé.
 
 **Son coût.** Le franchissement du seuil logique par la tension de `CIn` survient environ 0,06 µs (front montant) à 0,09 µs (front descendant) après le front émis par le MCU : c'est un second événement, distinct de celui de l'émission. Dans le sens MCU → périphérique, chaque front coûte donc deux événements ; dans l'autre sens, un seul.
 

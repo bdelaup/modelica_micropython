@@ -15,18 +15,18 @@ Use case: test control code on the digital twin before deploying it to a real pr
 - **Microcontroller**: GPIO (`Pin`, `Pin.irq` interrupts, bit-banging), `ADC`, `PWM`, `Timer`, `UART` serial link, `I2C` master bus, flash-like file system (`open()`, `os`, `boot.py`/`main.py` startup), module imports, onboard LED. `sleep()` calls cost no real waiting time.
 - **Peripherals to wire in**: serial devices (echo, temperature sensor, GPS, 20x2 display, generic), I2C devices (Grove LCD RGB display, echo, generic), HX711 weighing chain (converter, strain-gauge bridge, load cell), LED, pedagogical display.
 - **31 examples** (`MicroPythonMCU.Examples`), including a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
-- **Current limits**: Windows only, a single microcontroller per model, no SPI. Full list: [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive) *(French only)*.
+- **Current limits**: Windows only, a single microcontroller per model, no SPI. Full list: [Limits and troubleshooting](https://bdelaup.gitlab.io/modelica_micropython3/en/guide/limites/).
 
 ## Installation
 
 - [OpenModelica](https://openmodelica.org/download/download-windows/) with OMEdit (tested with `1.27.1-64bit`) — nothing else to install: the Python runtime ships with the library.
-- Published versions: [releases page](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), instructions in [`docs/installation.md`](docs/installation.md) *(French only)*.
+- Published versions: [releases page](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), instructions in the [installation guide](https://bdelaup.gitlab.io/modelica_micropython3/en/guide/installation/).
 - From the repository: in OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
 
 ## Quick start
 
 1. Open and simulate `MicroPythonMCU.Examples.BasicBlink`: `GP0` blinks (`Resources/Scripts/MCU/demo.py`).
-   <p align="center"><img src="docs/images/BasicBlink.gif" alt="MCU blink diagram" width="300"></p>
+   <p align="center"><img src="docs/fr/images/BasicBlink.gif" alt="MCU blink diagram" width="300"></p>
 2. In the `MCU` component's parameters, point **Script path** (the *…* button) to your own `.py` file:
 
    ```python
@@ -45,7 +45,7 @@ Use case: test control code on the digital twin before deploying it to a real pr
 
 ## Documentation
 
-The [documentation site](https://bdelaup.gitlab.io/modelica_micropython3/) *(French only)* covers installation, the `machine`/`time` API and each peripheral family, the internals and the verification suite. Architecture decisions and their alternatives are in [`requirements.md`](requirements.md).
+The [user guide](https://bdelaup.gitlab.io/modelica_micropython3/en/) covers installation, getting started, the `MCU` block and its parameters, the `machine`/`time` API, each peripheral family with its parameters, and the examples. The maintainer reference (internals, verification suite, releases) and the architecture decisions ([`requirements.md`](requirements.md)) are in French.
 
 ## License
 
@@ -83,13 +83,13 @@ Usage : tester un code de pilotage sur le jumeau numérique avant de le déploye
 ## Installation
 
 - [OpenModelica](https://openmodelica.org/download/download-windows/) avec OMEdit (testé avec `1.27.1-64bit`) — rien d'autre à installer : le runtime Python est fourni avec la bibliothèque.
-- Versions publiées : [page des releases](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), mode d'emploi dans [`docs/installation.md`](docs/installation.md).
+- Versions publiées : [page des releases](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), mode d'emploi dans [`docs/fr/guide/installation.md`](docs/fr/guide/installation.md).
 - Depuis le dépôt : dans OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
 
 ## Démarrage rapide
 
 1. Ouvrir et simuler `MicroPythonMCU.Examples.BasicBlink` : `GP0` clignote (`Resources/Scripts/MCU/demo.py`).
-   <p align="center"><img src="docs/images/BasicBlink.gif" alt="schema MCU blik" width="300"></p>
+   <p align="center"><img src="docs/fr/images/BasicBlink.gif" alt="schema MCU blik" width="300"></p>
 2. Dans les paramètres du composant `MCU`, pointer **Chemin du script** (bouton *…*) vers votre propre `.py` :
 
    ```python
@@ -108,7 +108,7 @@ Usage : tester un code de pilotage sur le jumeau numérique avant de le déploye
 
 ## Documentation
 
-Le [site de documentation](https://bdelaup.gitlab.io/modelica_micropython3/) décrit l'installation, l'API `machine`/`time` et chaque famille de périphériques, le fonctionnement interne et la suite de vérification. Les décisions d'architecture et leurs alternatives sont dans [`requirements.md`](requirements.md).
+Le [site de documentation](https://bdelaup.gitlab.io/modelica_micropython3/fr/) comporte un guide utilisateur (installation, premiers pas, bloc `MCU` et ses paramètres, API `machine`/`time`, périphériques et leurs paramètres, exemples), traduit en anglais, et une référence interne pour qui fait évoluer la bibliothèque (architecture, intégration de Python, suite de vérification, livraisons). Les décisions d'architecture et leurs alternatives sont dans [`requirements.md`](requirements.md).
 
 ## Licence
 

@@ -10,7 +10,7 @@
 #   SET <x>    -> OK, et x ressort sur valueOut[1]
 #   autre      -> ERR
 #
-# Contrat d'un script de peripherique : voir docs/peripheriques-uart-externes.md.
+# Contrat d'un script de peripherique : voir docs/fr/interne/uart-peripheriques.md.
 # ---------------------------------------------------------------------------
 
 consigne = 0.0      # derniere consigne recue, publiee sur valueOut[1]

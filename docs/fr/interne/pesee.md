@@ -1,5 +1,8 @@
 # Chaîne de pesée : HX711, pont de jauges, corps d'épreuve
 
+!!! info "Référence interne"
+    Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Chaîne de pesée](../guide/peripheriques/pesee.md).
+
 Cette page décrit **comment** est construite la chaîne de mesure d'une balance électronique (`Peripherals.Weighing`) et ce qu'elle suppose côté microcontrôleur : le coût temporel des accès aux broches, sans lequel le HX711 ne pourrait pas être lu. Le **pourquoi** (alternatives écartées, restrictions) est dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md), décisions « Coût temporel des accès GPIO » et « Chaîne de pesée ».
 
 ## 1. De la masse au nombre
@@ -67,7 +70,7 @@ t0+5µs    clock(False)  PD_SCK redescend : impulsion de 5 µs (< 60 µs, pas de
 t0+10µs   data()        lit DOUT à t0+15µs, en fin d'accès
 ```
 
-Détails dans [api-machine.md](api-machine.md) (`gpioOpTime`, `pin(x)`, `disable_irq`/`enable_irq`/`idle`) et [cycle-de-vie.md](cycle-de-vie.md) (l'attente « processeur occupé », qu'un front d'entrée n'écourte pas).
+Détails dans [api-machine.md](../guide/api.md) (`gpioOpTime`, `pin(x)`, `disable_irq`/`enable_irq`/`idle`) et [cycle-de-vie.md](cycle-de-vie.md) (l'attente « processeur occupé », qu'un front d'entrée n'écourte pas).
 
 ## 4. Les exemples
 

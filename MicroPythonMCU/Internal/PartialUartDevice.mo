@@ -82,7 +82,7 @@ protected
   // (0,1 µs) n'a aucun effet visible sur la trame, et la modifier n'apprendrait
   // rien à l'utilisateur (contrairement au CIn des périphériques I2C, qui fixe le
   // temps de montée face aux tirages et reste un paramètre). Détail dans
-  // docs/peripheriques-uart-externes.md.
+  // docs/fr/interne/uart-peripheriques.md.
   parameter Modelica.Units.SI.Capacitance CIn = 1e-9 "Capacité d'entrée de la broche RX (broche + câble) - interne, rompt le cycle entre les when de cet appareil et du microcontrôleur";
 
   Modelica.Blocks.Interfaces.RealInput valueIn_internal[nIn] "Connecteur interne : un connecteur conditionnel ne peut pas être lu directement dans une équation (idiome MSL)";

@@ -4,30 +4,40 @@ La documentation est publiée automatiquement par GitLab. Les versions de la bib
 
 ## La documentation
 
-Le site est construit par [Zensical](https://zensical.org/) à partir des pages de `docs/` et de [`zensical.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.toml). À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/.gitlab-ci.yml) le reconstruit et le publie sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
+Le site est construit par [Zensical](https://zensical.org/) en deux langues, chacune décrite par sa configuration :
+
+| Langue | Pages | Configuration | Adresse | Contenu |
+|---|---|---|---|---|
+| Français | `docs/fr/` | [`zensical.fr.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.fr.toml) | `/fr/` | Guide utilisateur et référence interne |
+| Anglais | `docs/en/` | [`zensical.en.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.en.toml) | `/en/` | Guide utilisateur seulement |
+
+[`make_docs.sh`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/make_docs.sh) construit les deux dans `public/`, plus `public/index.html`, qui renvoie vers la langue du navigateur. À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/.gitlab-ci.yml) l'exécute et publie le résultat sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
 
 Adresse : <https://bdelaup.gitlab.io/modelica_micropython3/>
 
 ### Réglages GitLab (une seule fois)
 
-- *Deploy → Pages* : décocher **Use unique domain**. Sinon GitLab publie le site à une adresse générée, différente de `site_url` dans `zensical.toml`.
+- *Deploy → Pages* : décocher **Use unique domain**. Sinon GitLab publie le site à une adresse générée, différente de `site_url` dans les configurations.
 - *Settings → General → Visibility, project features, permissions → Pages* : **Everyone** pour que le site soit public, même si le dépôt ne l'est pas.
 
 ### Écrire une page
 
-- Une nouvelle page se crée dans `docs/`, puis s'ajoute à `nav` dans `zensical.toml`, sinon elle n'apparaît pas dans le menu.
-- Entre pages de `docs/`, liens relatifs ordinaires : `[Installation](installation.md)`.
-- Vers un fichier du dépôt **hors de `docs/`**, lien absolu vers GitLab : `https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md`. Un lien relatif `../requirements.md` fonctionne dans GitLab, mais pas sur le site, qui ne contient que `docs/`.
+- Une nouvelle page se crée dans `docs/fr/`, puis s'ajoute à `nav` dans `zensical.fr.toml`, sinon elle n'apparaît pas dans le menu.
+- **Page du guide utilisateur** (`docs/fr/guide/`, `docs/fr/index.md`) : sa traduction va dans `docs/en/`, **au même chemin**, et s'ajoute à `nav` dans `zensical.en.toml`. Le sélecteur de langue retrouve la page correspondante par ce chemin (il lit le `sitemap.xml` de l'autre langue) ; sans traduction, il ramène à l'accueil de l'autre langue. La référence interne (`docs/fr/interne/`) n'est pas traduite.
+- **Images** : uniquement dans `docs/fr/images/`. `make_docs.sh` en fait une copie dans `docs/en/images/` (ignorée par git) avant de construire le site anglais : une page anglaise les référence donc par le même chemin relatif que son original.
+- Entre pages d'une même langue, liens relatifs ordinaires : `[Installation](../guide/installation.md)`. Une page anglaise qui renvoie vers la référence interne utilise une URL absolue (`https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/...`).
+- Vers un fichier du dépôt **hors de `docs/`**, lien absolu vers GitLab : `https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md`. Un lien relatif `../requirements.md` fonctionne dans GitLab, mais pas sur le site.
 - La construction est stricte (`--strict`) : un lien cassé vers une page fait échouer le job `pages`, et le site en ligne reste alors celui d'avant.
+- Illustrations attendues et conventions (formats, tailles, nommage) : [`docs/ILLUSTRATIONS.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/docs/ILLUSTRATIONS.md). Les courbes de simulation sont générées par `python docs/figures/make_figures.py`, qui simule les exemples avec omc.
 
 ### Aperçu local
 
 ```
 pip install zensical
-zensical serve
+./make_docs.sh serve fr      # ou en
 ```
 
-puis <http://localhost:8000>. La page se recharge à chaque enregistrement.
+puis <http://localhost:8000>. La page se recharge à chaque enregistrement. `./make_docs.sh` seul fait la construction complète et stricte, comme la CI.
 
 ## Livrer une version
 
@@ -37,7 +47,7 @@ puis <http://localhost:8000>. La page se recharge à chaque enregistrement.
 
 | Archive | Contenu | Pour qui |
 |---|---|---|
-| `MicroPythonMCU-<v>-lib-om<OM>-win64.zip` | Dossier `MicroPythonMCU <v>` à décompresser dans `%APPDATA%\.openmodelica\libraries`, sans les `.mos` ni `run_all.sh` | Élèves et enseignants (voir [Installation](installation.md)) |
+| `MicroPythonMCU-<v>-lib-om<OM>-win64.zip` | Dossier `MicroPythonMCU <v>` à décompresser dans `%APPDATA%\.openmodelica\libraries`, sans les `.mos` ni `run_all.sh` | Élèves et enseignants (voir [Installation](../guide/installation.md)) |
 | `MicroPythonMCU-<v>-om<OM>-win64.zip` | La release telle que la suite l'a testée, suite de vérification comprise | Vérifier une installation |
 | `MicroPythonMCU-<v>-src.zip` | Le module du dépôt, sources C comprises | Modifier la bibliothèque, autre version d'OpenModelica |
 
@@ -76,4 +86,4 @@ Dans Git Bash, à la racine du dépôt :
     ```
 
 4. Créer la release dans GitLab : *Deploy → Releases → New release*, choisir le tag `v1.3.0`, écrire les notes, puis **glisser les trois zips de `dist/packages` dans la zone des notes**. GitLab les téléverse et insère leurs liens de téléchargement.
-5. Vérifier la release en téléchargeant l'archive `-lib` et en suivant [Installation](installation.md).
+5. Vérifier la release en téléchargeant l'archive `-lib` et en suivant [Installation](../guide/installation.md).

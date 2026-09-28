@@ -59,3 +59,6 @@ __pycache__/
 
 # Réglages locaux de l'éditeur
 /.vscode/
+
+# Copie de docs/fr/images/ faite par make_docs.sh pour le site anglais
+/docs/en/images/

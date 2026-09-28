@@ -1,5 +1,8 @@
 # Bus I2C : `machine.I2C` et les périphériques esclaves
 
+!!! info "Référence interne"
+    Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Périphériques I2C](../guide/peripheriques/i2c.md).
+
 Cette page décrit **comment** est construit le bus I2C : le maître côté microcontrôleur (`machine.I2C`), la classe de base des périphériques esclaves (`Internal.PartialI2cDevice`), le contrat des scripts Python qui décrivent ces périphériques, et l'écran Grove LCD RGB. Le **pourquoi** (alternatives écartées, restrictions) est dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md), décision « Bus I2C électrique en drain ouvert ».
 
 ## 1. Un vrai bus électrique, en drain ouvert
@@ -16,7 +19,7 @@ Deux fils partagés, `SDA` (données) et `SCL` (horloge), plus la masse. Personn
 
 Les tirages sont portés par les périphériques : paramètre `usePullUp` (désactivé par défaut, `RPullUp = 4,7 kΩ`), composants conditionnels. Le Grove l'active, comme le module réel ; plusieurs paires se mettent en parallèle.
 
-Chaque broche de périphérique porte aussi une capacité d'entrée `CIn` (10 pF). **Elle n'est pas cosmétique** : elle fait de SDA et SCL des états dynamiques, ce qui rompt la dépendance entre le `when` du microcontrôleur et ceux des esclaves (même rôle que `CIn` des périphériques série, cf. [peripheriques-uart-externes.md](peripheriques-uart-externes.md)). Elle fixe aussi le temps de montée : 4,7 kΩ × 10 pF = 47 ns, très en dessous du quart de période à 400 kHz (625 ns). Augmenter `CIn` ou `RPullUp` dégrade les fronts, comme sur un vrai bus trop chargé.
+Chaque broche de périphérique porte aussi une capacité d'entrée `CIn` (10 pF). **Elle n'est pas cosmétique** : elle fait de SDA et SCL des états dynamiques, ce qui rompt la dépendance entre le `when` du microcontrôleur et ceux des esclaves (même rôle que `CIn` des périphériques série, cf. [peripheriques-uart-externes.md](uart-peripheriques.md)). Elle fixe aussi le temps de montée : 4,7 kΩ × 10 pF = 47 ns, très en dessous du quart de période à 400 kHz (625 ns). Augmenter `CIn` ou `RPullUp` dégrade les fronts, comme sur un vrai bus trop chargé.
 
 Pas de composant `Ideal.*` commutant côté périphérique (piège documenté de la LED embarquée, cf. `requirements.md`) : la sortie est une `VariableConductor`.
 

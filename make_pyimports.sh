@@ -25,7 +25,7 @@ DLL="$ROOT/MicroPythonMCU/Resources/PythonRuntime/python312.dll"
 OUT="$INC/pyimports.h"
 
 if [ -z "$OPENMODELICAHOME" ]; then
-  echo "OPENMODELICAHOME non positionné (cf. docs/tests.md)" >&2; exit 2
+  echo "OPENMODELICAHOME non positionné (cf. docs/fr/interne/tests.md)" >&2; exit 2
 fi
 OMH=$(cygpath -u "$OPENMODELICAHOME" 2>/dev/null || echo "$OPENMODELICAHOME")
 BIN="$OMH/tools/msys/ucrt64/bin"

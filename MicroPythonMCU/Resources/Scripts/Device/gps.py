@@ -13,7 +13,7 @@
 # Grandeur rendue au modele (valueOut) :
 #   [1] nombre de phrases emises depuis le debut de la simulation
 #
-# Contrat d'un script de peripherique : voir docs/peripheriques-uart-externes.md.
+# Contrat d'un script de peripherique : voir docs/fr/interne/uart-peripheriques.md.
 # Les fonctions s'executent sur le thread de la simulation : elles vont au bout,
 # sans sleep() et sans acces a machine.
 # ---------------------------------------------------------------------------
