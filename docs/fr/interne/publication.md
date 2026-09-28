@@ -17,7 +17,7 @@ Adresse : <https://bdelaup.gitlab.io/modelica_micropython3/>
 
 ### Réglages GitLab (une seule fois)
 
-- *Deploy → Pages* : décocher **Use unique domain**. Sinon GitLab publie le site à une adresse générée, différente de `site_url` dans les configurations.
+- *Deploy → Pages* : décocher **Use unique domain** (recommandé). Coché, GitLab publie le site à la racine d'une adresse générée (`https://modelica-micropython3-a705bd.gitlab.io/fr/`, sans le préfixe `/modelica_micropython3/`) et y redirige `bdelaup.gitlab.io/modelica_micropython3/…`. Le site fonctionne dans les deux cas, car les liens du sélecteur de langue sont relatifs (`../en/` dans `extra.alternate`) ; seules les adresses affichées diffèrent de `site_url`. Ne pas écrire de lien absolu commençant par `/modelica_micropython3/` : il casse sur le domaine unique.
 - *Settings → General → Visibility, project features, permissions → Pages* : **Everyone** pour que le site soit public, même si le dépôt ne l'est pas.
 
 ### Écrire une page
@@ -41,21 +41,11 @@ puis <http://localhost:8000>. La page se recharge à chaque enregistrement. `./m
 
 ## Livrer une version
 
-### Les trois archives
-
-`make_release.sh` construit la release dans `dist/MicroPythonMCU` (runtime C précompilé, sans sources C). `make_packages.sh` en tire trois archives dans `dist/packages` :
-
-| Archive | Contenu | Pour qui |
-|---|---|---|
-| `MicroPythonMCU-<v>-lib-om<OM>-win64.zip` | Dossier `MicroPythonMCU <v>` à décompresser dans `%APPDATA%\.openmodelica\libraries`, sans les `.mos` ni `run_all.sh` | Élèves et enseignants (voir [Installation](../guide/installation.md)) |
-| `MicroPythonMCU-<v>-om<OM>-win64.zip` | La release telle que la suite l'a testée, suite de vérification comprise | Vérifier une installation |
-| `MicroPythonMCU-<v>-src.zip` | Le module du dépôt, sources C comprises | Modifier la bibliothèque, autre version d'OpenModelica |
-
-`<OM>` est la version d'OpenModelica dont la toolchain a compilé le runtime. Les archives précompilées ne valent que pour elle. Avant de zipper la variante `-lib`, `make_packages.sh` la charge par son numéro de version (`loadModel(MicroPythonMCU, {"<v>"})`) et simule `Examples.BasicBlink` : c'est la seule variante que la suite ne teste pas telle quelle.
+Une version est un **tag** `vX.Y.Z` du dépôt, rien de plus : les utilisateurs téléchargent l'arbre du dépôt à ce tag (zip proposé par GitLab ou `git clone --branch`), voir [Installation](../guide/installation.md). Le runtime C y est livré en sources, compilées par omc à la première simulation : la même version sert donc toutes les versions d'OpenModelica. C'est aussi ce que distribuera l'index d'OpenModelica (`installPackage`) une fois la bibliothèque inscrite.
 
 ### Numéro de version
 
-Le dépôt ne porte pas de numéro de version : **le tag `vX.Y.Z` fait foi**. `make_release.sh` injecte `version = "X.Y.Z"` dans l'annotation de `package.mo` de la release seulement. Il prend `VERSION` s'il est positionné, sinon `git describe` : `1.3.0` sur le commit du tag `v1.3.0`, `1.3.0-2-gabc1234` deux commits plus loin, `0.0.0-gabc1234` avant le premier tag, suffixe `-dirty` si le dépôt a des modifications non commitées.
+Le dépôt ne porte pas de numéro de version : **le tag fait foi**.
 
 | Changement | Exemple | Version |
 |---|---|---|
@@ -67,17 +57,15 @@ Le dépôt ne porte pas de numéro de version : **le tag `vX.Y.Z` fait foi**. `m
 
 Dans Git Bash, à la racine du dépôt :
 
-1. Partir d'un dépôt propre : tout commité (`git status` vide). `make_release.sh` embarque aussi les fichiers non suivis et non ignorés, un dossier de brouillon se retrouverait dans l'archive.
-2. Construire, tester et empaqueter, avec la version d'OpenModelica visée et le numéro choisi :
+1. Partir d'un dépôt propre : tout commité (`git status` vide).
+2. Passer la suite de vérification sur le dépôt (cf. [Suite de vérification](tests.md)) :
 
     ```
     export OPENMODELICAHOME="D:/Programmes/OpenModelica1.27.1-64bit"
-    export VERSION=1.3.0
-    MicroPythonMCU/Resources/Verification/run_all.sh --release
-    ./make_packages.sh
+    MicroPythonMCU/Resources/Verification/run_all.sh
     ```
 
-    La suite doit afficher `27/27 PASS`. `make_packages.sh` s'arrête si le test de fumée échoue.
+    Toutes les lignes doivent être `PASS`.
 3. Poser et pousser le tag :
 
     ```
@@ -85,5 +73,6 @@ Dans Git Bash, à la racine du dépôt :
     git push origin v1.3.0
     ```
 
-4. Créer la release dans GitLab : *Deploy → Releases → New release*, choisir le tag `v1.3.0`, écrire les notes, puis **glisser les trois zips de `dist/packages` dans la zone des notes**. GitLab les téléverse et insère leurs liens de téléchargement.
-5. Vérifier la release en téléchargeant l'archive `-lib` et en suivant [Installation](../guide/installation.md).
+4. Vérifier : télécharger le zip du tag depuis la [page des tags](https://gitlab.com/bdelaup/modelica_micropython3/-/tags) et suivre [Installation](../guide/installation.md).
+
+Les notes de version, si on en veut, se rédigent dans le message du tag ou dans une *Release* GitLab créée sur ce tag, sans fichier joint.

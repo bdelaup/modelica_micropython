@@ -55,8 +55,8 @@ nav = [
 
 [project.extra]
 alternate = [
-  { name = "Français", link = "/modelica_micropython3/fr/", lang = "fr" },
-  { name = "English", link = "/modelica_micropython3/en/", lang = "en" },
+  { name = "Français", link = "../fr/", lang = "fr" },
+  { name = "English", link = "../en/", lang = "en" },
 ]
 
 [project.theme]

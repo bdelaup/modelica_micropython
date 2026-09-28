@@ -20,7 +20,7 @@ Use case: test control code on the digital twin before deploying it to a real pr
 ## Installation
 
 - [OpenModelica](https://openmodelica.org/download/download-windows/) with OMEdit (tested with `1.27.1-64bit`) — nothing else to install: the Python runtime ships with the library.
-- Published versions: [releases page](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), instructions in the [installation guide](https://bdelaup.gitlab.io/modelica_micropython3/en/guide/installation/).
+- Versions: one [tag](https://gitlab.com/bdelaup/modelica_micropython3/-/tags) per version (`vX.Y.Z`), instructions in the [installation guide](https://bdelaup.gitlab.io/modelica_micropython3/en/guide/installation/).
 - From the repository: in OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
 
 ## Quick start
@@ -83,7 +83,7 @@ Usage : tester un code de pilotage sur le jumeau numérique avant de le déploye
 ## Installation
 
 - [OpenModelica](https://openmodelica.org/download/download-windows/) avec OMEdit (testé avec `1.27.1-64bit`) — rien d'autre à installer : le runtime Python est fourni avec la bibliothèque.
-- Versions publiées : [page des releases](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), mode d'emploi dans [`docs/fr/guide/installation.md`](docs/fr/guide/installation.md).
+- Versions : un [tag](https://gitlab.com/bdelaup/modelica_micropython3/-/tags) par version (`vX.Y.Z`), mode d'emploi dans le [guide d'installation](https://bdelaup.gitlab.io/modelica_micropython3/fr/guide/installation/).
 - Depuis le dépôt : dans OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
 
 ## Démarrage rapide

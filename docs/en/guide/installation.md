@@ -1,40 +1,62 @@
 # Installation
 
-`MicroPythonMCU` runs on **64-bit Windows** with [OpenModelica](https://openmodelica.org/download/download-windows/) (OMEdit). The Python runtime ships with the library: nothing else to install, apart from the *Microsoft Visual C++ Redistributable*, which is almost always already present.
+`MicroPythonMCU` runs on **64-bit Windows** with [OpenModelica](https://openmodelica.org/download/download-windows/) (OMEdit, tested with version 1.27.1). The Python runtime ships with the library and the C compiler is OpenModelica's own: nothing else to install, apart from the *Microsoft Visual C++ Redistributable*, which is almost always already present.
 
-## Choosing an archive
+## Choosing a version
 
-Each version is published on the [releases page](https://gitlab.com/bdelaup/modelica_micropython3/-/releases) with three archives:
+Each version of the library is a **tag** of the repository, of the form `vX.Y.Z` (for example `v0.1.0`). The list of versions is on the [tags page](https://gitlab.com/bdelaup/modelica_micropython3/-/tags). Take the most recent one unless you have a reason not to.
 
-| Archive | Contents | For whom |
-|---|---|---|
-| `MicroPythonMCU-<version>-lib-om<OM>-win64.zip` | The library, ready to install, with a precompiled runtime | **Students and teachers: this is the one** |
-| `MicroPythonMCU-<version>-om<OM>-win64.zip` | The same, with the verification suite (`Resources/Verification`) | Checking an installation, advanced users |
-| `MicroPythonMCU-<version>-src.zip` | The package with its C sources, compiled at each simulation | Modifying the library, or using another OpenModelica version |
+## Downloading a version
 
-`<OM>` is the OpenModelica version the runtime was compiled with (for example `1.27.1`). Both precompiled archives require **that** OpenModelica version. With another version, take the source archive: omc then recompiles the runtime with its own toolchain.
+1. On the [tags page](https://gitlab.com/bdelaup/modelica_micropython3/-/tags), click the download button (arrow) of the version you want, then **zip**. Direct address, for `v0.1.0`:
 
-## Installing the library (`-lib` archive)
+    ```
+    https://gitlab.com/bdelaup/modelica_micropython3/-/archive/v0.1.0/modelica_micropython3-v0.1.0.zip
+    ```
+
+    With git: `git clone --branch v0.1.0 https://gitlab.com/bdelaup/modelica_micropython3.git`
+
+2. Unzip it, preferably outside a synchronised folder such as OneDrive. It contains the `MicroPythonMCU` folder, which is the library itself (it holds `package.mo`).
+
+## Load or install
+
+There is no need to install the library: **loading** it in OMEdit is enough. Three ways, from the lightest to the most lasting.
+
+### Load the library, without installing anything
+
+In OMEdit, *File → Open Model/Library File(s)…*, then select `MicroPythonMCU/package.mo`. The library appears in the browser for the session: to be repeated each time OMEdit starts. In a script: `loadFile("C:/path/to/MicroPythonMCU/package.mo");`.
+
+This is the recommended way to try a version, or to work on a shared computer: nothing is copied outside the downloaded folder, and several versions can live side by side in different folders.
+
+### Load it automatically at each start
+
+To avoid reopening the file each time, still without installing: *Tools → Options → Libraries*, *User Libraries* section, add the path of `MicroPythonMCU/package.mo`. OMEdit then loads it at every start, from the downloaded folder.
+
+### Install it as a system library
+
+The library then joins OpenModelica's libraries and is loaded on demand:
 
 1. Close OMEdit.
-2. Unzip the archive into the user's OpenModelica library folder:
+2. Copy the `MicroPythonMCU` folder into the user's OpenModelica library folder:
 
     ```
     %APPDATA%\.openmodelica\libraries\
     ```
 
-    A `MicroPythonMCU <version>` folder must appear there (for example `MicroPythonMCU 1.0.0`), directly containing `package.mo`.
 3. Reopen OMEdit, then *File → System Libraries → MicroPythonMCU*. In a script: `loadModel(MicroPythonMCU);`.
-4. Check: open `MicroPythonMCU.Examples.BasicBlink` and simulate it. `GP0` blinks (see [Getting started](premiers-pas.md)).
 
-Several versions can live side by side in this folder. A model that declares `uses(MicroPythonMCU(version = "1.0.0"))` (OMEdit adds it by itself when the library is used) loads the version it asks for.
+To switch versions, replace this folder with the one from another version.
 
-## Using the other archives
+## Checking
 
-Unzip the archive anywhere (preferably outside a synchronised folder such as OneDrive), then in OMEdit: *File → Open Model/Library File(s)…* and select `MicroPythonMCU/package.mo`.
+Open `MicroPythonMCU.Examples.BasicBlink` and simulate it: `GP0` blinks (see [Getting started](premiers-pas.md)).
 
-The verification suite of the compiled archive is run as described in the (French) [verification suite page](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/tests/).
+**The first simulation of a model takes longer** (from one to a few tens of seconds more): OpenModelica compiles the library's C runtime with its own compiler, from the supplied sources. This is normal, and it is what makes any recent OpenModelica version usable.
+
+## Coming soon: installation through the library manager
+
+Registration of the library in OpenModelica's package index is under way. Once done, nothing will need downloading: in OMEdit, *File → Manage Libraries → Install Library*, or in a script `installPackage(MicroPythonMCU);`. Each tag will become an installable version.
 
 ## Development version
 
-To try the current state between two releases: clone or download the [repository](https://gitlab.com/bdelaup/modelica_micropython3) (*Code → Download source code → zip*) and open `MicroPythonMCU/package.mo` in OMEdit, as for the source archive.
+To try the current state between two versions: clone the [repository](https://gitlab.com/bdelaup/modelica_micropython3) without specifying a tag, or download it (*Code → zip*), then proceed as above.

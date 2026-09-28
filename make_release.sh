@@ -2,11 +2,10 @@
 # Construit la version distribuée de la bibliothèque dans dist/MicroPythonMCU :
 # le runtime C est précompilé une fois pour toutes en
 # Resources/Library/win64/libmicropythonmcu.a, et les sources C ne sont pas
-# livrées. Outil de DISTRIBUTION (make_packages.sh en tire ensuite les archives
-# téléchargeables, cf. docs/fr/interne/publication.md), et support de la
-# NON-RÉGRESSION : run_all.sh --release
-# l'appelle puis lance la suite dans dist/, pour tester ce qui est réellement
-# livré. Il n'accélère pas les tests : le gain de compilation mesuré est
+# livrées. Support de la NON-RÉGRESSION : run_all.sh --release l'appelle puis
+# lance la suite dans dist/, pour tester la bibliothèque avec un runtime
+# précompilé (cette version n'est plus distribuée depuis le 2026-09-28 : une
+# version est un tag du dépôt, cf. docs/fr/interne/publication.md). Il n'accélère pas les tests : le gain de compilation mesuré est
 # négligeable (~0,3 s par modèle, le fichier principal généré par omc reste le
 # plus long à compiler, en parallèle) - pendant le travail, la suite tourne sur
 # le dépôt.
@@ -19,8 +18,6 @@
 # plus loin, 0.0.0-gabc1234 avant le premier tag ; suffixe -dirty si le dépôt a
 # des modifications non commitées). Il est injecté dans l'annotation version de
 # package.mo de la release seulement : le dépôt n'en porte pas, le tag fait foi.
-# Il est aussi écrit dans dist/release.env, avec la version d'OpenModelica, pour
-# make_packages.sh.
 #
 # Le dépôt reste la version de développement (sources C incluses à la volée par
 # les annotations Include) ; dist/ est ignoré par git et se reconstruit à la
@@ -147,6 +144,5 @@ removed=$(wc -l < "$WORK/remove.lst")
   echo "Compilateur  : $("$CC" --version | head -1)"
   echo "OpenModelica : $OM_VERSION"
 } > "$DIST/BUILD_INFO.txt"
-printf 'VERSION=%s\nOM_VERSION=%s\n' "$VERSION" "$OM_VERSION" > "$DIST/release.env"
 
 echo "Release $VERSION à jour : $LIB ($changed fichier(s) copié(s), $removed supprimé(s))"

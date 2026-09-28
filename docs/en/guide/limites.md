@@ -4,7 +4,7 @@
 
 **Environment**
 
-- **64-bit Windows only**, with OpenModelica. Precompiled archives only work with the OpenModelica version given in their name; with another version, take the source archive ([Installation](installation.md)).
+- **64-bit Windows only**, with OpenModelica ([Installation](installation.md)).
 - **One `MCU` per model.** Serial and I2C devices, even programmed in Python, can be as many as needed.
 
 **Microcontroller**

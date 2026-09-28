@@ -4,7 +4,7 @@
 
 **Environnement**
 
-- **Windows 64 bits uniquement**, avec OpenModelica. Les archives précompilées ne valent que pour la version d'OpenModelica indiquée dans leur nom ; avec une autre version, prendre l'archive des sources ([Installation](installation.md)).
+- **Windows 64 bits uniquement**, avec OpenModelica ([Installation](installation.md)).
 - **Un seul `MCU` par modèle.** Les appareils série et I2C, même programmés en Python, peuvent être aussi nombreux que nécessaire.
 
 **Microcontrôleur**

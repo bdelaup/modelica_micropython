@@ -35,7 +35,7 @@ Les scripts qui partagent des fichiers sont exécutés **à la suite l'un de l'a
 | Quand | Commande | Ce qui est testé |
 |---|---|---|
 | Pendant le travail (itération) | `./run_all.sh`, ou quelques scripts ciblés | le **dépôt** : sources C incluses à la volée par les annotations `Include`, comme dans OMEdit au quotidien |
-| Non-régression, après une modification qui le mérite | `./run_all.sh --release` | ce qui est **livré** : `make_release.sh` reconstruit `dist/` depuis l'état courant du dépôt (modifications non commitées comprises), puis la suite tourne dans `dist/MicroPythonMCU/Resources/Verification/` |
+| Non-régression, après une modification qui le mérite | `./run_all.sh --release` | la **version précompilée** (runtime en `.a`, sans sources C ; plus distribuée depuis le 2026-09-28, une version étant un tag du dépôt) : `make_release.sh` reconstruit `dist/` depuis l'état courant du dépôt (modifications non commitées comprises), puis la suite tourne dans `dist/MicroPythonMCU/Resources/Verification/` |
 
 La release a des défauts propres, invisibles depuis le dépôt : en-têtes livrés désaccordés des déclarations Modelica (cas typique : une signature de `PyRuntime_sync` ou `UartDevice_sync` qui change), annotation mal réécrite par `make_release.sh`, fichier `.c` absent de l'unité de compilation unique du `.a`, compilateur différent (`clang -O2` pour le `.a`, compilateur d'`omc` en `-Os` sinon).
 

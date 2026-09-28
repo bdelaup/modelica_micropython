@@ -1,13 +1,10 @@
 # Getting started
 
-This page has you simulate a first example, then run your own program. It assumes the library is [installed](installation.md).
+This page has you simulate a first example, then run your own program. It assumes the library is [downloaded](installation.md).
 
 ## 1. Open the library
 
-In OMEdit, the library appears in the class browser:
-
-- installed version: *File → System Libraries → MicroPythonMCU*;
-- repository or unzipped archive: *File → Open Model/Library File(s)…*, then `MicroPythonMCU/package.mo`.
+In OMEdit, *File → Open Model/Library File(s)…*, then select `MicroPythonMCU/package.mo` in the downloaded folder: the library appears in the class browser. If you installed it as a system library: *File → System Libraries → MicroPythonMCU* ([the different ways](installation.md#load-or-install)).
 
 ![The library tree in OMEdit](../images/library_tree.png){ width="160" }
 
