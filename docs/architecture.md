@@ -3,37 +3,37 @@
 ## Vue d'ensemble
 
 `MicroPythonMCU` est une bibliothèque OpenModelica classique (dossier = package Modelica), avec deux ajouts par rapport à une bibliothèque purement Modelica :
+
 - un morceau de code C (`Resources/Include/PyRuntimeImpl.c`) compilé par `omc` lui-même via l'annotation `Include` d'un *External Object*, qui charge à l'exécution la DLL de la distribution Python embarquée par son chemin absolu ;
 - une distribution Python complète vendorée dans `Resources/PythonRuntime/`, pour que le modèle n'ait besoin d'aucun Python installé sur le poste qui l'exécute.
 
 ```mermaid
-graph TD
+flowchart TB
     subgraph LIB["MicroPythonMCU (package Modelica)"]
-        MCU["MCU (model)<br/>pont électrique GPIO + orchestration"]
-        Interfaces["Interfaces (package)<br/>constantes VOH/VOL/VIH/VIL/ROut<br/>+ connecteurs logiques DisplayLinkOutput/DisplayLinkInput"]
-        Internal["Internal (package)<br/>PyRuntime (ExternalObject) + PyRuntime_sync"]
-        Peripherals["Peripherals (package)<br/>LED : icône réactive au courant<br/>Display : affiche le texte reçu (icône, 20x2, défilement) - périphérique pédagogique"]
-        Examples["Examples (package)<br/>13 scénarios de vérification + LedChaser (démonstrateur)"]
+        Examples["Examples<br/>31 modèles"]
+        MCU["MCU<br/>broches + orchestration"]
+        Peripherals["Peripherals<br/>LED, Display, Uart*, I2c*, Weighing"]
+        Internal["Internal<br/>External Objects + bases partielles"]
+        Interfaces["Interfaces<br/>niveaux, connecteurs"]
     end
     subgraph RES["Resources"]
-        Include["Include/<br/>PyRuntimeImpl.c (chapeau) + .h<br/>+ pyruntime/ (parties incluses)<br/>+ pyhost.c : charge python312.dll de PythonRuntime/<br/>+ cpython312/ (en-têtes vendorés)"]
-        PythonRuntime["PythonRuntime/<br/>distribution Python « embeddable »<br/>(DLL + stdlib zip)"]
-        Scripts["Scripts/<br/>MCU/ + Device/ + _shim/machine_time_shim.py"]
-        Verification["Verification/<br/>scripts .py + .mos de test"]
+        Include["Include/<br/>runtime C"]
+        PythonRuntime["PythonRuntime/<br/>python312.dll + stdlib"]
+        Scripts["Scripts/<br/>MCU/, Device/, _shim/"]
+        FileSystems["FileSystems/<br/>images de flash"]
+        Verification["Verification/<br/>.mos + run_all.sh"]
     end
-
-    MCU -- "paramètres VOH/VOL/..." --> Interfaces
-    MCU -- "instancie (protected)" --> Internal
-    MCU -- "builtinLed (public, GP25 interne)" --> Peripherals
-    MCU -- "Display0 (Interfaces.DisplayLinkOutput)" --> Interfaces
-    Examples -- "extends / utilise" --> MCU
-    Examples -- "Peripherals.LED (LedChaser)" --> Peripherals
-    Examples -- "Peripherals.Display (DisplayDemo)" --> Peripherals
-    Peripherals -- "displayLink (Interfaces.DisplayLinkInput)" --> Interfaces
-    Internal -- "Include = PyRuntimeImpl.c" --> Include
-    Internal -- "pythonHome (loadResource, runtime)" --> PythonRuntime
-    MCU -- "scriptPath par défaut + shimPath (loadResource)" --> Scripts
-    Verification -. "scripts appelés par les Examples" .-> Examples
+    Examples --> MCU
+    Examples --> Peripherals
+    MCU --> Internal
+    Peripherals --> Internal
+    MCU --> Interfaces
+    Peripherals --> Interfaces
+    Internal -- "annotation Include" --> Include
+    Include -- "LoadLibraryExW" --> PythonRuntime
+    MCU -- "scriptPath, shim" --> Scripts
+    MCU -- "fsSource" --> FileSystems
+    Verification -. "simule" .-> Examples
 ```
 
 *Nom de classe* : le modèle s'appelait `Pico` pendant l'implémentation v0, renommé `MCU` ensuite pour ne pas afficher la carte cible (Raspberry Pi Pico / RP2040) directement sur l'identité visuelle publique — cf. `requirements.md`, décision « Nom de la classe modèle et identité visuelle ». La référence RP2040 reste la cible d'API interne (`machine`/`time`).
@@ -139,7 +139,7 @@ modelica_micropython3/
 
 ## Icône du modèle `MCU`
 
-![Icône du modèle MCU](images/mcu-icone.svg)
+![Icône du modèle MCU](images/mcu-icone.svg){ width="220" }
 
 *Diagramme vectoriel généré directement à partir des coordonnées de l'annotation `Icon` de `MCU.mo` (pas une capture d'écran) — fidèle au rendu réel vérifié dans OMEdit au moment de sa génération ; ne reflète pas encore le connecteur `Display0` ajouté depuis (miroir SVG statique, resynchronisé manuellement comme `logo.svg`, cf. « Icône du package » ci-dessous).*
 
@@ -147,13 +147,13 @@ L'icône représente le microcontrôleur comme un boîtier avec ses 8 broches r�
 
 ## Icône du package et logo du projet
 
-![Logo MicroPythonMCU](images/logo.svg)
+![Logo MicroPythonMCU](images/logo.svg){ width="160" }
 
 `MicroPythonMCU/package.mo` reprend la même silhouette que l'icône du modèle `MCU` ci-dessus (boîtier, 8 broches, `GND`, pastille LED), avec le texte central remplacé par « µPy » (police « Trebuchet MS », plus grande) — cf. `requirements.md`, décision « Logo du projet / icône du package ». `docs/images/logo.svg` en est un miroir SVG (même méthode que `mcu-icone.svg`), utilisé comme logo dans `README.md` ; à resynchroniser manuellement si l'icône du package change.
 
 ## Schémas des exemples
 
-![Schéma simplifié du scénario BasicBlink](images/exemple-basicblink.svg)
+![Schéma simplifié du scénario BasicBlink](images/exemple-basicblink.svg){ width="480" }
 
 Les 4 premiers modèles de scénario d'`Examples/` suivent tous le même agencement : `mcu` au centre, `GP0` câblée vers une vraie `Peripherals.LED` (résistance série + LED) à gauche, `GP1` vers `btnSrc` pour `InputReactivity` (les broches non utilisées par le script sont laissées non connectées, cf. `requirements.md`, décision « Nettoyage du schéma interne de MCU et simplification du câblage des exemples »), avec une masse commune (`ground`) en bas. Le schéma interne du modèle `MCU` lui-même (le pont électrique par broche) est documenté dans `integration-python.md` et `cycle-de-vie.md` ; il est volontairement laissé vide dans la vue `Diagram` d'OMEdit (composants masqués, `visible = false`) depuis la même décision.
 

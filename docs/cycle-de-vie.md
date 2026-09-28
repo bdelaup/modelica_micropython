@@ -16,7 +16,7 @@ sequenceDiagram
 
     Sim->>MCU: initialisation du modèle
     MCU->>Ctor: PyRuntime(scriptPath, pythonHome)
-    Ctor->>CPy: pyhost_ensure() — LoadLibraryExW(PythonRuntime/python312.dll),<br/>Py_InitializeFromConfig + relais stdout,<br/>sauf si un périphérique série l'a déjà fait ; rend le GIL
+    Ctor->>CPy: pyhost_ensure() — LoadLibraryExW(PythonRuntime/python312.dll),<br/>Py_InitializeFromConfig + relais stdout,<br/>sauf si un périphérique série l'a déjà fait, puis rend le GIL
     Ctor->>CPy: PyGILState_Ensure()
     Ctor->>CPy: enregistre _pyruntime_native dans sys.modules, complète sys.path
     Ctor->>CPy: PyRun_SimpleString(machine_time_shim.py)<br/>définit machine.Pin, time.sleep...
@@ -25,7 +25,7 @@ sequenceDiagram
     Worker->>Worker: PyGILState_Ensure()
     Worker->>Worker: attend son tour (turn == TURN_MODELICA au départ), GIL relâché pendant l'attente
     Ctor-->>MCU: handle
-    Note over MCU: le `when {initial(), ...}` de MCU<br/>va déclencher le premier PyRuntime_sync juste après
+    Note over MCU: le when {initial(), ...} de MCU<br/>va déclencher le premier PyRuntime_sync juste après
 ```
 
 Point notable : un **seul** interpréteur CPython existe dans le process, démarré par le premier composant construit (`pyhost_ensure`, dans `Resources/Include/pyhost.c`) — le `MCU` ou un périphérique série scripté, l'ordre de construction des External Objects n'étant pas garanti. Au retour, le thread Modelica **ne tient pas le GIL** : c'est un invariant. Tout code qui appelle Python depuis ce thread (construction du `MCU`, gestionnaires d'un périphérique scripté) l'encadre de `PyGILState_Ensure`/`Release`, et le worker le **relâche chaque fois qu'il se gare** — dans son attente initiale comme dans `yield_to_modelica`. Sans cela, le worker garderait le GIL pendant presque toute la simulation, et aucun périphérique ne pourrait exécuter une ligne de Python. Le protocole de tour garantit par ailleurs qu'un seul des deux threads travaille à un instant donné : le GIL ne fait qu'entériner cette alternance.

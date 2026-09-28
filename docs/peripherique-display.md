@@ -45,10 +45,10 @@ sequenceDiagram
 
     Script->>Shim: display.write("Bonjour")
     Shim->>Native: _native.display_write(0, "Bonjour")
-    Native->>Native: display_payload = "Bonjour"; display_seq++
+    Native->>Native: display_payload = "Bonjour", display_seq++
     Native->>Sync: yield_to_modelica(sim_time) - resynchro immediate
     Sync->>MCU: displaySeqOut, displayPayloadOut
-    MCU->>MCU: Display0.seq = ...; Display0.payload = ...
+    MCU->>MCU: Display0.seq, Display0.payload mis à jour
     MCU-->>Disp: connect() - displayLink.seq/payload
     Disp->>Disp: when change(displayLink.seq) then print() + line2CharCode = pre(charCode)
 ```

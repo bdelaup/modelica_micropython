@@ -11,7 +11,7 @@ site_name = "MicroPythonMCU"
 site_description = "Microcontrôleur programmable en Python (API MicroPython) pour OpenModelica"
 site_author = "Benoit Delaup"
 site_url = "https://bdelaup.gitlab.io/modelica_micropython3/"
-copyright = "Lycée Jules Haag"
+copyright = "Copyright &copy; 2026 Benoit Delaup — licence MIT"
 repo_url = "https://gitlab.com/bdelaup/modelica_micropython3"
 repo_name = "bdelaup/modelica_micropython3"
 edit_uri = "-/edit/main/docs/"
@@ -43,6 +43,9 @@ nav = [
 
 [project.theme]
 language = "fr"
+# Miroirs SVG/PNG de l'icône du package (docs/images/, cf. architecture.md).
+logo = "images/logo.svg"
+favicon = "images/logo.png"
 features = [
   "content.action.edit",
   "content.code.copy",
@@ -83,4 +86,7 @@ toc.permalink = true
 pymdownx.details = {}
 pymdownx.highlight.anchor_linenums = true
 pymdownx.inlinehilite = {}
-pymdownx.superfences = {}
+# Sans cette fence, les blocs ```mermaid sont publiés comme du code brut.
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]

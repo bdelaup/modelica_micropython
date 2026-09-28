@@ -1,4 +1,4 @@
-<p align="center"><strong>🇬🇧 English</strong> — <a href="#francais">Plus bas en français ↓</a></p>
+<p align="center"><strong>🇬🇧 English</strong> — <a href="#micropythonmcu-français">Plus bas en français ↓</a></p>
 
 <p align="center">📖 More info / Plus d'info : <a href="https://bdelaup.gitlab.io/modelica_micropython3/">bdelaup.gitlab.io/modelica_micropython3</a></p>
 
@@ -64,8 +64,6 @@ Original active repository: https://gitlab.com/bdelaup/modelica_micropython3
 Please use the GitLab repository for communications and pull requests.
 
 ---
-
-<a id="francais"></a>
 
 ## MicroPythonMCU (Français)
 

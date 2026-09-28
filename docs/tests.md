@@ -120,6 +120,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 
 Certains éléments de `Examples/` ne correspondent volontairement à aucun script `.mos` :
+
 - **Lisibilité visuelle de l'icône/du diagramme** (scénario dédié de `requirements.md`) : vérifiée via les outils MCP-OpenModelica (`iconDiagram`/`classDiagram`) et une relecture visuelle directe de l'image obtenue — pas de critère numérique automatisable.
 - **`Examples.LedChaser`** : démonstrateur (chenillard visuel sur les 8 GPIO), pas un scénario de vérification de `requirements.md` — sert à donner à voir l'animation des icônes `Peripherals.LED` en conditions de clignotement rapide, pas à être rejoué automatiquement.
 
