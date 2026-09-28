@@ -43,8 +43,8 @@ nav = [
 
 [project.extra]
 alternate = [
-  { name = "Français", link = "../fr/", lang = "fr" },
   { name = "English", link = "../en/", lang = "en" },
+  { name = "Français", link = "../fr/", lang = "fr" },
 ]
 
 [project.theme]

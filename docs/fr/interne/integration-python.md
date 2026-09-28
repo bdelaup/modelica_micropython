@@ -35,7 +35,7 @@ external "C" ... annotation(
   IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
 ```
 
-Pas d'annotation `Library` : le modèle n'est lié à aucune bibliothèque Python, la DLL est chargée à l'exécution (voir plus bas). Seule la version distribuée ajoute `Library = "micropythonmcu"`, son runtime précompilé (`make_release.sh`).
+Pas d'annotation `Library` : le modèle n'est lié à aucune bibliothèque Python, la DLL est chargée à l'exécution (voir plus bas).
 
 `Include` pointe vers le fichier **`.c`** (pas un `.h`) : c'est le moyen standard de faire compiler notre implémentation par le *même* compilateur qu'`omc` utilise pour tout le reste du modèle généré, sans étape de build séparée à maintenir. Chaque fonction externe répète l'annotation (convention Modelica), mais comme `PyRuntimeImpl.c` est inclus tel quel, il n'y a qu'une seule unité de compilation réelle pour tout le modèle.
 

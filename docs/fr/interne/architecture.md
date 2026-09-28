@@ -21,7 +21,7 @@ flowchart TB
         PythonRuntime["PythonRuntime/<br/>python312.dll + stdlib"]
         Scripts["Scripts/<br/>MCU/, Device/, _shim/"]
         FileSystems["FileSystems/<br/>images de flash"]
-        Verification["Verification/<br/>.mos + run_all.sh"]
+        Verification["Verification/<br/>.mos + run_tests.sh"]
     end
     Examples --> MCU
     Examples --> Peripherals

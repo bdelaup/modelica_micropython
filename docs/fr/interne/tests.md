@@ -18,28 +18,28 @@ export PATH="/d/Programmes/OpenModelica1.27.1-64bit/bin:$PATH"   # adapter le ch
 
 Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, ou le msys fourni avec OpenModelica) :
 ```
-./run_all.sh                        # toute la suite, 4 exécutions simultanées
-./run_all.sh -j 2                   # autre degré de parallélisme
-./run_all.sh verify_08_pwm.mos ...  # seulement certains scripts
-./run_all.sh -k                     # garder artefacts et journaux (débogage)
-./run_all.sh --release              # non-régression sur une release locale (voir ci-dessous)
+./run_tests.sh                        # toute la suite, 4 exécutions simultanées
+./run_tests.sh -j 2                   # autre degré de parallélisme
+./run_tests.sh verify_08_pwm.mos ...  # seulement certains scripts
+./run_tests.sh -k                     # garder artefacts et journaux (débogage)
+./run_tests.sh --copy                # avant un tag : sur une copie des fichiers suivis (voir ci-dessous)
 ```
 Le script affiche un récapitulatif `PASS`/`FAIL`/`ERREUR` avec la durée de chaque `.mos`, puis la fin du journal de chaque script en échec ; il se termine avec le code 1 si un script n'a pas passé. Si `omc` n'est pas sur le `PATH` mais que `OPENMODELICAHOME` est positionné, il complète le `PATH` lui-même. Sauf `-k`, il supprime ensuite tous les artefacts générés, qui portent tous le nom du `fileNamePrefix` de leur script.
 
-Les scripts qui partagent des fichiers sont exécutés **à la suite l'un de l'autre**, jamais en même temps : même `fileNamePrefix` (`verify_01`/`verify_05`, tous deux `BasicBlink`), ou manipulation des copies de système de fichiers (`verify_25`/`verify_27`, qui effacent tous les `mcu_datalogger_*` et écrivent `fs_copies.txt`). Ce regroupement est automatique : un nouveau script en conflit est pris en compte sans modifier `run_all.sh`.
+Les scripts qui partagent des fichiers sont exécutés **à la suite l'un de l'autre**, jamais en même temps : même `fileNamePrefix` (`verify_01`/`verify_05`, tous deux `BasicBlink`), ou manipulation des copies de système de fichiers (`verify_25`/`verify_27`, qui effacent tous les `mcu_datalogger_*` et écrivent `fs_copies.txt`). Ce regroupement est automatique : un nouveau script en conflit est pris en compte sans modifier `run_tests.sh`.
 
-**Durées mesurées** (i5-13420H, 4 cœurs performants + 4 basse consommation, 16 Go, dépôt dans OneDrive) : ~265 s en séquentiel, **~125 s** avec `run_all.sh`. Le gain plafonne à ~2× quel que soit `-j` (3, 4 ou 6 donnent le même temps) : chaque `omc` occupe déjà plusieurs cœurs, notamment en compilant en parallèle les fichiers C générés, et le processeur est saturé. Hors OneDrive, la suite est ~10–15 % plus rapide.
+**Durées mesurées** (i5-13420H, 4 cœurs performants + 4 basse consommation, 16 Go, dépôt dans OneDrive) : ~265 s en séquentiel, **~125 s** avec `run_tests.sh`. Le gain plafonne à ~2× quel que soit `-j` (3, 4 ou 6 donnent le même temps) : chaque `omc` occupe déjà plusieurs cœurs, notamment en compilant en parallèle les fichiers C générés, et le processeur est saturé. Hors OneDrive, la suite est ~10–15 % plus rapide.
 
-### Pendant le travail ou en non-régression : dépôt ou release
+### Pendant le travail ou avant un tag : dépôt ou copie
 
 | Quand | Commande | Ce qui est testé |
 |---|---|---|
-| Pendant le travail (itération) | `./run_all.sh`, ou quelques scripts ciblés | le **dépôt** : sources C incluses à la volée par les annotations `Include`, comme dans OMEdit au quotidien |
-| Non-régression, après une modification qui le mérite | `./run_all.sh --release` | la **version précompilée** (runtime en `.a`, sans sources C ; plus distribuée depuis le 2026-09-28, une version étant un tag du dépôt) : `make_release.sh` reconstruit `dist/` depuis l'état courant du dépôt (modifications non commitées comprises), puis la suite tourne dans `dist/MicroPythonMCU/Resources/Verification/` |
+| Pendant le travail (itération) | `./run_tests.sh`, ou quelques scripts ciblés | le **dépôt**, tel qu'il est sur le disque |
+| Avant de poser un tag | `./run_tests.sh --copy` | **ce que livrera le tag** : les seuls fichiers de `MicroPythonMCU/` suivis par git (modifications non commitées comprises), copiés dans un dossier temporaire hors du dépôt |
 
-La release a des défauts propres, invisibles depuis le dépôt : en-têtes livrés désaccordés des déclarations Modelica (cas typique : une signature de `PyRuntime_sync` ou `UartDevice_sync` qui change), annotation mal réécrite par `make_release.sh`, fichier `.c` absent de l'unité de compilation unique du `.a`, compilateur différent (`clang -O2` pour le `.a`, compilateur d'`omc` en `-Os` sinon).
+`--copy` attrape le défaut propre à une livraison par tag : un fichier nécessaire (script, source C, image de flash) présent sur le disque mais jamais ajouté à git. Il manquerait aux utilisateurs ; ici, la suite échoue. Les fichiers non suivis sont listés avant la suite. La copie tourne hors du dépôt, donc hors de OneDrive : aucun artefact n'est écrit dans le dossier synchronisé. Elle prend une demi-seconde (443 fichiers, 25 Mo).
 
-`--release` se combine avec les autres options (`-j`, `-k`, liste de scripts), transmises à la copie de `run_all.sh` de la release. Il affiche la durée de construction (18 s mesurées), puis, sous le récapitulatif, le contenu de `dist/BUILD_INFO.txt` : commit, mention « + modifications non commitées », compilateur — un résultat doit dire sur quoi il a tourné. Si la construction échoue, la suite n'est pas lancée (code de sortie 2). Lancé depuis une release (sans `make_release.sh` à portée), `--release` refuse de démarrer. La suite elle-même dure autant dans les deux cas : précompiler le runtime ne l'accélère pas (cf. `requirements.md`, décision « Structure du package et interface C du runtime Python »).
+`--copy` se combine avec les autres options (`-j`, `-k`, liste de scripts), transmises à la copie de `run_tests.sh`. Sous le récapitulatif, il rappelle le commit testé et la mention « + modifications non commitées » s'il y a lieu : un résultat doit dire sur quoi il a tourné. Avec `-k`, la copie est conservée et son chemin affiché.
 
 ### Un script à la fois
 
@@ -150,4 +150,4 @@ end if;
 
 ## Nettoyage
 
-`run_all.sh` les supprime lui-même à la fin (sauf `-k`). Lancés à la main, les artefacts de compilation générés par ces exécutions (`.exe`, `.o`, `.c` générés, `*_res.mat`, `*.makefile`, etc.) sont couverts par `.gitignore` — vérifier `git status` après une session de vérification pour confirmer qu'aucun artefact non couvert (ex. un nouveau motif de nom de fichier) ne traîne. Les copies de système de fichiers (`mcu_datalogger_*`) créées par `verify_25` et `verify_27` sont supprimées par les scripts eux-mêmes, qui désactivent aussi l'ouverture de l'Explorateur (`simflags = "-override=mcu.fsOpenExplorer=false"`) ; s'il est interrompu, elles restent dans ce dossier (et sont effacées au lancement suivant).
+`run_tests.sh` les supprime lui-même à la fin (sauf `-k`). Lancés à la main, les artefacts de compilation générés par ces exécutions (`.exe`, `.o`, `.c` générés, `*_res.mat`, `*.makefile`, etc.) sont couverts par `.gitignore` — vérifier `git status` après une session de vérification pour confirmer qu'aucun artefact non couvert (ex. un nouveau motif de nom de fichier) ne traîne. Les copies de système de fichiers (`mcu_datalogger_*`) créées par `verify_25` et `verify_27` sont supprimées par les scripts eux-mêmes, qui désactivent aussi l'ouverture de l'Explorateur (`simflags = "-override=mcu.fsOpenExplorer=false"`) ; s'il est interrompu, elles restent dans ce dossier (et sont effacées au lancement suivant).

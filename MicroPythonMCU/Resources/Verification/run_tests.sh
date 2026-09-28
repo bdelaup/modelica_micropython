@@ -2,21 +2,21 @@
 # Lance les scénarios de vérification (verify_*.mos) en parallèle et affiche un
 # récapitulatif PASS/FAIL avec la durée de chaque script. Voir docs/fr/interne/tests.md.
 #
-#   ./run_all.sh                       # toute la suite, 4 exécutions simultanées
-#   ./run_all.sh -j 2                  # 2 exécutions simultanées
-#   ./run_all.sh verify_08_pwm.mos ... # seulement ces scripts
-#   ./run_all.sh -k                    # garder artefacts de compilation et journaux
-#   ./run_all.sh --release             # non-régression : construit la release
-#                                      # locale (make_release.sh) et y lance la suite
+#   ./run_tests.sh                       # toute la suite, 4 exécutions simultanées
+#   ./run_tests.sh -j 2                  # 2 exécutions simultanées
+#   ./run_tests.sh verify_08_pwm.mos ... # seulement ces scripts
+#   ./run_tests.sh -k                    # garder artefacts de compilation et journaux
+#   ./run_tests.sh --copy                # sur une copie des fichiers suivis par git,
+#                                        # hors du dépôt (avant de poser un tag)
 #
 # Code de sortie : 0 si tout passe, 1 sinon (2 si la suite n'a pas pu démarrer).
 #
-# Pendant le travail, la suite tourne sur le dépôt (sources C incluses à la
-# volée). La NON-RÉGRESSION après une modification qui le mérite se fait avec
-# --release, sur ce qui est réellement livré : runtime C précompilé, en-têtes
-# publics, annotations réécrites par make_release.sh - des défauts que la suite
-# sur le dépôt ne peut pas voir. Même durée de suite dans les deux cas (cf.
-# requirements.md, décision « Structure du package et interface C »).
+# Pendant le travail, la suite tourne dans le dépôt. Avant de poser un tag,
+# --copy la lance sur ce que le tag livrera : les seuls fichiers suivis par git
+# (modifications non commitées comprises), copiés dans un dossier temporaire hors
+# du dépôt. Un fichier nécessaire mais jamais ajouté à git y fait échouer la
+# suite au lieu de manquer aux utilisateurs, et aucun artefact n'est écrit dans
+# le dépôt (synchronisé par OneDrive). La copie prend une demi-seconde.
 #
 # Les .mos restent autonomes et lançables un par un (omc verify_0X_....mos) ; ce
 # script ne fait que les orchestrer. Deux scripts qui partagent des fichiers ne
@@ -28,11 +28,11 @@
 
 JOBS=4
 KEEP=0
-RELEASE=0
-# getopts ne connaît pas les options longues : --release est retiré à part.
+COPY=0
+# getopts ne connaît pas les options longues : --copy est retiré à part.
 ARGS=()
 for a in "$@"; do
-  if [ "$a" = "--release" ]; then RELEASE=1; else ARGS+=("$a"); fi
+  if [ "$a" = "--copy" ]; then COPY=1; else ARGS+=("$a"); fi
 done
 set -- "${ARGS[@]}"
 while getopts "j:kh" opt; do
@@ -57,26 +57,28 @@ if ! command -v omc >/dev/null 2>&1; then
   exit 2
 fi
 
-# --release : reconstruire dist/ depuis l'état COURANT du dépôt (modifications
-# non commitées comprises), puis déléguer à la copie de ce script dans la
-# release, avec les mêmes options et les mêmes scripts. BUILD_INFO.txt est
-# réaffiché après le récapitulatif : un résultat doit dire sur quoi il a tourné.
-if [ $RELEASE -eq 1 ]; then
-  ROOT=$(cd ../../.. && pwd)
-  if [ ! -f "$ROOT/make_release.sh" ]; then
-    echo "--release se lance depuis le dépôt (make_release.sh introuvable) - dans une release, lancer ./run_all.sh sans --release" >&2
-    exit 2
+# --copy : copier les fichiers de MicroPythonMCU/ suivis par git dans un dossier
+# temporaire, puis déléguer à la copie de ce script, avec les mêmes options et
+# les mêmes scripts. Le résultat rappelle sur quoi il a tourné.
+if [ $COPY -eq 1 ]; then
+  ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "--copy se lance depuis un dépôt git" >&2; exit 2; }
+  WORK=$(mktemp -d)
+  (cd "$ROOT" && git ls-files -c -z MicroPythonMCU | tar --null --ignore-failed-read -T - -cf -) \
+    | tar -xf - -C "$WORK" || { echo "Copie en échec : suite non lancée" >&2; exit 2; }
+  untracked=$(cd "$ROOT" && git ls-files -o --exclude-standard MicroPythonMCU)
+  if [ -n "$untracked" ]; then
+    echo "Non copiés (jamais ajoutés à git, donc absents d'un tag) :"
+    echo "$untracked" | sed 's/^/  /'
+    echo
   fi
-  s=$(date +%s%N)
-  "$ROOT/make_release.sh" || { echo "Construction de la release en échec : suite non lancée" >&2; exit 2; }
-  printf "Release construite en %.1f s\n\n" "$(awk "BEGIN{print ($(date +%s%N)-$s)/1e9}")"
   FWD=(-j "$JOBS")
   [ $KEEP -eq 1 ] && FWD+=(-k)
-  "$ROOT/dist/MicroPythonMCU/Resources/Verification/run_all.sh" "${FWD[@]}" "$@"
+  "$WORK/MicroPythonMCU/Resources/Verification/run_tests.sh" "${FWD[@]}" "$@"
   status=$?
   echo
-  echo "Suite exécutée sur la release locale :"
-  sed 's/^/  /' "$ROOT/dist/BUILD_INFO.txt"
+  echo "Suite exécutée sur une copie des fichiers suivis : commit $(cd "$ROOT" && git rev-parse --short HEAD)$(cd "$ROOT" && git diff --quiet HEAD -- MicroPythonMCU || echo ' + modifications non commitées')"
+  if [ $KEEP -eq 1 ]; then echo "Copie conservée : $WORK"; else rm -rf "$WORK"; fi
   exit $status
 fi
 

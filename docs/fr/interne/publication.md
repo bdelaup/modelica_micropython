@@ -11,7 +11,7 @@ Le site est construit par [Zensical](https://zensical.org/) en deux langues, cha
 | Français | `docs/fr/` | [`zensical.fr.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.fr.toml) | `/fr/` | Guide utilisateur et référence interne |
 | Anglais | `docs/en/` | [`zensical.en.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.en.toml) | `/en/` | Guide utilisateur seulement |
 
-[`make_docs.sh`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/make_docs.sh) construit les deux dans `public/`, plus `public/index.html`, qui renvoie vers la langue du navigateur. À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/.gitlab-ci.yml) l'exécute et publie le résultat sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
+[`make_docs.sh`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/make_docs.sh) construit les deux dans `public/`, plus `public/index.html`, qui renvoie vers l'anglais, **langue par défaut** du site. À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/.gitlab-ci.yml) l'exécute et publie le résultat sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
 
 Adresse : <https://bdelaup.gitlab.io/modelica_micropython3/>
 
@@ -58,11 +58,11 @@ Le dépôt ne porte pas de numéro de version : **le tag fait foi**.
 Dans Git Bash, à la racine du dépôt :
 
 1. Partir d'un dépôt propre : tout commité (`git status` vide).
-2. Passer la suite de vérification sur le dépôt (cf. [Suite de vérification](tests.md)) :
+2. Passer la suite de vérification sur ce que livrera le tag (cf. [Suite de vérification](tests.md)) :
 
     ```
     export OPENMODELICAHOME="D:/Programmes/OpenModelica1.27.1-64bit"
-    MicroPythonMCU/Resources/Verification/run_all.sh
+    MicroPythonMCU/Resources/Verification/run_tests.sh --copy
     ```
 
     Toutes les lignes doivent être `PASS`.
