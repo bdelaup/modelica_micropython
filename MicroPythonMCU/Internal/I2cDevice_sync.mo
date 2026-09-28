@@ -13,8 +13,12 @@ impure function I2cDevice_sync "Point de synchro d'un périphérique I2C esclave
   output String lastEvent "Résumé de la dernière phase close, ex. « ecriture 0x3E : 80 01 » (journal)";
   output String line1 "Première ligne rendue par lines() (afficheurs)";
   output String line2 "Seconde ligne rendue par lines()";
+  // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
+  // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+  // "Comportement en cas d'exception non geree dans le script").
   external "C" I2cDevice_sync(dev, currentTime, sclLevel, sdaLevel, valueIn, valueOut, sdaDriveLow, busy, eventSeq, lastEvent, line1, line2) annotation(
     Include = "#include \"I2cDeviceImpl.c\"",
+    Library = "-lwinpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>

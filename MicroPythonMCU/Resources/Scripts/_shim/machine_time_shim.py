@@ -13,6 +13,13 @@ import sys, types, _pyruntime_native as _native
 # module time ne remplace le vrai dans sys.modules.
 import builtins as _builtins, errno as _errno, os as _host_os
 import datetime as _host_datetime, shutil as _host_shutil
+import warnings as _warnings
+
+# CPython avertit a la compilation de tournures que MicroPython accepte sans
+# rien dire - typiquement "gain is 128" (driver HX711 de robert-hh). Le code
+# fonctionne a l'identique (petits entiers partages), l'avertissement ne ferait
+# que polluer le journal de simulation d'un driver du commerce.
+_warnings.filterwarnings('ignore', category=SyntaxWarning)
 
 class Pin:
     IN = 0

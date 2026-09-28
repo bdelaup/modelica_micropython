@@ -19,8 +19,12 @@ class UartDevice "External Object encapsulant l'état d'un périphérique série
     input String pythonHome "Distribution Python embarquée (Resources/PythonRuntime) - sert à démarrer CPython si aucun microcontrôleur ne l'a encore fait";
     input String instanceName "Nom du composant, préfixé aux print() du script";
     output UartDevice dev;
+    // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
+    // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+    // "Comportement en cas d'exception non geree dans le script").
     external "C" dev = UartDevice_new(baudrate, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, mode, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
+      Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
@@ -28,6 +32,7 @@ class UartDevice "External Object encapsulant l'état d'un périphérique série
     input UartDevice dev;
     external "C" UartDevice_destroy(dev) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
+      Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 

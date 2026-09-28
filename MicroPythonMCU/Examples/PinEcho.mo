@@ -16,7 +16,7 @@ model PinEcho "GP1 oscille, GP2 relit son état électrique, GP3 reproduit ce qu
     Placement(transformation(origin = {-138, -25}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
   Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "Bouclage GP1->GP2 : resistance de liaison. Un connect() direct (ou une egalite algebrique exacte via un capteur+source ideale) entre GP1 et GP2 s'est avere annuler la tension pilotee de GP1 dans les resultats (constate empiriquement, reproduit avec plusieurs mecanismes de bouclage differents) - contourne en donnant a GP2 un veritable etat dynamique (cf. loopC) plutot qu'un alias algebrique exact de GP1, cf. requirements.md" annotation(
     Placement(transformation(origin = {-57, -9}, extent = {{-10, -10}, {10, 10}})));
-  Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9) "Constante de temps du bouclage (R*C = 1 microseconde, totalement negligeable devant PERIOD=0.3s de pin_echo.py) : juste assez pour que GP2 soit un veritable etat dynamique plutot qu'un alias algebrique exact de GP1, cf. loopR" annotation(
+  Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9, v(start = 0, fixed = true)) "Constante de temps du bouclage (R*C = 1 microseconde, totalement negligeable devant PERIOD=0.3s de pin_echo.py) : juste assez pour que GP2 soit un veritable etat dynamique plutot qu'un alias algebrique exact de GP1, cf. loopR" annotation(
     Placement(transformation(origin = {-47, -57}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
 equation
   connect(mcu.GND, ground.p) annotation(

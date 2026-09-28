@@ -13,7 +13,11 @@ impure function PyRuntime_sync "Point de synchro entre le script Python et la si
   output Integer uartTxPin "broche affectee a l'emission serie (0 = aucune, sinon 1-9 aligne sur pinBoolOut) - cf. machine.UART";
   output Boolean uartTxLevel "niveau a tenir sur la broche d'emission jusqu'au point de synchro suivant (repos = haut) : nextWakeTime tombe sur le prochain CHANGEMENT de niveau de la trame, le format de trame reste entierement cote C";
   output Real nextWakeTime;
+  // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
+  // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+  // "Comportement en cas d'exception non geree dans le script").
   external "C" PyRuntime_sync(handle, currentTime, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pwmFreq, pwmDuty, displaySeq, displayPayload, uartTxPin, uartTxLevel, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
+    Library = "-lwinpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
 end PyRuntime_sync;

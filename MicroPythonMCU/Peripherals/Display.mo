@@ -3,7 +3,7 @@ within MicroPythonMCU.Peripherals;
 model Display "Afficheur pédagogique 20x2 : texte reçu affiché sur l'icône (défilement 2 lignes) et dans le journal"
   // Porte l'icône 20x2 et les deux tableaux de codes ASCII, partagés avec Peripherals.UartLcd20x2.
   extends Internal.TwoLineTextIcon;
-  Interfaces.DisplayLinkInput displayLink "A câbler sur MCU.Display0 (connect(mcu.Display0, display.displayLink))" annotation(
+  Interfaces.DisplayLinkInput displayLink(seq(start = 0, fixed = true)) "A câbler sur MCU.Display0 (connect(mcu.Display0, display.displayLink))" annotation(
     Placement(transformation(origin = {-108, 0}, extent = {{-8, -8}, {8, 8}})));
 equation
   when {initial(), change(displayLink.seq)} then

@@ -62,8 +62,8 @@ protected
   Modelica.Blocks.Interfaces.RealInput valueIn_internal[nIn] "Connecteur interne : un connecteur conditionnel ne peut pas être lu directement dans une équation (idiome MSL)";
   discrete Real vOut[NV](each start = 0, each fixed = true) "Grandeurs publiées par le C (outputs())";
   Real vIn[NV] "Grandeurs transmises au C, complétées par fixedValue au-delà de nIn";
-  Boolean sclBool "Valeur logique lue sur SCL";
-  Boolean sdaBool "Valeur logique lue sur SDA";
+  Boolean sclBool(start = false, fixed = true) "Valeur logique lue sur SCL";
+  Boolean sdaBool(start = false, fixed = true) "Valeur logique lue sur SDA";
   // Pont électrique en drain ouvert. Pas de composant Ideal.* commutant : la sortie
   // SDA est une conductance variable (ROut ou GOff), cf. le piège des Ideal.* laissés
   // longtemps dans un état non sollicité (requirements.md). SCL n'a pas de sortie :
@@ -74,9 +74,9 @@ protected
     Placement(visible = false, transformation(extent = {{-130, -90}, {-90, -50}})));
   Modelica.Electrical.Analog.Sensors.VoltageSensor sclSns "Tension réellement présente sur SCL" annotation(
     Placement(visible = false, transformation(extent = {{-70, -90}, {-30, -50}})));
-  Modelica.Electrical.Analog.Basic.Capacitor cSda(C = CIn) "Capacité d'entrée de SDA - donne au nœud un état dynamique réel, cf. CIn" annotation(
+  Modelica.Electrical.Analog.Basic.Capacitor cSda(C = CIn, v(start = 0, fixed = true)) "Capacité d'entrée de SDA - donne au nœud un état dynamique réel, cf. CIn" annotation(
     Placement(visible = false, transformation(extent = {{-10, -90}, {30, -50}})));
-  Modelica.Electrical.Analog.Basic.Capacitor cScl(C = CIn) "Capacité d'entrée de SCL" annotation(
+  Modelica.Electrical.Analog.Basic.Capacitor cScl(C = CIn, v(start = 0, fixed = true)) "Capacité d'entrée de SCL" annotation(
     Placement(visible = false, transformation(extent = {{50, -90}, {90, -50}})));
   Modelica.Electrical.Analog.Sources.ConstantVoltage pullSrc(V = VOH) if usePullUp "Rail des tirages" annotation(
     Placement(visible = false, transformation(extent = {{110, -90}, {150, -50}})));

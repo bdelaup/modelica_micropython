@@ -47,7 +47,7 @@ modelica_micropython3/
 ├── docs/                           -- cette documentation (le "comment")
 └── MicroPythonMCU/                 -- la bibliothèque OpenModelica elle-même
     ├── package.mo, package.order   -- déclaration du package racine
-    ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique OU PWM, au choix du script), pont électrique, LED embarquée GP25 (même pont, interne, pas de connecteur), port Display0 (connecteur logique causal vers un périphérique d'affichage pédagogique), import de modules auxiliaires (addScriptDirToPath/libraryPath), orchestration de la synchro
+    ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique OU PWM, au choix du script), pont électrique, LED embarquée GP25 (même pont, interne, pas de connecteur), port Display0 (connecteur logique causal vers un périphérique d'affichage pédagogique), import de modules auxiliaires (addScriptDirToPath/libraryPath), durée d'un accès à une broche (gpioOpTime, 5 µs par défaut : bit-banging), orchestration de la synchro
     ├── Interfaces/                 -- constantes de niveaux de tension (VOH, VOL, VIH, VIL, ROut) — approximation RP2040 ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique)
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
@@ -71,7 +71,11 @@ modelica_micropython3/
     │   ├── UartLcd20x2.mo          -- dérivé : affiche sur son icône les lignes décodées sur RX (hérite aussi de Internal.TwoLineTextIcon)
     │   ├── I2cGenericDevice.mo     -- périphérique I2C dont tout le comportement vient d'un script (gabarit Device/i2c_generic.py : banc de registres)
     │   ├── I2cEchoDevice.mo        -- périphérique I2C de test (0x42) : relit au maître sa dernière écriture
-    │   └── I2cGroveLcdRgb.mo       -- écran Grove - LCD RGB Backlight : JHD1313 à 0x3E + PCA9633 à 0x62, tirages activés (hérite aussi de Internal.Lcd16x2RgbIcon)
+    │   ├── I2cGroveLcdRgb.mo       -- écran Grove - LCD RGB Backlight : JHD1313 à 0x3E + PCA9633 à 0x62, tirages activés (hérite aussi de Internal.Lcd16x2RgbIcon)
+    │   └── Weighing/               -- chaîne de pesée, en pur Modelica (voir peripheriques-pesee.md)
+    │       ├── Hx711.mo            -- convertisseur 24 bits pour pont de jauges : excitation E+, conversion ratiométrique, liaison PD_SCK/DOUT, gain 128/64, veille
+    │       ├── WheatstoneBridge.mo -- pont complet de quatre jauges de déformation (VariableResistor), sortie E·K·eps
+    │       └── LoadCell.mo         -- corps d'épreuve quasi-statique : force sur une bride -> déformation eps
     ├── Examples/                   -- un modèle par scénario de vérification de requirements.md ; la liaison série dans le sous-paquetage Uart/
     │   ├── BasicBlink.mo           -- scénario 1 : clignotement de base
     │   ├── LedChaser.mo            -- chenillard bidirectionnel sur les 8 GPIO (démonstrateur, pas un scénario de requirements.md)
@@ -85,6 +89,7 @@ modelica_micropython3/
     │   ├── ScriptError.mo          -- scénario 4 : exception non gérée
     │   ├── PinIrq.mo               -- scénario 11 : machine.Pin.irq() sur GP1 (front montant uniquement), bascule GP0 depuis le callback
     │   ├── TimerToggle.mo          -- scénario 12 : machine.Timer périodique bascule GP0 pendant un sleep() long, sans le faire retourner en avance
+    │   ├── GpioTiming.mo           -- coût temporel des accès GPIO : impulsion on()/off() sans sleep, rafale, attente active, IRQ masquée, idle()
     │   ├── DisplayDemo.mo          -- scénario 13 : machine.Display(0).write() vers un Peripherals.Display câblé sur Display0
     │   ├── Uart/                   -- liaison série ; suffixe Py = appareil dont le comportement est décrit par un script Python
     │   │   ├── Loopback.mo         -- scénario 14 : machine.UART électrique réel, TX (GP0) bouclé sur RX (GP1) via loopR/loopC (voir peripherique-uart.md)
@@ -95,11 +100,14 @@ modelica_micropython3/
     │   │   ├── GpsPy.mo            -- scénario 17 : émission périodique spontanée (phrases NMEA RMC avec somme de contrôle, Device/gps.py), le microcontrôleur écoute et vérifie
     │   │   ├── StateMachinePy.mo   -- scénario 20 : appareil à machine d'état décrit par Device/state_machine.py (la réponse dépend de ce qui précède)
     │   │   └── Lcd.mo              -- scénario 18 : afficheur 20x2 alimenté par une vraie trame série (pendant électrique de DisplayDemo)
-    │   └── I2c/                    -- bus I2C électrique en drain ouvert (voir peripheriques-i2c.md)
-    │       ├── Echo.mo             -- un maître, un écho : trame de 9 octets écrite puis relue, registre lu derrière un START répété
-    │       ├── MultiDevice.mo      -- trois échos sur le même bus : scan(), pas de diaphonie, EIO sur une adresse absente
-    │       ├── NoPullUp.mo         -- hérite de MultiDevice, sans aucun tirage : lignes à 0 V, ETIMEDOUT
-    │       └── GroveLcd.mo         -- écran Grove LCD RGB piloté par un driver MicroPython du commerce, sans modification
+    │   ├── I2c/                    -- bus I2C électrique en drain ouvert (voir peripheriques-i2c.md)
+    │   │   ├── Echo.mo             -- un maître, un écho : trame de 9 octets écrite puis relue, registre lu derrière un START répété
+    │   │   ├── MultiDevice.mo      -- trois échos sur le même bus : scan(), pas de diaphonie, EIO sur une adresse absente
+    │   │   ├── NoPullUp.mo         -- hérite de MultiDevice, sans aucun tirage : lignes à 0 V, ETIMEDOUT
+    │   │   └── GroveLcd.mo         -- écran Grove LCD RGB piloté par un driver MicroPython du commerce, sans modification
+    │   └── Weighing/               -- pesée (voir peripheriques-pesee.md)
+    │       ├── Hx711Read.mo        -- HX711 lu par le driver de robert-hh : codes exacts à gain 128 et 64, veille et réveil
+    │       └── KitchenScale.mo     -- balance de cuisine : écran I2C, MCU, HX711, pont, corps d'épreuve, poids, bouton TARE
     └── Resources/
         ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), StringToCharCodes.c, uartcore.h/.c et devscript.c
         │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
@@ -112,7 +120,7 @@ modelica_micropython3/
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md
         ├── FileSystems/            -- images de flash fournies, désignées par MCU.fsSource (datalogger/ : boot.py, main.py, config.txt, lib/ — Examples.FileSystem)
         ├── Scripts/
-        │   ├── MCU/                -- programmes du microcontrôleur, un par exemple (dont demo.py, valeur par défaut de `MCU.scriptPath`) ; companion.py et lib/ servent à ImportDemo
+        │   ├── MCU/                -- programmes du microcontrôleur, un par exemple (dont demo.py, valeur par défaut de `MCU.scriptPath`) ; companion.py et lib/ servent à ImportDemo ; drivers du commerce posés à côté des programmes qui les importent : driver_grove_lcd_rgb.py, hx711_gpio.py (robert-hh)
         │   ├── Device/             -- scripts des périphériques, nommés d'après l'appareil : série (mode Script) echo.py, gps.py, temperature_sensor.py, state_machine.py, generic.py ; I2C i2c_echo.py, i2c_generic.py, grove_lcd_rgb.py - chaque périphérique fourni a le sien par défaut
         │   └── _shim/              -- machine_time_shim.py : le shim machine/time lui-même (source unique, exécuté par PyRuntime_new avant le script utilisateur)
         └── Verification/           -- scripts Python spécifiques à la vérification + scripts `.mos` exécutables via `omc` (scénarios de requirements.md)

@@ -9,8 +9,12 @@ class I2cDevice "External Object encapsulant l'état d'un périphérique I2C esc
     input String pythonHome "Distribution Python embarquée (Resources/PythonRuntime) - sert à démarrer CPython si aucun autre composant ne l'a encore fait";
     input String instanceName "Nom du composant, préfixé aux print() du script";
     output I2cDevice dev;
+    // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
+    // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+    // "Comportement en cas d'exception non geree dans le script").
     external "C" dev = I2cDevice_new(addresses, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"I2cDeviceImpl.c\"",
+      Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
@@ -18,6 +22,7 @@ class I2cDevice "External Object encapsulant l'état d'un périphérique I2C esc
     input I2cDevice dev;
     external "C" I2cDevice_destroy(dev) annotation(
       Include = "#include \"I2cDeviceImpl.c\"",
+      Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 

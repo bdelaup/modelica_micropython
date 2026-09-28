@@ -28,6 +28,7 @@ nav = [
     { "Liaison série (UART)" = "peripherique-uart.md" },
     { "Périphériques série externes" = "peripheriques-uart-externes.md" },
     { "Bus I2C" = "peripheriques-i2c.md" },
+    { "Chaîne de pesée (HX711)" = "peripheriques-pesee.md" },
   ] },
   { "Fonctionnement interne" = [
     { "Architecture" = "architecture.md" },

@@ -1,0 +1,36 @@
+// Scénario de vérification v0 n°32 : balance de cuisine (Examples.Weighing.KitchenScale).
+// Écran Grove LCD I2C <- microcontrôleur <- HX711 <- pont de jauges <- corps
+// d'épreuve <- poids, avec un bouton de tare ; deux drivers du commerce sans
+// modification (hx711_gpio.py, driver_grove_lcd_rgb.py), bruit du HX711 actif.
+//
+// Ce que ce scénario vérifie, sur la ligne du haut de l'écran ("%9s" : le
+// nombre de grammes finit en colonne 7, " g" en colonnes 8-9) :
+// - tare au démarrage : le plateau (200 g) donne "0 g" ;
+// - bol de 350 g posé à t = 2 s : "350 g" (étalonnage 429,497 points/g) ;
+// - appui sur TARE à t = 3,5 s (interruption sur GP0) : "Tare..." puis "0 g" ;
+// - 250 g de farine versés entre 4,5 et 5,5 s : "250 g".
+// Tolérance de 1 g sur chaque valeur (bruit + filtre du driver).
+//
+// NB : val() sur un index de tableau via une variable de boucle .mos ne se
+// resout pas (NaN) - les indices sont donc ecrits en litteral.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.Weighing.KitchenScale, stopTime = 7, numberOfIntervals = 1400, fileNamePrefix = "KitchenScale");
+b := getErrorString();
+
+f := "KitchenScale_res.mat";
+
+// Chiffre d'une colonne : max(0, code - 48), un espace (32) ou un signe moins comptant pour 0
+w0 := max(0, val(lcd.lcdLine1[4], 1.8, f) - 48) * 1000 + max(0, val(lcd.lcdLine1[5], 1.8, f) - 48) * 100 + max(0, val(lcd.lcdLine1[6], 1.8, f) - 48) * 10 + max(0, val(lcd.lcdLine1[7], 1.8, f) - 48);
+wBowl := max(0, val(lcd.lcdLine1[4], 3.3, f) - 48) * 1000 + max(0, val(lcd.lcdLine1[5], 3.3, f) - 48) * 100 + max(0, val(lcd.lcdLine1[6], 3.3, f) - 48) * 10 + max(0, val(lcd.lcdLine1[7], 3.3, f) - 48);
+tareT := val(lcd.lcdLine1[3], 3.9, f);    // "  Tare..." : 'T' = 84
+wTare := max(0, val(lcd.lcdLine1[4], 4.4, f) - 48) * 1000 + max(0, val(lcd.lcdLine1[5], 4.4, f) - 48) * 100 + max(0, val(lcd.lcdLine1[6], 4.4, f) - 48) * 10 + max(0, val(lcd.lcdLine1[7], 4.4, f) - 48);
+wFlour := max(0, val(lcd.lcdLine1[4], 6.9, f) - 48) * 1000 + max(0, val(lcd.lcdLine1[5], 6.9, f) - 48) * 100 + max(0, val(lcd.lcdLine1[6], 6.9, f) - 48) * 10 + max(0, val(lcd.lcdLine1[7], 6.9, f) - 48);
+unit := val(lcd.lcdLine1[9], 6.9, f);     // 'g' = 103
+
+if abs(w0) <= 1 and abs(wBowl - 350) <= 1 and abs(tareT - 84) < 0.5 and abs(wTare) <= 1 and abs(wFlour - 250) <= 1 and abs(unit - 103) < 0.5 then
+  print("PASS: verify_32_kitchen_scale (plateau tare : " + String(w0) + " g ; bol : " + String(wBowl) + " g ; appui TARE : 'Tare...' puis " + String(wTare) + " g ; farine : " + String(wFlour) + " g)\n");
+else
+  print("FAIL: verify_32_kitchen_scale (w0=" + String(w0) + " wBowl=" + String(wBowl) + " tareT=" + String(tareT) + " wTare=" + String(wTare) + " wFlour=" + String(wFlour) + " unit=" + String(unit) + ")\n" + b);
+end if;

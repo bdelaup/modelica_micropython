@@ -15,8 +15,12 @@ class PyRuntime "External Object encapsulant l'interpréteur CPython qui exécut
     input String instanceName "Nom de l'instance (getInstanceName()), repris dans le nom de la copie";
     input Real gpioOpTime "Durée d'exécution (s) d'un accès à une broche (Pin.value()/on()/off()) ; 0 = accès instantanés";
     output PyRuntime handle;
+    // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
+    // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+    // "Comportement en cas d'exception non geree dans le script").
     external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
+      Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
@@ -24,6 +28,7 @@ class PyRuntime "External Object encapsulant l'interpréteur CPython qui exécut
     input PyRuntime handle;
     external "C" PyRuntime_destroy(handle) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
+      Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 end PyRuntime;

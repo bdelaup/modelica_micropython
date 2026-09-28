@@ -3,7 +3,11 @@ function StringToCharCodes "Convertit les n premiers caracteres de s en codes AS
   input String s;
   input Integer n;
   output Integer codes[n];
+  // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
+  // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+  // "Comportement en cas d'exception non geree dans le script").
   external "C" string_to_char_codes(s, n, codes) annotation(
     Include = "#include \"StringToCharCodes.c\"",
+    Library = "-lwinpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
 end StringToCharCodes;

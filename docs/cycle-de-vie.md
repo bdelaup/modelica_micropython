@@ -85,13 +85,13 @@ stateDiagram-v2
 | `[*] → AttentePremierTour` | Thread créé (`_beginthreadex`), GIL acquis (`PyGILState_Ensure`), attend `turn == TURN_WORKER` |
 | `AttentePremierTour → Actif` | Premier appel à `PyRuntime_sync`, déclenché par `when {initial(), ...}` à t=0 |
 | `Actif → BloquéSleep` | Le script appelle `time.sleep(x)` → `yield_to_modelica(sim_time + x)` |
-| `Actif → BloquéIO` | Le script appelle `machine.Pin(...)`/`.value()`/`.on()`/`.off()` → `yield_to_modelica(sim_time)` (yield immédiat) |
+| `Actif → BloquéIO` | Le script appelle `machine.Pin(...)` → `yield_to_modelica(sim_time)` (yield immédiat) ; ou `.value()`/`.on()`/`.off()` → `yield_until(sim_time + gpioOpTime, 0)` (processeur occupé pendant la durée d'un accès, 5 µs par défaut ; immédiat si `gpioOpTime = 0`) |
 | `BloquéSleep → Actif` | `PyRuntime_sync` rappelé avec `currentTime >= wake_requested_at` |
-| `BloquéIO → Actif` | `PyRuntime_sync` rappelé — le shim rend toujours la main immédiatement |
+| `BloquéIO → Actif` | `PyRuntime_sync` rappelé à l'échéance demandée — une transition d'entrée n'écourte pas l'attente d'un accès à une broche (§3bis) |
 | `Actif → Terminé` | Fin normale du script (retour de `PyRun_SimpleString`) — `script_done=1`, `nextWakeTime=+inf`, plus de handoff |
 | `Actif → Erreur` | Exception Python non gérée — `script_error=1`, `ModelicaError` arrête la simulation |
 
-Chaque appel au shim (`Pin.value()`, `.on()`, `.off()`, `time.sleep*`) passe par `yield_to_modelica()`, qui rend systématiquement la main à Modelica — c'est le mécanisme concret qui réalise le principe « tout appel au shim est un point de synchro potentiel » (cf. `requirements.md`). `time.ticks_ms()`/`ticks_us()` font exception : ce sont de simples lectures de l'horloge déjà connue, elles ne synchronisent pas (sinon une boucle de polling non bloquante deviendrait très coûteuse).
+Chaque appel au shim (`Pin.value()`, `.on()`, `.off()`, `time.sleep*`) passe par `yield_to_modelica()` ou sa variante `yield_until()`, qui rendent systématiquement la main à Modelica — c'est le mécanisme concret qui réalise le principe « tout appel au shim est un point de synchro potentiel » (cf. `requirements.md`). `time.ticks_ms()`/`ticks_us()` font exception : ce sont de simples lectures de l'horloge déjà connue, elles ne synchronisent pas (sinon une boucle de polling non bloquante deviendrait très coûteuse).
 
 ## 3. Le trajet d'un appel, couche par couche (extraits de code)
 
@@ -135,7 +135,8 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
         g_current->pin_driven_value[id] = value;
     }
     LeaveCriticalSection(&g_current->cs);
-    yield_to_modelica(g_current->sim_time);   // réveil immédiat
+    // la broche change tout de suite, puis le processeur reste occupé gpioOpTime
+    yield_until(g_current->sim_time + g_current->gpio_op_time, 0);
     Py_RETURN_NONE;
 }
 
@@ -210,7 +211,7 @@ Un callback IRQ/Timer doit s'exécuter sur le thread worker (seul thread qui tou
 `yield_to_modelica` distingue donc, à chaque réveil, un réveil **authentique** (l'échéance `wake_at` demandée par l'appel bloquant en cours est atteinte, OU une vraie transition d'entrée a eu lieu — auquel cas le script doit reprendre, comme toujours) d'un simple **pitstop** (aucune des deux raisons ci-dessus : le réveil ne sert qu'à exécuter un callback dû, ex. un `Timer` périodique pendant un `sleep` bien plus long). Dans le second cas, les callbacks dus sont exécutés puis le **même** `wake_at` est reposté — l'appel bloquant (`native_sleep`, etc.) ne reprend pas la main, le script ne voit rien.
 
 ```c
-static int yield_to_modelica(double wake_at) {
+static int yield_until(double wake_at, int interruptible) {
     struct PyRuntimeHandle* h = g_current;
     for (;;) {
         EnterCriticalSection(&h->cs);
@@ -221,7 +222,8 @@ static int yield_to_modelica(double wake_at) {
         while (h->turn != TURN_WORKER) {
             SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
         }
-        int genuine = h->wake_had_input_change || (h->sim_time + PYRUNTIME_EPS >= wake_at);
+        int genuine = (interruptible && h->wake_had_input_change) || h->i2c_done_wake
+                      || (h->sim_time + PYRUNTIME_EPS >= wake_at);
         LeaveCriticalSection(&h->cs);
 
         if (run_due_callbacks(h) != 0) {
@@ -234,6 +236,10 @@ static int yield_to_modelica(double wake_at) {
     }
 }
 ```
+
+`yield_to_modelica(wake_at)` n'est que `yield_until(wake_at, 1)` : le cas général, où une transition d'entrée rend le réveil authentique (un `sleep` retourne en avance). **`interruptible = 0` sert à l'attente « processeur occupé »** d'un accès à une broche (`MCU.gpioOpTime`, cf. `requirements.md`, décision « Coût temporel des accès GPIO ») : seule l'échéance la termine. Sans cela, un périphérique qui répond au front qu'on vient d'émettre — le HX711 pose `DOUT` sur le front montant de `PD_SCK` — rendrait le réveil authentique au même instant, et l'impulsion retomberait à durée nulle. Une transition pendant cette attente n'est qu'un pitstop : les callbacks d'IRQ dus s'exécutent, comme une interruption entre deux instructions.
+
+`machine.disable_irq()` pose `irq_disabled` : `run_due_callbacks` ne consomme alors rien (drapeaux et échéances restent en place), et `earliest_timer_deadline` ignore les `Timer` — un `Timer` échu mais masqué laisserait sinon `nextWakeTime` dans le passé, et le `when time >= pre(nextWakeTime)` de `MCU.mo` ne se redéclencherait plus jamais. `enable_irq()` appelle directement `run_due_callbacks`, sans point de synchro.
 
 `h->wake_had_input_change` est posé par `PyRuntime_sync` (thread Modelica) juste avant de réveiller le worker — c'est la seule information qui manquait côté worker pour distinguer les deux cas, puisque la notion de « vraie transition d'entrée » n'est calculée que côté `PyRuntime_sync`.
 

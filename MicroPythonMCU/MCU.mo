@@ -56,7 +56,7 @@ model MCU "Microcontrôleur programmable simulé (v0), piloté par un script Pyt
     Placement(visible = false, transformation(extent = {{-150, -130}, {-130, -110}})));
 protected
   Modelica.Units.SI.Voltage pinNodeVoltage[9] "Tension effective de chaque broche (index 9 = noeud interne de la LED embarquée)";
-  Boolean pinBoolIn[9] "Valeur logique lue par broche (tension comparée aux seuils VIL/VIH), y compris index 9 (LED embarquée) qui relit ainsi son propre état comme une broche normale";
+  Boolean pinBoolIn[9](each start = false, each fixed = true) "Valeur logique lue par broche (tension comparée aux seuils VIL/VIH), y compris index 9 (LED embarquée) qui relit ainsi son propre état comme une broche normale";
   discrete Boolean pinBoolOut[9](each start = false, each fixed = true) "Valeur pilotée par broche (sortie du dernier point de synchro) ; index 9 = LED embarquée (GP25 réel)";
   discrete Boolean pinIsOutputD[9](each start = false, each fixed = true) "Direction par broche (sortie du dernier point de synchro)";
   discrete Modelica.Units.SI.Frequency pwmFreq[9](each start = 0, each fixed = true) "Fréquence PWM par broche (Hz) ; 0 = pas en mode PWM (sortie numérique classique via pinBoolOut), cf. machine.PWM";

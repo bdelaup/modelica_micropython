@@ -8,3 +8,4 @@ UartLcd20x2
 I2cGenericDevice
 I2cEchoDevice
 I2cGroveLcdRgb
+Weighing

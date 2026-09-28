@@ -1,0 +1,45 @@
+// Scénario de vérification v0 n°31 : convertisseur HX711 lu par le driver
+// MicroPython de robert-hh (hx711_gpio.py, sans modification) - Examples.Weighing.Hx711Read.
+//
+// Ce que ce scénario vérifie :
+// - la chaîne force -> corps d'épreuve -> pont -> HX711 : pour 1 kg sur un
+//   capteur de 5 kg à 1 mV/V, la sortie du pont vaut 2e-4 fois l'excitation,
+//   d'où code = round(2e-4 * gain * 2^24), exactement (pas de bruit) ;
+// - le protocole série : le driver lit ces codes bit par bit (25 impulsions à
+//   gain 128, 27 à gain 64), le gain choisi s'applique à la conversion suivante ;
+// - la veille (PD_SCK haute plus de 60 us) et le réveil, qui ramène le gain à 128.
+// Les codes lus par le microcontrôleur sont relus sur l'afficheur :
+//   ligne 2 "128:429497 64:214748", ligne 1 "reveil:429497".
+//
+// NB : val() sur un index de tableau via une variable de boucle .mos ne se
+// resout pas (NaN) - les indices sont donc ecrits en litteral.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.Weighing.Hx711Read, stopTime = 2, numberOfIntervals = 2000, fileNamePrefix = "Hx711Read");
+b := getErrorString();
+
+f := "Hx711Read_res.mat";
+e128 := integer(floor(2e-4 * 128 * 16777216 + 0.5));   // 429497
+e64 := integer(floor(2e-4 * 64 * 16777216 + 0.5));     // 214748
+
+// Côté HX711 : premier code converti, impulsions reçues, gain, veille
+code0 := val(hx.code, 0.45, f);
+p25 := val(hx.pulses, 0.45, f);       // lecture à gain 128 : 25 impulsions
+p27 := val(hx.pulses, 0.75, f);       // set_gain(64) : 27 impulsions
+g64 := val(hx.gain, 0.85, f);         // la conversion suivante est à gain 64
+pd := val(hx.poweredDown, 1.0, f);    // power_down() puis sleep_ms(200)
+pdEnd := val(hx.poweredDown, 1.9, f);
+
+// Côté microcontrôleur : codes décodés par le driver, relus sur l'afficheur.
+// Ligne 2 : "128:429497 64:214748" -> colonnes 5-10 et 15-20
+r128 := (val(display.line2CharCode[5], 1.9, f) - 48) * 100000 + (val(display.line2CharCode[6], 1.9, f) - 48) * 10000 + (val(display.line2CharCode[7], 1.9, f) - 48) * 1000 + (val(display.line2CharCode[8], 1.9, f) - 48) * 100 + (val(display.line2CharCode[9], 1.9, f) - 48) * 10 + (val(display.line2CharCode[10], 1.9, f) - 48);
+r64 := (val(display.line2CharCode[15], 1.9, f) - 48) * 100000 + (val(display.line2CharCode[16], 1.9, f) - 48) * 10000 + (val(display.line2CharCode[17], 1.9, f) - 48) * 1000 + (val(display.line2CharCode[18], 1.9, f) - 48) * 100 + (val(display.line2CharCode[19], 1.9, f) - 48) * 10 + (val(display.line2CharCode[20], 1.9, f) - 48);
+// Ligne 1 : "reveil:429497" -> colonnes 8-13
+rUp := (val(display.line1CharCode[8], 1.9, f) - 48) * 100000 + (val(display.line1CharCode[9], 1.9, f) - 48) * 10000 + (val(display.line1CharCode[10], 1.9, f) - 48) * 1000 + (val(display.line1CharCode[11], 1.9, f) - 48) * 100 + (val(display.line1CharCode[12], 1.9, f) - 48) * 10 + (val(display.line1CharCode[13], 1.9, f) - 48);
+
+if abs(code0 - e128) < 0.5 and abs(p25 - 25) < 0.5 and abs(p27 - 27) < 0.5 and abs(g64 - 64) < 0.5 and abs(pd - 1) < 0.5 and abs(pdEnd) < 0.5 and abs(r128 - e128) < 0.5 and abs(r64 - e64) < 0.5 and abs(rUp - e128) < 0.5 then
+  print("PASS: verify_31_hx711 (code converti " + String(code0) + " = attendu ; lu par le driver : gain 128 " + String(r128) + ", gain 64 " + String(r64) + ", apres reveil " + String(rUp) + " ; " + String(p25) + " puis " + String(p27) + " impulsions ; veille " + String(pd) + " -> " + String(pdEnd) + ")\n");
+else
+  print("FAIL: verify_31_hx711 (attendu " + String(e128) + "/" + String(e64) + " ; code0=" + String(code0) + " r128=" + String(r128) + " r64=" + String(r64) + " rUp=" + String(rUp) + " p25=" + String(p25) + " p27=" + String(p27) + " g64=" + String(g64) + " pd=" + String(pd) + " pdEnd=" + String(pdEnd) + ")\n" + b);
+end if;

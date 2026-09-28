@@ -72,8 +72,11 @@ omc verify_24_i2c_grove_lcd.mos
 omc verify_25_filesystem.mos
 omc verify_26_adc_sleep.mos
 omc verify_27_filesystem_script.mos
+omc verify_28_gpio_timing.mos
 omc verify_29_python_dll.mos
 omc verify_30_stdlib_import.mos
+omc verify_31_hx711.mos
+omc verify_32_kitchen_scale.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -84,7 +87,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_01_basic_blink.mos` | `Examples.BasicBlink` | Clignotement de base (shim `machine`/`time`, boucle de synchro) | `GP0` alterne ≈3 V / 0 V à la bonne période |
 | `verify_02_sleep_compression.mos` | `Examples.SleepCompression` | Compression du `sleep` (cœur de la valeur du projet) | Bascules aux instants attendus, simulation rapide (pas de temps réel proportionnel au temps simulé) |
 | `verify_03_input_reactivity.mos` | `Examples.InputReactivity` | Réactivité en entrée pendant un `sleep` | Réaction peu après la transition, pas à l'échéance du `sleep` |
-| `verify_04_script_error.mos` | `Examples.ScriptError` | Exception non gérée dans le script | La simulation s'arrête en erreur (`getErrorString() <> ""`) |
+| `verify_04_script_error.mos` | `Examples.ScriptError` | Exception non gérée dans le script | La simulation s'arrête **proprement** en erreur : l'exécutable, relancé par son `.bat`, sort avec le code `-1` (et non `-1073741819`, le plantage que contourne `Library = "-lwinpthread"`), et son journal contient `ZeroDivisionError` et le message du runtime |
 | `verify_05_reset.mos` | `Examples.BasicBlink` (relancé deux fois) | Cycle de vie de l'External Object | Deux relances produisent des résultats strictement identiques |
 | `verify_06_pin_echo.mos` | `Examples.PinEcho` | Bouclage entre deux broches du même `MCU` | `GP3` suit `GP1` (relu via `GP2`) à chaque phase, sans lecture périmée |
 | `verify_07_adc_read.mos` | `Examples.AdcRead` | Entrée analogique (`machine.ADC`) | `GP1` reflète le pont diviseur (~2,2 V), `GP0` (LED) allumée à t=0,3 s, après la 2e lecture (la 1re, à t=0, voit encore 0 V) |
@@ -108,8 +111,11 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_25_filesystem.mos` | `Examples.FileSystem` | Système de fichiers, démarrage `boot.py`/`main.py`, déterminisme | Deux simulations : `GP1` allumée (auto-contrôle de `main.py`), deux copies horodatées distinctes aux `mesures.csv` identiques, `..` bloqué à la racine de la flash, image source intacte. Le script supprime lui-même ses copies en fin de scénario |
 | `verify_27_filesystem_script.mos` | `Examples.FileSystemScript` | `boot.py` de la flash, puis un script à la place de `main.py` | `GP1` allumée, la copie contient `data/notes.txt` et pas `data/mesures.csv` (main.py n'a pas tourné) |
 | `verify_26_adc_sleep.mos` | `Examples.AdcSleep` | Entrée ADC traversant le seuil logique (correctif « l'ADC coupe l'entrée numérique ») | Cinq `sleep(0.2)` de 200 000 µs exactement (`ticks_us()`) malgré 10 franchissements du seuil par seconde, `sleep_us(250)` mesuré à 250 µs, aucune IRQ, témoin `GP1` allumé à la fin seulement |
+| `verify_28_gpio_timing.mos` | `Examples.GpioTiming` | Coût temporel des accès GPIO (`gpioOpTime` = 5 µs) : bit-banging, attente active, `disable_irq`/`enable_irq`, `idle()` | Impulsion `on(); off()` de 5 µs **mesurée côté Modelica**, 11 impulsions, rafale de 100 µs mesurée par `ticks_us()`, attente active sortie 0,5 µs après le front, callback du front masqué exécuté à `enable_irq()` (500 ms), `idle()` sur une milliseconde ronde |
 | `verify_29_python_dll.mos` | `PythonDll`, défini dans le script (`Examples.BasicBlink` avec `Verification/python_dll_origin.py`) | Distribution Python embarquée : `python312.dll` chargée par son chemin absolu, pas par le PATH | `GP0` allumée : la DLL chargée (`sys.dllhandle`) est dans `sys.prefix`, soit `Resources/PythonRuntime`, même avec un Python système dans le PATH ; sinon exception, simulation en erreur |
 | `verify_30_stdlib_import.mos` | `StdlibImport`, défini dans le script (`Examples.BasicBlink` avec `Verification/stdlib_import.py`) | Cloisonnement de `os` limité au code du microcontrôleur, y compris pour les modules de `python312.zip` | `GP0` allumée : `ctypes`, `random`, `tempfile` importés et utilisables (vrai `os`), alors que l'`import os` du script reste celui de MicroPython (refus sans système de fichiers) |
+| `verify_31_hx711.mos` | `Examples.Weighing.Hx711Read` | HX711 lu par le driver de robert-hh sans modification, chaîne force → corps d'épreuve → pont → convertisseur | Codes exacts (429 497 à gain 128, 214 748 à gain 64 pour 1 kg) côté HX711 et relus par le driver sur l'afficheur ; 25 puis 27 impulsions ; veille pendant `power_down()`, gain 128 au réveil |
+| `verify_32_kitchen_scale.mos` | `Examples.Weighing.KitchenScale` | Balance de cuisine complète : écran I2C, HX711 bruité, bouton TARE sur interruption, deux drivers du commerce | Écran : « 0 g » après la tare du plateau, « 350 g » avec le bol, « Tare... » puis « 0 g » après l'appui, « 250 g » après la farine (à 1 g près). Le plus long de la suite (≈ 50 s de simulation, cf. peripheriques-pesee.md) |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 
@@ -137,9 +143,9 @@ else
   print("FAIL: verify_0N_mon_scenario (...)\n" + b);
 end if;
 ```
-**Limitation connue de cette installation `omc`** : pas de fonction fiable de recherche de sous-chaîne dans le scripting `.mos` (`Modelica.Utilities.Strings.find`/`System.stringFind` indisponibles) — pour un scénario d'échec attendu, détecter via `getErrorString() <> ""` plutôt qu'en cherchant un texte précis dans la trace (cf. `verify_04_script_error.mos`).
+**Scénario d'échec attendu** : le résultat de `simulate()` n'est pas lisible depuis un `.mos` (`r.resultFile` introuvable), et `getErrorString()` peut être vide alors que la simulation a échoué. Relancer l'exécutable par son `.bat` avec `system(".\\MonScenario.bat", "MonScenario_run.txt")` (code de sortie non nul), lire le journal par `readFile`, et y chercher un texte précis avec `regex(texte, motif, 1)`, qui rend le nombre de correspondances (cf. `verify_04_script_error.mos`). `Modelica.Utilities.Strings.find`/`System.stringFind` restent indisponibles.
 
-**Piège rencontré en session** : `getErrorString()` n'est **pas** fiable comme critère « aucune erreur » pour un scénario de succès attendu — l'avertissement anodin « The initial conditions are not fully specified » (présent dans *tous* les scénarios, y compris ceux qui réussissent parfaitement) s'y retrouve capturé. Un `if b == "" and ... then PASS`, comme tenté une première fois pour `verify_09_import.mos`, échoue donc à tort. Se fier uniquement aux valeurs numériques attendues (`val(...)`) pour le critère de succès ; `b` reste utile seulement pour le diagnostic affiché dans le message `FAIL`.
+**Piège rencontré en session** : `getErrorString()` n'est **pas** un critère, ni de succès ni d'échec. Il a longtemps contenu l'avertissement « The initial conditions are not fully specified », présent dans *tous* les scénarios, y compris ceux qui réussissent parfaitement : ce texte a fait échouer à tort un critère `b == ""`, et réussir à tort l'ancien critère `b <> ""` de `verify_04`. Cet avertissement a disparu (valeurs de départ explicites, cf. `requirements.md`), mais n'importe quel autre avertissement peut prendre sa place. Un `if b == "" and ... then PASS`, comme tenté une première fois pour `verify_09_import.mos`, échoue donc à tort. Se fier uniquement aux valeurs numériques attendues (`val(...)`) pour le critère de succès ; `b` reste utile seulement pour le diagnostic affiché dans le message `FAIL`.
 
 ## Nettoyage
 

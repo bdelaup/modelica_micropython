@@ -4,6 +4,8 @@ Cette page documente, du point de vue de qui **écrit un script** pour `MCU`, le
 
 **Notion clé** : un appel qui *synchronise* rend la main à Modelica (le solveur peut avancer le temps simulé, éventuellement jusqu'à un `sleep` en cours) avant de continuer le script — c'est ce qui rend une transition d'entrée ou un `sleep` visibles/compressibles côté simulation. Un appel qui ne synchronise pas est une simple lecture immédiate de l'état déjà connu du script.
 
+**Coût temporel des accès aux broches** : chaque `value()`, `on()`, `off()` ou `pin(x)` occupe le processeur pendant `MCU.gpioOpTime` de temps simulé (onglet « Temps d'exécution », **5 µs par défaut**, l'ordre de grandeur de MicroPython sur RP2040). Deux écritures sans `sleep` entre elles donnent donc une vraie impulsion, visible par le circuit : c'est ce qui permet le *bit-banging* (driver HX711, cf. [peripheriques-pesee.md](peripheriques-pesee.md)), et ce qui fait avancer le temps dans une boucle d'attente active (`while not bouton(): pass`). Le calcul Python pur, `Pin()`, `irq()`, l'ADC, le PWM et `ticks_*` restent instantanés. `gpioOpTime = 0` rend tous les accès instantanés (comportement d'avant le 2026-09-27).
+
 ## `machine.Pin`
 
 ```python
@@ -33,8 +35,9 @@ led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
 
 | Méthode | Signature | Comportement | Synchronise ? |
 |---|---|---|---|
-| `.value()` | `value() -> int` | Lit l'état résolu de la broche (0/1), quelle que soit sa direction | Oui |
-| `.value(x)` | `value(x)` | Pilote la broche à `x` (0/1) — sans effet si la broche est actuellement en entrée | Oui |
+| `.value()` | `value() -> int` | Attend `gpioOpTime`, puis lit l'état résolu de la broche (0/1) à la fin de l'accès, quelle que soit sa direction | Oui |
+| `.value(x)` | `value(x)` | Pilote la broche à `x` (0/1) tout de suite — sans effet si la broche est actuellement en entrée —, puis attend `gpioOpTime` | Oui |
+| `pin()` / `pin(x)` | `__call__(x=None)` | Raccourci de `value()` / `value(x)`, courant dans les drivers MicroPython | Oui |
 | `.on()` | `on()` | Équivalent à `value(1)` | Oui |
 | `.off()` | `off()` | Équivalent à `value(0)` | Oui |
 | `.toggle()` | `toggle()` | Inverse l'état courant (lit puis réécrit l'opposé) — implémenté en Python pur au-dessus de `value()`, pas d'appel natif dédié | Oui (via `value()`, deux fois) |
@@ -225,6 +228,21 @@ Actif seulement si la case `MCU.fsEnabled` est cochée (onglet « Système de fi
 
 `import uos` donne le même module. **Erreurs** : celles de MicroPython (`OSError: [Errno 2] ENOENT`, `EEXIST`, `EISDIR`...), jamais le chemin réel sur l'hôte ; `EINVAL` pour un chemin contenant `\`, `:` ou un caractère interdit par Windows. Rien de ce que le script observe ne dépend de l'horodatage de la copie : deux simulations produisent les mêmes fichiers.
 
+## Fonctions de `machine`
+
+```python
+from machine import disable_irq, enable_irq, idle
+state = disable_irq()
+# ... section où aucun callback ne doit s'intercaler ...
+enable_irq(state)
+```
+
+| Fonction | Comportement | Synchronise ? |
+|---|---|---|
+| `disable_irq()` | Masque les callbacks `Pin.irq()` et `Timer` et rend l'état de masquage précédent. Les callbacks dus pendant le masquage sont **différés, pas perdus** | Non |
+| `enable_irq(state)` | Rétablit l'état rendu par `disable_irq()` ; s'il est démasqué, les callbacks différés s'exécutent aussitôt | Non |
+| `idle()` | Rend la main jusqu'à la milliseconde ronde suivante (le tic système du RP2040), plus tôt si une broche en entrée change — comme un `sleep` | Oui |
+
 ## `time`
 
 ```python
@@ -258,4 +276,6 @@ Détails et justifications dans `requirements.md` (section Restrictions v0) :
 - `machine.Timer` : pool fixe de 4 minuteurs partagé par tous les `Timer()` (au-delà, `Timer()` lève `RuntimeError`) ; période minimale 1 ms (`ValueError` en dessous, garde-fou contre une tempête d'événements à durée simulée nulle).
 - `ADC.read_u16()` : référence de conversion (3,3 V) codée en dur dans le shim, pas liée au paramètre `VOH` de `MCU` ; pas d'échantillonnage périodique ni d'événement de seuil (contrairement à une broche numérique en entrée, une variation sur l'ADC ne réveille jamais le script, même en traversant le seuil logique — il faut l'interroger explicitement ; cf. `verify_26`).
 - `PWM` : chaque broche a sa fréquence/rapport cyclique indépendants (le vrai RP2040 partage un canal de fréquence entre deux broches voisines, pas modélisé ici) ; `deinit()` repasse la broche en sortie numérique **basse**, pas en haute impédance.
-- **Relire une broche juste après avoir écrit sur une autre (même physiquement reliées) peut renvoyer l'état d'*avant* l'écriture.** Plusieurs appels au shim qui s'enchaînent sans qu'aucun ne demande un vrai délai restent dans le même passage côté runtime C, sans repasser par la résolution du circuit Modelica entre-temps — la lecture voit alors un instantané pris avant l'écriture qui vient de se produire. Il faut un point de synchro explicite entre les deux (n'importe quel `sleep`/`sleep_ms`/`sleep_us` non nul suffit, même très court) pour forcer ce passage. Exemple concret : [`Examples/PinEcho.mo`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Examples/PinEcho.mo) (script [`pin_echo.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/MCU/pin_echo.py)), où `GP2` relit électriquement ce que le script vient d'écrire sur `GP1`.
+- Une exception non rattrapée arrête la simulation : la trace Python s'affiche dans le journal, et les résultats restent consultables jusqu'à l'instant de l'erreur.
+- `gpioOpTime` : une durée unique pour tout accès à une broche, lecture comme écriture, sans dispersion. Une attente active coûte un événement de simulation par accès (≈ 200 000 par seconde simulée à 5 µs) : préférer `sleep` ou `Pin.irq()` quand c'est possible.
+- **Avec `gpioOpTime = 0` seulement : relire une broche juste après avoir écrit sur une autre (même physiquement reliées) peut renvoyer l'état d'*avant* l'écriture.** Plusieurs appels au shim qui s'enchaînent sans qu'aucun ne demande un vrai délai restent dans le même passage côté runtime C, sans repasser par la résolution du circuit Modelica entre-temps — la lecture voit alors un instantané pris avant l'écriture qui vient de se produire. Il faut un point de synchro explicite entre les deux (n'importe quel `sleep`/`sleep_ms`/`sleep_us` non nul suffit, même très court) pour forcer ce passage. Exemple concret : [`Examples/PinEcho.mo`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Examples/PinEcho.mo) (script [`pin_echo.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/MCU/pin_echo.py)), où `GP2` relit électriquement ce que le script vient d'écrire sur `GP1`.

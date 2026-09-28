@@ -8,7 +8,7 @@ model Loopback "Liaison série électrique réelle bouclée sur elle-même : GP0
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
   Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "Bouclage TX->RX : résistance de liaison. Un connect() direct entre deux broches du même MCU fait disparaître la tension pilotée des résultats de simulation (fusion d'alias, constaté empiriquement sur PinEcho) - contourné en donnant à RX un véritable état dynamique via loopC, cf. requirements.md" annotation(
     Placement(transformation(origin = {-90, 10}, extent = {{-10, -10}, {10, 10}})));
-  Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9) "Constante de temps du bouclage : (ROut + loopR)*C = 1.1 us, soit 0.13% d'un bit à 1200 bauds (833 us) - assez pour éviter l'alias algébrique exact, trop peu pour déformer la trame" annotation(
+  Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9, v(start = 0, fixed = true)) "Constante de temps du bouclage : (ROut + loopR)*C = 1.1 us, soit 0.13% d'un bit à 1200 bauds (833 us) - assez pour éviter l'alias algébrique exact, trop peu pour déformer la trame" annotation(
     Placement(transformation(origin = {-60, -30}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
   Modelica.Electrical.Analog.Basic.Resistor r3(R = 330) "limite le courant du témoin de réception" annotation(
     Placement(transformation(origin = {-90, -50}, extent = {{-15, -15}, {15, 15}})));

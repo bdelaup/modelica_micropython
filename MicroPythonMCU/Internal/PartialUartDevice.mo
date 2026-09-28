@@ -95,7 +95,7 @@ protected
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochaine échéance demandée par le moteur";
 
   Modelica.Units.SI.Voltage rxVoltage "Tension effective sur la broche de réception";
-  Boolean rxBoolIn "Valeur logique lue sur RX (tension comparée aux seuils VIL/VIH)";
+  Boolean rxBoolIn(start = false, fixed = true) "Valeur logique lue sur RX (tension comparée aux seuils VIL/VIH)";
 
   // Pont électrique volontairement plus simple que celui du microcontrôleur : les
   // directions sont fixes (TX toujours en sortie, RX toujours en entrée), donc
@@ -111,7 +111,7 @@ protected
     Placement(visible = false, transformation(extent = {{-10, -90}, {30, -50}})));
   Modelica.Electrical.Analog.Basic.Resistor rPull(R = RPullUp) "Tirage de RX vers VOH" annotation(
     Placement(visible = false, transformation(extent = {{50, -90}, {90, -50}})));
-  Modelica.Electrical.Analog.Basic.Capacitor cIn(C = CIn) "Capacité d'entrée de RX - donne au nœud un état dynamique réel, cf. CIn" annotation(
+  Modelica.Electrical.Analog.Basic.Capacitor cIn(C = CIn, v(start = 0, fixed = true)) "Capacité d'entrée de RX - donne au nœud un état dynamique réel, cf. CIn" annotation(
     Placement(visible = false, transformation(extent = {{110, -90}, {150, -50}})));
 
   Internal.UartDevice dev = Internal.UartDevice(baudrate, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, Integer(comportement), scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), getInstanceName()) "Moteur du périphérique : files TX/RX, décodage, table de commandes, échéances" annotation(

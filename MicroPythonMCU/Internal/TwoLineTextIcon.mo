@@ -1,7 +1,7 @@
 within MicroPythonMCU.Internal;
 
 partial model TwoLineTextIcon "Icône d'afficheur caractère 20x2 : rendu du texte sur deux lignes, factorisé entre les périphériques d'affichage"
-  Integer line1CharCode[Interfaces.DISPLAY_COLS] "Codes ASCII de la ligne 1 (message courant) - à alimenter par le modèle qui hérite, typiquement via Internal.StringToCharCodes";
+  Integer line1CharCode[Interfaces.DISPLAY_COLS](each start = 32, each fixed = true) "Codes ASCII de la ligne 1 (message courant) - à alimenter par le modèle qui hérite, typiquement via Internal.StringToCharCodes";
   Integer line2CharCode[Interfaces.DISPLAY_COLS] "Codes ASCII de la ligne 2 (message précédent), pour le défilement";
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {

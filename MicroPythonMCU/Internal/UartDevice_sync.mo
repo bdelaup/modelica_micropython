@@ -13,8 +13,12 @@ impure function UartDevice_sync "Point de synchro d'un périphérique série ext
   output String lastRx "Dernière ligne complète reçue (journal, afficheur)";
   output String lastTx "Dernière charge utile émise (journal)";
   output Real nextWakeTime "Plus proche échéance : front à émettre, fin de trame, milieu du bit de stop d'une trame reçue, réponse armée ou tick périodique";
+  // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
+  // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+  // "Comportement en cas d'exception non geree dans le script").
   external "C" UartDevice_sync(dev, currentTime, rxLevel, valueIn, valueOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) annotation(
     Include = "#include \"UartDeviceImpl.c\"",
+    Library = "-lwinpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>
