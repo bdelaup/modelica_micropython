@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.TimerToggle, stopTime = 2.5, numberOfIntervals = 5000, fileNamePrefix = "TimerToggle");
+simulate(MicroPythonMCU.Examples.Irq.Timer, stopTime = 2.5, numberOfIntervals = 5000, fileNamePrefix = "TimerToggle");
 b := getErrorString();
 
 // Timer(period=500ms, PERIODIC) bascule GP0 a chaque echeance : bas au depart,

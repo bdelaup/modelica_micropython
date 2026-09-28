@@ -1,4 +1,4 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Gpio;
 
 model LedChaser "Chenillard bidirectionnel : une LED (Peripherals.LED) par broche GP0-GP7, disposées en anneau autour du microcontrôleur, allumées une à la fois dans l'ordre GP0->GP3 (gauche) puis GP7->GP4 (droite), puis en sens inverse"
   extends Modelica.Icons.Example;

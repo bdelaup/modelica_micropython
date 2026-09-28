@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.InputReactivity, stopTime = 60, numberOfIntervals = 600, fileNamePrefix = "InputReactivity");
+simulate(MicroPythonMCU.Examples.Gpio.InputReactivity, stopTime = 60, numberOfIntervals = 600, fileNamePrefix = "InputReactivity");
 b := getErrorString();
 
 vBefore := val(mcu.GP0.v, 9.9, "InputReactivity_res.mat");

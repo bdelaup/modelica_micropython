@@ -239,7 +239,7 @@ import sensors                 # /lib/sensors.py on the flash, or folder given b
 
 - **Imports**: the program's folder is on the import path (`MCU.addScriptDirToPath`, on by default), like the flash root on the board. `MCU.libraryPath` adds a shared library folder. With a file system enabled, the flash root and `/lib` are on it too. The CPython 3.12 standard library is available, but a program meant for the board must stick to what MicroPython offers.
 - **`print()`**: shown in OMEdit's simulation output window.
-- **Uncaught exception**: stops the simulation; the Python traceback is shown in the log (`ScriptError` example).
+- **Uncaught exception**: stops the simulation; the Python traceback is shown in the log (`Program.Error` example).
 
 ## `machine` functions
 

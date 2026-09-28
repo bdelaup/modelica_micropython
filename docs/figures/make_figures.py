@@ -146,7 +146,7 @@ def fig_i2c(work):
 
 
 def fig_pwm(work):
-    c = simulate("PwmLed", ["mcu.GP0.v", "led0.p.i"], 0.03, 30000, work)
+    c = simulate("Pwm.Led", ["mcu.GP0.v", "led0.p.i"], 0.03, 30000, work)
     t, (v, i) = window(c["time"], [c["mcu.GP0.v"], c["led0.p.i"]], 0.005, 0.025)
     t_ms = [x * 1e3 for x in t]
     fig, (a1, a2) = plt.subplots(2, 1, figsize=(7, 3.2), sharex=True)
@@ -154,7 +154,7 @@ def fig_pwm(work):
     a2.plot(t_ms, [x * 1e3 for x in i], color=ORANGE)
     style(a1, "", "GP0 (V)")
     style(a2, "temps (ms)", "courant LED (mA)")
-    a1.set_title("PwmLed : PWM à 200 Hz, rapport cyclique ≈ 30 %", loc="left", fontsize=10)
+    a1.set_title("Pwm.Led : PWM à 200 Hz, rapport cyclique ≈ 30 %", loc="left", fontsize=10)
     save(fig, "pwm-led")
 
 

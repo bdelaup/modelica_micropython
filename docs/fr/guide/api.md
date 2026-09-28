@@ -239,7 +239,7 @@ import capteurs                # /lib/capteurs.py de la flash, ou dossier désig
 
 - **Import** : le dossier du programme est dans le chemin d'import (`MCU.addScriptDirToPath`, actif par défaut), comme la racine de la flash sur la carte. `MCU.libraryPath` y ajoute un dossier de bibliothèque partagée. Avec un système de fichiers actif, la racine de la flash et `/lib` y sont aussi. La bibliothèque standard de CPython 3.12 est disponible, mais un programme destiné à la carte doit s'en tenir à ce que MicroPython propose.
 - **`print()`** : s'affiche dans la fenêtre de sortie de la simulation d'OMEdit.
-- **Exception non rattrapée** : arrête la simulation ; la trace Python s'affiche dans le journal (exemple `ScriptError`).
+- **Exception non rattrapée** : arrête la simulation ; la trace Python s'affiche dans le journal (exemple `Program.Error`).
 
 ## Fonctions de `machine`
 

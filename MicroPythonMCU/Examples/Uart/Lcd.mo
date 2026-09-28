@@ -24,9 +24,9 @@ equation
     Diagram(coordinateSystem(extent = {{-160, -100}, {120, 80}})),
     experiment(StopTime = 0.2, Interval = 1e-5),
     Documentation(info = "<html>
-<p>À comparer directement avec <code>Examples.DisplayDemo</code>, qui affiche le même genre de texte à travers la liaison <strong>logique</strong> <code>machine.Display</code>. Le résultat visuel est identique, le chemin ne l'est pas du tout :</p>
+<p>À comparer directement avec <code>Examples.Display.Demo</code>, qui affiche le même genre de texte à travers la liaison <strong>logique</strong> <code>machine.Display</code>. Le résultat visuel est identique, le chemin ne l'est pas du tout :</p>
 <ul>
-<li><code>DisplayDemo</code> : le message est livré d'un bloc au point de synchro, sans durée ni tension. Pratique, mais rien à sonder.</li>
+<li><code>Display.Demo</code> : le message est livré d'un bloc au point de synchro, sans durée ni tension. Pratique, mais rien à sonder.</li>
 <li><code>Uart.Lcd</code> : le texte traverse un vrai fil, un caractère toutes les 1,04 ms à 9600 bauds. Tracer <code>mcu.GP5.v</code> montre chaque caractère partir bit à bit, et c'est le saut de ligne qui déclenche l'affichage.</li>
 </ul>
 <p>Régler le débit de l'afficheur sur une autre valeur que celle du microcontrôleur fait apparaître des caractères faux à l'écran — le symptôme exact d'un désaccord de configuration sur un montage réel, reproduit ici sans matériel.</p>

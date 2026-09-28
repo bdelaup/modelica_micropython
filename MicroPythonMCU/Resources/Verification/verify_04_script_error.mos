@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.ScriptError, stopTime = 5, fileNamePrefix = "ScriptError");
+simulate(MicroPythonMCU.Examples.Program.Error, stopTime = 5, fileNamePrefix = "ScriptError");
 getErrorString();
 
 // Le résultat de simulate() n'est pas lisible depuis un .mos (r.resultFile

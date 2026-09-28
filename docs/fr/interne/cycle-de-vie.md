@@ -323,7 +323,7 @@ La première version de la gestion d'erreur récupérait la trace Python manuell
 
 ### d) Réveils immédiats chaînés au même instant simulé (script bloqué en silence)
 
-Trouvé en vérifiant la luminosité de l'icône sur `Examples.LedChaser` (script qui construit 8-9 `Pin` en boucle puis les pilote en séquence, chacun un point de synchro à réveil immédiat, c'est-à-dire `wake_requested_at == currentTime`) : `GP0` ne basculait jamais, alors que `checkModel` et `simulate()` se terminaient tous les deux « avec succès », sans aucune erreur. Bissection par nombre de broches pilotées en boucle : 2-3 broches fonctionnent, 4 et plus échouent silencieusement.
+Trouvé en vérifiant la luminosité de l'icône sur `Examples.Gpio.LedChaser` (script qui construit 8-9 `Pin` en boucle puis les pilote en séquence, chacun un point de synchro à réveil immédiat, c'est-à-dire `wake_requested_at == currentTime`) : `GP0` ne basculait jamais, alors que `checkModel` et `simulate()` se terminaient tous les deux « avec succès », sans aucune erreur. Bissection par nombre de broches pilotées en boucle : 2-3 broches fonctionnent, 4 et plus échouent silencieusement.
 
 **Cause identifiée** (confirmée via `simflags="-lv LOG_EVENTS,LOG_INIT -w"`, pas une supposition) : quand plusieurs réveils immédiats se chaînent au même instant simulé (ex. `Pin(i, Pin.OUT)` répété dans une boucle Python, chacun un aller-retour shim → `yield_to_modelica` → retour), OpenModelica ne ré-invoque pas de façon fiable `PyRuntime_sync` au-delà de 2-3 itérations d'événement au même instant — l'itération d'événement s'arrête avant que le thread worker n'ait fini de vider tous ses réveils immédiats en attente, qui restent alors bloqués indéfiniment sur la variable de condition.
 
@@ -347,7 +347,7 @@ if (input_changed || !h->wake_pending || currentTime + 1e-9 >= h->wake_requested
 }
 ```
 
-Bug latent depuis l'ajout du pont à 9 broches (LED embarquée) — potentiellement déclenchable par tout script qui configure plusieurs broches en boucle sans `sleep()` entre elles, pas seulement `LedChaser`. Vérifié par bissection sur des variantes de `MCU.mo`, puis re-testé sur `LedChaser` en entier et sur les 5 scénarios de `Resources/Verification/` (aucune régression).
+Bug latent depuis l'ajout du pont à 9 broches (LED embarquée) — potentiellement déclenchable par tout script qui configure plusieurs broches en boucle sans `sleep()` entre elles, pas seulement `Gpio.LedChaser`. Vérifié par bissection sur des variantes de `MCU.mo`, puis re-testé sur `Gpio.LedChaser` en entier et sur les 5 scénarios de `Resources/Verification/` (aucune régression).
 
 ### e) Tempête d'événements à durée simulée nulle (`Timer` à période ≤ 0)
 

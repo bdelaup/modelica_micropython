@@ -1,7 +1,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.DisplayDemo, stopTime = 3, numberOfIntervals = 600, fileNamePrefix = "DisplayDemo");
+simulate(MicroPythonMCU.Examples.Display.Demo, stopTime = 3, numberOfIntervals = 600, fileNamePrefix = "DisplayDemo");
 b := getErrorString();
 
 v0 := val(mcu.Display0.seq, 0.5, "DisplayDemo_res.mat");

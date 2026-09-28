@@ -1,5 +1,5 @@
-within MicroPythonMCU.Examples;
-model GpioTiming "Coût temporel des accès GPIO (gpioOpTime) : impulsion on()/off() sans sleep, rafale bit-bang, attente active, IRQ masquée, idle()"
+within MicroPythonMCU.Examples.Gpio;
+model Timing "Coût temporel des accès GPIO (gpioOpTime) : impulsion on()/off() sans sleep, rafale bit-bang, attente active, IRQ masquée, idle()"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/gpio_timing.py")) "scriptPath = Verification/gpio_timing.py ; gpioOpTime par défaut (5 µs)" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -68,4 +68,4 @@ equation
 </ul>
 <p>Le script affiche <code>dt=100 id=0</code> sur la liaison <code>Display0</code> (durée de la rafale en µs, reste de <code>ticks_us()</code> modulo 1000 après <code>idle()</code>).</p>
 </html>"));
-end GpioTiming;
+end Timing;

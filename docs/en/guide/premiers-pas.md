@@ -66,7 +66,7 @@ The loop is infinite and each `sleep` lasts one second, yet the simulation runs 
     Everything the script writes with `print()` shows up in OMEdit's simulation output window, in simulated-time order.
 
 !!! warning "An error in the script stops the simulation"
-    An uncaught Python exception stops the simulation, and the Python traceback (file, line, message) is shown in the log. Results remain available up to the time of the error. The `ScriptError` example shows this.
+    An uncaught Python exception stops the simulation, and the Python traceback (file, line, message) is shown in the log. Results remain available up to the time of the error. The `Program.Error` example shows this.
 
 ## 5. Next steps
 

@@ -2,51 +2,66 @@
 
 Le paquetage `MicroPythonMCU.Examples` contient 31 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
 
-<!-- ILLUSTRATION exemples-vignettes : une vignette (vue Diagramme) par exemple phare : BasicBlink, LedChaser, PwmLedFade, Uart.Sensor, I2c.GroveLcd, Weighing.KitchenScale (cf. docs/ILLUSTRATIONS.md) -->
+<!-- ILLUSTRATION exemples-vignettes : une vignette (vue Diagramme) par exemple phare : BasicBlink, Gpio.LedChaser, Pwm.LedFade, Uart.Sensor, I2c.GroveLcd, Weighing.KitchenScale (cf. docs/ILLUSTRATIONS.md) -->
 
-## Broches numériques
+## Pour commencer
 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
 | `BasicBlink` | Le programme par défaut : `GP0` et la LED embarquée clignotent à 0,5 Hz | `mcu.GP0.v`, icônes des LED | `demo.py` |
-| `LedChaser` | Chenillard sur 8 LED disposées autour du microcontrôleur | icônes des LED (relecture animée) | `led_chaser.py` |
-| `PinEcho` | `GP1` oscille, `GP2` relit son état électrique, `GP3` le recopie | `mcu.GP1.v`, `mcu.GP3.v` | `pin_echo.py` |
-| `InputReactivity` | Un bouton sur `GP1` réveille le programme pendant un `sleep(3600)` | `mcu.GP1.v`, sortie du programme | `input_reactive.py` *(V)* |
-| `SleepCompression` | Deux `sleep(3600)` simulés en une fraction de seconde de calcul | durée de la simulation | `sleep_long.py` *(V)* |
-| `ScriptError` | Une exception non rattrapée arrête la simulation, trace Python dans le journal | journal | `script_error.py` *(V)* |
 
-## Analogique et PWM
+## Broches numériques (`Examples.Gpio`)
 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
-| `AdcRead` | `GP1` en entrée analogique sur un pont diviseur (≈ 2,2 V) ; seuil recopié sur une LED | `mcu.GP1.v`, `mcu.GP0.v` | `adc_read.py` |
-| `AdcSleep` | Une entrée analogique qui traverse le seuil logique ne réveille pas le programme | `mcu.GP0.v`, `mcu.GP1.v` | `adc_sleep.py` |
-| `PwmLed` | PWM à 200 Hz, rapport cyclique ≈ 30 % | `mcu.GP0.v`, `led0.p.i` | `pwm_led.py` |
-| `PwmLedFade` | Variation progressive du rapport cyclique : la LED s'allume en fondu | icône de la LED, `led0.p.i` | `pwm_led_fade.py` |
+| `Gpio.LedChaser` | Chenillard sur 8 LED disposées autour du microcontrôleur | icônes des LED (relecture animée) | `led_chaser.py` |
+| `Gpio.PinEcho` | `GP1` oscille, `GP2` relit son état électrique, `GP3` le recopie | `mcu.GP1.v`, `mcu.GP3.v` | `pin_echo.py` |
+| `Gpio.InputReactivity` | Un bouton sur `GP1` réveille le programme pendant un `sleep(3600)` | `mcu.GP1.v`, sortie du programme | `input_reactive.py` *(V)* |
+| `Gpio.Timing` | Coût d'un accès aux broches (`gpioOpTime`) : impulsion `on()`/`off()` sans `sleep`, rafale, attente active, IRQ masquée | `mcu.GP0.v` (zoom à la µs) | `gpio_timing.py` *(V)* |
+
+## Entrées analogiques (`Examples.Adc`)
+
+| Exemple | Ce qu'il montre | À observer | Programme |
+|---|---|---|---|
+| `Adc.Read` | `GP1` en entrée analogique sur un pont diviseur (≈ 2,2 V) ; seuil recopié sur une LED | `mcu.GP1.v`, `mcu.GP0.v` | `adc_read.py` |
+| `Adc.Sleep` | Une entrée analogique qui traverse le seuil logique ne réveille pas le programme | `mcu.GP0.v`, `mcu.GP1.v` | `adc_sleep.py` |
+
+## PWM (`Examples.Pwm`)
+
+| Exemple | Ce qu'il montre | À observer | Programme |
+|---|---|---|---|
+| `Pwm.Led` | PWM à 200 Hz, rapport cyclique ≈ 30 % | `mcu.GP0.v`, `led0.p.i` | `pwm_led.py` |
+| `Pwm.LedFade` | Variation progressive du rapport cyclique : la LED s'allume en fondu | icône de la LED, `led0.p.i` | `pwm_led_fade.py` |
 
 ![PWM à 200 Hz](../images/sim/pwm-led.svg)
 
-## Interruptions et temps
+## Interruptions et minuteurs (`Examples.Irq`)
 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
-| `PinIrq` | `Pin.irq()` sur front montant seulement : la LED bascule à chaque front montant du créneau | `mcu.GP1.v`, `mcu.GP0.v` | `pin_irq_demo.py` *(V)* |
-| `TimerToggle` | Un `Timer` périodique de 500 ms bascule une LED pendant que le programme dort | `mcu.GP0.v` | `timer_toggle.py` *(V)* |
-| `GpioTiming` | Coût d'un accès aux broches (`gpioOpTime`) : impulsion `on()`/`off()` sans `sleep`, rafale, attente active, IRQ masquée | `mcu.GP0.v` (zoom à la µs) | `gpio_timing.py` *(V)* |
+| `Irq.Pin` | `Pin.irq()` sur front montant seulement : la LED bascule à chaque front montant du créneau | `mcu.GP1.v`, `mcu.GP0.v` | `pin_irq_demo.py` *(V)* |
+| `Irq.Timer` | Un `Timer` périodique de 500 ms bascule une LED pendant que le programme dort | `mcu.GP0.v` | `timer_toggle.py` *(V)* |
 
-## Programme, modules et fichiers
-
-| Exemple | Ce qu'il montre | À observer | Programme |
-|---|---|---|---|
-| `ImportDemo` | Import d'un module posé à côté du programme et d'une bibliothèque d'un autre dossier (`libraryPath`) | LED de `GP0` et `GP1` | `import_demo.py` |
-| `FileSystem` | Sans script : `boot.py` puis `main.py` d'une image de flash ; mesures de l'ADC enregistrées dans `/data/mesures.csv` | dossier de la copie (ouvert en fin de simulation) | image `datalogger/` |
-| `FileSystemScript` | `boot.py` de la flash, puis un programme externe à la place de `main.py` | journal, fichiers écrits | `fs_script.py` |
-
-## Afficheur pédagogique
+## Exécution du programme (`Examples.Program`)
 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
-| `DisplayDemo` | Deux messages envoyés à un `Peripherals.Display` ; le premier descend en ligne 2 | icône de l'afficheur, journal | `display_demo.py` |
+| `Program.SleepCompression` | Deux `sleep(3600)` simulés en une fraction de seconde de calcul | durée de la simulation | `sleep_long.py` *(V)* |
+| `Program.Error` | Une exception non rattrapée arrête la simulation, trace Python dans le journal | journal | `script_error.py` *(V)* |
+| `Program.Imports` | Import d'un module posé à côté du programme et d'une bibliothèque d'un autre dossier (`libraryPath`) | LED de `GP0` et `GP1` | `import_demo.py` |
+
+## Système de fichiers (`Examples.FileSystem`)
+
+| Exemple | Ce qu'il montre | À observer | Programme |
+|---|---|---|---|
+| `FileSystem.Boot` | Sans script : `boot.py` puis `main.py` d'une image de flash ; mesures de l'ADC enregistrées dans `/data/mesures.csv` | dossier de la copie (ouvert en fin de simulation) | image `datalogger/` |
+| `FileSystem.Script` | `boot.py` de la flash, puis un programme externe à la place de `main.py` | journal, fichiers écrits | `fs_script.py` |
+
+## Afficheur pédagogique (`Examples.Display`)
+
+| Exemple | Ce qu'il montre | À observer | Programme |
+|---|---|---|---|
+| `Display.Demo` | Deux messages envoyés à un `Peripherals.Display` ; le premier descend en ligne 2 | icône de l'afficheur, journal | `display_demo.py` |
 
 ## Liaison série (`Examples.Uart`)
 

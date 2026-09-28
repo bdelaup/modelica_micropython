@@ -1,5 +1,5 @@
-within MicroPythonMCU.Examples;
-model PinIrq "GP1 pilotee par un creneau (front montant et descendant) ; le script enregistre machine.Pin.irq() en trigger=IRQ_RISING sur GP1, qui bascule GP0 (LED) depuis le callback - prouve le filtrage par sens de front"
+within MicroPythonMCU.Examples.Irq;
+model Pin "GP1 pilotee par un creneau (front montant et descendant) ; le script enregistre machine.Pin.irq() en trigger=IRQ_RISING sur GP1, qui bascule GP0 (LED) depuis le callback - prouve le filtrage par sens de front"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/pin_irq_demo.py")) "scriptPath = Verification/pin_irq_demo.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -36,4 +36,4 @@ equation
     Documentation(info = "<html>
 <p>Scénario de vérification 11 (cf. <code>requirements.md</code>) : <code>GP1</code> est pilotée par un créneau (<code>Modelica.Blocks.Sources.Pulse</code>, front montant à t=2s/t=6s, descendant à t=4s/t=8s). Le script <code>pin_irq_demo.py</code> enregistre <code>Pin(1, Pin.IN).irq(handler=on_rise, trigger=Pin.IRQ_RISING)</code> — seul un front montant doit déclencher le callback, qui bascule <code>led0</code> (GP0). Succès attendu : <code>GP0</code> bascule à t≈2s et reste inchangée au front descendant de t≈4s (la LED reste allumée), preuve que le filtrage par sens de front fonctionne (pas « n'importe quel front déclenche »), puis bascule de nouveau à t≈6s. Les broches <code>GP2</code>-<code>GP7</code>, non utilisées par ce scénario, sont laissées non connectées.</p>
 </html>"));
-end PinIrq;
+end Pin;

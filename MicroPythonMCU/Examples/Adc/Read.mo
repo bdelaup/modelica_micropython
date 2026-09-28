@@ -1,6 +1,6 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Adc;
 
-model AdcRead "GP1 utilisée en entrée analogique (machine.ADC), pilotée par un pont diviseur externe ; le script recopie un seuil sur GP0 (LED) pour rendre la lecture observable"
+model Read "GP1 utilisée en entrée analogique (machine.ADC), pilotée par un pont diviseur externe ; le script recopie un seuil sur GP0 (LED) pour rendre la lecture observable"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/adc_read.py")) "scriptPath = Resources/Scripts/MCU/adc_read.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -41,4 +41,4 @@ equation
     Documentation(info = "<html>
 <p>Scénario de vérification 8 (cf. <code>requirements.md</code>) : <code>GP1</code> est utilisée en entrée analogique (<code>machine.ADC(1)</code>) plutôt qu'en broche numérique — un pont diviseur externe (<code>supply</code>/<code>rTop</code>/<code>rBot</code>, indépendant de <code>MCU</code>) l'alimente à ~2,2 V (3,3 V × 2000/3000). Le script <code>adc_read.py</code> lit <code>ADC(1).read_u16()</code> et pilote <code>Pin(0, Pin.OUT)</code> selon un seuil (moitié de l'échelle 16 bits) — <code>led0</code> rend ce seuil observable, servant de sonde pour valider tout le pipeline (division de tension → ADC → seuil → sortie) sans dépendre d'une lecture directe d'un flottant. Les broches <code>GP2</code>-<code>GP7</code>, non utilisées par ce scénario, sont laissées non connectées.</p>
 </html>"));
-end AdcRead;
+end Read;

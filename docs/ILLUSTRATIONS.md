@@ -31,13 +31,13 @@ Priorité : **1** = la page en a vraiment besoin ; **2** = utile ; **3** = confo
 | `i2c-schema` | `guide/peripheriques/i2c.md` | Vue *Diagramme* de `Examples.I2c.MultiDevice` : trois esclaves sur le même bus | SVG | 1 | oui |
 | `pesee-schema` | `guide/peripheriques/pesee.md` | Vue *Diagramme* de `Examples.Weighing.KitchenScale` : chaîne complète, écran, bouton TARE | SVG | 1 | oui |
 | `grove-lcd` | `guide/peripheriques/i2c.md` | Icône de `I2cGroveLcdRgb` en fin de simulation de `I2c.GroveLcd` : « hello World » sur fond coloré | PNG (capture de la relecture) | 2 | non |
-| `display-icone` | `guide/peripheriques/led-afficheur.md` | Icône de `Peripherals.Display` en fin de simulation de `DisplayDemo` : deux messages | PNG | 2 | non |
+| `display-icone` | `guide/peripheriques/led-afficheur.md` | Icône de `Peripherals.Display` en fin de simulation de `Display.Demo` : deux messages | PNG | 2 | non |
 | `hx711-icone` | `guide/peripheriques/pesee.md` | Icône de `Weighing.Hx711` pendant `Hx711Read` : gain, code, voyant cyan | PNG | 3 | non |
 | `led-icones` | `guide/peripheriques/led-afficheur.md` | Icône de `Peripherals.LED` éteinte et allumée, côte à côte | PNG | 3 | non |
 | `uart-icones` | `guide/peripheriques/uart.md` | Les cinq icônes des appareils série côte à côte (`UartGenericDevice`, `UartEchoDevice`, `UartTemperatureSensor`, `UartGpsModule`, `UartLcd20x2`) | SVG | 3 | oui |
-| `exemples-vignettes` | `guide/exemples.md` | Une vignette (vue *Diagramme*) par exemple phare : `BasicBlink`, `LedChaser`, `PwmLedFade`, `Uart.Sensor`, `I2c.GroveLcd`, `Weighing.KitchenScale` (`exemple-<nom>.svg`) | SVG | 2 | oui |
+| `exemples-vignettes` | `guide/exemples.md` | Une vignette (vue *Diagramme*) par exemple phare : `BasicBlink`, `Gpio.LedChaser`, `Pwm.LedFade`, `Uart.Sensor`, `I2c.GroveLcd`, `Weighing.KitchenScale` (`exemple-<nom>.svg`) | SVG | 2 | oui |
 | `kitchen-scale-gif` | `guide/exemples.md` | Animation de la balance : l'écran Grove affiche 0 g, 350 g, Tare..., 250 g pendant qu'on déplace le curseur de temps | GIF | 2 | non |
-| `ledchaser-gif` | `guide/exemples.md` | Animation du chenillard `LedChaser` | GIF | 3 | non |
+| `ledchaser-gif` | `guide/exemples.md` | Animation du chenillard `Gpio.LedChaser` | GIF | 3 | non |
 
 Le serveur MCP-OpenModelica n'était pas joignable lors de la refonte du 2026-09-28 : les images marquées « oui » restent à faire, par Claude une fois le serveur relancé (avec OMEdit ouvert), ou à la main avec l'export SVG d'OMEdit.
 
@@ -67,9 +67,9 @@ python docs/figures/make_figures.py uart hx711     # certaines
 | `uart-trame.svg` | `Uart.Loopback` | `mcu.GP0.v`, grille des bits de `'H'` | appareils série, exemples |
 | `uart-regulation.svg` | `Uart.Regulation` | `procede.y`, `capteur.valueOut[1]`, consigne | appareils série |
 | `i2c-chronogramme.svg` | `I2c.Echo` | `echo.SCL.v`, `echo.SDA.v`, octets et ACK repérés | périphériques I2C |
-| `pwm-led.svg` | `PwmLed` | `mcu.GP0.v`, `led0.p.i` | exemples |
+| `pwm-led.svg` | `Pwm.Led` | `mcu.GP0.v`, `led0.p.i` | exemples |
 | `hx711-lecture.svg` | `Weighing.Hx711Read` | `hx.PD_SCK.v`, `hx.DOUT.v` (pas de 0,5 µs) | chaîne de pesée |
 
 À relancer quand un exemple ou un composant tracé change. Prérequis : `omc` (via `OPENMODELICAHOME` ou le `PATH`) et `matplotlib`. Compter quelques minutes : chaque figure compile son exemple.
 
-Pistes pour d'autres courbes : `PwmLedFade` (rapport cyclique croissant et courant de la LED), `InputReactivity` (réveil du programme au front du bouton), `GpioTiming` (impulsion de 5 µs), `Weighing.KitchenScale` (masse posée et code du HX711, simulation longue).
+Pistes pour d'autres courbes : `Pwm.LedFade` (rapport cyclique croissant et courant de la LED), `Gpio.InputReactivity` (réveil du programme au front du bouton), `Gpio.Timing` (impulsion de 5 µs), `Weighing.KitchenScale` (masse posée et code du HX711, simulation longue).

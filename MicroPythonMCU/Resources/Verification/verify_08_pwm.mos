@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.PwmLed, stopTime = 0.5, numberOfIntervals = 25000, fileNamePrefix = "PwmLed");
+simulate(MicroPythonMCU.Examples.Pwm.Led, stopTime = 0.5, numberOfIntervals = 25000, fileNamePrefix = "PwmLed");
 b := getErrorString();
 
 // freq=200Hz -> periode 5ms, duty=19661/65535=~30% -> haut pendant les 1.5

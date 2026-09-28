@@ -68,7 +68,7 @@ La boucle est infinie et chaque `sleep` dure une seconde, pourtant la simulation
     Tout ce que le script écrit avec `print()` apparaît dans la fenêtre de sortie de la simulation d'OMEdit, dans l'ordre du temps simulé.
 
 !!! warning "Une erreur dans le script arrête la simulation"
-    Une exception Python non rattrapée arrête la simulation, et la trace Python (fichier, ligne, message) s'affiche dans le journal. Les résultats restent consultables jusqu'à l'instant de l'erreur. C'est ce que montre l'exemple `ScriptError`.
+    Une exception Python non rattrapée arrête la simulation, et la trace Python (fichier, ligne, message) s'affiche dans le journal. Les résultats restent consultables jusqu'à l'instant de l'erreur. C'est ce que montre l'exemple `Program.Error`.
 
 ## 5. Et ensuite
 

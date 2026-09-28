@@ -1,4 +1,4 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Gpio;
 
 model InputReactivity "Scénario de vérification v0 n°3 : GP1 (entrée) bascule pendant un sleep(3600), le script doit réagir sans attendre la fin du sleep"
   extends Modelica.Icons.Example;

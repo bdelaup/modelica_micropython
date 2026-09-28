@@ -1,6 +1,6 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Pwm;
 
-model PwmLed "GP0 pilote une LED en PWM (machine.PWM), 200 Hz / ~30% de rapport cyclique, configuré une fois puis généré en continu côté Modelica"
+model Led "GP0 pilote une LED en PWM (machine.PWM), 200 Hz / ~30% de rapport cyclique, configuré une fois puis généré en continu côté Modelica"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/pwm_led.py")) "scriptPath = Resources/Scripts/MCU/pwm_led.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -25,4 +25,4 @@ equation
     Documentation(info = "<html>
 <p>Scénario de vérification 9 (cf. <code>requirements.md</code>) : <code>GP0</code> est configurée en sortie PWM (<code>machine.PWM</code>) plutôt qu'en broche numérique classique — le script <code>pwm_led.py</code> appelle <code>PWM(Pin(0))</code>, <code>freq(200)</code> et <code>duty_u16(19661)</code> (~30%) une seule fois puis se termine : le créneau est ensuite généré en continu côté Modelica (expression <code>mod(time, période)</code> dans <code>MCU.mo</code>), sans qu'aucun aller-retour supplémentaire avec le thread Python ne soit nécessaire — fidèle au vrai périphérique matériel PWM du RP2040, qui tourne indépendamment du CPU une fois configuré. <code>led0</code> rend le rapport cyclique observable visuellement (luminosité réduite par rapport à un GPIO numérique allumé en continu). Les broches <code>GP1</code>-<code>GP7</code>, non utilisées par ce scénario, sont laissées non connectées.</p>
 </html>"));
-end PwmLed;
+end Led;

@@ -40,7 +40,7 @@ Onglet *General*, groupe « Script Python ».
 | `addScriptDirToPath` | `true` | Rend importables les fichiers `.py` posés à côté du script (`import mon_module`), comme sur la carte, où la racine de la flash est dans le chemin d'import |
 | `libraryPath` | `""` | Facultatif : un fichier `.py` quelconque d'un dossier de bibliothèque partagée. Son dossier est ajouté au chemin d'import |
 
-Un programme se découpe donc comme sur la carte : `main.py` + des modules, ou un driver du commerce posé à côté du programme qui l'importe (exemples `ImportDemo`, `I2c.GroveLcd`, `Weighing.KitchenScale`).
+Un programme se découpe donc comme sur la carte : `main.py` + des modules, ou un driver du commerce posé à côté du programme qui l'importe (exemples `Program.Imports`, `I2c.GroveLcd`, `Weighing.KitchenScale`).
 
 ### Synchronisation
 
@@ -84,7 +84,7 @@ Onglet *Système de fichiers*, groupe « Flash simulée ». Détail de ce que vo
 | `fsWorkspace` | `"."` | Dossier où chaque simulation crée sa copie de la flash, nommée `<instance>_<nom du FS>_<date>_<heure>`. Relatif au dossier de simulation |
 | `fsOpenExplorer` | `true` | Ouvre l'Explorateur Windows sur la copie à la fin de la simulation |
 
-L'image source n'est jamais modifiée : chaque simulation repart d'une copie neuve, et le journal affiche son chemin. Pour enchaîner deux simulations, désigner comme `fsSource` la copie laissée par la précédente. Image fournie en exemple : `Resources/FileSystems/datalogger/` (exemples `FileSystem` et `FileSystemScript`).
+L'image source n'est jamais modifiée : chaque simulation repart d'une copie neuve, et le journal affiche son chemin. Pour enchaîner deux simulations, désigner comme `fsSource` la copie laissée par la précédente. Image fournie en exemple : `Resources/FileSystems/datalogger/` (exemples `FileSystem.Boot` et `FileSystem.Script`).
 
 ## Grandeurs à tracer
 

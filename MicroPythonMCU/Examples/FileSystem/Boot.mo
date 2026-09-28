@@ -1,6 +1,6 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.FileSystem;
 
-model FileSystem "Système de fichiers : sans script, le microcontrôleur exécute boot.py puis main.py d'une image de flash recopiée à chaque simulation ; main.py enregistre les mesures de l'ADC (GP0) dans /data/mesures.csv"
+model Boot "Système de fichiers : sans script, le microcontrôleur exécute boot.py puis main.py d'une image de flash recopiée à chaque simulation ; main.py enregistre les mesures de l'ADC (GP0) dans /data/mesures.csv"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = "", fsEnabled = true, fsSource = "modelica://MicroPythonMCU/Resources/FileSystems/datalogger") "scriptPath vide : boot.py puis main.py de l'image Resources/FileSystems/datalogger ; copie créée dans le dossier de simulation (fsWorkspace = \".\" par défaut), ouverte dans l'Explorateur en fin de simulation" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -36,6 +36,6 @@ equation
 <li><code>main.py</code> lit ses réglages dans <code>/config.txt</code>, importe le module <code>Journal</code> depuis <code>/lib</code>, puis enregistre toutes les 100 ms la tension lue par l'ADC sur <code>GP0</code> (rampe de 0 à 3,3 V) dans <code>/data/mesures.csv</code> ;</li>
 <li>il se contrôle enfin lui-même (relecture du fichier, <code>os.listdir</code>, <code>os.stat</code>, tentative de sortir de la flash par <code>../..</code>) et allume <code>led1</code> (<code>GP1</code>) si tout est conforme.</li>
 </ul>
-<p>Pour relancer sur ses propres fichiers : pointer <code>fsSource</code> sur un dossier contenant <code>boot.py</code>/<code>main.py</code>, et éventuellement <code>fsWorkspace</code> sur le dossier où retrouver les copies. Variante avec un script à la place de <code>main.py</code> : <code>Examples.FileSystemScript</code>.</p>
+<p>Pour relancer sur ses propres fichiers : pointer <code>fsSource</code> sur un dossier contenant <code>boot.py</code>/<code>main.py</code>, et éventuellement <code>fsWorkspace</code> sur le dossier où retrouver les copies. Variante avec un script à la place de <code>main.py</code> : <code>Examples.FileSystem.Script</code>.</p>
 </html>"));
-end FileSystem;
+end Boot;

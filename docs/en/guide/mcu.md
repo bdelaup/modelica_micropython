@@ -39,7 +39,7 @@ Double-clicking the `MCU` opens its parameter dialog. The defaults suit most use
 | `addScriptDirToPath` | `true` | Makes the `.py` files next to the script importable (`import my_module`), as on the board, where the flash root is on the import path |
 | `libraryPath` | `""` | Optional: any `.py` file of a shared library folder. Its folder is added to the import path |
 
-A program is therefore split up as on the board: `main.py` + modules, or an off-the-shelf driver placed next to the program that imports it (examples `ImportDemo`, `I2c.GroveLcd`, `Weighing.KitchenScale`).
+A program is therefore split up as on the board: `main.py` + modules, or an off-the-shelf driver placed next to the program that imports it (examples `Program.Imports`, `I2c.GroveLcd`, `Weighing.KitchenScale`).
 
 ### Synchronisation
 
@@ -83,7 +83,7 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 | `fsWorkspace` | `"."` | Folder where each simulation creates its copy of the flash, named `<instance>_<FS name>_<date>_<time>`. Relative to the simulation folder |
 | `fsOpenExplorer` | `true` | Opens Windows Explorer on the copy at the end of the simulation |
 
-The source image is never modified: each simulation starts from a fresh copy, whose path is shown in the log. To chain two simulations, use the copy left by the previous one as `fsSource`. Example image supplied: `Resources/FileSystems/datalogger/` (examples `FileSystem` and `FileSystemScript`).
+The source image is never modified: each simulation starts from a fresh copy, whose path is shown in the log. To chain two simulations, use the copy left by the previous one as `fsSource`. Example image supplied: `Resources/FileSystems/datalogger/` (examples `FileSystem.Boot` and `FileSystem.Script`).
 
 ## Variables to plot
 

@@ -7,7 +7,7 @@ loadFile("../../package.mo"); getErrorString();
 system("for /d %d in (mcu_datalogger_*) do rmdir /s /q \"%d\"");
 
 // fsOpenExplorer désactivé : pas de fenêtre d'Explorateur pendant la vérification.
-simulate(MicroPythonMCU.Examples.FileSystemScript, stopTime = 0.5, numberOfIntervals = 500, fileNamePrefix = "FileSystemScript", simflags = "-override=mcu.fsOpenExplorer=false");
+simulate(MicroPythonMCU.Examples.FileSystem.Script, stopTime = 0.5, numberOfIntervals = 500, fileNamePrefix = "FileSystemScript", simflags = "-override=mcu.fsOpenExplorer=false");
 b := getErrorString();
 
 // Le script allume GP1 si boot.py a tourné (/data existe) et main.py non (/data vide).

@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.AdcRead, stopTime = 1, numberOfIntervals = 1000, fileNamePrefix = "AdcRead");
+simulate(MicroPythonMCU.Examples.Adc.Read, stopTime = 1, numberOfIntervals = 1000, fileNamePrefix = "AdcRead");
 b := getErrorString();
 
 vTap := val(mcu.GP1.v, 0.05, "AdcRead_res.mat");

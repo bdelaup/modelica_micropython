@@ -262,7 +262,7 @@ L 423.236563 101.838437
 " style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="text_6">
-    <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start" x="32.636563" y="15.198437" transform="rotate(-0 32.636563 15.198437)">PwmLed : PWM à 200 Hz, rapport cyclique ≈ 30 %</text>
+    <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: start" x="32.636563" y="15.198437" transform="rotate(-0 32.636563 15.198437)">Pwm.Led : PWM à 200 Hz, rapport cyclique ≈ 30 %</text>
    </g>
   </g>
   <g id="axes_2">

@@ -59,4 +59,4 @@ The component has no parameters.
 
 For a display connected by a **real** electrical link, see `UartLcd20x2` ([Serial devices](uart.md)) or the Grove LCD RGB display ([I2C devices](i2c.md)).
 
-Examples: `DisplayDemo`, `Weighing.Hx711Read`.
+Examples: `Display.Demo`, `Weighing.Hx711Read`.

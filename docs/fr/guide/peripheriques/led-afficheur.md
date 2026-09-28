@@ -34,7 +34,7 @@ Le courant se trace sous `led0.p.i` (pour une LED nommée `led0`).
 
 Un afficheur de texte de 2 lignes de 20 caractères, qui affiche **sur son icône** les messages envoyés par le programme avec `machine.Display(0).write(...)`. Il sert à afficher un résultat sans avoir à monter une vraie liaison série ou I2C.
 
-<!-- ILLUSTRATION display-icone : icône de Peripherals.Display affichant deux messages (fin de simulation de DisplayDemo) (cf. docs/ILLUSTRATIONS.md) -->
+<!-- ILLUSTRATION display-icone : icône de Peripherals.Display affichant deux messages (fin de simulation de Display.Demo) (cf. docs/ILLUSTRATIONS.md) -->
 
 ```python
 from machine import Display
@@ -63,4 +63,4 @@ Le composant n'a pas de paramètre.
 
 Pour un afficheur relié par une **vraie** liaison électrique, voir `UartLcd20x2` ([Appareils série](uart.md)) ou l'écran Grove LCD RGB ([Périphériques I2C](i2c.md)).
 
-Exemples : `DisplayDemo`, `Weighing.Hx711Read`.
+Exemples : `Display.Demo`, `Weighing.Hx711Read`.

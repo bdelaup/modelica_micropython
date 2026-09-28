@@ -10,9 +10,9 @@ system("for /d %d in (mcu_datalogger_*) do rmdir /s /q \"%d\"");
 // l'image (fsWorkspace = "." : le dossier de simulation, donc ce dossier), et
 // les deux doivent produire exactement les mêmes fichiers (déterminisme).
 // fsOpenExplorer désactivé : pas de fenêtre d'Explorateur pendant la vérification.
-simulate(MicroPythonMCU.Examples.FileSystem, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "FileSystem", simflags = "-override=mcu.fsOpenExplorer=false");
+simulate(MicroPythonMCU.Examples.FileSystem.Boot, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "FileSystem", simflags = "-override=mcu.fsOpenExplorer=false");
 b1 := getErrorString();
-simulate(MicroPythonMCU.Examples.FileSystem, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "FileSystem", simflags = "-override=mcu.fsOpenExplorer=false");
+simulate(MicroPythonMCU.Examples.FileSystem.Boot, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "FileSystem", simflags = "-override=mcu.fsOpenExplorer=false");
 b2 := getErrorString();
 
 // main.py allume GP1 si son auto-contrôle (relecture, listdir, stat, "..") passe.

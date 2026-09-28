@@ -7,7 +7,7 @@ loadFile("../../package.mo"); getErrorString();
 // se termine en quelques secondes malgre 7250 s de temps simule (deux
 // sleep(3600)) - pas de fonction de chronometrage fiable en scripting omc,
 // mesure manuelle faite en session (~0.4 s de temps de simulation pur).
-simulate(MicroPythonMCU.Examples.SleepCompression, stopTime = 7250, numberOfIntervals = 200, fileNamePrefix = "SleepCompression");
+simulate(MicroPythonMCU.Examples.Program.SleepCompression, stopTime = 7250, numberOfIntervals = 200, fileNamePrefix = "SleepCompression");
 b := getErrorString();
 
 vBefore := val(mcu.GP0.v, 100, "SleepCompression_res.mat");

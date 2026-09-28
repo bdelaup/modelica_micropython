@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.AdcSleep, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "AdcSleep");
+simulate(MicroPythonMCU.Examples.Adc.Sleep, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "AdcSleep");
 b := getErrorString();
 
 // La sinusoïde sur GP0 (ADC) traverse le seuil logique 10 fois par seconde.

@@ -1,5 +1,5 @@
 // Scénario de vérification v0 n°28 : coût temporel des accès GPIO
-// (Examples.GpioTiming, script Verification/gpio_timing.py, gpioOpTime = 5 µs).
+// (Examples.Gpio.Timing, script Verification/gpio_timing.py, gpioOpTime = 5 µs).
 //
 // Ce que ce scénario vérifie :
 // - on() puis off() sans sleep donnent une impulsion de 5 µs VUE PAR LE CIRCUIT
@@ -17,7 +17,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.GpioTiming, stopTime = 0.6, numberOfIntervals = 600, fileNamePrefix = "GpioTiming");
+simulate(MicroPythonMCU.Examples.Gpio.Timing, stopTime = 0.6, numberOfIntervals = 600, fileNamePrefix = "GpioTiming");
 b := getErrorString();
 
 f := "GpioTiming_res.mat";

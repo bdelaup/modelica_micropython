@@ -2,7 +2,7 @@ from machine import Pin
 import time
 
 # Ordre physique des broches en suivant les LED disposees en anneau autour
-# du microcontroleur dans LedChaser.mo (descend a gauche GP0->GP3, remonte
+# du microcontroleur dans Gpio/LedChaser.mo (descend a gauche GP0->GP3, remonte
 # a droite GP7->GP4) : deux voisins consecutifs dans cette liste sont aussi
 # des voisins visuels sur le schema.
 order = [0, 1, 2, 3, 7, 6, 5, 4]

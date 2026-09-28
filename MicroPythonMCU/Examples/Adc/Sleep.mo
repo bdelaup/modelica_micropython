@@ -1,6 +1,6 @@
-within MicroPythonMCU.Examples;
+within MicroPythonMCU.Examples.Adc;
 
-model AdcSleep "Entrée ADC (GP0) traversant le seuil logique pendant des sleep() : ni réveil anticipé ni IRQ, l'ADC coupant l'entrée numérique de la broche ; GP1 (LED) confirme"
+model Sleep "Entrée ADC (GP0) traversant le seuil logique pendant des sleep() : ni réveil anticipé ni IRQ, l'ADC coupant l'entrée numérique de la broche ; GP1 (LED) confirme"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/adc_sleep.py")) "scriptPath = Resources/Scripts/MCU/adc_sleep.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -32,4 +32,4 @@ equation
 <p>Scénario de vérification 26 (cf. <code>requirements.md</code>, décision « ADC (entrées analogiques) ») : <code>GP0</code>, lue par <code>machine.ADC(0)</code>, reçoit une sinusoïde de 0 à 3,3 V à 5 Hz, qui traverse le seuil logique de la broche 10 fois par seconde. Le script <code>adc_sleep.py</code> arme d'abord une IRQ sur les deux fronts de <code>Pin(0)</code>, crée <code>ADC(0)</code>, puis enchaîne cinq <code>sleep(0.2)</code> en mesurant leur durée.</p>
 <p>Comme sur le RP2040, passer la broche en ADC coupe son entrée numérique : les franchissements du seuil ne doivent ni écourter les <code>sleep()</code>, ni déclencher l'IRQ. <code>led1</code> (<code>GP1</code>) s'allume si les cinq attentes ont bien duré 200 ms et si l'IRQ n'a vu aucun front. Avant la correction, chaque franchissement réveillait le script comme une vraie transition d'entrée.</p>
 </html>"));
-end AdcSleep;
+end Sleep;

@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.PinEcho, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "PinEcho");
+simulate(MicroPythonMCU.Examples.Gpio.PinEcho, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "PinEcho");
 b := getErrorString();
 
 // GP1 est haut pendant [0, 0.3[, bas pendant [0.3, 0.6[, etc. (PERIOD=0.3s, cf. pin_echo.py).

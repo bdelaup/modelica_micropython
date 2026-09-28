@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.PinIrq, stopTime = 8, numberOfIntervals = 8000, fileNamePrefix = "PinIrq");
+simulate(MicroPythonMCU.Examples.Irq.Pin, stopTime = 8, numberOfIntervals = 8000, fileNamePrefix = "PinIrq");
 b := getErrorString();
 
 // GP1 : creneau (front montant a t=2s/t=6s, descendant a t=4s/t=8s). Le script

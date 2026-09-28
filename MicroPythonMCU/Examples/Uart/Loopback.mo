@@ -6,7 +6,7 @@ model Loopback "Liaison série électrique réelle bouclée sur elle-même : GP0
     Placement(transformation(origin = {1, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "Bouclage TX->RX : résistance de liaison. Un connect() direct entre deux broches du même MCU fait disparaître la tension pilotée des résultats de simulation (fusion d'alias, constaté empiriquement sur PinEcho) - contourné en donnant à RX un véritable état dynamique via loopC, cf. requirements.md" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "Bouclage TX->RX : résistance de liaison. Un connect() direct entre deux broches du même MCU fait disparaître la tension pilotée des résultats de simulation (fusion d'alias, constaté empiriquement sur Gpio.PinEcho) - contourné en donnant à RX un véritable état dynamique via loopC, cf. requirements.md" annotation(
     Placement(transformation(origin = {-90, 10}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9, v(start = 0, fixed = true)) "Constante de temps du bouclage : (ROut + loopR)*C = 1.1 us, soit 0.13% d'un bit à 1200 bauds (833 us) - assez pour éviter l'alias algébrique exact, trop peu pour déformer la trame" annotation(
     Placement(transformation(origin = {-60, -30}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
@@ -17,7 +17,7 @@ model Loopback "Liaison série électrique réelle bouclée sur elle-même : GP0
 equation
   connect(mcu.GND, ground.p) annotation(
     Line(points = {{1, -39}, {1, -57}, {0, -57}, {0, -75}}, color = {0, 0, 255}));
-// Bouclage electrique TX -> RX (motif loopR/loopC de PinEcho, cf. requirements.md)
+// Bouclage electrique TX -> RX (motif loopR/loopC de Gpio.PinEcho, cf. requirements.md)
   connect(mcu.GP0, loopR.p) annotation(
     Line(points = {{-30, 25}, {-110, 25}, {-110, 10}, {-100, 10}}, color = {0, 0, 255}));
   connect(loopR.n, mcu.GP1) annotation(
@@ -40,6 +40,6 @@ equation
 <p>Démontre la liaison série <code>machine.UART</code> en <strong>signal électrique réel</strong> : la broche TX porte une vraie trame (bit de start à 0, 8 bits de données poids faible en tête, bit de stop à 1), chaque bit durant 1/baudrate. Tracer <code>mcu.GP0.v</code> permet de lire la trame à l'œil dans OMEdit, comme sur un oscilloscope.</p>
 <p>Le script attend 5 ms avant d'émettre, pour laisser voir l'<strong>état de repos</strong> sur l'oscillogramme : dès que l'UART est configuré, la broche TX est pilotée activement au niveau haut (état « mark »), avant même le premier <code>write()</code>. C'est le TX qui tient la ligne, pas le RX — la sortie est push-pull, aucune résistance de tirage n'intervient (contrairement à un bus I²C en drain ouvert).</p>
 <p>La forme d'onde est produite par le runtime C, qui publie le niveau de la ligne et ne demande un point de synchro qu'à ses <strong>changements</strong>, sans que le thread Python pilote chaque front — comme le vrai périphérique UART du RP2040, qui tourne indépendamment du CPU une fois programmé (cf. <code>requirements.md</code>). La réception, elle, est décodée côté C à partir des fronts de la ligne, avec la même lecture au milieu de chaque bit qu'un vrai récepteur.</p>
-<p>Le bouclage TX→RX reprend obligatoirement le motif <code>loopR</code>/<code>loopC</code> de <code>Examples.PinEcho</code> : relier deux broches du même <code>MCU</code> par un <code>connect()</code> direct fait disparaître la tension pilotée des résultats de simulation.</p>
+<p>Le bouclage TX→RX reprend obligatoirement le motif <code>loopR</code>/<code>loopC</code> de <code>Examples.Gpio.PinEcho</code> : relier deux broches du même <code>MCU</code> par un <code>connect()</code> direct fait disparaître la tension pilotée des résultats de simulation.</p>
 </html>"));
 end Loopback;

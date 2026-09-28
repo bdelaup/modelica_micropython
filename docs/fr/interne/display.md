@@ -26,7 +26,7 @@ Les broches `GPx` de `MCU` sont de vrais connecteurs électriques (`Modelica.Ele
 
 `seq` est incrémenté à chaque `write()` — c'est lui qui sert de déclencheur d'edge-detection (`change(displayLink.seq)`), plutôt que de comparer `payload` (une comparaison `change()` sur une `String` n'a pas été testée comme fiable dans cette installation `omc`, et `seq` est de toute façon nécessaire pour distinguer deux messages identiques consécutifs).
 
-### Câblage (exemple `DisplayDemo.mo`)
+### Câblage (exemple `Display/Demo.mo`)
 
 ```mermaid
 graph LR

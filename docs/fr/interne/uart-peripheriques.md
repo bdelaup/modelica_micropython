@@ -116,7 +116,7 @@ Il suffit de le couper à un endroit. Avec `CIn`, la sortie du MCU n'agit plus s
 
 **Son coût.** Le franchissement du seuil logique par la tension de `CIn` survient environ 0,06 µs (front montant) à 0,09 µs (front descendant) après le front émis par le MCU : c'est un second événement, distinct de celui de l'émission. Dans le sens MCU → périphérique, chaque front coûte donc deux événements ; dans l'autre sens, un seul.
 
-> **Bénéfice inattendu** : puisque chaque extrémité réceptrice porte désormais sa propre capacité, le réseau R+C artificiel de `PinEcho`/`Uart.Loopback` devient inutile dès qu'un périphérique est en jeu.
+> **Bénéfice inattendu** : puisque chaque extrémité réceptrice porte désormais sa propre capacité, le réseau R+C artificiel de `Gpio.PinEcho`/`Uart.Loopback` devient inutile dès qu'un périphérique est en jeu.
 
 ### (b) L'octet fantôme, reproduit à l'envers
 

@@ -3,7 +3,7 @@
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.ImportDemo, stopTime = 0.5, numberOfIntervals = 500, fileNamePrefix = "ImportDemo");
+simulate(MicroPythonMCU.Examples.Program.Imports, stopTime = 0.5, numberOfIntervals = 500, fileNamePrefix = "ImportDemo");
 b := getErrorString();
 
 vCompanion := val(mcu.GP0.v, 0.05, "ImportDemo_res.mat");
