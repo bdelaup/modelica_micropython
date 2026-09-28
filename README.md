@@ -1,168 +1,27 @@
-<p align="center"><strong>🇫🇷 Français</strong> — <a href="#english">Below in English ↓</a></p>
+<p align="center"><strong>🇬🇧 English</strong> — <a href="#francais">Plus bas en français ↓</a></p>
 
-<p align="center">📖 Plus d'info / More info : <a href="https://bdelaup.gitlab.io/modelica_micropython3/">bdelaup.gitlab.io/modelica_micropython3</a></p>
+<p align="center">📖 More info / Plus d'info : <a href="https://bdelaup.gitlab.io/modelica_micropython3/">bdelaup.gitlab.io/modelica_micropython3</a></p>
 
 ## MicroPythonMCU
 
-**Modèle de microcontrôleur programmable en python pour OpenModelica**
-
-`MicroPythonMCU` fournit un modèle OpenModelica (`MCU`) dont le comportement est exécuté par un script Python compatible [MicroPython](https://micropython.org/) (API `machine`/`time`, référence Raspberry Pi Pico / RP2040).
-
- Usage : tester un code de pilotage sur le jumeau numérique avant de le déployer sur un prototype réel (pédagogique ou industriel). 
- 
- Détails d'architecture : [`requirements.md`](requirements.md).
-
-## Installation
-
-- [OpenModelica](https://openmodelica.org/download/download-windows/) avec OMEdit (testé avec `1.27.1-64bit`) — le toolchain de compilation est déjà inclus, rien d'autre à installer (le runtime Python est vendoré dans la bibliothèque).
-- Windows uniquement pour cette v0.
-
-Versions publiées, prêtes à installer (runtime précompilé) : [page des releases](https://gitlab.com/bdelaup/modelica_micropython3/-/releases) — mode d'emploi dans [`docs/installation.md`](docs/installation.md). Depuis le dépôt :
-
-Dans OMEdit : *File → Open Model/Library File(s)…* → sélectionner `MicroPythonMCU/package.mo`. La bibliothèque et ses exemples (`MicroPythonMCU.Examples`) apparaissent dans l'explorateur.
-
-<p align="center"><img src="docs/images/library_tree.png" alt="Tree" width=""></p>
-
-## Démarrage rapide
-
-1. Ouvrir et simuler `MicroPythonMCU.Examples.BasicBlink` : `GP0` clignote (`Resources/Scripts/MCU/demo.py`).
-   <p align="center"><img src="docs/images/BasicBlink.gif" alt="schema MCU blik" width="300"></p>
-2. Dans les paramètres du composant `MCU`, pointer **Chemin du script** (bouton *…*) vers votre propre `.py` :
-
-   ```python
-   from machine import Pin
-   import time
-
-   led = Pin(0, Pin.OUT)
-   while True:
-       led.on()
-       time.sleep(1)
-       led.off()
-       time.sleep(1)
-   ```
-
-   Ce même fichier peut être copié tel quel sur un vrai Raspberry Pi Pico.
-3. Un second fichier `.py` posé à côté du script devient automatiquement importable (`addScriptDirToPath`) ; pour une bibliothèque partagée dans un autre dossier, utiliser le paramètre `libraryPath` (voir `Examples.ImportDemo`).
-
-## API `machine` / `time`
-
-Référence complète (toutes les signatures, ce qui synchronise ou non le script) : [`docs/api-machine.md`](docs/api-machine.md). Aperçu :
-
-```python
-from machine import Pin, ADC, PWM
-import time
-
-# Pin — GPIO numérique
-led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
-btn = Pin(1, Pin.IN)
-led.on(); led.off(); led.toggle()
-btn.value()                     # lit l'état résolu de la broche (0/1)
-
-# ADC — entrée analogique
-adc = ADC(2)                    # n'importe laquelle de GP0-GP7
-niveau = adc.read_u16()         # 0-65535, référence 3,3 V
-
-# PWM — sortie modulée, générée en continu côté Modelica une fois configurée
-pwm = PWM(Pin(3))
-pwm.freq(1000)                  # Hz
-pwm.duty_u16(32768)             # 0-65535 (~50%)
-
-# time — horloge simulée, sleep() compressé (pas d'attente réelle)
-time.sleep(1)                   # sleep_ms()/sleep_us() aussi disponibles
-time.ticks_ms()                 # ne synchronise pas (simple lecture)
-
-# Pin.irq — callback sur front montant/descendant
-btn.irq(handler=lambda p: led.toggle(), trigger=Pin.IRQ_RISING)
-
-# Timer — minuteur logiciel periodique, se declenche meme pendant un sleep()
-from machine import Timer
-Timer().init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
-
-# Display — liaison logique pedagogique, ecriture seule, livraison instantanee
-from machine import Display
-display = Display(0)
-display.write("Bonjour")        # reçu par un Peripherals.Display câblé sur mcu.Display0
-```
-
-## Vérifier l'installation
-
-```
-cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos   # … verify_12_display.mos
-```
-
-nécessite `omc` sur le `PATH` et `OPENMODELICAHOME` positionné — détail : [`docs/tests.md`](docs/tests.md).
-
-## Documentation
-
-| Document | Contenu |
-|---|---|
-| [`requirements.md`](requirements.md) | Source de vérité : besoin, décisions d'architecture (avec alternatives), restrictions v0, roadmap |
-| [`docs/architecture.md`](docs/architecture.md) | Arborescence du dépôt |
-| [`docs/integration-python.md`](docs/integration-python.md) | Intégration CPython/OpenModelica, shim `machine`/`time` |
-| [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md) | Protocole de synchro (diagrammes de séquence), pièges rencontrés |
-| [`docs/api-machine.md`](docs/api-machine.md) | Référence API `machine`/`time` |
-| [`docs/peripherique-display.md`](docs/peripherique-display.md) | Périphérique d'affichage pédagogique (`machine.Display`), connecteur logique, `Peripherals/` |
-| [`docs/tests.md`](docs/tests.md) | Rejouer/ajouter un scénario de vérification |
-
-## État
-
-- [x] GPIO numériques (`machine.Pin`)
-- [x] Entrées analogiques (`machine.ADC`)
-- [x] Sorties modulées (`machine.PWM`)
-- [x] Compression des `sleep`
-- [x] Import de modules auxiliaires
-- [x] Circuit électrique réel (pas de signaux logiques abstraits)
-- [x] LED embarquée
-- [x] Gestion des erreurs de script
-- [x] Interruptions sur broche (`machine.Pin.irq`) et minuteurs logiciels (`machine.Timer`)
-- [x] Périphérique d'affichage pédagogique (`machine.Display`) — texte affiché réellement sur l'icône
-- [ ] I2C / SPI / vrai UART sur les GPIO
-- [ ] Multi-instances
-- [ ] Linux / macOS
-
-Liste complète et justifications : [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive).
-
-## Licence
-
-[MIT](LICENSE) — attribution obligatoire (copyright + texte de licence) dans toute copie ou republication, totale ou partielle. La distribution Python vendorée (`MicroPythonMCU/Resources/PythonRuntime/`) garde sa propre licence (Python Software Foundation).
-
-Le composant `Peripherals.LED` (icône réactive au courant) s'inspire de `Arduino.Components.LED` de la bibliothèque [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) (CATIA-Systems).
-
-## Contexte
-
-Projet porté par B. Delaup, enseignant en sciences de l'ingénieur. MicroPythonMCU a vocation à être à la croisée d'un usage pédagogique (tester avant de déployer sur un prototype réel) et d'un usage industriel (jumeau numérique de logiciel embarqué).
-
-En partie développé avec l'aide d'IA.
-
-Ce dépôt GitHub est un miroir « passif » d'un dépôt GitLab.
-Dépôt actif original : https://gitlab.com/bdelaup/modelica_micropython3
-Merci d'utiliser le dépôt GitLab pour vos communications et pull requests.
-
----
-
-<a id="english"></a>
-
-## MicroPythonMCU (English)
-
 **Python-programmable microcontroller model for OpenModelica**
 
-`MicroPythonMCU` provides an OpenModelica model (`MCU`) whose behavior is driven by a Python script compatible with [MicroPython](https://micropython.org/) (`machine`/`time` API, referencing the Raspberry Pi Pico / RP2040 board).
+`MicroPythonMCU` provides an OpenModelica model (`MCU`) whose behavior is driven by a Python script compatible with [MicroPython](https://micropython.org/) (`machine`/`time` API, referencing the Raspberry Pi Pico / RP2040 board). The pins are real electrical nodes: the script drives and reads the surrounding Modelica circuit.
 
- Use case: test control code on the digital twin before deploying it to a real prototype (educational or industrial context).
+Use case: test control code on the digital twin before deploying it to a real prototype (educational or industrial context).
 
- Architecture details: [`requirements.md`](requirements.md) *(French only)*.
+## Features
+
+- **Microcontroller**: GPIO (`Pin`, `Pin.irq` interrupts, bit-banging), `ADC`, `PWM`, `Timer`, `UART` serial link, `I2C` master bus, flash-like file system (`open()`, `os`, `boot.py`/`main.py` startup), module imports, onboard LED. `sleep()` calls cost no real waiting time.
+- **Peripherals to wire in**: serial devices (echo, temperature sensor, GPS, 20x2 display, generic), I2C devices (Grove LCD RGB display, echo, generic), HX711 weighing chain (converter, strain-gauge bridge, load cell), LED, pedagogical display.
+- **31 examples** (`MicroPythonMCU.Examples`), including a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
+- **Current limits**: Windows only, a single microcontroller per model, no SPI. Full list: [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive) *(French only)*.
 
 ## Installation
 
-- [OpenModelica](https://openmodelica.org/download/download-windows/) with OMEdit (developed and tested with `1.27.1-64bit`) — the build toolchain is already included, nothing else to install (the Python runtime is vendored inside the library).
-- Windows only for this v0.
-
-Published versions, ready to install (precompiled runtime): [releases page](https://gitlab.com/bdelaup/modelica_micropython3/-/releases) — instructions (in French) in [`docs/installation.md`](docs/installation.md). From the repository:
-
-In OMEdit: *File → Open Model/Library File(s)…* → select `MicroPythonMCU/package.mo`. The library and its examples (`MicroPythonMCU.Examples`) appear in the explorer.
-
-<p align="center"><img src="docs/images/library_tree.png" alt="Tree" width=""></p>
+- [OpenModelica](https://openmodelica.org/download/download-windows/) with OMEdit (tested with `1.27.1-64bit`) — nothing else to install: the Python runtime ships with the library.
+- Published versions: [releases page](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), instructions in [`docs/installation.md`](docs/installation.md) *(French only)*.
+- From the repository: in OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
 
 ## Quick start
 
@@ -182,89 +41,11 @@ In OMEdit: *File → Open Model/Library File(s)…* → select `MicroPythonMCU/p
        time.sleep(1)
    ```
 
-   This same file can be copied as-is onto a real Raspberry Pi Pico.
-3. A second `.py` file placed next to the script becomes automatically importable (`addScriptDirToPath`); for a library shared in another folder, use the `libraryPath` parameter (see `Examples.ImportDemo`).
-
-## `machine` / `time` API
-
-Full reference (every signature, and which ones trigger synchronization or not): [`docs/api-machine.md`](docs/api-machine.md) *(French only)*. Overview:
-
-```python
-from machine import Pin, ADC, PWM
-import time
-
-# Pin — digital GPIO
-led = Pin(0, Pin.OUT)          # or Pin(Pin.LED, Pin.OUT) for the onboard LED
-btn = Pin(1, Pin.IN)
-led.on(); led.off(); led.toggle()
-btn.value()                     # reads the resolved pin state (0/1)
-
-# ADC — analog input
-adc = ADC(2)                    # any of GP0-GP7
-level = adc.read_u16()          # 0-65535, 3.3 V reference
-
-# PWM — modulated output, generated continuously on the Modelica side once configured
-pwm = PWM(Pin(3))
-pwm.freq(1000)                  # Hz
-pwm.duty_u16(32768)             # 0-65535 (~50%)
-
-# time — simulated clock, sleep() is time-compressed (no real waiting)
-time.sleep(1)                   # sleep_ms()/sleep_us() also available
-time.ticks_ms()                 # does not synchronize (plain read)
-
-# Pin.irq — callback on rising/falling edge
-btn.irq(handler=lambda p: led.toggle(), trigger=Pin.IRQ_RISING)
-
-# Timer — software periodic timer, keeps firing even during a sleep()
-from machine import Timer
-Timer().init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
-
-# Display — write-only pedagogical logical link, instant delivery
-from machine import Display
-display = Display(0)
-display.write("Hello")          # received by a Peripherals.Display wired to mcu.Display0
-```
-
-## Verify the installation
-
-```
-cd MicroPythonMCU/Resources/Verification
-omc verify_01_basic_blink.mos   # … verify_12_display.mos
-```
-
-requires `omc` on the `PATH` and `OPENMODELICAHOME` set — details: [`docs/tests.md`](docs/tests.md) *(French only)*.
+   This same file can be copied as-is onto a real Raspberry Pi Pico. A `.py` module placed next to the script can be imported.
 
 ## Documentation
 
-| Document | Content |
-|---|---|
-| [`requirements.md`](requirements.md) | Source of truth: the need, architecture decisions (with alternatives), v0 restrictions, roadmap |
-| [`docs/architecture.md`](docs/architecture.md) | Repository tree |
-| [`docs/integration-python.md`](docs/integration-python.md) | CPython/OpenModelica integration, `machine`/`time` shim |
-| [`docs/cycle-de-vie.md`](docs/cycle-de-vie.md) | Sync protocol (sequence diagrams), pitfalls encountered |
-| [`docs/api-machine.md`](docs/api-machine.md) | `machine`/`time` API reference |
-| [`docs/peripherique-display.md`](docs/peripherique-display.md) | Pedagogical display peripheral (`machine.Display`), logical connector, `Peripherals/` |
-| [`docs/tests.md`](docs/tests.md) | Replaying/adding a verification scenario |
-
-*(All linked documents above are in French.)*
-
-## Status
-
-- [x] Digital GPIO (`machine.Pin`)
-- [x] Analog inputs (`machine.ADC`)
-- [x] Modulated outputs (`machine.PWM`)
-- [x] `sleep` compression
-- [x] Auxiliary module import
-- [x] Real electrical circuit (no abstract logic signals)
-- [x] Onboard LED
-- [x] Script error handling
-- [x] Pin interrupts (`machine.Pin.irq`) and software timers (`machine.Timer`)
-- [x] Pedagogical display peripheral (`machine.Display`) — text actually shown on the icon
-- [ ] I2C / SPI / real UART on the GPIO pins
-- [ ] Multiple instances
-- [ ] Linux / macOS
-
-Full list and rationale: [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive) *(French only)*.
+The [documentation site](https://bdelaup.gitlab.io/modelica_micropython3/) *(French only)* covers installation, the `machine`/`time` API and each peripheral family, the internals and the verification suite. Architecture decisions and their alternatives are in [`requirements.md`](requirements.md).
 
 ## License
 
@@ -282,3 +63,67 @@ This GitHub repository is a "passive" mirror of a GitLab repository.
 Original active repository: https://gitlab.com/bdelaup/modelica_micropython3
 Please use the GitLab repository for communications and pull requests.
 
+---
+
+<a id="francais"></a>
+
+## MicroPythonMCU (Français)
+
+**Modèle de microcontrôleur programmable en python pour OpenModelica**
+
+`MicroPythonMCU` fournit un modèle OpenModelica (`MCU`) dont le comportement est exécuté par un script Python compatible [MicroPython](https://micropython.org/) (API `machine`/`time`, référence Raspberry Pi Pico / RP2040). Les broches sont de vrais nœuds électriques : le script pilote et lit le circuit Modelica qui l'entoure.
+
+Usage : tester un code de pilotage sur le jumeau numérique avant de le déployer sur un prototype réel (pédagogique ou industriel).
+
+## Ce que sait faire la bibliothèque
+
+- **Microcontrôleur** : GPIO (`Pin`, interruptions `Pin.irq`, bit-banging), `ADC`, `PWM`, `Timer`, liaison série `UART`, bus `I2C` maître, système de fichiers façon flash (`open()`, `os`, démarrage `boot.py`/`main.py`), import de modules, LED embarquée. Les `sleep()` ne coûtent aucune attente réelle.
+- **Périphériques à brancher** : appareils série (écho, capteur de température, GPS, afficheur 20x2, générique), appareils I2C (écran Grove LCD RGB, écho, générique), chaîne de pesée HX711 (convertisseur, pont de jauges, corps d'épreuve), LED, afficheur pédagogique.
+- **31 exemples** (`MicroPythonMCU.Examples`), dont une balance de cuisine qui exécute tels quels des drivers MicroPython du commerce.
+- **Limites actuelles** : Windows uniquement, un seul microcontrôleur par modèle, pas de SPI. Liste complète : [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive).
+
+## Installation
+
+- [OpenModelica](https://openmodelica.org/download/download-windows/) avec OMEdit (testé avec `1.27.1-64bit`) — rien d'autre à installer : le runtime Python est fourni avec la bibliothèque.
+- Versions publiées : [page des releases](https://gitlab.com/bdelaup/modelica_micropython3/-/releases), mode d'emploi dans [`docs/installation.md`](docs/installation.md).
+- Depuis le dépôt : dans OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
+
+## Démarrage rapide
+
+1. Ouvrir et simuler `MicroPythonMCU.Examples.BasicBlink` : `GP0` clignote (`Resources/Scripts/MCU/demo.py`).
+   <p align="center"><img src="docs/images/BasicBlink.gif" alt="schema MCU blik" width="300"></p>
+2. Dans les paramètres du composant `MCU`, pointer **Chemin du script** (bouton *…*) vers votre propre `.py` :
+
+   ```python
+   from machine import Pin
+   import time
+
+   led = Pin(0, Pin.OUT)
+   while True:
+       led.on()
+       time.sleep(1)
+       led.off()
+       time.sleep(1)
+   ```
+
+   Ce même fichier peut être copié tel quel sur un vrai Raspberry Pi Pico. Un module `.py` posé à côté du script est importable.
+
+## Documentation
+
+Le [site de documentation](https://bdelaup.gitlab.io/modelica_micropython3/) décrit l'installation, l'API `machine`/`time` et chaque famille de périphériques, le fonctionnement interne et la suite de vérification. Les décisions d'architecture et leurs alternatives sont dans [`requirements.md`](requirements.md).
+
+## Licence
+
+[MIT](LICENSE) — attribution obligatoire (copyright + texte de licence) dans toute copie ou republication, totale ou partielle. La distribution Python vendorée (`MicroPythonMCU/Resources/PythonRuntime/`) garde sa propre licence (Python Software Foundation).
+
+Le composant `Peripherals.LED` (icône réactive au courant) s'inspire de `Arduino.Components.LED` de la bibliothèque [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) (CATIA-Systems).
+
+## Contexte
+
+Projet porté par B. Delaup, enseignant en sciences de l'ingénieur. MicroPythonMCU a vocation à être à la croisée d'un usage pédagogique (tester avant de déployer sur un prototype réel) et d'un usage industriel (jumeau numérique de logiciel embarqué).
+
+En partie développé avec l'aide d'IA.
+
+Ce dépôt GitHub est un miroir « passif » d'un dépôt GitLab.
+Dépôt actif original : https://gitlab.com/bdelaup/modelica_micropython3
+Merci d'utiliser le dépôt GitLab pour vos communications et pull requests.
