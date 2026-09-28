@@ -56,3 +56,6 @@ __pycache__/
 # Site de documentation construit par Zensical (zensical build / serve) et son cache
 /public/
 /.cache/
+
+# Réglages locaux de l'éditeur
+/.vscode/
