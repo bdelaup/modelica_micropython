@@ -1,17 +1,17 @@
 within MicroPythonMCU.Examples.Uart;
 
-model Lcd "Le microcontrôleur écrit deux lignes sur un afficheur 20x2 par une vraie liaison série ; l'afficheur les montre sur son icône avec défilement"
+model Lcd "The microcontroller writes two lines to a 20x2 display through a real serial link; the display shows them on its icon with scrolling"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_lcd.py")) "scriptPath = Resources/Scripts/MCU/uart_lcd.py" annotation(
     Placement(transformation(origin = {-90, 0}, extent = {{-50, -50}, {50, 50}})));
-  MicroPythonMCU.Peripherals.UartLcd20x2 lcd(baudrate = 9600) "Affiche les lignes reçues sur sa broche RX" annotation(
+  MicroPythonMCU.Peripherals.UartLcd20x2 lcd(baudrate = 9600) "Shows the lines received on its RX pin" annotation(
     Placement(transformation(origin = {40, 0}, extent = {{-40, -40}, {40, 40}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-25, -80}, extent = {{-10, -10}, {10, 10}})));
 equation
-// Liaison serie : GP5 (TX) descend vers RX, TX remonte vers GP4 (RX).
-// L'afficheur n'emet jamais, mais sa broche TX reste cablee - comme sur un
-// module serie reel, ou les deux fils sont presents meme si l'un ne sert pas.
+// Serial link: GP5 (TX) goes down to RX, TX comes back up to GP4 (RX).
+// The display never transmits, but its TX pin stays connected - as on a
+// real serial module, where both wires are present even if one is unused.
   connect(mcu.GP5, lcd.RX) annotation(
     Line(points = {{-59, 10}, {-34, 10}, {-34, -13.6}, {-9.6, -13.6}}, color = {0, 0, 255}));
   connect(lcd.TX, mcu.GP4) annotation(
@@ -24,11 +24,11 @@ equation
     Diagram(coordinateSystem(extent = {{-160, -100}, {120, 80}})),
     experiment(StopTime = 0.2, Interval = 1e-5),
     Documentation(info = "<html>
-<p>À comparer directement avec <code>Examples.Display.Demo</code>, qui affiche le même genre de texte à travers la liaison <strong>logique</strong> <code>machine.Display</code>. Le résultat visuel est identique, le chemin ne l'est pas du tout :</p>
+<p>To be compared directly with <code>Examples.Display.Demo</code>, which shows the same kind of text through the <strong>logical</strong> link <code>machine.Display</code>. The visual result is identical, the path is not at all:</p>
 <ul>
-<li><code>Display.Demo</code> : le message est livré d'un bloc au point de synchro, sans durée ni tension. Pratique, mais rien à sonder.</li>
-<li><code>Uart.Lcd</code> : le texte traverse un vrai fil, un caractère toutes les 1,04 ms à 9600 bauds. Tracer <code>mcu.GP5.v</code> montre chaque caractère partir bit à bit, et c'est le saut de ligne qui déclenche l'affichage.</li>
+<li><code>Display.Demo</code>: the message is delivered in one block at the sync point, with no duration nor voltage. Handy, but nothing to probe.</li>
+<li><code>Uart.Lcd</code>: the text goes through a real wire, one character every 1.04 ms at 9600 baud. Plotting <code>mcu.GP5.v</code> shows each character leaving bit by bit, and the line feed is what triggers the display.</li>
 </ul>
-<p>Régler le débit de l'afficheur sur une autre valeur que celle du microcontrôleur fait apparaître des caractères faux à l'écran — le symptôme exact d'un désaccord de configuration sur un montage réel, reproduit ici sans matériel.</p>
+<p>Setting the baud rate of the display to a value other than the microcontroller's makes wrong characters appear on the screen — the exact symptom of a configuration mismatch on a real circuit, reproduced here without hardware.</p>
 </html>"));
 end Lcd;

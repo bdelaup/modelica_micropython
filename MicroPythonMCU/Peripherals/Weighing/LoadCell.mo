@@ -1,30 +1,30 @@
 within MicroPythonMCU.Peripherals.Weighing;
 
-model LoadCell "Corps d'épreuve (modèle quasi-statique) : la force appliquée le déforme, sa déformation est transmise aux jauges du pont"
+model LoadCell "Load cell body (quasi-static model): the applied force deforms it, its strain is passed on to the gauges of the bridge"
   import Modelica.Units.SI;
-  parameter SI.Mass capacity = 5 "Portée : masse qui produit la déformation nominale";
-  parameter SI.Force FNom = capacity*Modelica.Constants.g_n "Force nominale (poids de la portée)";
-  parameter Real epsNom(unit = "1") = 500e-6 "Déformation vue par les jauges sous la force nominale (500 µm/m, soit 1 mV/V en sortie de pont avec un facteur de jauge de 2)";
-  parameter SI.Length sNom = 0.2e-3 "Flèche du corps d'épreuve sous la force nominale";
-  Modelica.Mechanics.Translational.Interfaces.Flange_a flange "Point d'application de la charge (plateau) : une force positive déforme le corps d'épreuve" annotation(
+  parameter SI.Mass capacity = 5 "Capacity: mass producing the nominal strain";
+  parameter SI.Force FNom = capacity*Modelica.Constants.g_n "Nominal force (weight of the capacity)";
+  parameter Real epsNom(unit = "1") = 500e-6 "Strain seen by the gauges under the nominal force (500 µm/m, i.e. 1 mV/V at the bridge output with a gauge factor of 2)";
+  parameter SI.Length sNom = 0.2e-3 "Deflection of the load cell body under the nominal force";
+  Modelica.Mechanics.Translational.Interfaces.Flange_a flange "Point where the load is applied (pan): a positive force deforms the load cell body" annotation(
     Placement(transformation(origin = {100, 0}, extent = {{-10, -10}, {10, 10}}), iconTransformation(origin = {100, 0}, extent = {{-10, -10}, {10, 10}})));
-  Modelica.Blocks.Interfaces.RealOutput eps(unit = "1") "Déformation au droit des jauges, vers le pont de Wheatstone" annotation(
+  Modelica.Blocks.Interfaces.RealOutput eps(unit = "1") "Strain under the gauges, to the Wheatstone bridge" annotation(
     Placement(transformation(origin = {-110, 0}, extent = {{10, -10}, {-10, 10}}), iconTransformation(origin = {-110, 0}, extent = {{10, -10}, {-10, 10}})));
-  SI.Force F "Force appliquée";
-  SI.Length s "Flèche";
-  // Public : anime l'icône (les variables protected sont absentes des résultats).
-  Boolean overload = F > 1.5*FNom "Surcharge : au-delà de 150 % de la portée, un vrai corps d'épreuve se déformerait durablement";
+  SI.Force F "Applied force";
+  SI.Length s "Deflection";
+  // Public: animates the icon (protected variables are missing from the results).
+  Boolean overload = F > 1.5*FNom "Overload: beyond 150 % of the capacity, a real load cell body would be permanently deformed";
 equation
   F = flange.f;
-  s = flange.s "appui fixe à s = 0";
-  F = FNom/sNom*s "élasticité sans masse : pas de dynamique, la flèche suit la force instantanément";
-  eps = epsNom*F/FNom "déformation proportionnelle à la force (loi de Hooke)";
+  s = flange.s "fixed support at s = 0";
+  F = FNom/sNom*s "massless elasticity: no dynamics, the deflection follows the force instantly";
+  eps = epsNom*F/FNom "strain proportional to the force (Hooke's law)";
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(fillColor = {160, 160, 160}, pattern = LinePattern.None, fillPattern = FillPattern.Backward, extent = {{-90, -20}, {-70, -60}}), Line(points = {{-90, -20}, {-70, -20}}), Rectangle(lineColor = {60, 60, 60}, fillColor = DynamicSelect({200, 200, 210}, if overload then {230, 80, 60} else {200, 200, 210}), fillPattern = FillPattern.Solid, extent = {{-80, 20}, {70, -20}}), Ellipse(lineColor = {60, 60, 60}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{-40, 12}, {-16, -12}}), Ellipse(lineColor = {60, 60, 60}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{16, 12}, {40, -12}}), Rectangle(lineColor = {200, 110, 20}, fillColor = {240, 160, 60}, fillPattern = FillPattern.Solid, extent = {{-12, 26}, {12, 20}}), Rectangle(lineColor = {200, 110, 20}, fillColor = {240, 160, 60}, fillPattern = FillPattern.Solid, extent = {{-12, -20}, {12, -26}}), Line(points = {{70, 0}, {90, 0}}, color = {0, 127, 0}), Text(textColor = {0, 0, 255}, extent = {{-150, 80}, {150, 40}}, textString = "%name"), Text(extent = {{-150, -64}, {150, -94}}, textString = "%capacity kg")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}})),
     Documentation(info = "<html>
-<p><strong>Corps d'épreuve</strong> d'un capteur de force (<em>load cell</em>) : la pièce métallique qui se déforme sous la charge, et sur laquelle sont collées les jauges de déformation du pont (<code>WheatstoneBridge</code>). Modèle <strong>quasi-statique</strong> : pas de masse ni d'amortissement, la déformation suit la force instantanément. C'est légitime tant que la charge évolue lentement devant la fréquence propre du capteur (plusieurs dizaines de hertz pour une balance de cuisine).</p>
-<p>La force arrive par la bride mécanique <code>flange</code>, typiquement depuis une source standard <code>Modelica.Mechanics.Translational.Sources.Force</code> (le poids : masse × <code>g_n</code>). Le corps d'épreuve se comporte comme un ressort de raideur <code>FNom/sNom</code> appuyé sur un point fixe, et sort la déformation <code>eps = epsNom · F/FNom</code> vers le pont.</p>
-<p>Ordre de grandeur des paramètres par défaut : capteur de 5 kg, 500 µm/m à pleine charge, soit une sensibilité de 1 mV/V une fois le pont complet câblé (facteur de jauge 2), ce qui est typique des capteurs de balance de cuisine. Au-delà de 150 % de la portée, l'icône passe au rouge (<code>overload</code>) : un vrai corps d'épreuve se déformerait durablement.</p>
+<p><strong>Load cell body</strong> of a force sensor (<em>load cell</em>): the metal part that deforms under the load, and to which the strain gauges of the bridge (<code>WheatstoneBridge</code>) are bonded. <strong>Quasi-static</strong> model: no mass nor damping, the strain follows the force instantly. This is legitimate as long as the load changes slowly compared with the natural frequency of the sensor (several tens of hertz for a kitchen scale).</p>
+<p>The force comes in through the mechanical flange <code>flange</code>, typically from a standard source <code>Modelica.Mechanics.Translational.Sources.Force</code> (the weight: mass × <code>g_n</code>). The load cell body behaves like a spring of stiffness <code>FNom/sNom</code> resting on a fixed point, and outputs the strain <code>eps = epsNom · F/FNom</code> to the bridge.</p>
+<p>Order of magnitude of the default parameters: 5 kg sensor, 500 µm/m at full load, i.e. a sensitivity of 1 mV/V once the full bridge is wired (gauge factor 2), which is typical of kitchen scale sensors. Beyond 150 % of the capacity, the icon turns red (<code>overload</code>): a real load cell body would be permanently deformed.</p>
 </html>"));
 end LoadCell;

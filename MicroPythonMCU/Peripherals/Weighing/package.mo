@@ -1,11 +1,11 @@
 within MicroPythonMCU.Peripherals;
-package Weighing "Chaîne de pesée : corps d'épreuve, pont de jauges de déformation, convertisseur HX711"
+package Weighing "Weighing chain: load cell body, strain gauge bridge, HX711 converter"
   extends Modelica.Icons.Package;
 
   annotation(
     Documentation(info = "<html>
-<p>Les maillons d'une balance électronique, de la force à la mesure numérique lue par le microcontrôleur :</p>
-<p><code>Force</code> (source standard <code>Modelica.Mechanics.Translational.Sources.Force</code>, le poids) → <code>LoadCell</code> (corps d'épreuve : la force le déforme) → <code>WheatstoneBridge</code> (quatre jauges collées sur le corps d'épreuve : la déformation déséquilibre le pont) → <code>Hx711</code> (amplificateur et convertisseur 24 bits) → <code>MCU</code> (lecture par un driver MicroPython, broches PD_SCK et DOUT).</p>
-<p>Exemples : <code>Examples.Weighing.Hx711Read</code> (lectures brutes, gain, veille) et <code>Examples.Weighing.KitchenScale</code> (balance de cuisine complète, écran I2C et bouton de tare).</p>
+<p>The links of an electronic scale, from the force to the digital measurement read by the microcontroller:</p>
+<p><code>Force</code> (standard source <code>Modelica.Mechanics.Translational.Sources.Force</code>, the weight) → <code>LoadCell</code> (load cell body: the force deforms it) → <code>WheatstoneBridge</code> (four gauges bonded to the load cell body: the strain unbalances the bridge) → <code>Hx711</code> (24-bit amplifier and converter) → <code>MCU</code> (read by a MicroPython driver, PD_SCK and DOUT pins).</p>
+<p>Examples: <code>Examples.Weighing.Hx711Read</code> (raw readings, gain, power-down) and <code>Examples.Weighing.KitchenScale</code> (complete kitchen scale, I2C screen and tare button).</p>
 </html>"));
 end Weighing;

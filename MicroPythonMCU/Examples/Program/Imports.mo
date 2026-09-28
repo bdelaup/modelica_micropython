@@ -1,18 +1,18 @@
 within MicroPythonMCU.Examples.Program;
 
-model Imports "Le script principal importe un module auxiliaire pose a cote de lui (addScriptDirToPath) et un module d'une bibliotheque partagee dans un dossier separe (libraryPath)"
+model Imports "The main script imports a helper module placed next to it (addScriptDirToPath) and a module of a shared library in a separate folder (libraryPath)"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/import_demo.py"), libraryPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/lib/shared_helper.py")) "scriptPath = Resources/Scripts/MCU/import_demo.py, libraryPath = Resources/Scripts/MCU/lib/shared_helper.py (addScriptDirToPath reste a sa valeur par defaut, true)" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/import_demo.py"), libraryPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/lib/shared_helper.py")) "scriptPath = Resources/Scripts/MCU/import_demo.py, libraryPath = Resources/Scripts/MCU/lib/shared_helper.py (addScriptDirToPath keeps its default value, true)" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -100}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0 : import companion, meme dossier que le script)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limits the current of led0 (GP0: import companion, same folder as the script)" annotation(
     Placement(transformation(origin = {-90, 40}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led0 "GP0 : import companion (addScriptDirToPath)" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0: import companion (addScriptDirToPath)" annotation(
     Placement(transformation(origin = {-140, 40}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limite le courant de led1 (GP1 : import shared_helper, bibliotheque partagee)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limits the current of led1 (GP1: import shared_helper, shared library)" annotation(
     Placement(transformation(origin = {-90, -10}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led1 "GP1 : import shared_helper (libraryPath)" annotation(
+  MicroPythonMCU.Peripherals.LED led1 "GP1: import shared_helper (libraryPath)" annotation(
     Placement(transformation(origin = {-140, -10}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -33,6 +33,6 @@ equation
     Diagram(coordinateSystem(extent = {{-200, -140}, {80, 100}})),
     experiment(StopTime = 0.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
-<p>Scénario de vérification 10 (cf. <code>requirements.md</code>) : le script principal <code>import_demo.py</code> importe deux modules auxiliaires — <code>companion.py</code>, posé à côté de lui dans <code>Resources/Scripts/</code> (rendu importable par <code>addScriptDirToPath</code>, activé par défaut sur <code>MCU</code>), et <code>shared_helper.py</code>, dans le sous-dossier séparé <code>Resources/Scripts/MCU/lib/</code> (rendu importable via le paramètre <code>libraryPath</code> de <code>mcu</code>, qui y pointe explicitement). Si l'un des deux imports échouait, le script lèverait une <code>ImportError</code> non rattrapée et la simulation s'arrêterait en erreur. <code>led0</code>/<code>led1</code> confirment visuellement que les deux imports ont réussi. Les broches <code>GP2</code>-<code>GP7</code>, non utilisées par ce scénario, sont laissées non connectées.</p>
+<p>Verification scenario 10 (see <code>requirements.md</code>): the main script <code>import_demo.py</code> imports two helper modules — <code>companion.py</code>, placed next to it in <code>Resources/Scripts/MCU/</code> (made importable by <code>addScriptDirToPath</code>, enabled by default on <code>MCU</code>), and <code>shared_helper.py</code>, in the separate subfolder <code>Resources/Scripts/MCU/lib/</code> (made importable through the <code>libraryPath</code> parameter of <code>mcu</code>, which points to it explicitly). If either import failed, the script would raise an uncaught <code>ImportError</code> and the simulation would stop with an error. <code>led0</code>/<code>led1</code> confirm visually that both imports succeeded. Pins <code>GP2</code>-<code>GP7</code>, unused by this scenario, are left unconnected.</p>
 </html>"));
 end Imports;

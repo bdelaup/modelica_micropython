@@ -1,13 +1,13 @@
 # ---------------------------------------------------------------------------
-# Script par defaut de Peripherals.UartEchoDevice (comportement = Script).
+# Default script of Peripherals.UartEchoDevice (behaviour = Script).
 #
-# Le plus court des scripts de peripherique : renvoie chaque ligne recue.
+# The shortest of the peripheral scripts: sends back each received line.
 #
-# Difference avec le mode Table : la, l'echo se fait OCTET PAR OCTET, des que
-# chacun est decode. Ici, un script ne voit que des LIGNES completes - l'echo
-# ne part donc qu'une fois le terminateur recu, suivi d'un saut de ligne.
+# Difference with Table mode: there, the echo is done BYTE BY BYTE, as soon as
+# each one is decoded. Here, a script only sees complete LINES - the echo
+# therefore only leaves once the terminator has been received, followed by a line feed.
 # ---------------------------------------------------------------------------
 
 
-def on_receive(ligne, t, v):
-    return ligne + b'\n'
+def on_receive(line, t, v):
+    return line + b'\n'

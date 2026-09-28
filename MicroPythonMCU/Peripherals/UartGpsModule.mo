@@ -1,6 +1,6 @@
 within MicroPythonMCU.Peripherals;
 
-model UartGpsModule "Module GPS série : pousse spontanément une trame de position, sans être sollicité"
+model UartGpsModule "Serial GPS module: spontaneously pushes a position frame, without being asked"
   extends Internal.PartialUartDevice(
     respondEnabled = false,
     periodicEnabled = true,
@@ -13,8 +13,8 @@ model UartGpsModule "Module GPS série : pousse spontanément une trame de posit
   annotation(
     Icon(graphics = {Text(textColor = {255, 255, 255}, extent = {{-90, -22}, {90, -40}}, textString = "GPS", textStyle = {TextStyle.Bold})}),
     Documentation(info = "<html>
-<p>Représentant du <strong>second mode d'émission</strong> : contrairement au capteur de température, ce module n'attend aucune question. Il pousse une trame toutes les <code>period</code> secondes, ce qui oblige le programme embarqué à surveiller son entrée série — typiquement par <code>uart.any()</code> dans une boucle, puisque la réception ne réveille jamais le script (pas de <code>uart.irq()</code> en v0).</p>
-<p>Les trois grandeurs du connecteur <code>valueIn</code> sont latitude, longitude et vitesse. Y brancher un modèle de déplacement fait défiler une trajectoire réelle dans les trames, ce qui permet d'éprouver le code de décodage embarqué sur des données qui bougent.</p>
-<p><em>Trame volontairement simplifiée</em> : une phrase NMEA réelle (<code>$GPGLL</code>) porte en plus les indicateurs de sens N/S et E/W, l'heure UTC, un indicateur de validité et une somme de contrôle. On garde ici les trois champs numériques, suffisants pour exercer le mécanisme d'émission et le découpage côté programme. Un format plus fidèle relèverait du mode script, la table de commandes ne sachant pas calculer une somme de contrôle.</p>
+<p>Representative of the <strong>second transmission mode</strong>: unlike the temperature sensor, this module waits for no question. It pushes a frame every <code>period</code> seconds, which forces the embedded program to watch its serial input — typically with <code>uart.any()</code> in a loop, since reception never wakes the script up (no <code>uart.irq()</code> in v0).</p>
+<p>The three quantities of the <code>valueIn</code> connector are latitude, longitude and speed. Connecting a motion model to it makes a real trajectory scroll through the frames, which lets the embedded decoding code be tested on moving data.</p>
+<p><em>Deliberately simplified frame</em>: a real NMEA sentence (<code>$GPGLL</code>) also carries the N/S and E/W direction indicators, the UTC time, a validity flag and a checksum. Only the three numeric fields are kept here, enough to exercise the transmission mechanism and the splitting on the program side. A more faithful format belongs to the script mode, since the command table cannot compute a checksum — see <code>Examples.Uart.GpsPy</code>.</p>
 </html>"));
 end UartGpsModule;

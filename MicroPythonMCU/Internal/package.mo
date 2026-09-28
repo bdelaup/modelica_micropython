@@ -1,9 +1,9 @@
 within MicroPythonMCU;
-package Internal "Détails d'implémentation (External Object PyRuntime) - non destiné à l'usage direct par l'utilisateur"
+package Internal "Implementation details (external objects, shared icons, base classes) - not meant for direct use"
   extends Modelica.Icons.InternalPackage;
 
   annotation(
     Documentation(info = "<html>
-<p>Voir la décision « Structure du package et interface C du runtime Python » dans <code>requirements.md</code>.</p>
+<p>See the decision \"Structure du package et interface C du runtime Python\" in <code>requirements.md</code>.</p>
 </html>"));
 end Internal;

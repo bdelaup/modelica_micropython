@@ -1,33 +1,33 @@
 # ---------------------------------------------------------------------------
-# Script par defaut de Peripherals.I2cEchoDevice : ce que le maitre ecrit, il le
-# relit. Sert a tester le bus (trames de plusieurs octets, START repete,
-# plusieurs peripheriques a des adresses differentes).
+# Default script of Peripherals.I2cEchoDevice: what the master writes, it
+# reads back. Used to test the bus (multi-byte frames, repeated START,
+# several peripherals at different addresses).
 #
-# Contrat d'un peripherique I2C (toutes les fonctions sont facultatives) :
-#   on_write(addr, data, t, v)   une phase d'ecriture adressee vient de se clore
-#   on_read(addr, t, v)          le maitre lit : rendre les octets a lui envoyer
-#   outputs()                    -> connecteur valueOut
-#   lines()                      -> texte affiche (ecrans)
-# Voir Resources/Scripts/Device/i2c_generic.py pour le detail.
+# Contract of an I2C peripheral (all functions are optional):
+#   on_write(addr, data, t, v)   a write phase addressed to it has just ended
+#   on_read(addr, t, v)          the master reads: return the bytes to send to it
+#   outputs()                    -> valueOut connector
+#   lines()                      -> displayed text (screens)
+# See Resources/Scripts/Device/i2c_generic.py for the details.
 # ---------------------------------------------------------------------------
 
-memoire = b''    # octets de la derniere ecriture
-ecritures = 0    # phases d'ecriture recues
-octets = 0       # octets recus au total
+memory = b''     # bytes of the last write
+writes = 0       # write phases received
+total = 0        # bytes received in total
 
 
 def on_write(addr, data, t, v):
-    global memoire, ecritures, octets
-    memoire = data
-    ecritures += 1
-    octets += len(data)
+    global memory, writes, total
+    memory = data
+    writes += 1
+    total += len(data)
 
 
 def on_read(addr, t, v):
-    # Rappelee si le maitre lit plus d'octets que la derniere ecriture n'en
-    # contenait : il relit alors la meme chose, en boucle.
-    return memoire
+    # Called again if the master reads more bytes than the last write
+    # contained: it then reads the same thing again, in a loop.
+    return memory
 
 
 def outputs():
-    return (ecritures, octets, memoire[0] if memoire else -1)
+    return (writes, total, memory[0] if memory else -1)

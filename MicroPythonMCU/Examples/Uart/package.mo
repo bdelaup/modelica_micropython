@@ -1,4 +1,4 @@
 within MicroPythonMCU.Examples;
-package Uart "Liaison série : le microcontrôleur et des appareils série externes - suffixe Py : appareil dont le comportement est décrit par un script Python"
+package Uart "Serial link: the microcontroller and external serial devices - suffix Py: device whose behaviour is described by a Python script"
   extends Modelica.Icons.ExamplesPackage;
 end Uart;

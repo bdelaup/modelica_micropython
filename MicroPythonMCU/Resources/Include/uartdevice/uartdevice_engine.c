@@ -132,28 +132,28 @@ void* UartDevice_new(double baudrate, const char* commandTable, const char* term
     int k;
 
     if (baudrate < UART_MIN_BAUD || baudrate > UART_MAX_BAUD) {
-        ModelicaFormatError("UartDevice : baudrate %g hors bornes (%d-%d) - garde-fou contre une tempete d'evenements Modelica",
+        ModelicaFormatError("UartDevice: baudrate %g out of range (%d-%d) - safeguard against a storm of Modelica events",
                             baudrate, UART_MIN_BAUD, UART_MAX_BAUD);
         return NULL;
     }
     if (responseDelay < 0) {
-        ModelicaFormatError("UartDevice : responseDelay %g s negatif", responseDelay);
+        ModelicaFormatError("UartDevice: negative responseDelay %g s", responseDelay);
         return NULL;
     }
     /* Le terminateur arrive en CHAINE pour pouvoir s'ecrire "\n" cote Modelica ;
        seul son premier caractere compte. */
     if (!terminator || terminator[0] == '\0') {
-        ModelicaFormatError("UartDevice : terminator vide - indiquer le caractere de fin de commande, par exemple un saut de ligne");
+        ModelicaFormatError("UartDevice: empty terminator - give the end-of-command character, for example a line feed");
         return NULL;
     }
     if (mode != UARTDEV_MODE_TABLE && mode != UARTDEV_MODE_SCRIPT) {
-        ModelicaFormatError("UartDevice : comportement inconnu (%d)", mode);
+        ModelicaFormatError("UartDevice: unknown behaviour (%d)", mode);
         return NULL;
     }
 
     dev = (struct UartDevice*) calloc(1, sizeof(struct UartDevice));
     if (!dev) {
-        ModelicaFormatError("UartDevice : allocation impossible");
+        ModelicaFormatError("UartDevice: allocation failed");
         return NULL;
     }
 
@@ -199,7 +199,7 @@ void* UartDevice_new(double baudrate, const char* commandTable, const char* term
     }
 
     if (dev->periodic_enabled && period < UARTDEV_MIN_PERIOD) {
-        ModelicaFormatError("UartDevice : period %g s trop courte (plancher %g s) - sinon suite non bornee d'evenements a temps simule constant",
+        ModelicaFormatError("UartDevice: period %g s too short (floor %g s) - otherwise an unbounded sequence of events at constant simulated time",
                             period, UARTDEV_MIN_PERIOD);
         return NULL;
     }

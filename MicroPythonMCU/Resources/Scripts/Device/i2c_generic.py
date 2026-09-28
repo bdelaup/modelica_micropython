@@ -1,65 +1,65 @@
 # ---------------------------------------------------------------------------
-# Script par defaut de Peripherals.I2cGenericDevice : point de depart a copier
-# pour decrire un nouveau peripherique I2C esclave. Il modelise ici le cas le
-# plus courant, un BANC DE REGISTRES avec pointeur auto-incremente (comme la
-# plupart des capteurs, EEPROM, drivers de LED...).
+# Default script of Peripherals.I2cGenericDevice: starting point to copy
+# when describing a new I2C slave peripheral. It models here the most
+# common case, a REGISTER BANK with an auto-incremented pointer (like
+# most sensors, EEPROMs, LED drivers...).
 #
-# Le script est execute UNE FOIS, a la construction du composant. Ses variables
-# de module persistent ensuite d'un appel a l'autre : c'est la que vit l'etat du
-# peripherique. Deux instances du meme fichier ont chacune le leur.
+# The script is run ONCE, when the component is built. Its module variables
+# then persist from one call to the next: this is where the state of the
+# peripheral lives. Two instances of the same file each have their own.
 #
-# Le composant gere seul le protocole (START, adresse, acquittements, STOP) : le
-# script ne voit que des TRANSACTIONS. Quatre fonctions, toutes facultatives :
+# The component handles the protocol on its own (START, address, acknowledges,
+# STOP): the script only sees TRANSACTIONS. Four functions, all optional:
 #
-#   on_write(addr, data, t, v)   une phase d'ecriture qui lui etait adressee
-#                                vient de se clore (STOP ou START repete)
-#       addr : adresse sur 7 bits utilisee par le maitre (utile si le composant
-#              en a plusieurs, cf. parametre addresses)
-#       data : bytes recus (jamais vide)
-#       t    : temps simule (s)
-#       v    : tuple des grandeurs du connecteur valueIn
+#   on_write(addr, data, t, v)   a write phase addressed to it has just
+#                                ended (STOP or repeated START)
+#       addr : 7-bit address used by the master (useful if the component
+#              has several, see the addresses parameter)
+#       data : bytes received (never empty)
+#       t    : simulated time (s)
+#       v    : tuple of the quantities of the valueIn connector
 #
-#   on_read(addr, t, v)          le maitre commence a lire
-#       retour : les octets a lui envoyer - bytes, str, liste d'entiers ou
-#                entier. Ils sortent un par un ; si le maitre en lit davantage,
-#                on_read est rappelee (et 0xFF sort si elle ne rend rien)
+#   on_read(addr, t, v)          the master starts reading
+#       return : the bytes to send to it - bytes, str, list of integers or
+#                integer. They go out one by one; if the master reads more,
+#                on_read is called again (and 0xFF goes out if it returns nothing)
 #
-#   outputs()                    relue apres chaque appel -> connecteur valueOut
-#       retour : un nombre ou une sequence de nombres
+#   outputs()                    read again after each call -> valueOut connector
+#       return : a number or a sequence of numbers
 #
-#   lines()                      relue apres chaque appel -> texte affiche sur
-#                                l'icone d'un ecran (line1, line2)
-#       retour : une chaine, ou deux
+#   lines()                      read again after each call -> text shown on
+#                                the icon of a screen (line1, line2)
+#       return : one string, or two
 #
-# Ces fonctions s'executent sur le thread de la simulation : elles doivent aller
-# au bout sans attendre. Pas de sleep(), pas d'acces a machine. print() est
-# prefixe du nom du composant dans le journal de simulation.
+# These functions run on the simulation thread: they must run to completion
+# without waiting. No sleep(), no access to machine. print() is
+# prefixed with the component name in the simulation log.
 #
-# Cote microcontroleur, ce gabarit repond a :
-#   i2c.writeto_mem(0x42, 3, b'\x10\x20')   # ecrit les registres 3 et 4
-#   i2c.readfrom_mem(0x42, 3, 2)            # relit b'\x10\x20'
+# On the microcontroller side, this template answers:
+#   i2c.writeto_mem(0x42, 3, b'\x10\x20')   # writes registers 3 and 4
+#   i2c.readfrom_mem(0x42, 3, 2)            # reads back b'\x10\x20'
 # ---------------------------------------------------------------------------
 
-registres = bytearray(16)
-pointeur = 0
+registers = bytearray(16)
+pointer = 0
 
 
 def on_write(addr, data, t, v):
-    global pointeur
-    # Premier octet : numero de registre ; les suivants s'y ecrivent a la suite.
-    pointeur = data[0] % len(registres)
-    for octet in data[1:]:
-        registres[pointeur] = octet
-        pointeur = (pointeur + 1) % len(registres)
+    global pointer
+    # First byte: register number; the following ones are written from there on.
+    pointer = data[0] % len(registers)
+    for byte in data[1:]:
+        registers[pointer] = byte
+        pointer = (pointer + 1) % len(registers)
 
 
 def on_read(addr, t, v):
-    global pointeur
-    # Un octet a la fois : le pointeur avance a chaque octet lu.
-    valeur = registres[pointeur]
-    pointeur = (pointeur + 1) % len(registres)
-    return valeur
+    global pointer
+    # One byte at a time: the pointer moves on at each byte read.
+    value = registers[pointer]
+    pointer = (pointer + 1) % len(registers)
+    return value
 
 
 def outputs():
-    return registres[0]
+    return registers[0]

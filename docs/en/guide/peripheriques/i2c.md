@@ -66,12 +66,12 @@ The `I2c.GroveLcd` example drives this display with an **off-the-shelf MicroPyth
 
 | Parameter | Default | Group | Role |
 |---|---|---|---|
-| `addresses` | depends on the component | Bus I2C | 7-bit address(es), as text: `"0x42"` or `"0x3E, 0x62"` (4 at most) |
-| `usePullUp` | `false` (`true` for the Grove) | Bus I2C | Carry the SDA and SCL pull-up resistors to `VOH`. Several devices may carry them: they end up in parallel |
-| `RPullUp` | 4.7 kΩ | Bus I2C | Value of each pull-up resistor |
-| `scriptPath` | the component's script | Comportement (behaviour) | `.py` file describing the device |
+| `addresses` | depends on the component | I2C bus | 7-bit address(es), as text: `"0x42"` or `"0x3E, 0x62"` (4 at most) |
+| `usePullUp` | `false` (`true` for the Grove) | I2C bus | Carry the SDA and SCL pull-up resistors to `VOH`. Several devices may carry them: they end up in parallel |
+| `RPullUp` | 4.7 kΩ | I2C bus | Value of each pull-up resistor |
+| `scriptPath` | the component's script | Behaviour | `.py` file describing the device |
 
-### Inputs / outputs (*Entrées / sorties* tab)
+### Inputs / outputs (*Inputs / outputs* tab)
 
 | Parameter | Default | Role |
 |---|---|---|
@@ -80,7 +80,7 @@ The `I2c.GroveLcd` example drives this display with an **off-the-shelf MicroPyth
 | `fixedValue` | 0 | Value used when `valueIn` is not used |
 | `nOut` | 1 (3 for the echo, 4 for the Grove) | Number of quantities returned by `outputs()` (4 at most) |
 
-### Electrical (*Électrique* tab)
+### Electrical (*Electrical* tab)
 
 | Parameter | Default | Role |
 |---|---|---|

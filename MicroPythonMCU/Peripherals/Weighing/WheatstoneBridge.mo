@@ -1,31 +1,31 @@
 within MicroPythonMCU.Peripherals.Weighing;
 
-model WheatstoneBridge "Pont de Wheatstone complet : quatre jauges de déformation collées sur le corps d'épreuve"
+model WheatstoneBridge "Full Wheatstone bridge: four strain gauges bonded to the load cell body"
   import Modelica.Units.SI;
-  parameter SI.Resistance R0 = 1000 "Résistance d'une jauge au repos";
-  parameter Real K = 2 "Facteur de jauge : variation relative de résistance par unité de déformation (dR/R = K·eps)";
-  Modelica.Electrical.Analog.Interfaces.PositivePin E_plus "Alimentation du pont (excitation +)" annotation(
+  parameter SI.Resistance R0 = 1000 "Resistance of a gauge at rest";
+  parameter Real K = 2 "Gauge factor: relative resistance change per unit of strain (dR/R = K·eps)";
+  Modelica.Electrical.Analog.Interfaces.PositivePin E_plus "Bridge supply (excitation +)" annotation(
     Placement(transformation(origin = {-110, 45}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, 45}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin S_plus "Sortie du pont (signal +), vers A+ du HX711" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin S_plus "Bridge output (signal +), to A+ of the HX711" annotation(
     Placement(transformation(origin = {-110, 15}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, 15}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin S_minus "Sortie du pont (signal -), vers A- du HX711" annotation(
+  Modelica.Electrical.Analog.Interfaces.NegativePin S_minus "Bridge output (signal -), to A- of the HX711" annotation(
     Placement(transformation(origin = {-110, -15}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, -15}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin E_minus "Alimentation du pont (excitation -)" annotation(
+  Modelica.Electrical.Analog.Interfaces.NegativePin E_minus "Bridge supply (excitation -)" annotation(
     Placement(transformation(origin = {-110, -45}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, -45}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Blocks.Interfaces.RealInput eps(unit = "1") "Déformation du corps d'épreuve au droit des jauges" annotation(
+  Modelica.Blocks.Interfaces.RealInput eps(unit = "1") "Strain of the load cell body under the gauges" annotation(
     Placement(transformation(origin = {120, 0}, extent = {{20, -20}, {-20, 20}}), iconTransformation(origin = {120, 0}, extent = {{20, -20}, {-20, 20}})));
-  // Jauges en diagonale : j1 et j4 sont étirées (R augmente), j2 et j3
-  // comprimées (R diminue). Chaque demi-pont s'écarte donc de E/2 en sens
-  // opposé, et S+ - S- = E·K·eps : quatre fois la sensibilité d'une jauge seule.
-  Modelica.Electrical.Analog.Basic.VariableResistor j1 "Jauge étirée, entre E+ et S-" annotation(
+  // Gauges on the diagonals: j1 and j4 are stretched (R increases), j2 and j3
+  // compressed (R decreases). Each half-bridge therefore moves away from E/2 in the
+  // opposite direction, and S+ - S- = E·K·eps: four times the sensitivity of a single gauge.
+  Modelica.Electrical.Analog.Basic.VariableResistor j1 "Stretched gauge, between E+ and S-" annotation(
     Placement(transformation(origin = {-30, 30}, extent = {{-10, -10}, {10, 10}}, rotation = -45)));
-  Modelica.Electrical.Analog.Basic.VariableResistor j2 "Jauge comprimée, entre S- et E-" annotation(
+  Modelica.Electrical.Analog.Basic.VariableResistor j2 "Compressed gauge, between S- and E-" annotation(
     Placement(transformation(origin = {-30, -30}, extent = {{-10, -10}, {10, 10}}, rotation = -135)));
-  Modelica.Electrical.Analog.Basic.VariableResistor j3 "Jauge comprimée, entre E+ et S+" annotation(
+  Modelica.Electrical.Analog.Basic.VariableResistor j3 "Compressed gauge, between E+ and S+" annotation(
     Placement(transformation(origin = {30, 30}, extent = {{-10, -10}, {10, 10}}, rotation = -135)));
-  Modelica.Electrical.Analog.Basic.VariableResistor j4 "Jauge étirée, entre S+ et E-" annotation(
+  Modelica.Electrical.Analog.Basic.VariableResistor j4 "Stretched gauge, between S+ and E-" annotation(
     Placement(transformation(origin = {30, -30}, extent = {{-10, -10}, {10, 10}}, rotation = -45)));
-  SI.Voltage vOut "Tension de sortie du pont, S+ - S-";
+  SI.Voltage vOut "Output voltage of the bridge, S+ - S-";
 equation
   j1.R = R0*(1 + K*eps);
   j2.R = R0*(1 - K*eps);
@@ -52,9 +52,9 @@ equation
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(lineColor = {0, 0, 255}, fillColor = {245, 245, 250}, fillPattern = FillPattern.Solid, extent = {{-100, 70}, {100, -70}}), Line(points = {{0, 60}, {-60, 0}, {0, -60}, {60, 0}, {0, 60}}, color = {0, 0, 255}), Rectangle(origin = {-30, 30}, rotation = 45, lineColor = {200, 110, 20}, fillColor = {240, 160, 60}, fillPattern = FillPattern.Solid, extent = {{-14, 6}, {14, -6}}), Rectangle(origin = {30, 30}, rotation = -45, lineColor = {200, 110, 20}, fillColor = {240, 160, 60}, fillPattern = FillPattern.Solid, extent = {{-14, 6}, {14, -6}}), Rectangle(origin = {-30, -30}, rotation = -45, lineColor = {200, 110, 20}, fillColor = {240, 160, 60}, fillPattern = FillPattern.Solid, extent = {{-14, 6}, {14, -6}}), Rectangle(origin = {30, -30}, rotation = 45, lineColor = {200, 110, 20}, fillColor = {240, 160, 60}, fillPattern = FillPattern.Solid, extent = {{-14, 6}, {14, -6}}), Line(points = {{-100, 45}, {-80, 45}, {-80, 64}, {0, 64}, {0, 60}}, color = {0, 0, 255}), Line(points = {{-100, -45}, {-80, -45}, {-80, -64}, {0, -64}, {0, -60}}, color = {0, 0, 255}), Line(points = {{-100, -15}, {-60, -15}, {-60, 0}}, color = {0, 0, 255}), Line(points = {{-100, 15}, {-88, 15}, {-88, 76}, {76, 76}, {76, 0}, {60, 0}}, color = {0, 0, 255}), Text(extent = {{-98, 58}, {-84, 50}}, textString = "E+"), Text(extent = {{-98, 30}, {-84, 22}}, textString = "S+"), Text(extent = {{-98, -22}, {-84, -30}}, textString = "S-"), Text(extent = {{-98, -50}, {-84, -58}}, textString = "E-"), Text(extent = {{84, 26}, {100, 16}}, textString = "ε"), Text(textColor = {0, 0, 255}, extent = {{-150, 110}, {150, 80}}, textString = "%name")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}})),
     Documentation(info = "<html>
-<p><strong>Pont de Wheatstone complet</strong> formé de quatre jauges de déformation collées sur le corps d'épreuve (<code>LoadCell</code>). La résistance d'une jauge varie avec la déformation qu'elle subit : <code>R = R0·(1 ± K·eps)</code>, où <code>K</code> est le facteur de jauge (environ 2 pour une jauge métallique).</p>
-<p>Deux jauges sont étirées (<code>j1</code>, <code>j4</code>) et deux comprimées (<code>j2</code>, <code>j3</code>), montées en diagonale : les deux demi-ponts s'écartent de <code>E/2</code> en sens opposé, et la tension de sortie vaut <code>vOut = S+ − S− = E·K·eps</code>. Elle est quatre fois plus grande qu'avec une seule jauge, et <strong>proportionnelle à la tension d'excitation <code>E</code></strong> : c'est pourquoi le HX711 compare la sortie du pont à cette même excitation (mesure <em>ratiométrique</em>), ce qui rend la mesure insensible aux variations de l'alimentation.</p>
-<p>Ordre de grandeur : 1 mV/V à pleine charge (<code>K·eps</code> = 2 × 500 µm/m), soit 4,3 mV pour une excitation de 4,3 V. Ce signal très faible explique le gain de 128 du HX711.</p>
-<p>Le schéma interne (onglet Diagramme) montre les quatre jauges, pour relier le composant à un pont dessiné en cours.</p>
+<p><strong>Full Wheatstone bridge</strong> made of four strain gauges bonded to the load cell body (<code>LoadCell</code>). The resistance of a gauge changes with the strain it undergoes: <code>R = R0·(1 ± K·eps)</code>, where <code>K</code> is the gauge factor (about 2 for a metal gauge).</p>
+<p>Two gauges are stretched (<code>j1</code>, <code>j4</code>) and two compressed (<code>j2</code>, <code>j3</code>), mounted on the diagonals: the two half-bridges move away from <code>E/2</code> in opposite directions, and the output voltage is <code>vOut = S+ − S− = E·K·eps</code>. It is four times larger than with a single gauge, and <strong>proportional to the excitation voltage <code>E</code></strong>: this is why the HX711 compares the bridge output with this same excitation (<em>ratiometric</em> measurement), which makes the measurement insensitive to supply variations.</p>
+<p>Order of magnitude: 1 mV/V at full load (<code>K·eps</code> = 2 × 500 µm/m), i.e. 4.3 mV for a 4.3 V excitation. This very weak signal explains the gain of 128 of the HX711.</p>
+<p>The internal schematic (Diagram view) shows the four gauges, to relate the component to a bridge drawn in class.</p>
 </html>"));
 end WheatstoneBridge;

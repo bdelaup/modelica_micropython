@@ -1,49 +1,49 @@
 from machine import Pin, UART
 import time
 
-# Le peripherique parle SANS qu'on le lui demande (Peripherals.UartGpsModule,
-# emission periodique). Le programme n'a donc rien a envoyer : il surveille son
-# entree serie, decoupe les phrases NMEA qui arrivent et verifie leur somme de
-# controle - exactement ce que ferait le code embarque d'un recepteur GPS.
+# The peripheral speaks WITHOUT being asked (Peripherals.UartGpsModule,
+# periodic transmission). The program therefore has nothing to send: it watches its
+# serial input, splits the incoming NMEA sentences and checks their
+# checksum - exactly what the embedded code of a GPS receiver would do.
 #
-# La reception ne reveille jamais le script (pas de uart.irq() en v0) : il faut
-# interroger uart.any() dans une boucle, en dormant entre deux passages pour ne
-# pas empecher le temps simule d'avancer.
+# Reception never wakes the script up (no uart.irq() in v0): uart.any() must
+# be polled in a loop, sleeping between two passes so as not to prevent
+# simulated time from moving forward.
 BAUD = 9600
-FENETRE_MS = 500
-ATTENDU = 4          # a une phrase toutes les 100 ms, on doit en valider au moins 4
+WINDOW_MS = 500
+EXPECTED = 4         # at one sentence every 100 ms, at least 4 must be validated
 
-temoin = Pin(7, Pin.OUT)
+indicator = Pin(7, Pin.OUT)
 uart = UART(0, baudrate=BAUD, tx=Pin(5), rx=Pin(4))
 
 
-def nmea_valide(phrase):
-    """'$<corps>*<hh>' : hh = OU exclusif des caracteres du corps, en hexa."""
-    if not phrase.startswith(b'$') or b'*' not in phrase:
+def nmea_valid(sentence):
+    """'$<body>*<hh>': hh = exclusive OR of the body characters, in hex."""
+    if not sentence.startswith(b'$') or b'*' not in sentence:
         return False
-    corps, controle = phrase[1:].split(b'*', 1)
+    body, checksum = sentence[1:].split(b'*', 1)
     x = 0
-    for c in corps:
+    for c in body:
         x ^= c
-    return controle[:2].upper() == b'%02X' % x
+    return checksum[:2].upper() == b'%02X' % x
 
 
-tampon = b''
-phrases = []
-echeance = time.ticks_ms() + FENETRE_MS
-while time.ticks_diff(echeance, time.ticks_ms()) > 0:
+buffer = b''
+sentences = []
+deadline = time.ticks_ms() + WINDOW_MS
+while time.ticks_diff(deadline, time.ticks_ms()) > 0:
     if uart.any():
-        tampon += uart.read()
-        while b'\n' in tampon:
-            ligne, tampon = tampon.split(b'\n', 1)
-            phrases.append(ligne.strip())
+        buffer += uart.read()
+        while b'\n' in buffer:
+            line, buffer = buffer.split(b'\n', 1)
+            sentences.append(line.strip())
     else:
         time.sleep_ms(2)
 
-valides = [p for p in phrases if nmea_valide(p)]
-print("GPS :", len(phrases), "phrases recues,", len(valides), "valides")
-for p in phrases:
-    print("   ", p)
+valid = [s for s in sentences if nmea_valid(s)]
+print("GPS:", len(sentences), "sentences received,", len(valid), "valid")
+for s in sentences:
+    print("   ", s)
 
-if len(valides) >= ATTENDU:
-    temoin.on()     # GP7 haut = flux spontane a la bonne cadence, sommes de controle correctes
+if len(valid) >= EXPECTED:
+    indicator.on()  # GP7 high = spontaneous stream at the right rate, correct checksums

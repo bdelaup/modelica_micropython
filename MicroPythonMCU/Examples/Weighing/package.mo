@@ -1,4 +1,4 @@
 within MicroPythonMCU.Examples;
-package Weighing "Pesée : chaîne force, corps d'épreuve, pont de jauges, HX711, lue par le microcontrôleur"
+package Weighing "Weighing: force, load cell body, gauge bridge, HX711 chain, read by the microcontroller"
   extends Modelica.Icons.ExamplesPackage;
 end Weighing;

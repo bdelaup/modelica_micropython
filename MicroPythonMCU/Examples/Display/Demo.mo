@@ -1,11 +1,11 @@
 within MicroPythonMCU.Examples.Display;
-model Demo "Le script ecrit du texte sur machine.Display(0) a deux instants differents ; un Peripherals.Display recoit chaque message (connecteur logique Display0->displayLink) et l'affiche dans le journal (print) et sur son icone - prouve la liaison d'affichage pedagogique bout en bout"
+model Demo "The script writes text to machine.Display(0) at two different instants; a Peripherals.Display receives each message (logical connector Display0->displayLink) and shows it in the log (print) and on its icon - proves the educational display link end to end"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/display_demo.py")) "scriptPath = Resources/Scripts/MCU/display_demo.py" annotation(
     Placement(transformation(origin = {-40, -10}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-40, -90}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.Display display "Recoit le texte via Display0" annotation(
+  MicroPythonMCU.Peripherals.Display display "Receives the text through Display0" annotation(
     Placement(transformation(origin = {108, 64}, extent = {{-40, -40}, {40, 40}})));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -16,6 +16,6 @@ equation
     Diagram(coordinateSystem(extent = {{-120, -120}, {160, 100}})),
     experiment(StopTime = 3, Interval = 0.005, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
-<p>Scénario de vérification 12 (cf. <code>requirements.md</code>) : le script <code>Resources/Scripts/MCU/display_demo.py</code> appelle <code>machine.Display(0).write(...)</code> à deux reprises (séparées par un <code>sleep(1)</code>), vers t≈1 s et t≈2 s. Le <code>Peripherals.Display</code> reçoit chaque message via son connecteur <code>displayLink</code> (câblé sur <code>mcu.Display0</code>, connecteur logique causal - pas électrique, cf. <code>requirements.md</code> décision « Périphérique d'affichage pédagogique »), l'affiche dans le journal de simulation et son icône montre réellement le texte reçu (défilement 2 lignes). Succès attendu : <code>mcu.Display0.seq</code> vaut 0 avant le premier <code>write()</code>, 1 après le premier, 2 après le second - vérifié numériquement via <code>val()</code> dans <code>verify_12_display.mos</code>.</p>
+<p>Verification scenario 12 (see <code>requirements.md</code>): the script <code>Resources/Scripts/MCU/display_demo.py</code> calls <code>machine.Display(0).write(...)</code> twice (separated by a <code>sleep(1)</code>), around t≈1 s and t≈2 s. The <code>Peripherals.Display</code> receives each message through its <code>displayLink</code> connector (connected to <code>mcu.Display0</code>, a causal logical connector - not electrical, see <code>requirements.md</code> decision \"Périphérique d'affichage pédagogique\"), shows it in the simulation log, and its icon really shows the received text (2-line scrolling). Expected result: <code>mcu.Display0.seq</code> is 0 before the first <code>write()</code>, 1 after the first, 2 after the second - checked numerically through <code>val()</code> in <code>verify_12_display.mos</code>.</p>
 </html>"));
 end Demo;

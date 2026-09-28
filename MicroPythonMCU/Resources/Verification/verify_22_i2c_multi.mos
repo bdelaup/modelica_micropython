@@ -21,8 +21,8 @@ vScl := val(mcu.GP4.v, 0.0005, f);
 vSda := val(mcu.GP5.v, 0.0005, f);
 
 // --- Chaque echo : 1 ecriture (les sondes de scan() ne comptent pas), longueur
-// et premier octet de SA trame : b'un' (2, 'u'=117), b'deux!' (5, 'd'=100),
-// b'trois..' (7, 't'=116) ---
+// et premier octet de SA trame : b'up' (2, 'u'=117), b'down!' (5, 'd'=100),
+// b'three..' (7, 't'=116) ---
 e1n := val(e1.valueOut[1], 0.0075, f);
 e1o := val(e1.valueOut[2], 0.0075, f);
 e1p := val(e1.valueOut[3], 0.0075, f);

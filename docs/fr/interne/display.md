@@ -46,9 +46,9 @@ sequenceDiagram
     participant MCU as MCU.mo (Display0)
     participant Disp as Peripherals.Display
 
-    Script->>Shim: display.write("Bonjour")
-    Shim->>Native: _native.display_write(0, "Bonjour")
-    Native->>Native: display_payload = "Bonjour", display_seq++
+    Script->>Shim: display.write("Hello")
+    Shim->>Native: _native.display_write(0, "Hello")
+    Native->>Native: display_payload = "Hello", display_seq++
     Native->>Sync: yield_to_modelica(sim_time) - resynchro immediate
     Sync->>MCU: displaySeqOut, displayPayloadOut
     MCU->>MCU: Display0.seq, Display0.payload mis à jour
@@ -80,7 +80,7 @@ Côté `Display.mo`, 40 éléments `Text` (20 colonnes × 2 lignes), chacun avec
 
 **Défilement 20×2 réel** (l'écran est fixe, vert clair, le texte suffisant à indiquer l'activité — pas d'animation de couleur) : ligne 1 affiche directement `displayLink.charCode` (message courant) ; une variable publique `discrete Integer line2CharCode[DISPLAY_COLS]`, mise à jour dans le même `when change(displayLink.seq)` que le `print()`, capture `pre(displayLink.charCode)` — la valeur de la ligne 1 **juste avant** la mise à jour, donc l'ancien message — et l'affiche en ligne 2. Aucun autre état nécessaire ; `pre()` est un motif déjà éprouvé ailleurs dans le projet (`pre(nextWakeTime)`).
 
-**Validé numériquement** : `verify_12_display.mos` vérifie `display.displayLink.charCode[1:3] == {66, 111, 110}` (« Bon » de « Bonjour ») après le premier message, **et** le défilement après le second (« Ca marche ») : `display.displayLink.charCode[1] == 67` (« C », ligne 1) et `display.line2CharCode[1] == 66` (« B », l'ancien message décalé en ligne 2). Le rendu **animé** dans OMEdit lui-même n'a pas pu être vérifié visuellement par l'agent (MCP-OpenModelica ne fournit qu'un rendu statique de l'icône) — mais le mécanisme (`DynamicSelect` sur une expression combinant une grandeur stockée) est identique dans son principe à celui déjà confirmé visuellement pour `Peripherals.LED`.
+**Validé numériquement** : `verify_12_display.mos` vérifie `display.displayLink.charCode[1:3] == {72, 101, 108}` (« Hel » de « Hello ») après le premier message, **et** le défilement après le second (« It works ») : `display.displayLink.charCode[1] == 73` (« I », ligne 1) et `display.line2CharCode[1] == 72` (« H », l'ancien message décalé en ligne 2). Le rendu **animé** dans OMEdit lui-même n'a pas pu être vérifié visuellement par l'agent (MCP-OpenModelica ne fournit qu'un rendu statique de l'icône) — mais le mécanisme (`DynamicSelect` sur une expression combinant une grandeur stockée) est identique dans son principe à celui déjà confirmé visuellement pour `Peripherals.LED`.
 
 **Alternative écartée** : rendu pixel par pixel (police en matrice de points façon vrai afficheur LCD, ~20×7×5 formes) — bien plus lourd pour un gain de fidélité non nécessaire (composant caractère, pas graphique).
 

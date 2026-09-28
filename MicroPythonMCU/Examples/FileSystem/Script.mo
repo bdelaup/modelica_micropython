@@ -1,11 +1,11 @@
 within MicroPythonMCU.Examples.FileSystem;
 
-model Script "Système de fichiers et script : boot.py de la flash, puis le script fs_script.py à la place de main.py"
+model Script "File system and script: boot.py of the flash, then the script fs_script.py instead of main.py"
   extends Boot(mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/fs_script.py")));
   annotation(
     experiment(StopTime = 0.5, Interval = 0.001),
     Documentation(info = "<html>
-<p>Scénario de vérification 27 (cf. <code>requirements.md</code>, décision « Système de fichiers ») : même montage et même image de flash que <code>Examples.FileSystem.Boot</code>, mais <code>scriptPath</code> est renseigné. Le microcontrôleur exécute alors <code>boot.py</code> de la flash, puis le script <code>fs_script.py</code> <strong>à la place</strong> de <code>main.py</code> — comme Thonny qui exécute le script ouvert sur une carte déjà démarrée.</p>
-<p>Le script vérifie que <code>boot.py</code> a bien créé <code>/data</code> et que <code>main.py</code> n'a pas tourné (<code>/data</code> vide), écrit puis relit <code>/data/notes.txt</code>, et allume <code>led1</code> (<code>GP1</code>) si tout est conforme.</p>
+<p>Verification scenario 27 (see <code>requirements.md</code>, decision \"Système de fichiers\"): same circuit and same flash image as <code>Examples.FileSystem.Boot</code>, but <code>scriptPath</code> is set. The microcontroller then runs <code>boot.py</code> from the flash, then the script <code>fs_script.py</code> <strong>instead of</strong> <code>main.py</code> — like Thonny running the open script on an already booted board.</p>
+<p>The script checks that <code>boot.py</code> did create <code>/data</code> and that <code>main.py</code> did not run (<code>/data</code> empty), writes then reads back <code>/data/notes.txt</code>, and lights <code>led1</code> (<code>GP1</code>) if everything is as expected.</p>
 </html>"));
 end Script;

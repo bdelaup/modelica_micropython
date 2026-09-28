@@ -265,27 +265,27 @@ static PyObject* native_i2c_init(PyObject* self, PyObject* args) {
     double freq;
     if (!PyArg_ParseTuple(args, "iiid", &id, &scl_id, &sda_id, &freq)) return NULL;
     if (resolve_i2c_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "I2C %d non supporte pour la v0 (un seul bus, I2C(0))", id);
+        PyErr_Format(PyExc_ValueError, "I2C %d not supported in v0 (single bus, I2C(0))", id);
         return NULL;
     }
     int scl = resolve_pin_index(scl_id);
     int sda = resolve_pin_index(sda_id);
     if (scl < 0 || scl >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "broche SCL %d non supportee (0-%d attendu)", scl_id, LED_PIN_INDEX - 1);
+        PyErr_Format(PyExc_ValueError, "SCL pin %d not supported (0-%d expected)", scl_id, LED_PIN_INDEX - 1);
         return NULL;
     }
     if (sda < 0 || sda >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "broche SDA %d non supportee (0-%d attendu)", sda_id, LED_PIN_INDEX - 1);
+        PyErr_Format(PyExc_ValueError, "SDA pin %d not supported (0-%d expected)", sda_id, LED_PIN_INDEX - 1);
         return NULL;
     }
     if (scl == sda) {
-        PyErr_SetString(PyExc_ValueError, "SCL et SDA doivent etre deux broches differentes");
+        PyErr_SetString(PyExc_ValueError, "SCL and SDA must be two different pins");
         return NULL;
     }
     if (freq < I2C_MIN_FREQ || freq > I2C_MAX_FREQ) {
         char freq_str[64];
         snprintf(freq_str, sizeof(freq_str), "%g", freq);
-        PyErr_Format(PyExc_ValueError, "frequence I2C %s Hz hors bornes (%d-%d)", freq_str, (int) I2C_MIN_FREQ, (int) I2C_MAX_FREQ);
+        PyErr_Format(PyExc_ValueError, "I2C frequency %s Hz out of range (%d-%d)", freq_str, (int) I2C_MIN_FREQ, (int) I2C_MAX_FREQ);
         return NULL;
     }
     EnterCriticalSection(&h->cs);
@@ -328,31 +328,31 @@ static PyObject* native_i2c_xfer(PyObject* self, PyObject* args) {
     Py_ssize_t wlen = 0;
     if (!PyArg_ParseTuple(args, "iiOip", &id, &addr, &wobj, &nread, &stop)) return NULL;
     if (resolve_i2c_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "I2C %d non supporte pour la v0 (un seul bus, I2C(0))", id);
+        PyErr_Format(PyExc_ValueError, "I2C %d not supported in v0 (single bus, I2C(0))", id);
         return NULL;
     }
     if (!h->i2c_configured) {
-        PyErr_SetString(PyExc_RuntimeError, "I2C non initialise");
+        PyErr_SetString(PyExc_RuntimeError, "I2C not initialised");
         return NULL;
     }
     if (addr < 0 || addr > 0x7F) {
-        PyErr_Format(PyExc_ValueError, "adresse I2C %d hors bornes (0-127, adresse sur 7 bits)", addr);
+        PyErr_Format(PyExc_ValueError, "I2C address %d out of range (0-127, 7-bit address)", addr);
         return NULL;
     }
     if (wobj != Py_None) {
         if (!PyBytes_Check(wobj)) {
-            PyErr_SetString(PyExc_TypeError, "i2c_xfer : bytes ou None attendu");
+            PyErr_SetString(PyExc_TypeError, "i2c_xfer: bytes or None expected");
             return NULL;
         }
         wdata = PyBytes_AS_STRING(wobj);
         wlen = PyBytes_GET_SIZE(wobj);
         if (wlen > I2C_XFER_MAX) {
-            PyErr_Format(PyExc_ValueError, "au plus %d octets par transaction I2C en v0", I2C_XFER_MAX);
+            PyErr_Format(PyExc_ValueError, "at most %d bytes per I2C transaction in v0", I2C_XFER_MAX);
             return NULL;
         }
     }
     if (nread < 0 || nread > I2C_XFER_MAX) {
-        PyErr_Format(PyExc_ValueError, "nombre d'octets a lire hors bornes (0-%d)", I2C_XFER_MAX);
+        PyErr_Format(PyExc_ValueError, "number of bytes to read out of range (0-%d)", I2C_XFER_MAX);
         return NULL;
     }
 

@@ -1,7 +1,7 @@
-# boot.py : execute en premier au demarrage de la carte, avant main.py.
-# Prepare le dossier des mesures s'il n'existe pas encore.
+# boot.py: run first when the board starts, before main.py.
+# Creates the measurements folder if it does not exist yet.
 import os
 
-print('boot.py : demarrage')
+print('boot.py: starting')
 if 'data' not in os.listdir('/'):
     os.mkdir('/data')

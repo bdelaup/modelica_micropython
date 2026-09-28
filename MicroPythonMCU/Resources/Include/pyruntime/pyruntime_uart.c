@@ -53,28 +53,28 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
     double baudrate;
     if (!PyArg_ParseTuple(args, "iiid", &id, &tx_id, &rx_id, &baudrate)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
         return NULL;
     }
     int tx = resolve_pin_index(tx_id);
     int rx = resolve_pin_index(rx_id);
     if (tx < 0 || tx >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "broche TX %d non supportee (0-%d attendu)", tx_id, LED_PIN_INDEX - 1);
+        PyErr_Format(PyExc_ValueError, "TX pin %d not supported (0-%d expected)", tx_id, LED_PIN_INDEX - 1);
         return NULL;
     }
     if (rx < 0 || rx >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "broche RX %d non supportee (0-%d attendu)", rx_id, LED_PIN_INDEX - 1);
+        PyErr_Format(PyExc_ValueError, "RX pin %d not supported (0-%d expected)", rx_id, LED_PIN_INDEX - 1);
         return NULL;
     }
     if (tx == rx) {
-        PyErr_SetString(PyExc_ValueError, "TX et RX doivent etre deux broches differentes");
+        PyErr_SetString(PyExc_ValueError, "TX and RX must be two different pins");
         return NULL;
     }
     if (baudrate < UART_MIN_BAUD || baudrate > UART_MAX_BAUD) {
         /* PyErr_Format ne supporte pas %f (cf. native_pwm_set_freq) */
         char baud_str[64];
         snprintf(baud_str, sizeof(baud_str), "%g", baudrate);
-        PyErr_Format(PyExc_ValueError, "baudrate %s hors bornes (%d-%d)", baud_str, UART_MIN_BAUD, UART_MAX_BAUD);
+        PyErr_Format(PyExc_ValueError, "baud rate %s out of range (%d-%d)", baud_str, UART_MIN_BAUD, UART_MAX_BAUD);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
@@ -98,11 +98,11 @@ static PyObject* native_uart_write(PyObject* self, PyObject* args) {
     /* "y#" : bytes + longueur. Pas "s", qui s'arrete au premier NUL et refuse les bytes. */
     if (!PyArg_ParseTuple(args, "iy#", &id, &data, &len)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
         return NULL;
     }
     if (!g_current->uart_configured) {
-        PyErr_SetString(PyExc_RuntimeError, "UART non initialise");
+        PyErr_SetString(PyExc_RuntimeError, "UART not initialised");
         return NULL;
     }
     Py_ssize_t i;
@@ -127,7 +127,7 @@ static PyObject* native_uart_any(PyObject* self, PyObject* args) {
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
@@ -143,7 +143,7 @@ static PyObject* native_uart_read(PyObject* self, PyObject* args) {
     int id, n;
     if (!PyArg_ParseTuple(args, "ii", &id, &n)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
@@ -171,7 +171,7 @@ static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d non supporte pour la v0 (seul UART(0) existe)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);

@@ -89,7 +89,7 @@ static int pyhost_load_dll(const char* pythonHome, char* err, size_t errlen) {
     static const wchar_t dll_name[] = L"\\python312.dll";
     wchar_t* path = pyhost_widen(pythonHome, sizeof(dll_name) / sizeof(wchar_t));
     if (!path) {
-        snprintf(err, errlen, "chemin de la distribution Python illisible ('%s')", pythonHome);
+        snprintf(err, errlen, "unreadable path of the Python distribution ('%s')", pythonHome);
         return -1;
     }
     size_t len = wcslen(path);
@@ -106,14 +106,14 @@ static int pyhost_load_dll(const char* pythonHome, char* err, size_t errlen) {
     HMODULE h = LoadLibraryExW(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
     free(path);
     if (!h) {
-        snprintf(err, errlen, "impossible de charger %s\\python312.dll (erreur Windows %lu)",
+        snprintf(err, errlen, "cannot load %s\\python312.dll (Windows error %lu)",
                  pythonHome, (unsigned long) GetLastError());
         return -1;
     }
     for (int i = 0; pyhost_import_table[i].name; ++i) {
         void* p = (void*) GetProcAddress(h, pyhost_import_table[i].name);
         if (!p) {
-            snprintf(err, errlen, "symbole %s absent de %s\\python312.dll (version inattendue ?)",
+            snprintf(err, errlen, "symbol %s missing from %s\\python312.dll (unexpected version?)",
                      pyhost_import_table[i].name, pythonHome);
             return -1;
         }
@@ -184,8 +184,8 @@ static PyObject* relay_flush(PyObject* self, PyObject* args) {
 }
 
 static PyMethodDef relay_methods[] = {
-    {"write", relay_write, METH_VARARGS, "Relaie l'ecriture vers ModelicaFormatMessage"},
-    {"flush", relay_flush, METH_VARARGS, "Vide la ligne en cours"},
+    {"write", relay_write, METH_VARARGS, "Relays the write to ModelicaFormatMessage"},
+    {"flush", relay_flush, METH_VARARGS, "Flushes the current line"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -252,27 +252,27 @@ static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
         free(zip_path);
         if (PyStatus_Exception(status)) {
             PyConfig_Clear(&config);
-            snprintf(err, errlen, "echec d'ajout de python312.zip au sys.path");
+            snprintf(err, errlen, "failed to add python312.zip to sys.path");
             return -1;
         }
         status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(pythonHome, NULL));
         if (PyStatus_Exception(status)) {
             PyConfig_Clear(&config);
-            snprintf(err, errlen, "echec d'ajout de %s au sys.path", pythonHome);
+            snprintf(err, errlen, "failed to add %s to sys.path", pythonHome);
             return -1;
         }
     }
     status = PyConfig_SetBytesString(&config, &config.home, pythonHome);
     if (PyStatus_Exception(status)) {
         PyConfig_Clear(&config);
-        snprintf(err, errlen, "echec de configuration de PYTHONHOME ('%s')", pythonHome);
+        snprintf(err, errlen, "failed to set PYTHONHOME ('%s')", pythonHome);
         return -1;
     }
 
     status = Py_InitializeFromConfig(&config);
     PyConfig_Clear(&config);
     if (PyStatus_Exception(status)) {
-        snprintf(err, errlen, "echec d'initialisation de CPython (home='%s')", pythonHome);
+        snprintf(err, errlen, "failed to initialise CPython (home='%s')", pythonHome);
         return -1;
     }
 

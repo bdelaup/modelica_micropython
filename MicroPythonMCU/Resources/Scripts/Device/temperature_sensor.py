@@ -1,30 +1,30 @@
 # ---------------------------------------------------------------------------
-# Script par defaut de Peripherals.UartTemperatureSensor (comportement = Script).
+# Default script of Peripherals.UartTemperatureSensor (behaviour = Script).
 #
-# Reproduit la table de commandes du mode Table, et y ajoute ce qu'une table
-# ne sait pas faire : repondre ERR a une commande inconnue ou mal formee, comme
-# tout module AT reel, au lieu de rester muet.
+# Reproduces the command table of Table mode, and adds what a table
+# cannot do: answer ERR to an unknown or malformed command, like
+# any real AT module, instead of staying silent.
 #
 #   AT+TEMP    -> TEMP=<valueIn[1]>
 #   AT+ID      -> SIM-TEMP-1
-#   SET <x>    -> OK, et x ressort sur valueOut[1]
-#   autre      -> ERR
+#   SET <x>    -> OK, and x comes out on valueOut[1]
+#   other      -> ERR
 #
-# Contrat d'un script de peripherique : voir docs/fr/interne/uart-peripheriques.md.
+# Contract of a peripheral script: see the user guide, page "Serial devices (UART)".
 # ---------------------------------------------------------------------------
 
-consigne = 0.0      # derniere consigne recue, publiee sur valueOut[1]
+setpoint = 0.0      # last setpoint received, published on valueOut[1]
 
 
-def on_receive(ligne, t, v):
-    global consigne
-    if ligne == b'AT+TEMP':
+def on_receive(line, t, v):
+    global setpoint
+    if line == b'AT+TEMP':
         return 'TEMP=%.1f\r\n' % v[0]
-    if ligne == b'AT+ID':
+    if line == b'AT+ID':
         return b'SIM-TEMP-1\r\n'
-    if ligne.startswith(b'SET '):
+    if line.startswith(b'SET '):
         try:
-            consigne = float(ligne[4:])
+            setpoint = float(line[4:])
         except ValueError:
             return b'ERR\r\n'
         return b'OK\r\n'
@@ -32,4 +32,4 @@ def on_receive(ligne, t, v):
 
 
 def outputs():
-    return consigne
+    return setpoint

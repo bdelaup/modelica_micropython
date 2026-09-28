@@ -16,13 +16,13 @@ vLed := val(mcu.GP1.v, 0.4, "FileSystemScript_res.mat");
 system("dir /b /ad /o:n mcu_datalogger_* > fs_copies.txt");
 copies := OpenModelica.Scripting.strtok(readFile("fs_copies.txt"), "\r\n");
 nCopies := size(copies, 1);
-notesOk := nCopies == 1 and regularFileExists(copies[1] + "/data/notes.txt") and not regularFileExists(copies[1] + "/data/mesures.csv");
+notesOk := nCopies == 1 and regularFileExists(copies[1] + "/data/notes.txt") and not regularFileExists(copies[1] + "/data/measurements.csv");
 
 system("for /d %d in (mcu_datalogger_*) do rmdir /s /q \"%d\"");
 deleteFile("fs_copies.txt");
 
 if vLed > 2.0 and notesOk then
-  print("PASS: verify_27_filesystem_script (boot.py puis script a la place de main.py : GP1(led)=" + String(vLed) + "V, notes.txt ecrit, pas de mesures.csv)\n");
+  print("PASS: verify_27_filesystem_script (boot.py puis script a la place de main.py : GP1(led)=" + String(vLed) + "V, notes.txt ecrit, pas de measurements.csv)\n");
 else
   print("FAIL: verify_27_filesystem_script (GP1(led)=" + String(vLed) + "V, copies=" + String(nCopies) + ", fichiers conformes=" + String(notesOk) + ")\n" + b);
 end if;

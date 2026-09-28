@@ -4,9 +4,9 @@ import time
 display = Display(0)
 
 time.sleep(1)
-display.write("Bonjour")
+display.write("Hello")
 
 time.sleep(1)
-display.write("Ca marche")
+display.write("It works")
 
 time.sleep(1)

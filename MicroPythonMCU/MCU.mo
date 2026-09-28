@@ -1,81 +1,81 @@
 within MicroPythonMCU;
 
-model MCU "Microcontrôleur programmable simulé (v0), piloté par un script Python compatible MicroPython"
-  parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/demo.py") "Chemin du script utilisateur (.py) - avec un système de fichiers actif, exécuté après boot.py à la place de main.py ; vide = main.py de la flash" annotation(
-    Dialog(group = "Script Python", loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un script Python")));
-  parameter Boolean addScriptDirToPath = true "Rendre importables les fichiers .py situés à côté du script (ex. import mon_module) - reproduit le comportement du vrai Pico (dossier racine de la flash sur sys.path)" annotation(
-    Dialog(group = "Script Python"));
-  parameter String libraryPath = "" "Optionnel : fichier .py d'un dossier de bibliothèque partagée à rendre importable (le dossier contenant ce fichier est ajouté au chemin de recherche des modules) - laisser vide si non utilisé" annotation(
-    Dialog(group = "Script Python", loadSelector(filter = "Fichiers Python (*.py)", caption = "Sélectionner un fichier de la bibliothèque à ajouter")));
-  parameter Boolean fsEnabled = false "Activer le système de fichiers (flash simulée) - inactif : open() et os lèvent OSError" annotation(
-    Dialog(tab = "Système de fichiers", group = "Flash simulée"),
+model MCU "Simulated programmable microcontroller (v0), driven by a MicroPython-compatible Python script"
+  parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/demo.py") "Path of the user script (.py) - with an active file system, run after boot.py instead of main.py; empty = main.py from the flash" annotation(
+    Dialog(group = "Python script", loadSelector(filter = "Python files (*.py)", caption = "Select a Python script")));
+  parameter Boolean addScriptDirToPath = true "Make the .py files next to the script importable (e.g. import my_module) - mimics the real Pico (flash root folder on sys.path)" annotation(
+    Dialog(group = "Python script"));
+  parameter String libraryPath = "" "Optional: a .py file from a shared library folder to make importable (the folder containing this file is added to the module search path) - leave empty if unused" annotation(
+    Dialog(group = "Python script", loadSelector(filter = "Python files (*.py)", caption = "Select a file of the library to add")));
+  parameter Boolean fsEnabled = false "Enable the file system (simulated flash) - disabled: open() and os raise OSError" annotation(
+    Dialog(tab = "File system", group = "Simulated flash"),
     choices(checkBox = true));
-  parameter String fsSource = "" "Image initiale de la flash (dossier : données, boot.py, main.py, lib/), recopiée à chaque simulation et jamais modifiée - n'importe quel fichier du dossier, le chemin du dossier ou une URI modelica:// ; vide = flash vierge, seul le script s'exécute" annotation(
-    Dialog(tab = "Système de fichiers", group = "Flash simulée", enable = fsEnabled, loadSelector(filter = "Tous les fichiers (*)", caption = "Sélectionner un fichier du dossier du système de fichiers")));
-  parameter String fsWorkspace = "." "Espace de travail : dossier où chaque simulation crée sa copie, nommée <instance>_<nom du FS>_<date>_<heure> (créé s'il n'existe pas) - « . » ou chemin relatif = depuis le dossier de simulation ; chemin complet de la copie affiché dans le journal" annotation(
-    Dialog(tab = "Système de fichiers", group = "Flash simulée", enable = fsEnabled, saveSelector(filter = "Tous les fichiers (*)", caption = "Choisir (ou nommer) le dossier de l'espace de travail")));
-  parameter Boolean fsOpenExplorer = true "Ouvrir l'Explorateur Windows sur la copie à la fin de la simulation" annotation(
-    Dialog(tab = "Système de fichiers", group = "Flash simulée", enable = fsEnabled),
+  parameter String fsSource = "" "Initial image of the flash (folder: data, boot.py, main.py, lib/), copied at each simulation and never modified - any file of the folder, the folder path or a modelica:// URI; empty = blank flash, only the script runs" annotation(
+    Dialog(tab = "File system", group = "Simulated flash", enable = fsEnabled, loadSelector(filter = "All files (*)", caption = "Select a file of the file system folder")));
+  parameter String fsWorkspace = "." "Workspace: folder where each simulation creates its copy, named <instance>_<FS name>_<date>_<time> (created if missing) - \".\" or relative path = from the simulation folder; full path of the copy shown in the log" annotation(
+    Dialog(tab = "File system", group = "Simulated flash", enable = fsEnabled, saveSelector(filter = "All files (*)", caption = "Choose (or name) the workspace folder")));
+  parameter Boolean fsOpenExplorer = true "Open Windows Explorer on the copy at the end of the simulation" annotation(
+    Dialog(tab = "File system", group = "Simulated flash", enable = fsEnabled),
     choices(checkBox = true));
-  parameter Modelica.Units.SI.Time tickPeriod = 0.1 "Période du point de synchro minimal (fraîcheur des sorties si le script ne dort jamais)";
-  parameter Modelica.Units.SI.Time gpioOpTime = 5e-6 "Durée d'exécution d'un accès à une broche (Pin.value(), on(), off()) : deux écritures sans sleep() donnent une impulsion de cette largeur (bit-banging) - ordre de grandeur de MicroPython sur RP2040 ; 0 = accès instantanés" annotation(
-    Dialog(tab = "Temps d'exécution"));
-  parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Tension logique haute" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux logiques"));
-  parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Tension logique basse" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux logiques"));
-  parameter Modelica.Units.SI.Voltage VIH = Interfaces.VIH "Seuil de reconnaissance d'une entrée haute" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux logiques"));
-  parameter Modelica.Units.SI.Voltage VIL = Interfaces.VIL "Seuil de reconnaissance d'une entrée basse" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux logiques"));
-  parameter Modelica.Units.SI.Resistance ROut = Interfaces.ROut "Résistance série de sortie (drive strength)" annotation(
-    Dialog(tab = "Électrique", group = "Étages de sortie"));
-  parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Résistance série de la LED embarquée (interne, GP25)" annotation(
-    Dialog(tab = "Électrique", group = "Étages de sortie"));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP0 "GPIO 0 (machine.Pin(0), machine.ADC(0) ou machine.PWM(0))" annotation(
+  parameter Modelica.Units.SI.Time tickPeriod = 0.1 "Period of the minimal sync point (output freshness if the script never sleeps)";
+  parameter Modelica.Units.SI.Time gpioOpTime = 5e-6 "Execution time of a pin access (Pin.value(), on(), off()): two writes without sleep() give a pulse of this width (bit-banging) - order of magnitude of MicroPython on RP2040; 0 = instantaneous accesses" annotation(
+    Dialog(tab = "Execution time"));
+  parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Logic high voltage" annotation(
+    Dialog(tab = "Electrical", group = "Logic levels"));
+  parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Logic low voltage" annotation(
+    Dialog(tab = "Electrical", group = "Logic levels"));
+  parameter Modelica.Units.SI.Voltage VIH = Interfaces.VIH "Threshold above which an input reads high" annotation(
+    Dialog(tab = "Electrical", group = "Logic levels"));
+  parameter Modelica.Units.SI.Voltage VIL = Interfaces.VIL "Threshold below which an input reads low" annotation(
+    Dialog(tab = "Electrical", group = "Logic levels"));
+  parameter Modelica.Units.SI.Resistance ROut = Interfaces.ROut "Output series resistance (drive strength)" annotation(
+    Dialog(tab = "Electrical", group = "Output stages"));
+  parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Series resistance of the on-board LED (internal, GP25)" annotation(
+    Dialog(tab = "Electrical", group = "Output stages"));
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP0 "GPIO 0 (machine.Pin(0), machine.ADC(0) or machine.PWM(0))" annotation(
     Placement(transformation(origin = {-62, 50}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP1 "GPIO 1 (machine.Pin(1), machine.ADC(1) ou machine.PWM(1))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP1 "GPIO 1 (machine.Pin(1), machine.ADC(1) or machine.PWM(1))" annotation(
     Placement(transformation(origin = {-62, 20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP2 "GPIO 2 (machine.Pin(2), machine.ADC(2) ou machine.PWM(2))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP2 "GPIO 2 (machine.Pin(2), machine.ADC(2) or machine.PWM(2))" annotation(
     Placement(transformation(origin = {-62, -20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP3 "GPIO 3 (machine.Pin(3), machine.ADC(3) ou machine.PWM(3))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP3 "GPIO 3 (machine.Pin(3), machine.ADC(3) or machine.PWM(3))" annotation(
     Placement(transformation(origin = {-62, -50}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP4 "GPIO 4 (machine.Pin(4), machine.ADC(4) ou machine.PWM(4))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP4 "GPIO 4 (machine.Pin(4), machine.ADC(4) or machine.PWM(4))" annotation(
     Placement(transformation(origin = {62, 50}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP5 "GPIO 5 (machine.Pin(5), machine.ADC(5) ou machine.PWM(5))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP5 "GPIO 5 (machine.Pin(5), machine.ADC(5) or machine.PWM(5))" annotation(
     Placement(transformation(origin = {62, 20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP6 "GPIO 6 (machine.Pin(6), machine.ADC(6) ou machine.PWM(6))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP6 "GPIO 6 (machine.Pin(6), machine.ADC(6) or machine.PWM(6))" annotation(
     Placement(transformation(origin = {62, -20}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin GP7 "GPIO 7 (machine.Pin(7), machine.ADC(7) ou machine.PWM(7))" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin GP7 "GPIO 7 (machine.Pin(7), machine.ADC(7) or machine.PWM(7))" annotation(
     Placement(transformation(origin = {62, -50}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin GND "Référence commune (masse) - à relier à la masse du circuit externe" annotation(
+  Modelica.Electrical.Analog.Interfaces.NegativePin GND "Common reference (ground) - connect it to the ground of the external circuit" annotation(
     Placement(transformation(origin = {0, -78}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, -78}, extent = {{-6, -6}, {6, 6}})));
-  Interfaces.DisplayLinkOutput Display0 "Liaison logique vers un périphérique d'affichage pédagogique (machine.Display(0).write()) - liaison causale simplifiée (message livré instantanément au point de synchro), pas de tension/courant réels ni de forme d'onde série bit-à-bit, cf. requirements.md décision « Périphérique d'affichage pédagogique »" annotation(
+  Interfaces.DisplayLinkOutput Display0 "Logical link to an educational display peripheral (machine.Display(0).write()) - simplified causal link (message delivered instantly at the sync point), no real voltage/current nor bit-by-bit serial waveform, see requirements.md decision \"Périphérique d'affichage pédagogique\"" annotation(
     Placement(transformation(origin = {62, 78}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {49, 75}, extent = {{-10, -10}, {10, 10}}, rotation = 90)));
-  MicroPythonMCU.Peripherals.LED builtinLed "LED embarquée du Raspberry Pi Pico (GP25 réel), câblée en interne à demeure (pas de connecteur externe). Publique (pas protected comme le reste de l'implémentation) : les variables protected n'apparaissent pas dans les résultats de simulation dans cette installation OpenModelica, ce qui casserait l'animation DynamicSelect de l'icône (vérifié empiriquement, cf. requirements.md) — on réutilise directement builtinLed.mean.y, déjà public via Peripherals.LED." annotation(
+  MicroPythonMCU.Peripherals.LED builtinLed "On-board LED of the Raspberry Pi Pico (real GP25), permanently wired internally (no external connector). Public (not protected like the rest of the implementation): protected variables do not appear in the simulation results in this OpenModelica installation, which would break the DynamicSelect animation of the icon (checked empirically, see requirements.md) - builtinLed.mean.y, already public through Peripherals.LED, is reused directly." annotation(
     Placement(visible = false, transformation(extent = {{-150, -130}, {-130, -110}})));
 protected
-  Modelica.Units.SI.Voltage pinNodeVoltage[9] "Tension effective de chaque broche (index 9 = noeud interne de la LED embarquée)";
-  Boolean pinBoolIn[9](each start = false, each fixed = true) "Valeur logique lue par broche (tension comparée aux seuils VIL/VIH), y compris index 9 (LED embarquée) qui relit ainsi son propre état comme une broche normale";
-  discrete Boolean pinBoolOut[9](each start = false, each fixed = true) "Valeur pilotée par broche (sortie du dernier point de synchro) ; index 9 = LED embarquée (GP25 réel)";
-  discrete Boolean pinIsOutputD[9](each start = false, each fixed = true) "Direction par broche (sortie du dernier point de synchro)";
-  discrete Modelica.Units.SI.Frequency pwmFreq[9](each start = 0, each fixed = true) "Fréquence PWM par broche (Hz) ; 0 = pas en mode PWM (sortie numérique classique via pinBoolOut), cf. machine.PWM";
-  discrete Real pwmDuty[9](each start = 0, each fixed = true) "Rapport cyclique PWM par broche (0-1), pertinent seulement si pwmFreq > 0";
-  Modelica.Units.SI.Time pwmPeriod[9] "1/pwmFreq, avec plancher pour éviter une division par zéro quand pwmFreq = 0 (broche pas en PWM)";
-  discrete Integer uartTxPin(start = 0, fixed = true) "Broche affectée à l'émission série (0 = aucune) ; une fois affectée elle le reste, même hors trame, car la ligne au repos doit être HAUTE - cf. machine.UART";
-  discrete Boolean uartTxLevel(start = true, fixed = true) "Niveau logique à tenir sur la broche d'émission (repos = haut), publié par le C : le point de synchro suivant tombe sur le prochain CHANGEMENT de niveau de la trame, donc des bits identiques consécutifs ne coûtent aucun événement";
-  discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Prochain réveil demandé par le script (sleep) ou +inf si terminé";
-  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName(), gpioOpTime) "Interpréteur Python embarqué exécutant le script utilisateur" annotation(
+  Modelica.Units.SI.Voltage pinNodeVoltage[9] "Actual voltage of each pin (index 9 = internal node of the on-board LED)";
+  Boolean pinBoolIn[9](each start = false, each fixed = true) "Logic value read on each pin (voltage compared with the VIL/VIH thresholds), including index 9 (on-board LED), which thus reads back its own state like a normal pin";
+  discrete Boolean pinBoolOut[9](each start = false, each fixed = true) "Value driven on each pin (output of the last sync point); index 9 = on-board LED (real GP25)";
+  discrete Boolean pinIsOutputD[9](each start = false, each fixed = true) "Direction of each pin (output of the last sync point)";
+  discrete Modelica.Units.SI.Frequency pwmFreq[9](each start = 0, each fixed = true) "PWM frequency of each pin (Hz); 0 = not in PWM mode (plain digital output through pinBoolOut), see machine.PWM";
+  discrete Real pwmDuty[9](each start = 0, each fixed = true) "PWM duty cycle of each pin (0-1), relevant only if pwmFreq > 0";
+  Modelica.Units.SI.Time pwmPeriod[9] "1/pwmFreq, with a floor to avoid a division by zero when pwmFreq = 0 (pin not in PWM)";
+  discrete Integer uartTxPin(start = 0, fixed = true) "Pin assigned to serial transmission (0 = none); once assigned it stays so, even between frames, because the idle line must be HIGH - see machine.UART";
+  discrete Boolean uartTxLevel(start = true, fixed = true) "Logic level to hold on the transmit pin (idle = high), published by the C code: the next sync point falls on the next level CHANGE of the frame, so consecutive identical bits cost no event";
+  discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Next wake-up requested by the script (sleep), or +inf once finished";
+  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName(), gpioOpTime) "Embedded Python interpreter running the user script" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
-  Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Source de tension pilotée par le script (VOH/VOL) quand la broche est en sortie ; index 9 = LED embarquée" annotation(
+  Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Voltage source driven by the script (VOH/VOL) when the pin is an output; index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));
-  Modelica.Electrical.Analog.Basic.Resistor rOut[9](each R = ROut) "Résistance série (drive strength) ; index 9 = LED embarquée" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor rOut[9](each R = ROut) "Series resistance (drive strength); index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-130, -90}, {-90, -50}})));
-  Modelica.Electrical.Analog.Ideal.IdealOpeningSwitch sw[9] "Ouvert (haute impédance) quand la broche est en entrée ; index 9 = LED embarquée" annotation(
+  Modelica.Electrical.Analog.Ideal.IdealOpeningSwitch sw[9] "Open (high impedance) when the pin is an input; index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-70, -90}, {-30, -50}})));
-  Modelica.Electrical.Analog.Sensors.VoltageSensor sns[9] "Mesure la tension réellement présente sur la broche, quelle que soit sa direction ; index 9 = LED embarquée" annotation(
+  Modelica.Electrical.Analog.Sensors.VoltageSensor sns[9] "Measures the voltage actually present on the pin, whatever its direction; index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-10, -90}, {30, -50}})));
-  Modelica.Electrical.Analog.Basic.Resistor ledResistor(R = ledSeriesR) "Résistance série de la LED embarquée, entre le pont GPIO interne (index 9) et builtinLed" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor ledResistor(R = ledSeriesR) "Series resistance of the on-board LED, between the internal GPIO bridge (index 9) and builtinLed" annotation(
     Placement(visible = false, transformation(extent = {{-190, -125}, {-170, -115}})));
 public
 equation
@@ -101,10 +101,10 @@ equation
     connect(rOut[i].n, sw[i].p);
     connect(sns[i].n, GND);
     pinNodeVoltage[i] = sns[i].v;
-    pinBoolIn[i] = pinNodeVoltage[i] > (VIL + VIH)/2 "seuil logique médian, approximation v0";
+    pinBoolIn[i] = pinNodeVoltage[i] > (VIL + VIH)/2 "logic threshold halfway, v0 approximation";
     pwmPeriod[i] = 1/max(pwmFreq[i], 1e-6);
-    src[i].v = if pinIsOutputD[i] then (if uartTxPin == i then (if uartTxLevel then VOH else VOL) elseif pwmFreq[i] > 0 then (if mod(time, pwmPeriod[i]) < pwmDuty[i]*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "trame série (niveau publié par le C à chaque changement) si la broche est affectée à l'UART, sinon créneau PWM si pwmFreq > 0, sinon sortie numérique classique - cf. requirements.md";
-    sw[i].control = not pinIsOutputD[i] "ouvert (haute impédance) si la broche est en entrée";
+    src[i].v = if pinIsOutputD[i] then (if uartTxPin == i then (if uartTxLevel then VOH else VOL) elseif pwmFreq[i] > 0 then (if mod(time, pwmPeriod[i]) < pwmDuty[i]*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "serial frame (level published by the C code at each change) if the pin is assigned to the UART, otherwise PWM square wave if pwmFreq > 0, otherwise plain digital output - see requirements.md";
+    sw[i].control = not pinIsOutputD[i] "open (high impedance) if the pin is an input";
   end for;
   connect(sw[9].n, ledResistor.p);
   connect(sns[9].p, ledResistor.p);
@@ -112,18 +112,18 @@ equation
   connect(builtinLed.n, GND);
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), change(pinBoolIn[2]) and not pre(pinIsOutputD[2]), change(pinBoolIn[3]) and not pre(pinIsOutputD[3]), change(pinBoolIn[4]) and not pre(pinIsOutputD[4]), change(pinBoolIn[5]) and not pre(pinIsOutputD[5]), change(pinBoolIn[6]) and not pre(pinIsOutputD[6]), change(pinBoolIn[7]) and not pre(pinIsOutputD[7]), change(pinBoolIn[8]) and not pre(pinIsOutputD[8]), change(pinBoolIn[9]) and not pre(pinIsOutputD[9])} then
     (pinBoolOut, pinIsOutputD, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
-    Display0.charCode = Internal.StringToCharCodes(Display0.payload, Interfaces.DISPLAY_COLS) "codes ASCII derives de Display0.payload (String, non stockable dans les resultats), pour permettre au périphérique d'affichage connecté d'animer le texte reellement recu sur son icone - cf. Internal.StringToCharCodes";
+    Display0.charCode = Internal.StringToCharCodes(Display0.payload, Interfaces.DISPLAY_COLS) "ASCII codes derived from Display0.payload (a String, which cannot be stored in the results), so that the connected display peripheral can animate the text actually received on its icon - see Internal.StringToCharCodes";
   end when;
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(fillColor = {60, 60, 60}, fillPattern = FillPattern.Solid, extent = {{-55, 65}, {55, -65}}), Ellipse(fillColor = DynamicSelect({40, 90, 40}, {integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(-40)), integer(90 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*130), integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(-40))}), fillPattern = FillPattern.Solid, extent = {{-6, 46}, {6, 34}}), Text(textColor = {255, 255, 255}, extent = {{-40, 18}, {40, -2}}, textString = "MCU", textStyle = {TextStyle.Bold}), Text(textColor = {200, 200, 200}, extent = {{-40, -4}, {40, -18}}, textString = "(v0)"), Text(textColor = {255, 255, 255}, extent = {{-46, 57}, {-8, 43}}, textString = "GP0", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-46, 27}, {-8, 13}}, textString = "GP1", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-46, -13}, {-8, -27}}, textString = "GP2", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-46, -43}, {-8, -57}}, textString = "GP3", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{8, 57}, {46, 43}}, textString = "GP4", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{8, 27}, {46, 13}}, textString = "GP5", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{8, -13}, {46, -27}}, textString = "GP6", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{8, -43}, {46, -57}}, textString = "GP7", horizontalAlignment = TextAlignment.Right), Text(extent = {{-25, -83}, {25, -90}}, textString = "GND"), Text(origin = {-54, -51}, textColor = {255, 255, 255}, extent = {{55, 106}, {108, 115}}, textString = "DISPLAY", horizontalAlignment = TextAlignment.Right), Text(origin = {0, -34}, textColor = {0, 0, 255}, extent = {{-150, 140}, {150, 100}}, textString = "%name")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics),
     Documentation(info = "<html>
-<p>Modèle v0 complet : pont électrique GPIO (source de tension pilotée, résistance série, interrupteur idéal, capteur de tension) piloté par <code>PyRuntime</code>, qui exécute le script Python de l'utilisateur (compatible MicroPython, API <code>machine.Pin</code>/<code>machine.ADC</code>/<code>machine.PWM</code>/<code>time</code>) dans un thread avec interception de <code>sleep()</code>. Référence d'API : Raspberry Pi Pico (RP2040), cf. <code>requirements.md</code> — non affichée sur l'icône pour rester générique. Chaque broche <code>GP0</code>-<code>GP7</code> est utilisable au choix du script en numérique (<code>machine.Pin</code>), en analogique (<code>machine.ADC</code>, lecture 16 bits de la tension mesurée par le capteur déjà présent dans le pont) ou en PWM (<code>machine.PWM</code>, créneau généré en continu côté Modelica une fois fréquence/rapport cyclique configurés — pas de va-et-vient avec le thread Python à chaque front, cf. <code>requirements.md</code>) — contrairement au vrai Pico où seules certaines broches sont ADC-capables, cf. restrictions dans <code>requirements.md</code>.</p>
-<p>Le script peut importer un module auxiliaire (<code>import mon_module</code>) : par défaut (<code>addScriptDirToPath</code>), le dossier du script est ajouté au chemin de recherche Python, et <code>libraryPath</code> permet de désigner en plus un fichier <code>.py</code> d'une bibliothèque partagée (son dossier est alors ajouté aussi) — cf. <code>requirements.md</code>, décision « Import de modules auxiliaires ».</p>
-<p>Système de fichiers (flash simulée, onglet « Système de fichiers ») : inactif par défaut (<code>fsEnabled</code>), <code>open()</code> et <code>os</code> lèvent alors <code>OSError</code>. Actif, chaque simulation recopie le dossier <code>fsSource</code> (vide = flash vierge) dans un nouveau dossier de <code>fsWorkspace</code> (« . » par défaut : le dossier de simulation), nommé <code>&lt;instance&gt;_&lt;nom du FS&gt;_&lt;date&gt;_&lt;heure&gt;</code> ; son chemin complet est affiché dans le journal au début et à la fin de la simulation, et l'Explorateur Windows s'ouvre dessus à la fin (<code>fsOpenExplorer</code>). Le script y voit la racine <code>/</code> de la flash : <code>open()</code> et le module <code>os</code> façon MicroPython (<code>listdir</code>, <code>mkdir</code>, <code>remove</code>, <code>rename</code>, <code>stat</code>, <code>statvfs</code>, <code>chdir</code>, <code>getcwd</code>...) y sont cloisonnés, et la racine ainsi que <code>/lib</code> sont sur le chemin d'import. La source n'est jamais modifiée : chaque simulation repart du même état, elle reste déterministe (l'horodatage ne sert qu'à nommer la copie, le script ne le voit pas). Programme exécuté, comme sur une carte : <code>boot.py</code> de la flash s'il existe, puis <code>scriptPath</code> à la place de <code>main.py</code> (comme Thonny sur une carte déjà démarrée), ou <code>main.py</code> de la flash si <code>scriptPath</code> est vide. Cf. <code>requirements.md</code>, décision « Système de fichiers ».</p>
-<p>Les paramètres électriques (niveaux logiques, résistances de sortie) sont regroupés dans l'onglet « Électrique ».</p>
-<p>Le connecteur <code>Display0</code> expose une liaison logique vers un périphérique d'affichage pédagogique (<code>machine.Display(0).write(texte)</code>) : contrairement aux broches <code>GPx</code>, ce n'est pas un connecteur électrique (<code>Modelica.Electrical.Analog</code>) mais un connecteur logique causal (<code>Interfaces.DisplayLinkOutput</code>, message livré instantanément au point de synchro, pas de forme d'onde série ni de bauds simulés) — à câbler sur le <code>displayLink</code> (<code>Interfaces.DisplayLinkInput</code>) d'un <code>Peripherals.Display</code>, composant optionnel (brancher ou non selon le circuit). Cf. <code>requirements.md</code>, décision « Périphérique d'affichage pédagogique ».</p>
-<p>La pastille sur l'icône représente la LED embarquée du Raspberry Pi Pico (câblée sur <code>GP25</code> sur la vraie carte). Elle est traitée comme une broche normale, avec le même pont électrique interne que <code>GP0</code>-<code>GP7</code> (<code>SignalVoltage</code>/<code>Resistor</code>/<code>IdealOpeningSwitch</code>/<code>VoltageSensor</code>, indice 9 des mêmes tableaux) — simplement sans connecteur externe : la sortie de ce pont interne alimente directement, à demeure, une résistance série (<code>ledResistor</code>) et une vraie <code>Peripherals.LED</code> (<code>builtinLed</code>) reliée à <code>GND</code>, fidèle au câblage réel du Pico. Pilotable depuis le script exactement comme les 8 broches GPIO (<code>machine.Pin(25, machine.Pin.OUT).on()</code>/<code>.off()</code>) ; ce n'est pas l'une des 8 broches GPIO exposées en v0 (cf. restrictions dans <code>requirements.md</code>), donc aucun circuit externe ne peut s'y connecter. Vert vif quand allumée, vert éteint sinon — visible pendant la lecture animée d'un résultat de simulation dans OMEdit (<code>DynamicSelect</code> sur <code>builtinLed.mean.y</code>), pas sur un rendu statique.</p>
-<p><em>Schéma interne (Diagram) volontairement vide en v0 : les blocs du pont électrique sont masqués (<code>visible = false</code>) plutôt que routés proprement — un schéma lisible sera redessiné plus tard, cf. requirements.md.</em></p>
+<p>Complete v0 model: electrical GPIO bridge (driven voltage source, series resistance, ideal switch, voltage sensor) controlled by <code>PyRuntime</code>, which runs the user's Python script (MicroPython-compatible, <code>machine.Pin</code>/<code>machine.ADC</code>/<code>machine.PWM</code>/<code>time</code> API) in a thread that intercepts <code>sleep()</code>. API reference: Raspberry Pi Pico (RP2040), see <code>requirements.md</code> — not shown on the icon, to stay generic. Each pin <code>GP0</code>-<code>GP7</code> can be used, as the script chooses, as digital (<code>machine.Pin</code>), analog (<code>machine.ADC</code>, 16-bit reading of the voltage measured by the sensor already present in the bridge) or PWM (<code>machine.PWM</code>, square wave generated continuously on the Modelica side once frequency/duty cycle are set — no round trip with the Python thread at each edge, see <code>requirements.md</code>) — unlike the real Pico, where only some pins are ADC-capable, see the restrictions in <code>requirements.md</code>.</p>
+<p>The script can import a helper module (<code>import my_module</code>): by default (<code>addScriptDirToPath</code>), the script's folder is added to the Python search path, and <code>libraryPath</code> can additionally designate a <code>.py</code> file of a shared library (its folder is then added too) — see <code>requirements.md</code>, decision \"Import de modules auxiliaires\".</p>
+<p>File system (simulated flash, \"File system\" tab): disabled by default (<code>fsEnabled</code>), <code>open()</code> and <code>os</code> then raise <code>OSError</code>. When enabled, each simulation copies the <code>fsSource</code> folder (empty = blank flash) into a new folder of <code>fsWorkspace</code> (\".\" by default: the simulation folder), named <code>&lt;instance&gt;_&lt;FS name&gt;_&lt;date&gt;_&lt;time&gt;</code>; its full path is shown in the log at the start and at the end of the simulation, and Windows Explorer opens on it at the end (<code>fsOpenExplorer</code>). The script sees it as the root <code>/</code> of the flash: <code>open()</code> and the MicroPython-style <code>os</code> module (<code>listdir</code>, <code>mkdir</code>, <code>remove</code>, <code>rename</code>, <code>stat</code>, <code>statvfs</code>, <code>chdir</code>, <code>getcwd</code>...) are confined to it, and the root as well as <code>/lib</code> are on the import path. The source is never modified: each simulation starts again from the same state and stays deterministic (the timestamp only names the copy, the script does not see it). Program run, as on a board: <code>boot.py</code> from the flash if it exists, then <code>scriptPath</code> instead of <code>main.py</code> (like Thonny on an already booted board), or <code>main.py</code> from the flash if <code>scriptPath</code> is empty. See <code>requirements.md</code>, decision \"Système de fichiers\".</p>
+<p>The electrical parameters (logic levels, output resistances) are grouped in the \"Electrical\" tab.</p>
+<p>The <code>Display0</code> connector exposes a logical link to an educational display peripheral (<code>machine.Display(0).write(text)</code>): unlike the <code>GPx</code> pins, it is not an electrical connector (<code>Modelica.Electrical.Analog</code>) but a causal logical connector (<code>Interfaces.DisplayLinkOutput</code>, message delivered instantly at the sync point, no serial waveform nor simulated baud rate) — to be connected to the <code>displayLink</code> (<code>Interfaces.DisplayLinkInput</code>) of a <code>Peripherals.Display</code>, an optional component (connect it or not, depending on the circuit). See <code>requirements.md</code>, decision \"Périphérique d'affichage pédagogique\".</p>
+<p>The dot on the icon stands for the on-board LED of the Raspberry Pi Pico (wired to <code>GP25</code> on the real board). It is handled like a normal pin, with the same internal electrical bridge as <code>GP0</code>-<code>GP7</code> (<code>SignalVoltage</code>/<code>Resistor</code>/<code>IdealOpeningSwitch</code>/<code>VoltageSensor</code>, index 9 of the same arrays) — only without an external connector: the output of this internal bridge permanently feeds a series resistance (<code>ledResistor</code>) and a real <code>Peripherals.LED</code> (<code>builtinLed</code>) connected to <code>GND</code>, true to the actual wiring of the Pico. It is driven from the script exactly like the 8 GPIO pins (<code>machine.Pin(25, machine.Pin.OUT).on()</code>/<code>.off()</code>); it is not one of the 8 GPIO pins exposed in v0 (see the restrictions in <code>requirements.md</code>), so no external circuit can be connected to it. Bright green when on, dark green otherwise — visible while replaying a simulation result with animation in OMEdit (<code>DynamicSelect</code> on <code>builtinLed.mean.y</code>), not on a static rendering.</p>
+<p><em>Internal schematic (Diagram) deliberately empty in v0: the blocks of the electrical bridge are hidden (<code>visible = false</code>) rather than neatly routed — a readable schematic will be drawn later, see requirements.md.</em></p>
 </html>"));
 end MCU;

@@ -1,26 +1,26 @@
 within MicroPythonMCU.Examples.Gpio;
-model Timing "Coût temporel des accès GPIO (gpioOpTime) : impulsion on()/off() sans sleep, rafale bit-bang, attente active, IRQ masquée, idle()"
+model Timing "Time cost of GPIO accesses (gpioOpTime): on()/off() pulse without sleep, bit-bang burst, busy wait, masked IRQ, idle()"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/gpio_timing.py")) "scriptPath = Verification/gpio_timing.py ; gpioOpTime par défaut (5 µs)" annotation(
+  MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/gpio_timing.py")) "scriptPath = Verification/gpio_timing.py; default gpioOpTime (5 µs)" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -100}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor rLoad(R = 10e3) "Charge de GP0, la broche des impulsions" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor rLoad(R = 10e3) "Load of GP0, the pulse pin" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Sources.SignalVoltage inSrc "Pilote GP1 : l'entrée guettée par l'attente active" annotation(
+  Modelica.Electrical.Analog.Sources.SignalVoltage inSrc "Drives GP1: the input watched by the busy wait" annotation(
     Placement(transformation(origin = {-90, -20}, extent = {{15, -15}, {-15, 15}})));
-  Modelica.Blocks.Sources.Step inStep(height = 3.3, startTime = 0.3) "Front montant sur GP1 à t = 300 ms" annotation(
+  Modelica.Blocks.Sources.Step inStep(height = 3.3, startTime = 0.3) "Rising edge on GP1 at t = 300 ms" annotation(
     Placement(transformation(origin = {-90, 70}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Sources.SignalVoltage irqSrc "Pilote GP3 : l'entrée de l'IRQ" annotation(
+  Modelica.Electrical.Analog.Sources.SignalVoltage irqSrc "Drives GP3: the IRQ input" annotation(
     Placement(transformation(origin = {-90, -60}, extent = {{15, -15}, {-15, 15}})));
-  Modelica.Blocks.Sources.Step irqStep(height = 3.3, startTime = 0.45) "Front montant sur GP3 à t = 450 ms, pendant le masquage des IRQ" annotation(
+  Modelica.Blocks.Sources.Step irqStep(height = 3.3, startTime = 0.45) "Rising edge on GP3 at t = 450 ms, while IRQs are masked" annotation(
     Placement(transformation(origin = {-140, -60}, extent = {{-15, -15}, {15, 15}})));
-  Boolean gp0High = mcu.GP0.v > 1.65 "GP0 vue par un observateur externe";
-  discrete Modelica.Units.SI.Time tRise(start = 0, fixed = true) "Dernier front montant de GP0";
-  discrete Modelica.Units.SI.Time pulseWidth(start = 0, fixed = true) "Largeur de la dernière impulsion de GP0, mesurée côté Modelica";
-  discrete Integer pulseCount(start = 0, fixed = true) "Nombre d'impulsions vues sur GP0";
-  discrete Modelica.Units.SI.Time tFlag(start = -1, fixed = true) "Instant où GP2 monte : sortie de l'attente active";
-  discrete Modelica.Units.SI.Time tIrq(start = -1, fixed = true) "Instant où GP4 monte : exécution du callback IRQ";
+  Boolean gp0High = mcu.GP0.v > 1.65 "GP0 as seen by an external observer";
+  discrete Modelica.Units.SI.Time tRise(start = 0, fixed = true) "Last rising edge of GP0";
+  discrete Modelica.Units.SI.Time pulseWidth(start = 0, fixed = true) "Width of the last pulse of GP0, measured on the Modelica side";
+  discrete Integer pulseCount(start = 0, fixed = true) "Number of pulses seen on GP0";
+  discrete Modelica.Units.SI.Time tFlag(start = -1, fixed = true) "Instant when GP2 rises: exit of the busy wait";
+  discrete Modelica.Units.SI.Time tIrq(start = -1, fixed = true) "Instant when GP4 rises: execution of the IRQ callback";
 equation
   when gp0High then
     tRise = time;
@@ -57,15 +57,15 @@ equation
     Diagram(coordinateSystem(extent = {{-170, -120}, {80, 100}})),
     experiment(StopTime = 0.6, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
-<p>Scénario de vérification 28 : le <strong>coût temporel des accès GPIO</strong>. Chaque <code>Pin.value()</code>, <code>on()</code>, <code>off()</code> ou <code>pin(x)</code> occupe le processeur pendant <code>mcu.gpioOpTime</code> (5 µs par défaut, l'ordre de grandeur de MicroPython sur RP2040) : deux écritures sans <code>sleep()</code> entre elles donnent donc une vraie impulsion, visible par le circuit. C'est ce qui permet le <em>bit-banging</em> (driver HX711, par exemple).</p>
-<p>Le script <code>Verification/gpio_timing.py</code> enchaîne, à des instants fixés :</p>
+<p>Verification scenario 28: the <strong>time cost of GPIO accesses</strong>. Each <code>Pin.value()</code>, <code>on()</code>, <code>off()</code> or <code>pin(x)</code> keeps the processor busy for <code>mcu.gpioOpTime</code> (5 µs by default, the order of magnitude of MicroPython on RP2040): two writes without <code>sleep()</code> between them therefore give a real pulse, visible by the circuit. This is what enables <em>bit-banging</em> (the HX711 driver, for instance).</p>
+<p>The script <code>Verification/gpio_timing.py</code> runs, at fixed instants:</p>
 <ul>
-<li>t = 100 ms : <code>on()</code> puis <code>off()</code> sur GP0 → une impulsion de 5 µs (<code>pulseWidth</code>, mesurée ici côté Modelica) ;</li>
-<li>t = 200 ms : 10 impulsions par <code>out(1); out(0)</code> → 11 impulsions au total (<code>pulseCount</code>), et le script mesure 100 µs par <code>ticks_us()</code> ;</li>
-<li>t = 280 ms : attente active <code>while not inp(): pass</code>, sans <code>sleep()</code> : le temps avance de 5 µs par lecture, et le front de GP1 à t = 300 ms est vu → GP2 monte juste après (<code>tFlag</code>) ;</li>
-<li>t = 400 ms : <code>disable_irq()</code> ; le front de GP3 à t = 450 ms ne déclenche pas le callback tout de suite, il s'exécute à <code>enable_irq()</code>, à t = 500 ms (<code>tIrq</code>, GP4) ;</li>
-<li>enfin <code>idle()</code> rend la main à la milliseconde ronde suivante.</li>
+<li>t = 100 ms: <code>on()</code> then <code>off()</code> on GP0 → a 5 µs pulse (<code>pulseWidth</code>, measured here on the Modelica side);</li>
+<li>t = 200 ms: 10 pulses through <code>out(1); out(0)</code> → 11 pulses in total (<code>pulseCount</code>), and the script measures 100 µs with <code>ticks_us()</code>;</li>
+<li>t = 280 ms: busy wait <code>while not inp(): pass</code>, without <code>sleep()</code>: time moves forward by 5 µs per read, and the edge of GP1 at t = 300 ms is seen → GP2 rises just after (<code>tFlag</code>);</li>
+<li>t = 400 ms: <code>disable_irq()</code>; the edge of GP3 at t = 450 ms does not trigger the callback right away, it runs at <code>enable_irq()</code>, at t = 500 ms (<code>tIrq</code>, GP4);</li>
+<li>finally <code>idle()</code> returns at the next whole millisecond.</li>
 </ul>
-<p>Le script affiche <code>dt=100 id=0</code> sur la liaison <code>Display0</code> (durée de la rafale en µs, reste de <code>ticks_us()</code> modulo 1000 après <code>idle()</code>).</p>
+<p>The script shows <code>dt=100 id=0</code> on the <code>Display0</code> link (duration of the burst in µs, remainder of <code>ticks_us()</code> modulo 1000 after <code>idle()</code>).</p>
 </html>"));
 end Timing;

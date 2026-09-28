@@ -1,12 +1,12 @@
 within MicroPythonMCU.Examples.Program;
 
-model Error "Scénario de vérification v0 n°4 : une exception non gérée doit arrêter la simulation avec la trace visible dans le journal"
+model Error "v0 verification scenario no. 4: an unhandled exception must stop the simulation with the traceback visible in the log"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/script_error.py")) "scriptPath = Verification/script_error.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor led(R = 1000) "Charge simulant une LED sur GP0" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor led(R = 1000) "Load simulating an LED on GP0" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -19,6 +19,6 @@ equation
     Diagram(coordinateSystem(extent = {{-160, -120}, {80, 80}})),
     experiment(StopTime = 5),
     Documentation(info = "<html>
-<p>Succès attendu : la simulation s'arrête en erreur après ≈1 s (après le <code>sleep(1)</code>), la trace Python (ZeroDivisionError) est visible dans le journal de simulation.</p>
+<p>Expected result: the simulation stops with an error after ≈1 s (after the <code>sleep(1)</code>), the Python traceback (ZeroDivisionError) is visible in the simulation log.</p>
 </html>"));
 end Error;

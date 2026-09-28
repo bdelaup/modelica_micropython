@@ -18,11 +18,11 @@ f := "UartSensor_res.mat";
 
 // --- Capture {o1} : la consigne "SET 42.5" doit ressortir sur valueOut ---
 // Avant l'envoi, la sortie vaut sa valeur initiale (valueOutStart = 0).
-vAvant := val(capteur.valueOut[1], 0.05, f);
-vApres := val(capteur.valueOut[1], 0.45, f);
+vAvant := val(sensor.valueOut[1], 0.05, f);
+vApres := val(sensor.valueOut[1], 0.45, f);
 
 // --- Le capteur a bien émis : sa ligne TX a porté des trames ---
-vTxActif := val(capteur.txActive, 0.03, f);
+vTxActif := val(sensor.txActive, 0.03, f);
 
 // --- Critère principal : le script a obtenu DEUX mesures valides ET croissantes.
 // Le témoin ne s'allume que si les deux réponses ont pu être analysées et que

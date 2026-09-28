@@ -21,13 +21,13 @@ vLed := val(mcu.GP1.v, 1.4, "FileSystem_res.mat");
 system("dir /b /ad /o:n mcu_datalogger_* > fs_copies.txt");
 copies := OpenModelica.Scripting.strtok(readFile("fs_copies.txt"), "\r\n");
 nCopies := size(copies, 1);
-m1 := if nCopies >= 1 then readFile(copies[1] + "/data/mesures.csv") else "";
-m2 := if nCopies >= 2 then readFile(copies[2] + "/data/mesures.csv") else "";
+m1 := if nCopies >= 1 then readFile(copies[1] + "/data/measurements.csv") else "";
+m2 := if nCopies >= 2 then readFile(copies[2] + "/data/measurements.csv") else "";
 nLines := size(OpenModelica.Scripting.strtok(m1, "\n"), 1);
 // ".." s'arrête à la racine de la flash : le fichier est dans la copie, pas au-dessus.
-escapeOk := nCopies >= 1 and regularFileExists(copies[1] + "/hors_flash.txt") and not regularFileExists("hors_flash.txt") and not regularFileExists("../hors_flash.txt");
+escapeOk := nCopies >= 1 and regularFileExists(copies[1] + "/outside_flash.txt") and not regularFileExists("outside_flash.txt") and not regularFileExists("../outside_flash.txt");
 // L'image d'origine n'est jamais modifiée.
-sourceOk := regularFileExists("../FileSystems/datalogger/main.py") and not directoryExists("../FileSystems/datalogger/data") and not regularFileExists("../FileSystems/datalogger/hors_flash.txt");
+sourceOk := regularFileExists("../FileSystems/datalogger/main.py") and not directoryExists("../FileSystems/datalogger/data") and not regularFileExists("../FileSystems/datalogger/outside_flash.txt");
 
 // Nettoyage : ne pas laisser les copies dans le dépôt.
 system("for /d %d in (mcu_datalogger_*) do rmdir /s /q \"%d\"");

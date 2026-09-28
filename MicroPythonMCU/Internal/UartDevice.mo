@@ -1,26 +1,26 @@
 within MicroPythonMCU.Internal;
 
-class UartDevice "External Object encapsulant l'état d'un périphérique série externe (files TX/RX, décodage, table de commandes ou script Python, échéances) - cf. requirements.md, décision « Périphériques UART externes connectables »"
+class UartDevice "External Object wrapping the state of an external serial device (TX/RX queues, decoding, command table or Python script, deadlines) - see requirements.md, decision \"Périphériques UART externes connectables\""
   extends ExternalObject;
 
   function constructor
-    input Real baudrate "Débit de la liaison (bauds) - borné à [50, 115200] côté C, garde-fou contre une tempête d'événements Modelica";
-    input String commandTable "Table compacte « CMD=>REPONSE|CMD=>REPONSE » ; « | » et « => » sont réservés. {vN} substitue valueIn[N] dans une réponse, {oN} capture un nombre de la commande vers valueOut[N]";
-    input String terminator "Caractère de fin de commande ; seul le premier caractère est retenu, ce qui permet de l'écrire \"\\n\" plutôt qu'un code numérique";
-    input Real responseDelay "Délai entre la reconnaissance d'une commande et le début de la réponse (s)";
-    input Boolean respondEnabled "Répondre aux commandes reconnues dans commandTable (mode Table)";
-    input Boolean echoEnabled "Renvoyer tel quel chaque octet reçu (mode Table)";
-    input Boolean periodicEnabled "Émettre spontanément periodicTemplate toutes les period secondes (mode Table ; en mode Script, c'est la présence de on_tick() qui en décide)";
-    input Real period "Période d'émission spontanée (s)";
-    input String periodicTemplate "Gabarit de la trame émise périodiquement ({vN} substitués)";
-    input Real valueOutStart "Valeur initiale de valueOut, avant toute capture";
-    input Integer mode "1 = table de commandes paramétrée, 2 = script Python";
-    input String scriptPath "Chemin du script .py du périphérique (mode 2 uniquement)";
-    input String pythonHome "Distribution Python embarquée (Resources/PythonRuntime) - sert à démarrer CPython si aucun microcontrôleur ne l'a encore fait";
-    input String instanceName "Nom du composant, préfixé aux print() du script";
+    input Real baudrate "Link speed (baud) - clamped to [50, 115200] on the C side, a safeguard against a storm of Modelica events";
+    input String commandTable "Compact table \"CMD=>REPLY|CMD=>REPLY\"; \"|\" and \"=>\" are reserved. {vN} substitutes valueIn[N] in a reply, {oN} captures a number of the command into valueOut[N]";
+    input String terminator "End-of-command character; only the first character is kept, so that it can be written \"\\n\" rather than as a numeric code";
+    input Real responseDelay "Delay between the recognition of a command and the start of the reply (s)";
+    input Boolean respondEnabled "Reply to the commands recognised in commandTable (Table mode)";
+    input Boolean echoEnabled "Send back every received byte unchanged (Table mode)";
+    input Boolean periodicEnabled "Spontaneously transmit periodicTemplate every period seconds (Table mode; in Script mode, the presence of on_tick() decides)";
+    input Real period "Period of the spontaneous transmission (s)";
+    input String periodicTemplate "Template of the periodically transmitted frame ({vN} substituted)";
+    input Real valueOutStart "Initial value of valueOut, before any capture";
+    input Integer mode "1 = command table set by parameters, 2 = Python script";
+    input String scriptPath "Path of the device's .py script (mode 2 only)";
+    input String pythonHome "Embedded Python distribution (Resources/PythonRuntime) - used to start CPython if no microcontroller has done it yet";
+    input String instanceName "Component name, prefixed to the script's print() output";
     output UartDevice dev;
-    // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
-    // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+    // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
+    // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
     external "C" dev = UartDevice_new(baudrate, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, mode, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
@@ -38,6 +38,6 @@ class UartDevice "External Object encapsulant l'état d'un périphérique série
 
   annotation(
     Documentation(info = "<html>
-<p>Pas de thread worker, contrairement à <code>Internal.PyRuntime</code> : un périphérique réagit sans jamais se suspendre. En mode Table aucun code Python n'est exécuté ; en mode Script, les gestionnaires du script s'exécutent sur le thread Modelica, dans l'interpréteur partagé avec le microcontrôleur. Le moteur bit/octet est <em>exactement</em> celui du microcontrôleur (<code>Resources/Include/uartcore.c</code>), partagé et non dupliqué.</p>
+<p>No worker thread, unlike <code>Internal.PyRuntime</code>: a device reacts without ever suspending itself. In Table mode no Python code runs; in Script mode, the script's handlers run on the Modelica thread, in the interpreter shared with the microcontroller. The bit/byte engine is <em>exactly</em> the microcontroller's one (<code>Resources/Include/uartcore.c</code>), shared and not duplicated.</p>
 </html>"));
 end UartDevice;

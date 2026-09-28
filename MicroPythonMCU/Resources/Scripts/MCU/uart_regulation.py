@@ -1,44 +1,44 @@
 from machine import Pin, UART
 import time
 
-# Boucle de regulation fermee ENTIEREMENT dans le modele, a travers la seule
-# liaison serie :
+# Control loop closed ENTIRELY inside the model, through the serial link
+# alone:
 #
-#   microcontroleur --AT+TEMP--> capteur --{v1}--> lit valueIn  (la mesure)
-#   microcontroleur --SET x---->  capteur --{o1}--> ecrit valueOut (la commande)
-#   valueOut --> modele thermique (FirstOrder) --> valueIn
+#   microcontroller --AT+TEMP--> sensor --{v1}--> reads valueIn  (the measurement)
+#   microcontroller --SET x----> sensor --{o1}--> writes valueOut (the command)
+#   valueOut --> thermal model (FirstOrder) --> valueIn
 #
-# Le capteur n'est donc pas seulement un capteur : la commande qu'il republie
-# sur sa sortie reelle pilote le procede, dont la reponse revient sur son
-# entree. Aucun fil supplementaire, tout passe par les deux memes broches.
+# The sensor is therefore not only a sensor: the command it republishes
+# on its real output drives the plant, whose response comes back on its
+# input. No extra wire, everything goes through the same two pins.
 BAUD = 9600
 TIMEOUT_MS = 200
-CONSIGNE = 40.0       # degC
-GAIN_PROC = 0.5       # degC par unite de commande, en regime etabli
-KP = 4.0              # gain proportionnel du correcteur
+SETPOINT = 40.0       # degC
+PLANT_GAIN = 0.5      # degC per command unit, in steady state
+KP = 4.0              # proportional gain of the controller
 CMD_MIN, CMD_MAX = 0.0, 100.0
 CYCLES = 18
 
 uart = UART(0, baudrate=BAUD, tx=Pin(5), rx=Pin(4))
 
 
-def demande(commande):
-    uart.write(commande)
-    ligne = b''
-    echeance = time.ticks_ms() + TIMEOUT_MS
-    while time.ticks_diff(echeance, time.ticks_ms()) > 0:
+def request(command):
+    uart.write(command)
+    line = b''
+    deadline = time.ticks_ms() + TIMEOUT_MS
+    while time.ticks_diff(deadline, time.ticks_ms()) > 0:
         if uart.any():
-            ligne += uart.read()
-            if ligne.endswith(b'\n'):
-                return ligne
+            line += uart.read()
+            if line.endswith(b'\n'):
+                return line
         else:
             time.sleep_ms(1)
-    return ligne
+    return line
 
 
-def mesure():
+def measure():
     try:
-        return float(demande(b'AT+TEMP\n').split(b'=')[1].strip())
+        return float(request(b'AT+TEMP\n').split(b'=')[1].strip())
     except Exception:
         return None
 
@@ -46,16 +46,16 @@ def mesure():
 time.sleep_ms(10)
 
 for i in range(CYCLES):
-    t = mesure()
+    t = measure()
     if t is None:
         continue
-    # Correcteur proportionnel avec compensation du gain statique du procede.
-    cmd = CONSIGNE / GAIN_PROC + KP * (CONSIGNE - t)
+    # Proportional controller with compensation of the static gain of the plant.
+    cmd = SETPOINT / PLANT_GAIN + KP * (SETPOINT - t)
     if cmd < CMD_MIN:
         cmd = CMD_MIN
     elif cmd > CMD_MAX:
         cmd = CMD_MAX
-    demande(b'SET %.1f\n' % cmd)
-    print("cycle", i, "mesure", t, "commande", cmd)
+    request(b'SET %.1f\n' % cmd)
+    print("cycle", i, "measurement", t, "command", cmd)
 
-print("Regulation : consigne", CONSIGNE, "derniere mesure", mesure())
+print("Control: setpoint", SETPOINT, "last measurement", measure())

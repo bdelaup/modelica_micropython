@@ -20,7 +20,7 @@ getErrorString();
 ret := system(".\\ScriptError.bat", "ScriptError_run.txt");
 log := readFile("ScriptError_run.txt");
 (nTrace, m1) := regex(log, "ZeroDivisionError", 1);
-(nRuntime, m2) := regex(log, "le script a leve une exception non geree", 1);
+(nRuntime, m2) := regex(log, "the script raised an unhandled exception", 1);
 
 if ret == -1 and nTrace >= 1 and nRuntime >= 1 then
   print("PASS: verify_04_script_error (simulation arretee proprement en erreur : code de sortie " + String(ret) + ", ZeroDivisionError et message du runtime dans le journal)\n");

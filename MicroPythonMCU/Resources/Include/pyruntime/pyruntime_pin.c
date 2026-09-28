@@ -23,7 +23,7 @@ static PyObject* native_pin_init(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "ii", &id, &is_output)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
@@ -40,7 +40,7 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "ii", &id, &value)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
@@ -61,7 +61,7 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     /* Duree d'execution d'abord, lecture ensuite : on lit l'etat de la broche
@@ -86,7 +86,7 @@ static PyObject* native_adc_init(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0 || idx == LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte comme entree ADC pour la v0 (0-%d uniquement)", id, LED_PIN_INDEX - 1);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported as ADC input in v0 (0-%d only)", id, LED_PIN_INDEX - 1);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
@@ -102,7 +102,7 @@ static PyObject* native_adc_read(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0 || idx == LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte comme entree ADC pour la v0 (0-%d uniquement)", id, LED_PIN_INDEX - 1);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported as ADC input in v0 (0-%d only)", id, LED_PIN_INDEX - 1);
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
@@ -119,7 +119,7 @@ static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "id", &id, &freq)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     if (freq < 0) {
@@ -128,7 +128,7 @@ static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
            Formater la valeur soi-meme avec snprintf puis l'inserer via %s. */
         char freq_str[64];
         snprintf(freq_str, sizeof(freq_str), "%f", freq);
-        PyErr_Format(PyExc_ValueError, "frequence PWM negative (%s)", freq_str);
+        PyErr_Format(PyExc_ValueError, "negative PWM frequency (%s)", freq_str);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
@@ -146,7 +146,7 @@ static PyObject* native_pwm_set_duty(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "id", &id, &duty)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     if (duty < 0.0) duty = 0.0;
@@ -164,7 +164,7 @@ static PyObject* native_pwm_deinit(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
@@ -247,7 +247,7 @@ static PyObject* native_pin_irq_set(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "iOOi", &id, &pin_self, &handler, &trigger)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d non supporte pour la v0 (0-%d ou %d pour la LED embarquee)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
+        PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);

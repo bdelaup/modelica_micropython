@@ -51,7 +51,7 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues-v0
     Chaque front sur une broche est un événement pour le solveur. Une liaison série rapide, un bus I2C, une attente active (`while not bouton(): pass`, un événement par accès à la broche) ou un `sleep_ms(1)` en boucle en produisent beaucoup. Préférer `time.sleep()` ou `Pin.irq()` à l'attente active, et ne simuler que la durée utile.
 
 ??? question "`open()` lève `OSError: [Errno 19] ENODEV`"
-    Le système de fichiers n'est pas activé : cocher `fsEnabled` dans l'onglet *Système de fichiers* du `MCU` ([Le bloc MCU](mcu.md#systeme-de-fichiers)).
+    Le système de fichiers n'est pas activé : cocher `fsEnabled` dans l'onglet *File system* du `MCU` ([Le bloc MCU](mcu.md#systeme-de-fichiers)).
 
 ??? question "Où sont les fichiers écrits par mon programme ?"
     Dans la copie de la flash créée à chaque simulation, dans le dossier `fsWorkspace` (par défaut le dossier de simulation). Son chemin s'affiche dans le journal au début et à la fin de la simulation, et l'Explorateur Windows s'ouvre dessus en fin de simulation (`fsOpenExplorer`).

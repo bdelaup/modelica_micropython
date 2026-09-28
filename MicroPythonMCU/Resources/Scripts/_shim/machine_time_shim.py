@@ -116,7 +116,7 @@ class UART:
 
     def init(self, baudrate=1200, tx=None, rx=None, **kwargs):
         if tx is None or rx is None:
-            raise ValueError('tx et rx doivent etre precises (ex. UART(0, tx=Pin(0), rx=Pin(1)))')
+            raise ValueError('tx and rx must be given (e.g. UART(0, tx=Pin(0), rx=Pin(1)))')
         if isinstance(tx, Pin):
             tx = tx.id
         if isinstance(rx, Pin):
@@ -165,7 +165,7 @@ class I2C:
 
     def init(self, scl=None, sda=None, freq=400000, **kwargs):
         if scl is None or sda is None:
-            raise ValueError('scl et sda doivent etre precises (ex. I2C(0, scl=Pin(4), sda=Pin(5)))')
+            raise ValueError('scl and sda must be given (e.g. I2C(0, scl=Pin(4), sda=Pin(5)))')
         if isinstance(scl, Pin):
             scl = scl.id
         if isinstance(sda, Pin):
@@ -334,12 +334,12 @@ def _fs_mount():
     if source:
         src = _fs_host_dir(source)
         if not _host_os.path.isdir(src):
-            raise OSError('systeme de fichiers source introuvable : %s' % src)
+            raise OSError('source file system not found: %s' % src)
         nsrc, nws = _host_os.path.normcase(src), _host_os.path.normcase(ws)
         if nws == nsrc or nws.startswith(nsrc.rstrip(_host_os.sep) + _host_os.sep):
             # Chaque copie serait recopiee dans la suivante : le contenu de la
             # flash dependrait des simulations precedentes.
-            raise OSError("l'espace de travail (%s) ne doit pas etre dans le systeme de fichiers source (%s)" % (ws, src))
+            raise OSError('the workspace (%s) must not be inside the source file system (%s)' % (ws, src))
         name = _host_os.path.basename(src.rstrip('\\/'))
     d = _host_datetime.datetime.now()
     base = '%s_%s_%04d-%02d-%02d_%02d-%02d-%02d' % (
@@ -362,8 +362,8 @@ def _fs_mount():
     # Comme sur la carte : la racine et /lib de la flash sont sur le chemin d'import.
     sys.path.append(dest)
     sys.path.append(_host_os.path.join(dest, 'lib'))
-    print('Systeme de fichiers : espace de travail %s' % ws)
-    print('Systeme de fichiers : copie de %s creee dans %s' % (src or 'la flash vierge', dest))
+    print('File system: workspace %s' % ws)
+    print('File system: copy of %s created in %s' % (src or 'the blank flash', dest))
 
 def _fs_user(depth):
     # Vrai si le code appelant (depth cadres au-dessus de l'appelant de
@@ -390,7 +390,7 @@ def _fs_path(path):
     if isinstance(path, (bytes, bytearray)):
         path = bytes(path).decode()
     if not isinstance(path, str):
-        raise TypeError('chemin attendu (str), pas %s' % type(path).__name__)
+        raise TypeError('path expected (str), not %s' % type(path).__name__)
     if any(c in path for c in '\\:*?"<>|\0'):
         raise _fs_err(_errno.EINVAL)   # separateurs et caracteres propres a Windows
     parts = []

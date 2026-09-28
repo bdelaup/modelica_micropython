@@ -1,22 +1,22 @@
 within MicroPythonMCU.Internal;
-class PyRuntime "External Object encapsulant l'interpréteur CPython qui exécute le script utilisateur (jalon M3 : exécution synchrone unique, pas encore de thread/sleep - cf. requirements.md)"
+class PyRuntime "External Object wrapping the CPython interpreter that runs the user script in a worker thread, with sleep() interception - see requirements.md"
   extends ExternalObject;
 
   function constructor
-    input String scriptPath "Chemin vers le script .py de l'utilisateur (chaîne vide : main.py du système de fichiers)";
-    input String pythonHome "Chemin vers la distribution Python embarquée (Resources/PythonRuntime)";
-    input Boolean addScriptDirToPath "Ajoute le dossier de scriptPath au chemin de recherche des modules Python";
-    input String libraryPath "Optionnel (chaine vide = desactive) : fichier .py d'une bibliotheque partagee - son dossier est ajoute au chemin de recherche";
-    input String shimPath "Chemin vers le shim machine/time de la bibliothèque (Resources/Scripts/_shim/machine_time_shim.py), exécuté avant le script utilisateur";
-    input Boolean fsEnabled "Système de fichiers actif";
-    input String fsSource "Dossier du système de fichiers initial, recopié à chaque simulation (chaîne vide = flash vierge)";
-    input String fsWorkspace "Dossier où est créée la copie horodatée du système de fichiers (vide ou relatif : depuis le dossier de simulation)";
-    input Boolean fsOpenExplorer "Ouvrir l'Explorateur Windows sur la copie à la fin de la simulation";
-    input String instanceName "Nom de l'instance (getInstanceName()), repris dans le nom de la copie";
-    input Real gpioOpTime "Durée d'exécution (s) d'un accès à une broche (Pin.value()/on()/off()) ; 0 = accès instantanés";
+    input String scriptPath "Path of the user's .py script (empty string: main.py of the file system)";
+    input String pythonHome "Path of the embedded Python distribution (Resources/PythonRuntime)";
+    input Boolean addScriptDirToPath "Adds the folder of scriptPath to the Python module search path";
+    input String libraryPath "Optional (empty string = disabled): .py file of a shared library - its folder is added to the search path";
+    input String shimPath "Path of the library's machine/time shim (Resources/Scripts/_shim/machine_time_shim.py), run before the user script";
+    input Boolean fsEnabled "File system enabled";
+    input String fsSource "Folder of the initial file system, copied at each simulation (empty string = blank flash)";
+    input String fsWorkspace "Folder where the timestamped copy of the file system is created (empty or relative: from the simulation folder)";
+    input Boolean fsOpenExplorer "Open Windows Explorer on the copy at the end of the simulation";
+    input String instanceName "Instance name (getInstanceName()), reused in the name of the copy";
+    input Real gpioOpTime "Execution time (s) of a pin access (Pin.value()/on()/off()); 0 = instantaneous accesses";
     output PyRuntime handle;
-    // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
-    // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+    // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
+    // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
     external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",

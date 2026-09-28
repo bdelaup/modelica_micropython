@@ -44,7 +44,7 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 | `UartEchoDevice` | Renvoie tel quel chaque octet reçu | `echoEnabled = true` |
 | `UartTemperatureSensor` | Répond `AT+TEMP` par la valeur de son entrée, `AT+ID` par son identifiant, et accepte une consigne par `SET <nombre>` | `commandTable = "AT+TEMP=>TEMP={v1:.1f}\r\n|AT+ID=>SIM-TEMP-1\r\n|SET {o1}=>OK\r\n"`, `responseDelay = 5 ms`, `useValueInput = true`, `fixedValue = 20`, `nOut = 1` |
 | `UartGpsModule` | Émet spontanément une trame de position chaque seconde, sans être interrogé | `periodicEnabled = true`, `periodicTemplate = "$GPGLL,{v1:.4f},{v2:.4f},{v3:.1f}\r\n"`, `useValueInput = true`, `nIn = 3` |
-| `UartLcd20x2` | Afficheur 2 × 20 caractères : affiche sur son icône chaque ligne reçue, la précédente descendant en ligne 2 | ne répond rien ; `comportement` fixé à `Table` |
+| `UartLcd20x2` | Afficheur 2 × 20 caractères : affiche sur son icône chaque ligne reçue, la précédente descendant en ligne 2 | ne répond rien ; `behaviour` fixé à `Table` |
 
 <!-- ILLUSTRATION uart-icones : les cinq icônes des appareils série côte à côte (cf. docs/ILLUSTRATIONS.md) -->
 
@@ -64,7 +64,7 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
-| `comportement` | `Table` | Origine du comportement : `Table` (table de commandes, ci-dessous) ou `Script` (fichier Python) |
+| `behaviour` | `Table` | Origine du comportement : `Table` (table de commandes, ci-dessous) ou `Script` (fichier Python) |
 | `scriptPath` | script de l'appareil | Fichier `.py` décrivant le comportement, en mode `Script`. Chaque appareil fourni a le sien dans `Resources/Scripts/Device/` (`generic.py`, `echo.py`, `temperature_sensor.py`, `gps.py`), équivalent à sa table |
 | `baudrate` | 1200 | Débit de l'appareil, en bauds. **Il doit être le même que celui du microcontrôleur**, sinon les octets reçus sont faux, comme sur un vrai montage |
 | `terminator` | `"\n"` | Caractère qui termine une commande reçue (seul le premier caractère compte) |
@@ -74,15 +74,15 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
-| `respondEnabled` | `false` | Requête / réponse | Répondre aux commandes reconnues par la table |
-| `commandTable` | `""` | Requête / réponse | Table `"CMD=>REPONSE|CMD=>REPONSE"` (format ci-dessous) |
-| `responseDelay` | 2 ms | Requête / réponse | Délai entre la fin de la commande reçue et le début de la réponse. Utilisé aussi en mode `Script` |
-| `echoEnabled` | `false` | Requête / réponse | Renvoyer tel quel chaque octet reçu, dès qu'il est décodé |
-| `periodicEnabled` | `false` | Émission périodique | Émettre spontanément, sans être sollicité |
-| `period` | 1 s | Émission périodique | Période de l'émission spontanée (en mode `Script` : période d'appel de `on_tick`) |
-| `periodicTemplate` | `""` | Émission périodique | Trame émise périodiquement |
+| `respondEnabled` | `true` | Request / response | Répondre aux commandes reconnues par la table |
+| `commandTable` | `""` | Request / response | Table `"CMD=>REPONSE|CMD=>REPONSE"` (format ci-dessous) |
+| `responseDelay` | 2 ms | Request / response | Délai entre la fin de la commande reçue et le début de la réponse. Utilisé aussi en mode `Script` |
+| `echoEnabled` | `false` | Request / response | Renvoyer tel quel chaque octet reçu, dès qu'il est décodé |
+| `periodicEnabled` | `false` | Periodic transmission | Émettre spontanément, sans être sollicité |
+| `period` | 1 s | Periodic transmission | Période de l'émission spontanée (en mode `Script` : période d'appel de `on_tick`) |
+| `periodicTemplate` | `""` | Periodic transmission | Trame émise périodiquement |
 
-### Entrées / sorties (onglet *Entrées / sorties*)
+### Entrées / sorties (onglet *Inputs / outputs*)
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
@@ -92,7 +92,7 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 | `nOut` | 1 | Nombre de grandeurs rendues au modèle sur `valueOut` (4 au plus) |
 | `valueOutStart` | 0 | Valeur de `valueOut` avant toute capture |
 
-### Électrique (onglet *Électrique*)
+### Électrique (onglet *Electrical*)
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
@@ -120,7 +120,7 @@ Avec cette table, le programme lit la température par la liaison série et renv
 
 ## Décrire l'appareil par un script Python
 
-Avec `comportement = Script`, le fichier `scriptPath` remplace la table. Il définit jusqu'à trois fonctions, toutes facultatives :
+Avec `behaviour = Script`, le fichier `scriptPath` remplace la table. Il définit jusqu'à trois fonctions, toutes facultatives :
 
 ```python
 etat = 'ARRET'          # variables de module : l'état de l'appareil,

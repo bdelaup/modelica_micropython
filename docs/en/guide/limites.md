@@ -51,7 +51,7 @@ Function-by-function details: [API, limitations](api.md#known-limitations-v0).
     Each edge on a pin is an event for the solver. A fast serial link, an I2C bus, a busy-wait (`while not button(): pass`, one event per pin access) or a `sleep_ms(1)` in a loop produce many of them. Prefer `time.sleep()` or `Pin.irq()` to busy-waiting, and simulate only the useful duration.
 
 ??? question "`open()` raises `OSError: [Errno 19] ENODEV`"
-    The file system is not enabled: tick `fsEnabled` in the `MCU`'s *Système de fichiers* tab ([The MCU block](mcu.md#file-system)).
+    The file system is not enabled: tick `fsEnabled` in the `MCU`'s *File system* tab ([The MCU block](mcu.md#file-system)).
 
 ??? question "Where are the files written by my program?"
     In the flash copy created at each simulation, in the `fsWorkspace` folder (the simulation folder by default). Its path is shown in the log at the start and end of the simulation, and Windows Explorer opens on it at the end of the simulation (`fsOpenExplorer`).

@@ -21,7 +21,7 @@ static PyObject* native_display_write(PyObject* self, PyObject* args) {
     const char* text;
     if (!PyArg_ParseTuple(args, "is", &id, &text)) return NULL;
     if (resolve_display_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "Display %d non supporte pour la v0 (seul Display(0) existe)", id);
+        PyErr_Format(PyExc_ValueError, "Display %d not supported in v0 (only Display(0) exists)", id);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);

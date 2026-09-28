@@ -1,4 +1,4 @@
 within MicroPythonMCU.Examples;
-package Gpio "Broches numériques : sorties, relecture, réveil sur changement d'entrée, coût temporel des accès (gpioOpTime)"
+package Gpio "Digital pins: outputs, read-back, wake-up on input change, time cost of the accesses (gpioOpTime)"
   extends Modelica.Icons.ExamplesPackage;
 end Gpio;

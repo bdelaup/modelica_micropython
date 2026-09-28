@@ -80,7 +80,7 @@ static int i2cdev_script_refresh(struct I2cDevice* dev) {
             if (!PyUnicode_Check(item)) {
                 Py_DECREF(item);
                 Py_DECREF(r);
-                PyErr_SetString(PyExc_TypeError, "lines() doit retourner des chaines");
+                PyErr_SetString(PyExc_TypeError, "lines() must return strings");
                 return -1;
             }
             s = PyUnicode_AsUTF8AndSize(item, &len);
@@ -95,7 +95,7 @@ static int i2cdev_script_refresh(struct I2cDevice* dev) {
         }
     } else {
         Py_DECREF(r);
-        PyErr_SetString(PyExc_TypeError, "lines() doit retourner une chaine ou une sequence de deux chaines");
+        PyErr_SetString(PyExc_TypeError, "lines() must return a string or a sequence of two strings");
         return -1;
     }
     Py_DECREF(r);
@@ -114,7 +114,7 @@ static int i2cdev_script_read_payload(PyObject* r, unsigned char* out, int outma
             return -1;
         }
         if (v < 0 || v > 255) {
-            PyErr_SetString(PyExc_ValueError, "on_read() : un entier rendu doit etre un octet (0-255)");
+            PyErr_SetString(PyExc_ValueError, "on_read(): a returned integer must be a byte (0-255)");
             return -1;
         }
         out[0] = (unsigned char) v;
@@ -155,12 +155,12 @@ static void i2cdev_script_on_write(struct I2cDevice* dev, int addr, const unsign
     values = devscript_values(dev->value_in, I2CDEV_MAX_VALUES);
     r = values ? PyObject_CallFunction(dev->py_on_write, "iy#dN", addr, (const char*) data, (Py_ssize_t) len, dev->now, values) : NULL;
     if (!r) {
-        i2cdev_script_fail_call(dev, gstate, "on_write", "a leve une exception");
+        i2cdev_script_fail_call(dev, gstate, "on_write", "raised an exception");
         return;   /* jamais atteint : ModelicaFormatError ne revient pas */
     }
     Py_DECREF(r);
     if (i2cdev_script_refresh(dev) != 0) {
-        i2cdev_script_fail_call(dev, gstate, "outputs/lines", "a echoue apres on_write");
+        i2cdev_script_fail_call(dev, gstate, "outputs/lines", "failed after on_write");
         return;
     }
     relay_emit_pending();
@@ -180,17 +180,17 @@ static int i2cdev_script_on_read(struct I2cDevice* dev, int addr) {
     values = devscript_values(dev->value_in, I2CDEV_MAX_VALUES);
     r = values ? PyObject_CallFunction(dev->py_on_read, "idN", addr, dev->now, values) : NULL;
     if (!r) {
-        i2cdev_script_fail_call(dev, gstate, "on_read", "a leve une exception");
+        i2cdev_script_fail_call(dev, gstate, "on_read", "raised an exception");
         return 0;
     }
     n = i2cdev_script_read_payload(r, dev->rbuf, I2CDEV_BUF_MAX);
     Py_DECREF(r);
     if (n < 0) {
-        i2cdev_script_fail_call(dev, gstate, "on_read", "a rendu une valeur invalide (bytes, str, entier ou liste d'entiers attendu)");
+        i2cdev_script_fail_call(dev, gstate, "on_read", "returned an invalid value (bytes, str, integer or list of integers expected)");
         return 0;
     }
     if (i2cdev_script_refresh(dev) != 0) {
-        i2cdev_script_fail_call(dev, gstate, "outputs/lines", "a echoue apres on_read");
+        i2cdev_script_fail_call(dev, gstate, "outputs/lines", "failed after on_read");
         return 0;
     }
     relay_emit_pending();
@@ -211,7 +211,7 @@ static void i2cdev_script_load(struct I2cDevice* dev, const char* pythonHome, co
     dev->py_outputs = devscript_handler(globals, "outputs");
     dev->py_lines = devscript_handler(globals, "lines");
     if (i2cdev_script_refresh(dev) != 0) {
-        devscript_fail(I2CDEV_COMPONENT, dev->script_path, gstate, "outputs() ou lines() a echoue au chargement");
+        devscript_fail(I2CDEV_COMPONENT, dev->script_path, gstate, "outputs() or lines() failed while loading");
         return;
     }
     relay_emit_pending();

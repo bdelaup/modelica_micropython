@@ -40,7 +40,7 @@ static PyObject* native_timer_new(PyObject* self, PyObject* args) {
         }
     }
     LeaveCriticalSection(&g_current->cs);
-    PyErr_Format(PyExc_RuntimeError, "nombre maximal de Timer() atteint (%d) pour la v0", MAX_TIMERS);
+    PyErr_Format(PyExc_RuntimeError, "maximum number of Timer() reached (%d) in v0", MAX_TIMERS);
     return NULL;
 }
 
@@ -52,7 +52,7 @@ static PyObject* native_timer_init(PyObject* self, PyObject* args) {
     PyObject* timer_self;
     if (!PyArg_ParseTuple(args, "idiOO", &slot, &period_seconds, &mode, &callback, &timer_self)) return NULL;
     if (slot < 0 || slot >= MAX_TIMERS || !g_current->timer_allocated[slot]) {
-        PyErr_Format(PyExc_ValueError, "Timer invalide");
+        PyErr_Format(PyExc_ValueError, "invalid Timer");
         return NULL;
     }
     if (period_seconds < TIMER_MIN_PERIOD) {
@@ -60,7 +60,7 @@ static PyObject* native_timer_init(PyObject* self, PyObject* args) {
         char period_str[64], min_str[64];
         snprintf(period_str, sizeof(period_str), "%f", period_seconds);
         snprintf(min_str, sizeof(min_str), "%f", TIMER_MIN_PERIOD);
-        PyErr_Format(PyExc_ValueError, "periode de Timer trop courte (%s s, minimum %s s pour la v0)", period_str, min_str);
+        PyErr_Format(PyExc_ValueError, "Timer period too short (%s s, minimum %s s in v0)", period_str, min_str);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
@@ -84,7 +84,7 @@ static PyObject* native_timer_deinit(PyObject* self, PyObject* args) {
     int slot;
     if (!PyArg_ParseTuple(args, "i", &slot)) return NULL;
     if (slot < 0 || slot >= MAX_TIMERS) {
-        PyErr_Format(PyExc_ValueError, "Timer invalide");
+        PyErr_Format(PyExc_ValueError, "invalid Timer");
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);

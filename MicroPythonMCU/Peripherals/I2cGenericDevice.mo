@@ -1,10 +1,10 @@
 within MicroPythonMCU.Peripherals;
 
-model I2cGenericDevice "Périphérique I2C esclave dont tout le comportement vient d'un script Python, sans créer de classe dédiée"
+model I2cGenericDevice "I2C slave peripheral whose whole behaviour comes from a Python script, without creating a dedicated class"
   extends Internal.PartialI2cDevice(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/i2c_generic.py"));
   annotation(
     Documentation(info = "<html>
-<p>Le composant à poser dans un schéma quand le périphérique à simuler ne correspond à aucun modèle fourni. Il suffit de régler <code>addresses</code> et de désigner un script : le script par défaut, <code>Resources/Scripts/Device/i2c_generic.py</code>, est un gabarit commenté (un petit banc de registres) à copier et adapter.</p>
-<p>Dès que le même périphérique revient dans plusieurs schémas, il vaut mieux en faire une classe : hériter de <code>Internal.PartialI2cDevice</code> et fixer <code>addresses</code>, <code>scriptPath</code> et <code>usePullUp</code> tient en quelques lignes — c'est ainsi que sont écrits <code>I2cEchoDevice</code> et <code>I2cGroveLcdRgb</code>.</p>
+<p>The component to place in a schematic when the peripheral to simulate matches none of the supplied models. Set <code>addresses</code> and designate a script: the default script, <code>Resources/Scripts/Device/i2c_generic.py</code>, is a commented template (a small register bank) to copy and adapt.</p>
+<p>As soon as the same peripheral comes back in several schematics, it is better to turn it into a class: extending <code>Internal.PartialI2cDevice</code> and setting <code>addresses</code>, <code>scriptPath</code> and <code>usePullUp</code> takes a few lines — this is how <code>I2cEchoDevice</code> and <code>I2cGroveLcdRgb</code> are written.</p>
 </html>"));
 end I2cGenericDevice;

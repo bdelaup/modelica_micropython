@@ -74,7 +74,7 @@ Détails dans [api-machine.md](../guide/api.md) (`gpioOpTime`, `pin(x)`, `disabl
 
 ## 4. Les exemples
 
-- **`Examples.Weighing.Hx711Read`** : 1 kg posé, HX711 sans bruit, un `Peripherals.Display` pour les résultats. Le programme `hx711_read.py` lit à gain 128, passe à gain 64, met le HX711 en veille puis le réveille. Les codes lus sont exactement les codes théoriques : `128:429497 64:214748`, puis `reveil:429497`, car le circuit repart à gain 128.
+- **`Examples.Weighing.Hx711Read`** : 1 kg posé, HX711 sans bruit, un `Peripherals.Display` pour les résultats. Le programme `hx711_read.py` lit à gain 128, passe à gain 64, met le HX711 en veille puis le réveille. Les codes lus sont exactement les codes théoriques : `128:429497 64:214748`, puis `wakeup:429497`, car le circuit repart à gain 128.
 - **`Examples.Weighing.KitchenScale`** : la balance complète.
   - **Écran** : Grove LCD RGB sur `GP4`/`GP5`.
   - **HX711** : sur `GP6` (`PD_SCK`) et `GP7` (`DOUT`), avec un bruit de 25 LSB.

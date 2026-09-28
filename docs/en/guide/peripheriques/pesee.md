@@ -75,12 +75,12 @@ The icon shows the gain and the last code, a cyan light when data is waiting to 
 | `AVDD` | 4.3 V | Conversion | Bridge excitation voltage (module powered at 5 V) |
 | `noiseLsb` | 0 | Conversion | Conversion noise, standard deviation in LSB. 0: perfect, reproducible measurement |
 | `seed` | 711 | Conversion | Noise seed: same seed, same sequence of measurements |
-| `tPowerDown` | 60 µs | Chronogramme (timing) | Time `PD_SCK` must stay high to enter power-down |
-| `tUpdate` | 10 µs | Chronogramme | Time `DOUT` goes back up before each new sample, when the previous one was not read |
-| `settlingConversions` | 4 | Chronogramme | Conversions discarded after power-up or leaving power-down (400 ms at 10 samples per second) |
-| `VOH`, `VOL` | 3.3 V, 0 V | Électrique | `DOUT` levels |
-| `VIH`, `VIL` | 2.0 V, 0.8 V | Électrique | `PD_SCK` reading thresholds |
-| `ROut` | 100 Ω | Électrique | Series resistance of the `DOUT` output |
+| `tPowerDown` | 60 µs | Timing | Time `PD_SCK` must stay high to enter power-down |
+| `tUpdate` | 10 µs | Timing | Time `DOUT` goes back up before each new sample, when the previous one was not read |
+| `settlingConversions` | 4 | Timing | Conversions discarded after power-up or leaving power-down (400 ms at 10 samples per second) |
+| `VOH`, `VOL` | 3.3 V, 0 V | Electrical | `DOUT` levels |
+| `VIH`, `VIL` | 2.0 V, 0.8 V | Electrical | `PD_SCK` reading thresholds |
+| `ROut` | 100 Ω | Electrical | Series resistance of the `DOUT` output |
 
 Variables to plot (for an HX711 named `hx`): `hx.code` (last result), `hx.gain`, `hx.pulses`, `hx.ready`, `hx.poweredDown`, and the voltages `hx.PD_SCK.v`, `hx.DOUT.v`.
 

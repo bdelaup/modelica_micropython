@@ -49,7 +49,7 @@ static void devscript_fail(const char* component, const char* path, PyGILState_S
     }
     relay_emit_pending();
     PyGILState_Release(gstate);
-    ModelicaFormatError("%s (%s) : %s - trace ci-dessus", component, path, what);
+    ModelicaFormatError("%s (%s): %s - traceback above", component, path, what);
 }
 
 /* Reference forte sur une fonction du script, ou NULL si absente. GIL tenu. */
@@ -91,7 +91,7 @@ static int devscript_read_outputs(PyObject* outputs_fn, double* out, int n) {
         }
     } else {
         Py_DECREF(r);
-        PyErr_SetString(PyExc_TypeError, "outputs() doit retourner un nombre ou une sequence de nombres");
+        PyErr_SetString(PyExc_TypeError, "outputs() must return a number or a sequence of numbers");
         return -1;
     }
     Py_DECREF(r);
@@ -133,7 +133,7 @@ static int devscript_payload(PyObject* r, char* out, int outmax) {
             return -1;
         }
     } else {
-        PyErr_SetString(PyExc_TypeError, "un gestionnaire doit retourner bytes, str ou None");
+        PyErr_SetString(PyExc_TypeError, "a handler must return bytes, str or None");
         return -1;
     }
     if (len > outmax) {
@@ -161,17 +161,17 @@ static PyObject* devscript_load(const char* component, const char* path,
     const char* base;
 
     if (!path || path[0] == '\0') {
-        ModelicaFormatError("%s : scriptPath est vide - indiquer le script .py qui decrit le peripherique", component);
+        ModelicaFormatError("%s: scriptPath is empty - give the .py script describing the peripheral", component);
         return NULL;
     }
     src = read_text_file(path);
     if (!src) {
-        ModelicaFormatError("%s : impossible de lire le script du peripherique ('%s')", component, path);
+        ModelicaFormatError("%s: cannot read the peripheral script ('%s')", component, path);
         return NULL;
     }
     if (pyhost_ensure(pythonHome, err, sizeof(err)) != 0) {
         free(src);
-        ModelicaFormatError("%s (%s) : %s", component, path, err);
+        ModelicaFormatError("%s (%s): %s", component, path, err);
         return NULL;
     }
 
@@ -180,7 +180,7 @@ static PyObject* devscript_load(const char* component, const char* path,
     globals = PyDict_New();
     if (!globals) {
         free(src);
-        devscript_fail(component, path, gstate, "echec de creation de l'espace de noms");
+        devscript_fail(component, path, gstate, "failed to create the namespace");
         return NULL;   /* jamais atteint : ModelicaFormatError ne revient pas */
     }
 
@@ -220,7 +220,7 @@ static PyObject* devscript_load(const char* component, const char* path,
     r = PyRun_String(DEVSCRIPT_PRELUDE, Py_file_input, globals, globals);
     if (!r) {
         free(src);
-        devscript_fail(component, path, gstate, "echec du prelude");
+        devscript_fail(component, path, gstate, "prelude failed");
         return NULL;
     }
     Py_DECREF(r);
@@ -230,13 +230,13 @@ static PyObject* devscript_load(const char* component, const char* path,
     code = Py_CompileString(src, path, Py_file_input);
     free(src);
     if (!code) {
-        devscript_fail(component, path, gstate, "erreur de syntaxe dans le script");
+        devscript_fail(component, path, gstate, "syntax error in the script");
         return NULL;
     }
     r = PyEval_EvalCode(code, globals, globals);
     Py_DECREF(code);
     if (!r) {
-        devscript_fail(component, path, gstate, "le script a leve une exception au chargement");
+        devscript_fail(component, path, gstate, "the script raised an exception while loading");
         return NULL;
     }
     Py_DECREF(r);

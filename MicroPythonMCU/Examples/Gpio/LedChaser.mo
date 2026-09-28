@@ -1,42 +1,42 @@
 within MicroPythonMCU.Examples.Gpio;
 
-model LedChaser "Chenillard bidirectionnel : une LED (Peripherals.LED) par broche GP0-GP7, disposées en anneau autour du microcontrôleur, allumées une à la fois dans l'ordre GP0->GP3 (gauche) puis GP7->GP4 (droite), puis en sens inverse"
+model LedChaser "Two-way LED chaser: one LED (Peripherals.LED) per pin GP0-GP7, laid out in a ring around the microcontroller, lit one at a time in the order GP0->GP3 (left) then GP7->GP4 (right), then the other way round"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/led_chaser.py")) "scriptPath = Resources/Scripts/MCU/led_chaser.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -110}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limits the current of led0 (GP0)" annotation(
     Placement(transformation(origin = {-90, 60}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limite le courant de led1 (GP1)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limits the current of led1 (GP1)" annotation(
     Placement(transformation(origin = {-90, 20}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r2(R = 330) "limite le courant de led2 (GP2)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r2(R = 330) "limits the current of led2 (GP2)" annotation(
     Placement(transformation(origin = {-90, -20}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r3(R = 330) "limite le courant de led3 (GP3)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r3(R = 330) "limits the current of led3 (GP3)" annotation(
     Placement(transformation(origin = {-90, -60}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r4(R = 330) "limite le courant de led4 (GP4)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r4(R = 330) "limits the current of led4 (GP4)" annotation(
     Placement(transformation(origin = {90, 60}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r5(R = 330) "limite le courant de led5 (GP5)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r5(R = 330) "limits the current of led5 (GP5)" annotation(
     Placement(transformation(origin = {90, 20}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r6(R = 330) "limite le courant de led6 (GP6)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r6(R = 330) "limits the current of led6 (GP6)" annotation(
     Placement(transformation(origin = {90, -20}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor r7(R = 330) "limite le courant de led7 (GP7)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r7(R = 330) "limits the current of led7 (GP7)" annotation(
     Placement(transformation(origin = {90, -60}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led0 "GP0, en haut à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0, top left" annotation(
     Placement(transformation(origin = {-140, 60}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Peripherals.LED led1 "GP1, à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led1 "GP1, left" annotation(
     Placement(transformation(origin = {-140, 20}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Peripherals.LED led2 "GP2, à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led2 "GP2, left" annotation(
     Placement(transformation(origin = {-140, -20}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Peripherals.LED led3 "GP3, en bas à gauche" annotation(
+  MicroPythonMCU.Peripherals.LED led3 "GP3, bottom left" annotation(
     Placement(transformation(origin = {-140, -60}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
-  MicroPythonMCU.Peripherals.LED led4 "GP4, en haut à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led4 "GP4, top right" annotation(
     Placement(transformation(origin = {140, 60}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led5 "GP5, à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led5 "GP5, right" annotation(
     Placement(transformation(origin = {140, 20}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led6 "GP6, à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led6 "GP6, right" annotation(
     Placement(transformation(origin = {140, -20}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led7 "GP7, en bas à droite" annotation(
+  MicroPythonMCU.Peripherals.LED led7 "GP7, bottom right" annotation(
     Placement(transformation(origin = {140, -60}, extent = {{-15, -15}, {15, 15}})));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -93,6 +93,6 @@ equation
     Diagram(coordinateSystem(extent = {{-200, -140}, {200, 100}})),
     experiment(StopTime = 4.5, Interval = 0.001),
     Documentation(info = "<html>
-<p>Démonstrateur (hors scénarios de vérification de <code>requirements.md</code>) : huit <code>Peripherals.LED</code>, une par broche <code>GP0</code>-<code>GP7</code>, disposées en anneau autour de <code>mcu</code> (colonne de gauche <code>GP0</code>→<code>GP3</code> de haut en bas, colonne de droite <code>GP4</code>→<code>GP7</code> de haut en bas). Le script <code>led_chaser.py</code> allume une seule LED à la fois et la fait courir le long de cet anneau (0,1,2,3,7,6,5,4 puis retour), en relisant l'animation d'un résultat de simulation dans OMEdit — chaque LED s'éclaire brièvement à son tour.</p>
+<p>Demonstrator (outside the verification scenarios of <code>requirements.md</code>): eight <code>Peripherals.LED</code>, one per pin <code>GP0</code>-<code>GP7</code>, laid out in a ring around <code>mcu</code> (left column <code>GP0</code>→<code>GP3</code> from top to bottom, right column <code>GP4</code>→<code>GP7</code> from top to bottom). The script <code>led_chaser.py</code> lights a single LED at a time and makes it run along this ring (0,1,2,3,7,6,5,4 then back) — when replaying the animation of a simulation result in OMEdit, each LED lights up briefly in turn.</p>
 </html>"));
 end LedChaser;

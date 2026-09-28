@@ -4,7 +4,7 @@ This page lists what a program run by the [`MCU`](mcu.md) can call: the subset o
 
 **Key notion**: a call that *synchronises* hands control back to Modelica (the solver may advance simulated time, possibly up to a pending `sleep`) before the script continues — this is what makes an input transition or a `sleep` visible, and compressible, in the simulation. A call that does not synchronise is a plain immediate read of state the script already knows.
 
-**Time cost of pin accesses**: each `value()`, `on()`, `off()` or `pin(x)` keeps the processor busy for `MCU.gpioOpTime` of simulated time (*Temps d'exécution* tab, **5 µs by default**, the order of magnitude of MicroPython on an RP2040). Two writes without a `sleep` in between therefore produce a real pulse, visible to the circuit: this is what enables bit-banging (HX711 driver, see [Weighing chain](peripheriques/pesee.md)), and what makes time advance in a busy-wait loop (`while not button(): pass`). Pure Python computation, `Pin()`, `irq()`, the ADC, PWM and `ticks_*` remain instantaneous. `gpioOpTime = 0` makes all accesses instantaneous.
+**Time cost of pin accesses**: each `value()`, `on()`, `off()` or `pin(x)` keeps the processor busy for `MCU.gpioOpTime` of simulated time (*Execution time* tab, **5 µs by default**, the order of magnitude of MicroPython on an RP2040). Two writes without a `sleep` in between therefore produce a real pulse, visible to the circuit: this is what enables bit-banging (HX711 driver, see [Weighing chain](peripheriques/pesee.md)), and what makes time advance in a busy-wait loop (`while not button(): pass`). Pure Python computation, `Pin()`, `irq()`, the ADC, PWM and `ticks_*` remain instantaneous. `gpioOpTime = 0` makes all accesses instantaneous.
 
 ## `machine.Pin`
 
@@ -215,7 +215,7 @@ with open('/data/measures.csv', 'a') as f:
 print(os.listdir('/data'))
 ```
 
-Active only if `MCU.fsEnabled` is ticked (*Système de fichiers* tab, see [MCU parameters](mcu.md#file-system)). Each simulation copies `MCU.fsSource` (empty = blank flash) into a new `<instance>_<FS name>_<date>_<time>` folder of the `MCU.fsWorkspace` workspace (`"."` by default: the simulation folder), whose path is shown in the log at the start and end of the simulation; Windows Explorer opens on it at the end (`MCU.fsOpenExplorer`); the script sees this copy as the flash root `/`, without being able to leave it (`..` stops at the root). Without a file system, `open()` and the `os` functions raise `OSError(ENODEV)` (errno 19). The root and `/lib` are on the import path. Program run: `boot.py` of the copy if it exists, then `MCU.scriptPath` instead of `main.py`, or the copy's `main.py` if `scriptPath` is empty.
+Active only if `MCU.fsEnabled` is ticked (*File system* tab, see [MCU parameters](mcu.md#file-system)). Each simulation copies `MCU.fsSource` (empty = blank flash) into a new `<instance>_<FS name>_<date>_<time>` folder of the `MCU.fsWorkspace` workspace (`"."` by default: the simulation folder), whose path is shown in the log at the start and end of the simulation; Windows Explorer opens on it at the end (`MCU.fsOpenExplorer`); the script sees this copy as the flash root `/`, without being able to leave it (`..` stops at the root). Without a file system, `open()` and the `os` functions raise `OSError(ENODEV)` (errno 19). The root and `/lib` are on the import path. Program run: `boot.py` of the copy if it exists, then `MCU.scriptPath` instead of `main.py`, or the copy's `main.py` if `scriptPath` is empty.
 
 | Call | Effect | Synchronisation point? |
 |---|---|---|

@@ -1,4 +1,4 @@
 within MicroPythonMCU.Examples;
-package Program "Exécution du programme : compression des sleep(), exception non rattrapée, import de modules"
+package Program "Program execution: sleep() compression, uncaught exception, module import"
   extends Modelica.Icons.ExamplesPackage;
 end Program;

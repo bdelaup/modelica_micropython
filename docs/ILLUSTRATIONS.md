@@ -26,7 +26,7 @@ Priorité : **1** = la page en a vraiment besoin ; **2** = utile ; **3** = confo
 | `mcu-icone` | `guide/mcu.md`, `interne/architecture.md` | Icône actuelle du bloc `MCU`, **avec le connecteur DISPLAY** : remplace `mcu-icone.svg`, périmé (généré avant l'ajout de `Display0`) | SVG | 1 | oui |
 | `premiers-pas-omedit` | `guide/premiers-pas.md` | Fenêtre d'OMEdit : bibliothèque dépliée dans l'explorateur, `BasicBlink` ouvert en vue *Diagramme* | PNG | 1 | non |
 | `premiers-pas-parametres` | `guide/premiers-pas.md` | Boîte de paramètres du `MCU`, onglet *General*, champ *scriptPath* avec son bouton *…* | PNG | 1 | non |
-| `mcu-parametres` | `guide/mcu.md` | Les quatre onglets de la boîte de paramètres du `MCU` (*General*, *Temps d'exécution*, *Électrique*, *Système de fichiers*), en une image composée ou en quatre (`mcu-parametres-1.png`…) | PNG | 2 | non |
+| `mcu-parametres` | `guide/mcu.md` | Les quatre onglets de la boîte de paramètres du `MCU` (*General*, *Execution time*, *Electrical*, *File system*), en une image composée ou en quatre (`mcu-parametres-1.png`…) | PNG | 2 | non |
 | `uart-schema` | `guide/peripheriques/uart.md` | Vue *Diagramme* de `Examples.Uart.Sensor` : `MCU`, `UartTemperatureSensor`, fils TX/RX croisés | SVG | 1 | oui |
 | `i2c-schema` | `guide/peripheriques/i2c.md` | Vue *Diagramme* de `Examples.I2c.MultiDevice` : trois esclaves sur le même bus | SVG | 1 | oui |
 | `pesee-schema` | `guide/peripheriques/pesee.md` | Vue *Diagramme* de `Examples.Weighing.KitchenScale` : chaîne complète, écran, bouton TARE | SVG | 1 | oui |
@@ -65,7 +65,7 @@ python docs/figures/make_figures.py uart hx711     # certaines
 |---|---|---|---|
 | `basicblink-gp0.svg` | `BasicBlink` | `mcu.GP0.v` | premiers pas |
 | `uart-trame.svg` | `Uart.Loopback` | `mcu.GP0.v`, grille des bits de `'H'` | appareils série, exemples |
-| `uart-regulation.svg` | `Uart.Regulation` | `procede.y`, `capteur.valueOut[1]`, consigne | appareils série |
+| `uart-regulation.svg` | `Uart.Regulation` | `plant.y`, `sensor.valueOut[1]`, consigne | appareils série |
 | `i2c-chronogramme.svg` | `I2c.Echo` | `echo.SCL.v`, `echo.SDA.v`, octets et ACK repérés | périphériques I2C |
 | `pwm-led.svg` | `Pwm.Led` | `mcu.GP0.v`, `led0.p.i` | exemples |
 | `hx711-lecture.svg` | `Weighing.Hx711Read` | `hx.PD_SCK.v`, `hx.DOUT.v` (pas de 0,5 µs) | chaîne de pesée |

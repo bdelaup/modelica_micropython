@@ -1,14 +1,14 @@
 within MicroPythonMCU.Examples.Irq;
-model Timer "GP0 pilote une LED basculee par un machine.Timer periodique (500 ms) pendant que le script principal dort une seule fois, longtemps - prouve que le Timer continue de se declencher sans faire retourner ce sleep() en avance"
+model Timer "GP0 drives an LED toggled by a periodic machine.Timer (500 ms) while the main script sleeps once, for a long time - proves that the Timer keeps firing without making this sleep() return early"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/timer_toggle.py")) "scriptPath = Verification/timer_toggle.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
 
-  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limite le courant de led0 (GP0)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r0(R = 330) "limits the current of led0 (GP0)" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led0 "GP0 : bascule toutes les 500 ms, pilotee par machine.Timer" annotation(
+  MicroPythonMCU.Peripherals.LED led0 "GP0: toggles every 500 ms, driven by machine.Timer" annotation(
     Placement(transformation(origin = {-142, 25}, extent = {{15, -15}, {-15, 15}}, rotation = -0)));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -23,6 +23,6 @@ equation
     Diagram(coordinateSystem(extent = {{-200, -120}, {80, 80}})),
     experiment(StopTime = 2.5, Interval = 0.0005, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
-<p>Scénario de vérification 12 (cf. <code>requirements.md</code>) : le script <code>timer_toggle.py</code> arme un <code>Timer(period=500, mode=Timer.PERIODIC)</code> qui bascule <code>led0</code> (GP0) toutes les 500 ms, puis fait un seul <code>time.sleep(3600)</code> — sans jamais relire/écrire de broche lui-même en dehors du callback du Timer. Succès attendu : <code>GP0</code> bascule à chaque échéance de 500 ms (t≈0,5/1,0/1,5/2,0 s) alors que rien ne change sur aucune entrée du modèle, preuve que le mécanisme de « pitstop » du Timer se déclenche indépendamment du <code>sleep()</code> en cours, sans le faire retourner en avance (contrairement à une vraie transition d'entrée, cf. <code>Examples.Gpio.InputReactivity</code>). Les broches <code>GP1</code>-<code>GP7</code>, non utilisées par ce scénario, sont laissées non connectées.</p>
+<p>Verification scenario 12 (see <code>requirements.md</code>): the script <code>timer_toggle.py</code> arms a <code>Timer(period=500, mode=Timer.PERIODIC)</code> that toggles <code>led0</code> (GP0) every 500 ms, then does a single <code>time.sleep(3600)</code> — without ever reading/writing a pin itself outside the Timer callback. Expected result: <code>GP0</code> toggles at each 500 ms deadline (t≈0.5/1.0/1.5/2.0 s) although nothing changes on any input of the model, proof that the Timer \"pitstop\" mechanism fires independently of the current <code>sleep()</code>, without making it return early (unlike a real input transition, see <code>Examples.Gpio.InputReactivity</code>). Pins <code>GP1</code>-<code>GP7</code>, unused by this scenario, are left unconnected.</p>
 </html>"));
 end Timer;

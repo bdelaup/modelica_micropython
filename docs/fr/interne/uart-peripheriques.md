@@ -146,7 +146,7 @@ Deux exemples exploitent le port de **sortie** : `Examples.Uart.Sensor` montre l
 
 ## 8. Décrire un appareil par un script Python
 
-Basculer `comportement` sur `Script` remplace la table par un fichier `.py`. **Chaque périphérique fourni a son script par défaut** (dossier `Resources/Scripts/Device/`, fichier nommé d'après l'appareil), de comportement équivalent à sa table : le basculement fonctionne immédiatement, et le fichier sert de point de départ. `UartLcd20x2` fait exception (`final comportement = Table`) : un afficheur n'a pas de comportement programmable.
+Basculer `behaviour` sur `Script` remplace la table par un fichier `.py`. **Chaque périphérique fourni a son script par défaut** (dossier `Resources/Scripts/Device/`, fichier nommé d'après l'appareil), de comportement équivalent à sa table : le basculement fonctionne immédiatement, et le fichier sert de point de départ. `UartLcd20x2` fait exception (`final behaviour = Table`) : un afficheur n'a pas de comportement programmable.
 
 ```python
 etat = 'ARRET'          # variables de module : l'état de l'appareil,

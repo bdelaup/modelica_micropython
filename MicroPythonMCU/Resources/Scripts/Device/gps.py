@@ -1,61 +1,61 @@
 # ---------------------------------------------------------------------------
-# Script par defaut de Peripherals.UartGpsModule (comportement = Script).
+# Default script of Peripherals.UartGpsModule (behaviour = Script).
 #
-# Emet une phrase NMEA RMC complete a chaque periode : heure UTC, validite,
-# latitude et longitude au format degres-minutes avec leur hemisphere, vitesse,
-# date, et SOMME DE CONTROLE. C'est ce que la table de commandes ne sait pas
-# faire - elle se limite a substituer des valeurs dans un gabarit fixe.
+# Transmits a complete NMEA RMC sentence at each period: UTC time, validity,
+# latitude and longitude in degrees-minutes format with their hemisphere, speed,
+# date, and CHECKSUM. This is what the command table cannot do - it is
+# limited to substituting values into a fixed template.
 #
-# Grandeurs recues du modele (valueIn) :
-#   v[0] latitude  (degres decimaux, positive au nord)
-#   v[1] longitude (degres decimaux, positive a l'est)
-#   v[2] vitesse   (noeuds)
-# Grandeur rendue au modele (valueOut) :
-#   [1] nombre de phrases emises depuis le debut de la simulation
+# Quantities received from the model (valueIn):
+#   v[0] latitude  (decimal degrees, positive north)
+#   v[1] longitude (decimal degrees, positive east)
+#   v[2] speed     (knots)
+# Quantity returned to the model (valueOut):
+#   [1] number of sentences transmitted since the start of the simulation
 #
-# Contrat d'un script de peripherique : voir docs/fr/interne/uart-peripheriques.md.
-# Les fonctions s'executent sur le thread de la simulation : elles vont au bout,
-# sans sleep() et sans acces a machine.
+# Contract of a peripheral script: see the user guide, page "Serial devices (UART)".
+# The functions run on the simulation thread: they run to completion,
+# without sleep() and without access to machine.
 # ---------------------------------------------------------------------------
 
-HEURE_DEPART_S = 12 * 3600      # l'horloge UTC du module demarre a 12:00:00
-DATE = '250926'                 # jjmmaa
-phrases = 0                     # persiste d'un appel a l'autre
+START_TIME_S = 12 * 3600        # the UTC clock of the module starts at 12:00:00
+DATE = '250926'                 # ddmmyy
+sentences = 0                   # persists from one call to the next
 
 
-def _degres_minutes(valeur, positif, negatif, largeur_degres):
-    """47.24 -> ('4714.4000', 'N') ; 5.9876 -> ('00559.2560', 'E')."""
-    hemisphere = positif if valeur >= 0 else negatif
-    valeur = abs(valeur)
-    degres = int(valeur)
-    minutes = (valeur - degres) * 60.0
-    return '%0*d%07.4f' % (largeur_degres, degres, minutes), hemisphere
+def _degrees_minutes(value, positive, negative, degree_width):
+    """47.24 -> ('4714.4000', 'N'); 5.9876 -> ('00559.2560', 'E')."""
+    hemisphere = positive if value >= 0 else negative
+    value = abs(value)
+    degrees = int(value)
+    minutes = (value - degrees) * 60.0
+    return '%0*d%07.4f' % (degree_width, degrees, minutes), hemisphere
 
 
-def _heure_utc(t):
-    s = HEURE_DEPART_S + t
+def _utc_time(t):
+    s = START_TIME_S + t
     h = int(s // 3600) % 24
     m = int(s // 60) % 60
     return '%02d%02d%05.2f' % (h, m, s % 60)
 
 
-def _somme_controle(corps):
-    """OU exclusif de tous les caracteres entre '$' et '*'."""
+def _checksum(body):
+    """Exclusive OR of all the characters between '$' and '*'."""
     x = 0
-    for c in corps:
+    for c in body:
         x ^= ord(c)
     return '%02X' % x
 
 
 def on_tick(t, v):
-    global phrases
-    lat, ns = _degres_minutes(v[0], 'N', 'S', 2)
-    lon, ew = _degres_minutes(v[1], 'E', 'W', 3)
-    corps = 'GPRMC,%s,A,%s,%s,%s,%s,%.1f,0.0,%s,,' % (
-        _heure_utc(t), lat, ns, lon, ew, v[2], DATE)
-    phrases += 1
-    return '$%s*%s\r\n' % (corps, _somme_controle(corps))
+    global sentences
+    lat, ns = _degrees_minutes(v[0], 'N', 'S', 2)
+    lon, ew = _degrees_minutes(v[1], 'E', 'W', 3)
+    body = 'GPRMC,%s,A,%s,%s,%s,%s,%.1f,0.0,%s,,' % (
+        _utc_time(t), lat, ns, lon, ew, v[2], DATE)
+    sentences += 1
+    return '$%s*%s\r\n' % (body, _checksum(body))
 
 
 def outputs():
-    return phrases
+    return sentences

@@ -1,10 +1,10 @@
 from machine import Pin
 import time
 
-# Ordre physique des broches en suivant les LED disposees en anneau autour
-# du microcontroleur dans Gpio/LedChaser.mo (descend a gauche GP0->GP3, remonte
-# a droite GP7->GP4) : deux voisins consecutifs dans cette liste sont aussi
-# des voisins visuels sur le schema.
+# Physical order of the pins, following the LEDs laid out in a ring around
+# the microcontroller in Gpio/LedChaser.mo (down on the left GP0->GP3, up
+# on the right GP7->GP4): two consecutive neighbours in this list are also
+# visual neighbours on the schematic.
 order = [0, 1, 2, 3, 7, 6, 5, 4]
 pins = {i: Pin(i, Pin.OUT) for i in order}
 for p in pins.values():

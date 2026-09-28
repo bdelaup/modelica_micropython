@@ -1,10 +1,10 @@
-# Scenario de verification 28 : cout temporel des acces GPIO (MCU.gpioOpTime).
-# Chaque etape demarre a un instant absolu, pour que le .mos sache ou regarder.
+# Verification scenario 28: time cost of GPIO accesses (MCU.gpioOpTime).
+# Each step starts at an absolute instant, so that the .mos knows where to look.
 from machine import Pin, Display, disable_irq, enable_irq, idle
 import time
 
 def until_ms(ms):
-    # un sleep() est ecourte par une transition d'entree : on reboucle jusqu'a l'heure
+    # a sleep() is shortened by an input transition: loop again until the time is reached
     while time.ticks_us() < ms * 1000:
         time.sleep_us(ms * 1000 - time.ticks_us())
 
@@ -15,12 +15,12 @@ irq_in = Pin(3, Pin.IN)
 irq_out = Pin(4, Pin.OUT)
 disp = Display(0)
 
-# 1) on() puis off() sans sleep : une impulsion de largeur gpioOpTime, a t = 100 ms
+# 1) on() then off() without sleep: a pulse of width gpioOpTime, at t = 100 ms
 until_ms(100)
 out.on()
 out.off()
 
-# 2) rafale de 10 impulsions par l'appel direct pin(x) ; 20 ecritures = 20 x gpioOpTime
+# 2) burst of 10 pulses through the direct call pin(x); 20 writes = 20 x gpioOpTime
 until_ms(200)
 t0 = time.ticks_us()
 for _ in range(10):
@@ -28,14 +28,14 @@ for _ in range(10):
     out(0)
 dt = time.ticks_diff(time.ticks_us(), t0)
 
-# 3) attente active sans sleep : le temps avance a chaque lecture, le front
-#    d'entree (t = 300 ms) finit par etre vu
+# 3) busy wait without sleep: time moves forward at each read, the input
+#    edge (t = 300 ms) is eventually seen
 until_ms(280)
 while not inp():
     pass
 flag.on()
 
-# 4) IRQ masquee pendant le front de GP3 (t = 450 ms) : le callback attend enable_irq()
+# 4) IRQ masked during the edge of GP3 (t = 450 ms): the callback waits for enable_irq()
 def on_rise(p):
     irq_out.on()
 
@@ -45,7 +45,7 @@ state = disable_irq()
 until_ms(500)
 enable_irq(state)
 
-# 5) idle() : rend la main a la milliseconde ronde suivante
+# 5) idle(): returns at the next whole millisecond
 time.sleep_us(250)
 idle()
 t_idle = time.ticks_us()

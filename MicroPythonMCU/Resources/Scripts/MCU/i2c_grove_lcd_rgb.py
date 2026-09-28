@@ -5,12 +5,12 @@ if __name__ == '__main__':
 
     lcd = GroveLcd_RGB()
     while True:
-        # affichage
+        # display
         lcd.clear()
         lcd.setCursor(2, 0)
         lcd.write('hello World')
 
-        # couleur
+        # colour
         lcd.color(255, 0, 0)
         time.sleep_ms(500)
         lcd.color(0, 255, 0)

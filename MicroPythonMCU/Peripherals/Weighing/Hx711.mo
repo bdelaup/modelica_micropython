@@ -1,91 +1,91 @@
 within MicroPythonMCU.Peripherals.Weighing;
 
-model Hx711 "Convertisseur HX711 : amplificateur et CAN 24 bits pour pont de jauges, liaison série PD_SCK/DOUT"
+model Hx711 "HX711 converter: 24-bit amplifier and ADC for a gauge bridge, PD_SCK/DOUT serial link"
   import Modelica.Units.SI;
-  parameter Real rate(unit = "Hz") = 10 "Cadence de conversion (broche RATE du circuit : 10 ou 80 échantillons par seconde)" annotation(
+  parameter Real rate(unit = "Hz") = 10 "Conversion rate (RATE pin of the chip: 10 or 80 samples per second)" annotation(
     Dialog(group = "Conversion"));
-  parameter SI.Voltage AVDD = 4.3 "Tension d'excitation du pont, sortie E+ (module alimenté en 5 V)" annotation(
+  parameter SI.Voltage AVDD = 4.3 "Excitation voltage of the bridge, E+ output (module supplied with 5 V)" annotation(
     Dialog(group = "Conversion"));
-  parameter Real noiseLsb = 0 "Bruit de conversion, écart-type en LSB (0 = mesure parfaite, reproductible)" annotation(
+  parameter Real noiseLsb = 0 "Conversion noise, standard deviation in LSB (0 = perfect, reproducible measurement)" annotation(
     Dialog(group = "Conversion"));
-  parameter Integer seed = 711 "Graine du bruit : même graine, même suite de mesures" annotation(
+  parameter Integer seed = 711 "Noise seed: same seed, same sequence of measurements" annotation(
     Dialog(group = "Conversion", enable = noiseLsb > 0));
-  parameter SI.Time tPowerDown = 60e-6 "PD_SCK maintenue haute plus longtemps : mise en veille" annotation(
-    Dialog(group = "Chronogramme"));
-  parameter SI.Time tUpdate = 10e-6 "Durée pendant laquelle DOUT remonte avant chaque nouvelle donnée, quand la précédente n'a pas été lue" annotation(
-    Dialog(group = "Chronogramme"));
-  parameter Integer settlingConversions = 4 "Conversions écartées après la mise sous tension ou la sortie de veille (400 ms à 10 échantillons/s)" annotation(
-    Dialog(group = "Chronogramme"));
-  parameter SI.Voltage VOH = Interfaces.VOH "Niveau haut de DOUT (circuit numérique alimenté en 3,3 V, comme le microcontrôleur)" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux"));
-  parameter SI.Voltage VOL = Interfaces.VOL "Niveau bas de DOUT" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux"));
-  parameter SI.Voltage VIH = Interfaces.VIH "Seuil de reconnaissance d'une entrée haute (PD_SCK)" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux"));
-  parameter SI.Voltage VIL = Interfaces.VIL "Seuil de reconnaissance d'une entrée basse (PD_SCK)" annotation(
-    Dialog(tab = "Électrique", group = "Niveaux"));
-  parameter SI.Resistance ROut = Interfaces.ROut "Résistance série de la sortie DOUT" annotation(
-    Dialog(tab = "Électrique", group = "Impédances"));
+  parameter SI.Time tPowerDown = 60e-6 "PD_SCK held high longer than this: power-down" annotation(
+    Dialog(group = "Timing"));
+  parameter SI.Time tUpdate = 10e-6 "Time during which DOUT goes back up before each new data, when the previous one has not been read" annotation(
+    Dialog(group = "Timing"));
+  parameter Integer settlingConversions = 4 "Conversions discarded after power-up or wake-up (400 ms at 10 samples/s)" annotation(
+    Dialog(group = "Timing"));
+  parameter SI.Voltage VOH = Interfaces.VOH "High level of DOUT (digital part supplied with 3.3 V, like the microcontroller)" annotation(
+    Dialog(tab = "Electrical", group = "Levels"));
+  parameter SI.Voltage VOL = Interfaces.VOL "Low level of DOUT" annotation(
+    Dialog(tab = "Electrical", group = "Levels"));
+  parameter SI.Voltage VIH = Interfaces.VIH "Threshold above which an input reads high (PD_SCK)" annotation(
+    Dialog(tab = "Electrical", group = "Levels"));
+  parameter SI.Voltage VIL = Interfaces.VIL "Threshold below which an input reads low (PD_SCK)" annotation(
+    Dialog(tab = "Electrical", group = "Levels"));
+  parameter SI.Resistance ROut = Interfaces.ROut "Series resistance of the DOUT output" annotation(
+    Dialog(tab = "Electrical", group = "Impedances"));
 
-  Modelica.Electrical.Analog.Interfaces.PositivePin PD_SCK "Horloge série et commande de veille (broche SCK du module), pilotée par le microcontrôleur" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin PD_SCK "Serial clock and power-down control (SCK pin of the module), driven by the microcontroller" annotation(
     Placement(transformation(origin = {-124, 30}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, 30}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin DOUT "Données série (broche DT du module), lue par le microcontrôleur" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin DOUT "Serial data (DT pin of the module), read by the microcontroller" annotation(
     Placement(transformation(origin = {-124, -30}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, -30}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin E_plus "Excitation du pont (+)" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin E_plus "Bridge excitation (+)" annotation(
     Placement(transformation(origin = {124, 45}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {124, 45}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin A_plus "Entrée différentielle du canal A (+), depuis S+ du pont" annotation(
+  Modelica.Electrical.Analog.Interfaces.PositivePin A_plus "Differential input of channel A (+), from S+ of the bridge" annotation(
     Placement(transformation(origin = {124, 15}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {124, 15}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin A_minus "Entrée différentielle du canal A (-), depuis S- du pont" annotation(
+  Modelica.Electrical.Analog.Interfaces.NegativePin A_minus "Differential input of channel A (-), from S- of the bridge" annotation(
     Placement(transformation(origin = {124, -15}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {124, -15}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin E_minus "Excitation du pont (-), reliée à la masse du module" annotation(
+  Modelica.Electrical.Analog.Interfaces.NegativePin E_minus "Bridge excitation (-), connected to the module ground" annotation(
     Placement(transformation(origin = {124, -45}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {124, -45}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin GND "Masse, à relier à celle du microcontrôleur" annotation(
+  Modelica.Electrical.Analog.Interfaces.NegativePin GND "Ground, to be connected to the microcontroller's one" annotation(
     Placement(transformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}})));
 
-  // Publiques : animent l'icône et servent aux vérifications (les variables
-  // protected sont absentes des résultats de simulation).
-  discrete Integer code(start = 0, fixed = true) "Dernier résultat de conversion (complément à deux, 24 bits)";
-  discrete Integer gain(start = 128, fixed = true) "Gain de la conversion en cours (128 ou 64 sur le canal A, 32 sur le canal B)";
-  discrete Integer pulses(start = 0, fixed = true) "Impulsions PD_SCK reçues depuis que la donnée est prête";
-  discrete Boolean ready(start = false, fixed = true) "Donnée prête, pas encore lue : DOUT est à 0";
-  discrete Boolean poweredDown(start = false, fixed = true) "En veille (PD_SCK restée haute plus de tPowerDown)";
-  SI.Voltage vIn "Tension différentielle du canal A, A+ - A-";
-  SI.Voltage vRef "Tension d'excitation, E+ - E- : référence de la conversion (mesure ratiométrique)";
+  // Public: they animate the icon and are used by the checks (protected
+  // variables are missing from the simulation results).
+  discrete Integer code(start = 0, fixed = true) "Last conversion result (two's complement, 24 bits)";
+  discrete Integer gain(start = 128, fixed = true) "Gain of the current conversion (128 or 64 on channel A, 32 on channel B)";
+  discrete Integer pulses(start = 0, fixed = true) "PD_SCK pulses received since the data became ready";
+  discrete Boolean ready(start = false, fixed = true) "Data ready, not read yet: DOUT is at 0";
+  discrete Boolean poweredDown(start = false, fixed = true) "Powered down (PD_SCK held high longer than tPowerDown)";
+  SI.Voltage vIn "Differential voltage of channel A, A+ - A-";
+  SI.Voltage vRef "Excitation voltage, E+ - E-: reference of the conversion (ratiometric measurement)";
 protected
-  // Donne au nœud PD_SCK un état dynamique, ce qui rompt la dépendance mutuelle
-  // entre le when de ce composant et celui du microcontrôleur (même rôle que la
-  // capacité d'entrée des périphériques série) ; face aux 100 Ω du
-  // microcontrôleur, 1 nF donne une montée de 0,1 µs, sans effet sur le chronogramme.
-  parameter SI.Capacitance CIn = 1e-9 "Capacité d'entrée de PD_SCK";
-  parameter SI.Resistance RPullDown = 1e6 "Tirage de PD_SCK vers la masse : broche débranchée ou microcontrôleur pas encore démarré = niveau bas";
+  // Gives the PD_SCK node a dynamic state, which breaks the mutual dependency
+  // between the when of this component and that of the microcontroller (same role as the
+  // input capacitance of the serial devices); against the 100 Ω of the
+  // microcontroller, 1 nF gives a 0.1 µs rise, with no effect on the timing.
+  parameter SI.Capacitance CIn = 1e-9 "Input capacitance of PD_SCK";
+  parameter SI.Resistance RPullDown = 1e6 "Pull-down of PD_SCK to ground: disconnected pin or microcontroller not started yet = low level";
   constant Integer FULL = 16777216 "2^24";
-  constant Integer HALF = 8388608 "2^23 : bit de poids fort";
+  constant Integer HALF = 8388608 "2^23: most significant bit";
 
-  Boolean sckHigh(start = false, fixed = true) "PD_SCK vue au niveau haut";
-  discrete Boolean doutHigh(start = true, fixed = true) "Niveau piloté sur DOUT (repos = haut : pas de donnée prête)";
-  discrete Integer shifter(start = 0, fixed = true) "Registre à décalage : le bit de poids fort sort sur DOUT à chaque front montant";
-  discrete Integer nextGain(start = 128, fixed = true) "Gain de la conversion suivante, choisi par le nombre d'impulsions (25, 26 ou 27)";
-  discrete SI.Time tConv(start = settlingConversions/rate, fixed = true) "Fin de la prochaine conversion";
-  discrete SI.Time tSleep(start = 1e300, fixed = true) "Instant de mise en veille si PD_SCK reste haute (1e300 : rien de programmé)";
-  discrete Integer rngState[2] "État du générateur de bruit (Xorshift64*)";
-  discrete Real noise(start = 0, fixed = true) "Bruit tiré pour la dernière conversion, en LSB";
-  discrete Real u(start = 0.5, fixed = true) "Tirage uniforme sur ]0, 1] - variable de travail de l'algorithme";
+  Boolean sckHigh(start = false, fixed = true) "PD_SCK seen at high level";
+  discrete Boolean doutHigh(start = true, fixed = true) "Level driven on DOUT (idle = high: no data ready)";
+  discrete Integer shifter(start = 0, fixed = true) "Shift register: the most significant bit goes out on DOUT at each rising edge";
+  discrete Integer nextGain(start = 128, fixed = true) "Gain of the next conversion, chosen by the number of pulses (25, 26 or 27)";
+  discrete SI.Time tConv(start = settlingConversions/rate, fixed = true) "End of the next conversion";
+  discrete SI.Time tSleep(start = 1e300, fixed = true) "Power-down instant if PD_SCK stays high (1e300: nothing scheduled)";
+  discrete Integer rngState[2] "State of the noise generator (Xorshift64*)";
+  discrete Real noise(start = 0, fixed = true) "Noise drawn for the last conversion, in LSB";
+  discrete Real u(start = 0.5, fixed = true) "Uniform draw on ]0, 1] - working variable of the algorithm";
 
-  Modelica.Electrical.Analog.Sources.ConstantVoltage excitation(V = AVDD) "Excitation du pont, entre E+ et la masse" annotation(
+  Modelica.Electrical.Analog.Sources.ConstantVoltage excitation(V = AVDD) "Bridge excitation, between E+ and ground" annotation(
     Placement(visible = false, transformation(extent = {{-10, 60}, {10, 80}})));
-  Modelica.Electrical.Analog.Sensors.VoltageSensor inSns "Entrée différentielle A+/A- (impédance infinie)" annotation(
+  Modelica.Electrical.Analog.Sensors.VoltageSensor inSns "Differential input A+/A- (infinite impedance)" annotation(
     Placement(visible = false, transformation(extent = {{-10, 30}, {10, 50}})));
-  Modelica.Electrical.Analog.Sensors.VoltageSensor refSns "Mesure de l'excitation, référence de la conversion" annotation(
+  Modelica.Electrical.Analog.Sensors.VoltageSensor refSns "Measurement of the excitation, reference of the conversion" annotation(
     Placement(visible = false, transformation(extent = {{-10, 0}, {10, 20}})));
-  Modelica.Electrical.Analog.Sensors.VoltageSensor sckSns "Niveau de PD_SCK" annotation(
+  Modelica.Electrical.Analog.Sensors.VoltageSensor sckSns "Level of PD_SCK" annotation(
     Placement(visible = false, transformation(extent = {{-10, -30}, {10, -10}})));
-  Modelica.Electrical.Analog.Basic.Capacitor cIn(C = CIn, v(start = 0, fixed = true)) "Capacité d'entrée de PD_SCK" annotation(
+  Modelica.Electrical.Analog.Basic.Capacitor cIn(C = CIn, v(start = 0, fixed = true)) "Input capacitance of PD_SCK" annotation(
     Placement(visible = false, transformation(extent = {{-50, -30}, {-30, -10}})));
-  Modelica.Electrical.Analog.Basic.Resistor rPull(R = RPullDown) "Tirage de PD_SCK vers la masse" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor rPull(R = RPullDown) "Pull-down of PD_SCK to ground" annotation(
     Placement(visible = false, transformation(extent = {{-90, -30}, {-70, -10}})));
-  Modelica.Electrical.Analog.Sources.SignalVoltage doutSrc "Sortie push-pull de DOUT" annotation(
+  Modelica.Electrical.Analog.Sources.SignalVoltage doutSrc "Push-pull output of DOUT" annotation(
     Placement(visible = false, transformation(extent = {{-90, -70}, {-70, -50}})));
-  Modelica.Electrical.Analog.Basic.Resistor rOut(R = ROut) "Résistance série de DOUT" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor rOut(R = ROut) "Series resistance of DOUT" annotation(
     Placement(visible = false, transformation(extent = {{-50, -70}, {-30, -50}})));
 initial algorithm
   rngState := Modelica.Math.Random.Generators.Xorshift64star.initialState(seed, 0);
@@ -108,15 +108,15 @@ equation
   connect(rOut.n, DOUT);
   vIn = inSns.v;
   vRef = refSns.v;
-  sckHigh = sckSns.v > (VIL + VIH)/2 "seuil logique médian, même approximation que le microcontrôleur";
+  sckHigh = sckSns.v > (VIL + VIH)/2 "logic threshold halfway, same approximation as the microcontroller";
   doutSrc.v = if doutHigh then VOH else VOL;
 algorithm
-  // Une section algorithm (et non des équations) : plusieurs when y
-  // affectent les mêmes variables, dans l'ordre où ils sont écrits.
+  // An algorithm section (and not equations): several when clauses
+  // assign the same variables, in the order in which they are written.
 
-  // Mise à jour du registre de sortie peu avant une nouvelle donnée : si la
-  // précédente n'a pas été lue, DOUT remonte brièvement, et son retour à 0
-  // signale la nouvelle donnée (front descendant guetté par Pin.irq()).
+  // Update of the output register shortly before a new data: if the
+  // previous one has not been read, DOUT briefly goes back up, and its return to 0
+  // signals the new data (falling edge watched by Pin.irq()).
   when time >= tConv - tUpdate then
     if ready and not poweredDown then
       ready := false;
@@ -124,8 +124,8 @@ algorithm
     end if;
   end when;
 
-  // Fin de conversion : la mesure est figée dans le registre, DOUT passe à 0.
-  // Pas de mise à jour pendant une lecture en cours (bits déjà en train de sortir).
+  // End of conversion: the measurement is latched in the register, DOUT goes to 0.
+  // No update during a read in progress (bits already going out).
   when time >= tConv then
     if not poweredDown then
       tConv := tConv + 1/rate;
@@ -135,7 +135,7 @@ algorithm
           (u, rngState) := Modelica.Math.Random.Generators.Xorshift64star.random(pre(rngState));
           noise := Modelica.Math.Distributions.Normal.quantile(u, 0, noiseLsb);
         end if;
-        // Canal B (gain 32) : non câblé dans ce modèle, il lit 0 V.
+        // Channel B (gain 32): not wired in this model, it reads 0 V.
         code := if gain == 32 then 0 else integer(floor(vIn*gain/vRef*FULL + noise + 0.5));
         code := max(-HALF, min(HALF - 1, code));
         shifter := if code < 0 then code + FULL else code;
@@ -146,9 +146,9 @@ algorithm
     end if;
   end when;
 
-  // Front montant de PD_SCK : un bit sort sur DOUT (poids fort en tête). Les
-  // impulsions 25 à 27 choisissent le gain de la conversion suivante, et DOUT
-  // remonte : la donnée est consommée.
+  // Rising edge of PD_SCK: a bit goes out on DOUT (most significant first). Pulses
+  // 25 to 27 choose the gain of the next conversion, and DOUT
+  // goes back up: the data is consumed.
   when sckHigh then
     tSleep := time + tPowerDown;
     if not poweredDown and (ready or pulses > 0) and pulses < 27 then
@@ -164,7 +164,7 @@ algorithm
     end if;
   end when;
 
-  // PD_SCK maintenue haute trop longtemps : mise en veille.
+  // PD_SCK held high too long: power-down.
   when time >= tSleep then
     if sckHigh then
       poweredDown := true;
@@ -173,8 +173,8 @@ algorithm
     end if;
   end when;
 
-  // Front descendant : sortie de veille, le circuit repart comme à la mise
-  // sous tension (gain 128, conversions d'établissement écartées).
+  // Falling edge: wake-up, the chip restarts as at power-up
+  // (gain 128, settling conversions discarded).
   when not sckHigh then
     tSleep := 1e300;
     if poweredDown then
@@ -189,23 +189,23 @@ algorithm
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(fillColor = {30, 110, 60}, fillPattern = FillPattern.Solid, extent = {{-104, 56}, {104, -56}}), Rectangle(fillColor = {30, 30, 30}, fillPattern = FillPattern.Solid, extent = {{-40, 30}, {40, -12}}), Text(textColor = {255, 255, 255}, extent = {{-38, 26}, {38, 6}}, textString = "HX711", textStyle = {TextStyle.Bold}), Text(textColor = {200, 200, 200}, extent = {{-38, 4}, {38, -10}}, textString = "24 bits"), Text(textColor = {255, 255, 255}, extent = {{-40, -18}, {40, -34}}, textString = DynamicSelect("gain 128", "gain " + String(gain))), Text(textColor = {255, 255, 255}, extent = {{-40, -36}, {40, -52}}, textString = DynamicSelect("", String(code))), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if ready then {60, 210, 255} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-60, -38}, {-48, -50}}), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if poweredDown then {255, 180, 60} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{48, -38}, {60, -50}}), Text(textColor = {255, 255, 255}, extent = {{-98, 38}, {-66, 22}}, textString = "SCK", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-98, -22}, {-66, -38}}, textString = "DT", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{66, 53}, {98, 37}}, textString = "E+", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, 23}, {98, 7}}, textString = "A+", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, -7}, {98, -23}}, textString = "A-", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, -37}, {98, -53}}, textString = "E-", horizontalAlignment = TextAlignment.Right), Text(extent = {{-25, -76}, {25, -84}}, textString = "GND"), Line(points = {{-117, 30}, {-104, 30}}, color = {0, 0, 255}), Line(points = {{-117, -30}, {-104, -30}}, color = {0, 0, 255}), Line(points = {{104, 45}, {117, 45}}, color = {0, 0, 255}), Line(points = {{104, 15}, {117, 15}}, color = {0, 0, 255}), Line(points = {{104, -15}, {117, -15}}, color = {0, 0, 255}), Line(points = {{104, -45}, {117, -45}}, color = {0, 0, 255}), Line(points = {{0, -56}, {0, -66}}, color = {0, 0, 255}), Text(textColor = {0, 0, 255}, extent = {{-150, 100}, {150, 64}}, textString = "%name")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}})),
     Documentation(info = "<html>
-<p>Le <strong>HX711</strong> (Avia Semiconductor) est le convertisseur des balances électroniques : un amplificateur à gain programmable suivi d'un convertisseur analogique-numérique 24 bits, prévu pour lire directement un pont de jauges. Ce modèle en reproduit le comportement vu du microcontrôleur, d'après la fiche technique.</p>
-<h4>Côté pont</h4>
-<p>Le module alimente le pont par <code>E+</code>/<code>E−</code> (tension <code>AVDD</code>) et mesure la tension différentielle entre <code>A+</code> et <code>A−</code>. La conversion est <strong>ratiométrique</strong> : le résultat dépend du rapport entre la sortie du pont et son excitation, pas de la valeur de l'alimentation.</p>
-<p><code>code = vIn · gain / vRef · 2<sup>24</sup></code>, arrondi et borné à [−2<sup>23</sup>, 2<sup>23</sup>−1] (pleine échelle : ±AVDD/(2·gain), soit ±17 mV à gain 128).</p>
-<h4>Côté microcontrôleur</h4>
+<p>The <strong>HX711</strong> (Avia Semiconductor) is the converter of electronic scales: a programmable-gain amplifier followed by a 24-bit analog-to-digital converter, designed to read a gauge bridge directly. This model reproduces its behaviour as seen from the microcontroller, based on the datasheet.</p>
+<h4>Bridge side</h4>
+<p>The module supplies the bridge through <code>E+</code>/<code>E−</code> (voltage <code>AVDD</code>) and measures the differential voltage between <code>A+</code> and <code>A−</code>. The conversion is <strong>ratiometric</strong>: the result depends on the ratio between the bridge output and its excitation, not on the value of the supply.</p>
+<p><code>code = vIn · gain / vRef · 2<sup>24</sup></code>, rounded and clamped to [−2<sup>23</sup>, 2<sup>23</sup>−1] (full scale: ±AVDD/(2·gain), i.e. ±17 mV at gain 128).</p>
+<h4>Microcontroller side</h4>
 <ul>
-<li>Toutes les <code>1/rate</code> secondes, une nouvelle donnée est prête : <code>DOUT</code> passe à 0. Si la précédente n'a pas été lue, <code>DOUT</code> remonte d'abord brièvement (<code>tUpdate</code>), si bien que chaque nouvelle donnée est annoncée par un front descendant.</li>
-<li>Chaque front montant de <code>PD_SCK</code> fait sortir un bit sur <code>DOUT</code>, poids fort en tête. Après les 24 bits de donnée, 1 à 3 impulsions supplémentaires choisissent le gain de la conversion <em>suivante</em> : 25 impulsions → 128 (canal A), 26 → 32 (canal B), 27 → 64 (canal A). <code>DOUT</code> remonte alors à 1.</li>
-<li><code>PD_SCK</code> maintenue haute plus de 60 µs met le circuit en veille. Au retour à 0, il repart comme à la mise sous tension : gain 128, et première donnée après 4 conversions (400 ms à 10 échantillons/s).</li>
+<li>Every <code>1/rate</code> seconds, a new data is ready: <code>DOUT</code> goes to 0. If the previous one has not been read, <code>DOUT</code> first goes back up briefly (<code>tUpdate</code>), so that each new data is announced by a falling edge.</li>
+<li>Each rising edge of <code>PD_SCK</code> shifts a bit out on <code>DOUT</code>, most significant first. After the 24 data bits, 1 to 3 extra pulses choose the gain of the <em>next</em> conversion: 25 pulses → 128 (channel A), 26 → 32 (channel B), 27 → 64 (channel A). <code>DOUT</code> then goes back to 1.</li>
+<li><code>PD_SCK</code> held high for more than 60 µs powers the chip down. When it returns to 0, the chip restarts as at power-up: gain 128, and first data after 4 conversions (400 ms at 10 samples/s).</li>
 </ul>
-<p>Le microcontrôleur pilote donc <code>PD_SCK</code> bit par bit (<em>bit-banging</em>). Il faut que ses accès aux broches prennent du temps simulé (paramètre <code>MCU.gpioOpTime</code>, 5 µs par défaut) : sans cela, les impulsions auraient une durée nulle.</p>
+<p>The microcontroller therefore drives <code>PD_SCK</code> bit by bit (<em>bit-banging</em>). Its pin accesses must take simulated time (parameter <code>MCU.gpioOpTime</code>, 5 µs by default): otherwise, the pulses would have a zero duration.</p>
 <h4>Simplifications</h4>
 <ul>
-<li>Le canal B (entrées B+/B−, gain 32) n'est pas câblé : il lit 0 V.</li>
-<li>Chaque conversion est un échantillon instantané de l'entrée (pas de moyennage sur la période), sans temps d'établissement après un changement de gain.</li>
-<li>Le bruit (<code>noiseLsb</code>, écart-type en LSB) est gaussien et reproductible : la graine <code>seed</code> fixe la suite des tirages.</li>
+<li>Channel B (inputs B+/B−, gain 32) is not wired: it reads 0 V.</li>
+<li>Each conversion is an instantaneous sample of the input (no averaging over the period), with no settling time after a gain change.</li>
+<li>The noise (<code>noiseLsb</code>, standard deviation in LSB) is Gaussian and reproducible: the <code>seed</code> fixes the sequence of draws.</li>
 </ul>
-<p>L'icône affiche le gain et le dernier code converti. Le voyant cyan signale une donnée prête, le voyant ambre la veille.</p>
+<p>The icon shows the gain and the last converted code. The cyan light signals a data ready, the amber light the power-down.</p>
 </html>"));
 end Hx711;

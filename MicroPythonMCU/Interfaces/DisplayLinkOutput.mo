@@ -1,11 +1,11 @@
 within MicroPythonMCU.Interfaces;
-connector DisplayLinkOutput "Sortie logique causale de la liaison d'affichage pedagogique (cote MCU) : pas de tension/courant reels, cf. Décision « Périphérique d'affichage pédagogique » dans requirements.md"
-  output Integer seq "Incremente a chaque machine.Display.write() - sert de declencheur d'edge-detection (change(seq)) cote recepteur, plus fiable qu'une comparaison de String";
-  output String payload "Dernier texte transmis par write() (echantillonne-bloque jusqu'au prochain write)";
-  output Integer charCode[DISPLAY_COLS] "Codes ASCII des DISPLAY_COLS premiers caracteres de payload (espace = 32 si payload plus court) - permet d'afficher le texte reellement recu sur l'icone d'un Peripherals.Display via DynamicSelect, contrairement a payload (String) qui n'est jamais stocke dans les resultats de simulation, cf. Internal.StringToCharCodes";
+connector DisplayLinkOutput "Causal logical output of the educational display link (MCU side): no real voltage/current, see the decision \"Périphérique d'affichage pédagogique\" in requirements.md"
+  output Integer seq "Incremented at each machine.Display.write() - used as the edge-detection trigger (change(seq)) on the receiver side, more reliable than a String comparison";
+  output String payload "Last text sent by write() (sample-and-hold until the next write)";
+  output Integer charCode[DISPLAY_COLS] "ASCII codes of the first DISPLAY_COLS characters of payload (space = 32 if payload is shorter) - lets the icon of a Peripherals.Display show the text actually received through DynamicSelect, unlike payload (a String), which is never stored in the simulation results, see Internal.StringToCharCodes";
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Polygon(points = {{-100, 50}, {0, 0}, {-100, -50}, {-100, 50}}, lineColor = {28, 108, 200}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid)}),
     Documentation(info = "<html>
-<p>Connecteur causal (sortie) de la liaison d'affichage pédagogique exposée par <code>MCU</code>. Ne représente pas une broche électrique réelle : la liaison est modélisée comme un message logique livré instantanément au point de synchro, pas une forme d'onde série bit-à-bit - simplification v0 assumée, cf. <code>requirements.md</code>.</p>
+<p>Causal connector (output) of the educational display link exposed by <code>MCU</code>. It does not stand for a real electrical pin: the link is modelled as a logical message delivered instantly at the sync point, not as a bit-by-bit serial waveform - a deliberate v0 simplification, see <code>requirements.md</code>.</p>
 </html>"));
 end DisplayLinkOutput;

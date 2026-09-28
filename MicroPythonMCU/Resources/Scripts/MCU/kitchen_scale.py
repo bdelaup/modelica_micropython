@@ -1,69 +1,69 @@
-# Balance de cuisine.
-# Cablage : HX711 (PD_SCK sur GP6, DOUT sur GP7), ecran Grove LCD RGB (I2C : SCL
-# sur GP4, SDA sur GP5, imposes par le driver), bouton TARE sur GP0 (tire au
-# niveau haut, un appui le met a la masse).
-# Drivers poses a cote, sans modification : hx711_gpio.py (robert-hh) et
+# Kitchen scale.
+# Wiring: HX711 (PD_SCK on GP6, DOUT on GP7), Grove LCD RGB screen (I2C: SCL
+# on GP4, SDA on GP5, imposed by the driver), TARE button on GP0 (pulled
+# high, a press connects it to ground).
+# Drivers placed next to this file, unmodified: hx711_gpio.py (robert-hh) and
 # driver_grove_lcd_rgb.py.
 from machine import Pin
 from hx711_gpio import HX711
 from driver_grove_lcd_rgb import GroveLcd_RGB
 
-# Etalonnage : nombre de points du HX711 par gramme. En TP, il se mesure en
-# posant une masse connue sur le plateau : 1000 g donnent 429 497 points de plus
-# qu'a vide, d'ou 429,497 points par gramme.
-POINTS_PAR_GRAMME = 429.497
-PORTEE_G = 5000
+# Calibration: number of HX711 points per gram. In a lab session, it is measured
+# by placing a known mass on the pan: 1000 g give 429,497 more points than
+# empty, hence 429.497 points per gram.
+POINTS_PER_GRAM = 429.497
+CAPACITY_G = 5000
 
 lcd = GroveLcd_RGB()
 lcd.color(255, 255, 255)
 lcd.setCursor(0, 1)
-lcd.write("Balance 5 kg")
+lcd.write("Scale 5 kg")
 
-# Ligne du haut : un champ de 9 caracteres. Seuls les caracteres qui changent
-# sont envoyes a l'ecran : chacun coute une transaction I2C.
-affiche = " " * 9
+# Top line: a 9-character field. Only the characters that change are sent
+# to the screen: each one costs an I2C transaction.
+shown = " " * 9
 
-def afficher(texte):
-    global affiche
-    texte = "%9s" % texte
-    change = [i for i in range(9) if texte[i] != affiche[i]]
-    if change:
-        lcd.setCursor(change[0], 0)
-        lcd.write(texte[change[0]:change[-1] + 1])
-        affiche = texte
+def show(text):
+    global shown
+    text = "%9s" % text
+    changed = [i for i in range(9) if text[i] != shown[i]]
+    if changed:
+        lcd.setCursor(changed[0], 0)
+        lcd.write(text[changed[0]:changed[-1] + 1])
+        shown = text
 
-afficher("Tare...")
+show("Tare...")
 hx = HX711(Pin(6, Pin.OUT), Pin(7, Pin.IN, pull=Pin.PULL_DOWN))
-hx.set_scale(POINTS_PAR_GRAMME)
-hx.set_time_constant(0.5)   # filtre passe-bas du driver : plus reactif que 0,25 par defaut
-hx.tare(5)                  # le plateau vide devient le zero (moyenne de 5 mesures, 0,5 s)
+hx.set_scale(POINTS_PER_GRAM)
+hx.set_time_constant(0.5)   # low-pass filter of the driver: more responsive than the default 0.25
+hx.tare(5)                  # the empty pan becomes the zero (average of 5 readings, 0.5 s)
 
-demande_tare = False
+tare_requested = False
 
-def appui_tare(pin):
-    # Interruption : on note seulement la demande, la tare se fait dans la boucle
-    global demande_tare
-    demande_tare = True
+def on_tare(pin):
+    # Interrupt: only note the request, the tare is done in the loop
+    global tare_requested
+    tare_requested = True
 
-bouton = Pin(0, Pin.IN, Pin.PULL_UP)
-bouton.irq(handler=appui_tare, trigger=Pin.IRQ_FALLING)
+button = Pin(0, Pin.IN, Pin.PULL_UP)
+button.irq(handler=on_tare, trigger=Pin.IRQ_FALLING)
 
-surcharge = False
+overload = False
 while True:
-    if demande_tare:
-        demande_tare = False
-        afficher("Tare...")
+    if tare_requested:
+        tare_requested = False
+        show("Tare...")
         hx.tare(5)
 
-    grammes = hx.get_units()    # une mesure toutes les 100 ms, filtree, moins la tare
-    if grammes > PORTEE_G:
-        afficher("SURCHARGE")
+    grams = hx.get_units()      # one reading every 100 ms, filtered, minus the tare
+    if grams > CAPACITY_G:
+        show("OVERLOAD")
     else:
-        afficher("%d g" % round(grammes))
+        show("%d g" % round(grams))
 
-    if (grammes > PORTEE_G) != surcharge:
-        surcharge = grammes > PORTEE_G
-        if surcharge:
+    if (grams > CAPACITY_G) != overload:
+        overload = grams > CAPACITY_G
+        if overload:
             lcd.color(255, 0, 0)
         else:
             lcd.color(255, 255, 255)

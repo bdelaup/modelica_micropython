@@ -70,12 +70,12 @@ L'exemple `I2c.GroveLcd` pilote cet écran avec un **driver MicroPython du comme
 
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
-| `addresses` | selon le composant | Bus I2C | Adresse(s) sur 7 bits, sous forme de texte : `"0x42"` ou `"0x3E, 0x62"` (4 au plus) |
-| `usePullUp` | `false` (`true` pour le Grove) | Bus I2C | Porter les résistances de tirage de SDA et SCL vers `VOH`. Plusieurs périphériques peuvent les porter : elles se mettent en parallèle |
-| `RPullUp` | 4,7 kΩ | Bus I2C | Valeur de chaque résistance de tirage |
-| `scriptPath` | script du composant | Comportement | Fichier `.py` décrivant le périphérique |
+| `addresses` | selon le composant | I2C bus | Adresse(s) sur 7 bits, sous forme de texte : `"0x42"` ou `"0x3E, 0x62"` (4 au plus) |
+| `usePullUp` | `false` (`true` pour le Grove) | I2C bus | Porter les résistances de tirage de SDA et SCL vers `VOH`. Plusieurs périphériques peuvent les porter : elles se mettent en parallèle |
+| `RPullUp` | 4,7 kΩ | I2C bus | Valeur de chaque résistance de tirage |
+| `scriptPath` | script du composant | Behaviour | Fichier `.py` décrivant le périphérique |
 
-### Entrées / sorties (onglet *Entrées / sorties*)
+### Entrées / sorties (onglet *Inputs / outputs*)
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
@@ -84,7 +84,7 @@ L'exemple `I2c.GroveLcd` pilote cet écran avec un **driver MicroPython du comme
 | `fixedValue` | 0 | Valeur utilisée quand `valueIn` n'est pas utilisé |
 | `nOut` | 1 (3 pour l'écho, 4 pour le Grove) | Nombre de grandeurs rendues par `outputs()` (4 au plus) |
 
-### Électrique (onglet *Électrique*)
+### Électrique (onglet *Electrical*)
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|

@@ -1,18 +1,18 @@
 within MicroPythonMCU;
-package Interfaces "Niveaux de tension logiques de référence (approximation RP2040, 3.3 V) utilisés par le pont électrique de MCU"
+package Interfaces "Reference logic voltage levels (RP2040 approximation, 3.3 V) used by the electrical bridge of MCU"
   extends Modelica.Icons.Package;
 
-  constant Modelica.Units.SI.Voltage VOH = 3.3 "Tension de sortie logique haute";
-  constant Modelica.Units.SI.Voltage VOL = 0.0 "Tension de sortie logique basse";
-  constant Modelica.Units.SI.Voltage VIH = 2.0 "Seuil de reconnaissance d'une entrée logique haute (approximation)";
-  constant Modelica.Units.SI.Voltage VIL = 0.8 "Seuil de reconnaissance d'une entrée logique basse (approximation)";
-  constant Modelica.Units.SI.Resistance ROut = 100 "Résistance série de sortie par défaut (drive strength approximative)";
-  constant Integer DISPLAY_COLS = 20 "Nombre de colonnes affichées sur l'icône du périphérique pédagogique Peripherals.Display (fidèle à un vrai afficheur caractère 20x2) - tronque les messages plus longs sur l'icône uniquement (le texte complet reste disponible dans le journal de simulation)";
-  constant Integer UART_DEV_MAX_VALUES = 4 "Nombre de grandeurs réelles qu'un appareil série externe peut échanger avec le reste du modèle ({v1}..{v4} substituées dans une trame émise, {o1}..{o4} capturées dans une trame reçue) - doit rester aligné sur UARTDEV_MAX_VALUES côté C (Resources/Include/uartdevice/uartdevice_core.h)";
-  constant Integer I2C_DEV_MAX_VALUES = 4 "Nombre de grandeurs réelles qu'un périphérique I2C externe peut échanger avec le reste du modèle (argument v de ses gestionnaires Python, valeur de retour de outputs()) - doit rester aligné sur I2CDEV_MAX_VALUES côté C (Resources/Include/i2cdevice/i2cdevice_core.h)";
+  constant Modelica.Units.SI.Voltage VOH = 3.3 "Logic high output voltage";
+  constant Modelica.Units.SI.Voltage VOL = 0.0 "Logic low output voltage";
+  constant Modelica.Units.SI.Voltage VIH = 2.0 "Threshold above which a logic input reads high (approximation)";
+  constant Modelica.Units.SI.Voltage VIL = 0.8 "Threshold below which a logic input reads low (approximation)";
+  constant Modelica.Units.SI.Resistance ROut = 100 "Default output series resistance (approximate drive strength)";
+  constant Integer DISPLAY_COLS = 20 "Number of columns shown on the icon of the educational peripheral Peripherals.Display (true to a real 20x2 character display) - truncates longer messages on the icon only (the full text remains available in the simulation log)";
+  constant Integer UART_DEV_MAX_VALUES = 4 "Number of real quantities an external serial device can exchange with the rest of the model ({v1}..{v4} substituted in a transmitted frame, {o1}..{o4} captured from a received frame) - must stay aligned with UARTDEV_MAX_VALUES on the C side (Resources/Include/uartdevice/uartdevice_core.h)";
+  constant Integer I2C_DEV_MAX_VALUES = 4 "Number of real quantities an external I2C peripheral can exchange with the rest of the model (argument v of its Python handlers, return value of outputs()) - must stay aligned with I2CDEV_MAX_VALUES on the C side (Resources/Include/i2cdevice/i2cdevice_core.h)";
 
   annotation(
     Documentation(info = "<html>
-<p>Valeurs approximatives inspirées du Raspberry Pi Pico (RP2040, alimentation 3.3 V). Pas des valeurs datasheet exactes — suffisant pour la v0 (preuve de concept), à affiner si besoin plus tard.</p>
+<p>Approximate values inspired by the Raspberry Pi Pico (RP2040, 3.3 V supply). Not exact datasheet values — enough for v0 (proof of concept), to be refined later if needed.</p>
 </html>"));
 end Interfaces;

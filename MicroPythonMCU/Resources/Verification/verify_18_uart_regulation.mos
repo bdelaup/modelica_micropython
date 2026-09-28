@@ -16,15 +16,15 @@ b := getErrorString();
 f := "UartRegulation_res.mat";
 
 // --- Point de depart : le procede est a sa valeur initiale, la commande a la sienne ---
-vTdebut := val(procede.y, 0.005, f);          // ~20 degC
-vCmdDebut := val(capteur.valueOut[1], 0.005, f); // 0 (valueOutStart)
+vTdebut := val(plant.y, 0.005, f);          // ~20 degC
+vCmdDebut := val(sensor.valueOut[1], 0.005, f); // 0 (valueOutStart)
 
 // --- La commande a bien ete capturee et poussee sur la sortie reelle ---
-vCmdMilieu := val(capteur.valueOut[1], 0.3, f);
+vCmdMilieu := val(sensor.valueOut[1], 0.3, f);
 
 // --- Regime etabli : la temperature a rejoint la consigne de 40 degC ---
-vTfin := val(procede.y, 0.95, f);
-vCmdFin := val(capteur.valueOut[1], 0.95, f);
+vTfin := val(plant.y, 0.95, f);
+vCmdFin := val(sensor.valueOut[1], 0.95, f);
 
 // Le gain statique du procede vaut 0.5, donc maintenir 40 degC demande une
 // commande voisine de 80. C'est la coherence entre les deux qui prouve que la

@@ -1,4 +1,4 @@
 within MicroPythonMCU.Examples;
-package FileSystem "Système de fichiers façon flash MicroPython : boot.py, main.py, fichiers écrits par le programme"
+package FileSystem "MicroPython-style flash file system: boot.py, main.py, files written by the program"
   extends Modelica.Icons.ExamplesPackage;
 end FileSystem;

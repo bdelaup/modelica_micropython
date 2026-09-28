@@ -29,7 +29,7 @@
 /* "ecriture 0x3E : 80 01" / "lecture 0x42 : 48 69" (tronque si long). */
 static void i2cdev_log(struct I2cDevice* dev, const char* what, int addr, const unsigned char* data, int len) {
     int pos, k;
-    pos = snprintf(dev->last_event, I2CDEV_EVENT_MAX + 1, "%s 0x%02X :", what, addr);
+    pos = snprintf(dev->last_event, I2CDEV_EVENT_MAX + 1, "%s 0x%02X:", what, addr);
     for (k = 0; k < len && pos < I2CDEV_EVENT_MAX - 4; k++) {
         pos += snprintf(dev->last_event + pos, (size_t) (I2CDEV_EVENT_MAX + 1 - pos), " %02X", data[k]);
     }
@@ -50,13 +50,13 @@ static void i2cdev_close_phase(struct I2cDevice* dev) {
         /* Une ecriture vide est une sonde d'adresse (scan()) : rien a livrer. */
         if (dev->wlen > 0) {
             i2cdev_script_on_write(dev, dev->addr, dev->wbuf, dev->wlen);
-            i2cdev_log(dev, "ecriture", dev->addr, dev->wbuf, dev->wlen);
+            i2cdev_log(dev, "write", dev->addr, dev->wbuf, dev->wlen);
         }
         dev->wlen = 0;
     }
     if (dev->read_open) {
         dev->read_open = 0;
-        i2cdev_log(dev, "lecture", dev->addr, dev->rlog, dev->rlog_len);
+        i2cdev_log(dev, "read", dev->addr, dev->rlog, dev->rlog_len);
         dev->rlog_len = 0;
     }
 }
@@ -233,22 +233,22 @@ static int i2cdev_parse_addresses(struct I2cDevice* dev, const char* s) {
         }
         v = strtol(p, &end, 0);
         if (end == p) {
-            ModelicaFormatError("I2cDevice : adresse illisible dans \"%s\" (ex. attendu : \"0x42\" ou \"0x3E, 0x62\")", s);
+            ModelicaFormatError("I2cDevice: unreadable address in \"%s\" (expected e.g. \"0x42\" or \"0x3E, 0x62\")", s);
             return -1;
         }
         if (v < 0 || v > 0x7F) {
-            ModelicaFormatError("I2cDevice : adresse %ld hors bornes (0x00-0x7F, adresse sur 7 bits) dans \"%s\"", v, s);
+            ModelicaFormatError("I2cDevice: address %ld out of range (0x00-0x7F, 7-bit address) in \"%s\"", v, s);
             return -1;
         }
         if (dev->n_addr >= I2CDEV_MAX_ADDR) {
-            ModelicaFormatError("I2cDevice : au plus %d adresses par composant (\"%s\")", I2CDEV_MAX_ADDR, s);
+            ModelicaFormatError("I2cDevice: at most %d addresses per component (\"%s\")", I2CDEV_MAX_ADDR, s);
             return -1;
         }
         dev->addresses[dev->n_addr++] = (int) v;
         p = end;
     }
     if (dev->n_addr == 0) {
-        ModelicaFormatError("I2cDevice : aucune adresse donnee - indiquer par exemple \"0x42\"");
+        ModelicaFormatError("I2cDevice: no address given - give for example \"0x42\"");
         return -1;
     }
     return 0;
@@ -258,14 +258,14 @@ void* I2cDevice_new(const char* addresses, const char* scriptPath,
                      const char* pythonHome, const char* instanceName) {
     struct I2cDevice* dev = (struct I2cDevice*) calloc(1, sizeof(struct I2cDevice));
     if (!dev) {
-        ModelicaFormatError("I2cDevice : allocation impossible");
+        ModelicaFormatError("I2cDevice: allocation failed");
         return NULL;
     }
     if (i2cdev_parse_addresses(dev, addresses) != 0) {
         return NULL;
     }
     if (strlen(scriptPath ? scriptPath : "") > I2CDEV_PATH_MAX) {
-        ModelicaFormatError("I2cDevice : chemin de script trop long");
+        ModelicaFormatError("I2cDevice: script path too long");
         return NULL;
     }
     strcpy(dev->script_path, scriptPath ? scriptPath : "");

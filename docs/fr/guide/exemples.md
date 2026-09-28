@@ -54,7 +54,7 @@ Le paquetage `MicroPythonMCU.Examples` contient 31 modèles prêts à simuler : 
 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
-| `FileSystem.Boot` | Sans script : `boot.py` puis `main.py` d'une image de flash ; mesures de l'ADC enregistrées dans `/data/mesures.csv` | dossier de la copie (ouvert en fin de simulation) | image `datalogger/` |
+| `FileSystem.Boot` | Sans script : `boot.py` puis `main.py` d'une image de flash ; mesures de l'ADC enregistrées dans `/data/measurements.csv` | dossier de la copie (ouvert en fin de simulation) | image `datalogger/` |
 | `FileSystem.Script` | `boot.py` de la flash, puis un programme externe à la place de `main.py` | journal, fichiers écrits | `fs_script.py` |
 
 ## Afficheur pédagogique (`Examples.Display`)
@@ -70,8 +70,8 @@ Le paquetage `MicroPythonMCU.Examples` contient 31 modèles prêts à simuler : 
 | `Uart.Loopback` | Trame 8N1 bouclée sur le microcontrôleur | `mcu.GP0.v` | `uart_loopback.py` |
 | `Uart.EchoPy` | Dialogue avec un appareil d'écho décrit par un script Python | `mcu.GP5.v`, `mcu.GP4.v`, journal | `uart_echo.py` |
 | `Uart.Echo` | Même montage, écho réglé dans la table de l'appareil | idem | `uart_echo.py` |
-| `Uart.Sensor` | Interrogation d'un capteur de température, puis envoi d'une consigne | `capteur.valueOut[1]`, journal | `uart_sensor.py` |
-| `Uart.Regulation` | Régulation en boucle fermée à travers la seule liaison série | `procede.y`, `capteur.valueOut[1]` | `uart_regulation.py` |
+| `Uart.Sensor` | Interrogation d'un capteur de température, puis envoi d'une consigne | `sensor.valueOut[1]`, journal | `uart_sensor.py` |
+| `Uart.Regulation` | Régulation en boucle fermée à travers la seule liaison série | `plant.y`, `sensor.valueOut[1]` | `uart_regulation.py` |
 | `Uart.GpsPy` | Un module GPS émet ses trames sans être interrogé | journal | `uart_gps.py` |
 | `Uart.StateMachinePy` | Appareil dont la réponse dépend de son historique (machine d'état Python) | journal | `uart_state_machine.py` |
 | `Uart.Lcd` | Deux lignes écrites sur un afficheur série 20x2 | icône de l'afficheur | `uart_lcd.py` |

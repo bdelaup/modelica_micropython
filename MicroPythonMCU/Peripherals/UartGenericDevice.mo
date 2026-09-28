@@ -1,10 +1,10 @@
 within MicroPythonMCU.Peripherals;
 
-model UartGenericDevice "Appareil série externe entièrement décrit par ses paramètres, sans créer de classe dédiée"
+model UartGenericDevice "External serial device entirely described by its parameters, without creating a dedicated class"
   extends Internal.PartialUartDevice(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/generic.py"));
   annotation(
     Documentation(info = "<html>
-<p>Le composant à poser dans un schéma quand l'appareil à simuler ne correspond à aucun des modèles dérivés fournis et ne justifie pas d'en écrire un. Tout se règle dans le dialogue de paramètres : la table de commandes, l'émission périodique, les grandeurs échangées.</p>
-<p>Dès que la même configuration revient dans plusieurs schémas, il vaut mieux en faire une classe : hériter de <code>Internal.PartialUartDevice</code> et fixer les paramètres tient en quelques lignes, et l'appareil gagne un nom, une icône et une documentation propres — c'est ainsi que sont écrits <code>UartEchoDevice</code>, <code>UartTemperatureSensor</code>, <code>UartGpsModule</code> et <code>UartLcd20x2</code>.</p>
+<p>The component to place in a schematic when the device to simulate matches none of the derived models supplied and does not justify writing one. Everything is set in the parameter dialog: the command table, the periodic transmission, the exchanged quantities.</p>
+<p>As soon as the same configuration comes back in several schematics, it is better to turn it into a class: extending <code>Internal.PartialUartDevice</code> and setting the parameters takes a few lines, and the device gets its own name, icon and documentation — this is how <code>UartEchoDevice</code>, <code>UartTemperatureSensor</code>, <code>UartGpsModule</code> and <code>UartLcd20x2</code> are written.</p>
 </html>"));
 end UartGenericDevice;

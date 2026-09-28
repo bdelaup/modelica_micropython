@@ -1,16 +1,16 @@
-# Programme lance a la place de main.py, apres le boot.py de la flash - comme
-# Thonny qui execute le script ouvert sur une carte deja demarree.
+# Program run instead of main.py, after the boot.py of the flash - like
+# Thonny running the open script on an already booted board.
 import os
 from machine import Pin
 
-# boot.py a tourne : il a cree /data. main.py, lui, n'a pas tourne : /data est
-# encore vide (pas de mesures.csv).
+# boot.py has run: it created /data. main.py has not run: /data is
+# still empty (no measurements.csv).
 ok = 'data' in os.listdir('/') and os.listdir('/data') == []
 
 with open('/data/notes.txt', 'w') as f:
-    f.write('ecrit par le script\n')
+    f.write('written by the script\n')
 with open('/data/notes.txt') as f:
-    ok = ok and f.read() == 'ecrit par le script\n'
+    ok = ok and f.read() == 'written by the script\n'
 
-print('fs_script.py : boot.py execute, main.py remplace -', 'OK' if ok else 'ECHEC')
+print('fs_script.py: boot.py run, main.py replaced -', 'OK' if ok else 'FAILED')
 Pin(1, Pin.OUT).value(1 if ok else 0)

@@ -1,10 +1,10 @@
 within MicroPythonMCU.Internal;
-function StringToCharCodes "Convertit les n premiers caracteres de s en codes ASCII (0-255), complete par des espaces (32) si s est plus court - utilitaire partage (independant de PyRuntime) pour l'affichage caractere par caractere sur Peripherals.Display, cf. requirements.md decision Periphérique d'affichage pédagogique"
+function StringToCharCodes "Converts the first n characters of s into ASCII codes (0-255), padded with spaces (32) if s is shorter - shared helper (independent of PyRuntime) for the character-by-character display on Peripherals.Display, see requirements.md decision Périphérique d'affichage pédagogique"
   input String s;
   input Integer n;
   output Integer codes[n];
-  // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
-  // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+  // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
+  // the simulation under OpenModelica/Windows (see requirements.md, decision
   // "Comportement en cas d'exception non geree dans le script").
   external "C" string_to_char_codes(s, n, codes) annotation(
     Include = "#include \"StringToCharCodes.c\"",

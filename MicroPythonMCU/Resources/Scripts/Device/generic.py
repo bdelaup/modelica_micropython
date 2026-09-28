@@ -1,38 +1,38 @@
 # ---------------------------------------------------------------------------
-# Script par defaut de Peripherals.UartGenericDevice (comportement = Script).
-# Point de depart a copier pour decrire un nouvel appareil serie.
+# Default script of Peripherals.UartGenericDevice (behaviour = Script).
+# Starting point to copy when describing a new serial device.
 #
-# Le script est execute UNE FOIS, a la construction du composant. Ses variables
-# de module persistent ensuite d'un appel a l'autre : c'est la que vit l'etat
-# de l'appareil. Deux instances du meme fichier ont chacune le leur.
+# The script is run ONCE, when the component is built. Its module variables
+# then persist from one call to the next: this is where the state of the
+# device lives. Two instances of the same file each have their own.
 #
-# Trois fonctions, toutes facultatives :
+# Three functions, all optional:
 #
-#   on_receive(ligne, t, v)  appelee une fois par ligne complete recue
-#       ligne : bytes, sans le terminateur
-#       t     : temps simule (s)
-#       v     : tuple des grandeurs du connecteur valueIn
-#       retour: bytes ou str a emettre (apres responseDelay), ou None
+#   on_receive(line, t, v)   called once per complete line received
+#       line  : bytes, without the terminator
+#       t     : simulated time (s)
+#       v     : tuple of the quantities of the valueIn connector
+#       return: bytes or str to transmit (after responseDelay), or None
 #
-#   on_tick(t, v)            appelee toutes les `period` secondes, si definie
-#       retour: bytes ou str a emettre, ou None
+#   on_tick(t, v)            called every `period` seconds, if defined
+#       return: bytes or str to transmit, or None
 #
-#   outputs()                relue apres chaque appel des deux precedentes
-#       retour: un nombre ou une sequence de nombres -> connecteur valueOut
+#   outputs()                read again after each call of the two above
+#       return: a number or a sequence of numbers -> valueOut connector
 #
-# Ces fonctions s'executent sur le thread de la simulation : elles doivent aller
-# au bout sans attendre. Pas de sleep(), pas d'acces a machine - pour differer
-# une reponse, c'est le parametre responseDelay qui s'en charge. print() est
-# prefixe du nom du composant dans le journal de simulation.
+# These functions run on the simulation thread: they must run to completion
+# without waiting. No sleep(), no access to machine - to delay a reply,
+# the responseDelay parameter takes care of it. print() is prefixed with
+# the component name in the simulation log.
 # ---------------------------------------------------------------------------
 
-recues = 0
+received = 0
 
 
-def on_receive(ligne, t, v):
-    global recues
-    recues += 1
-    return b'ACK ' + ligne + b'\r\n'
+def on_receive(line, t, v):
+    global received
+    received += 1
+    return b'ACK ' + line + b'\r\n'
 
 
 # def on_tick(t, v):
@@ -40,4 +40,4 @@ def on_receive(ligne, t, v):
 
 
 def outputs():
-    return recues
+    return received

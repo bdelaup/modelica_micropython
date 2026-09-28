@@ -33,7 +33,7 @@ Revenez à la vue *Diagramme* du résultat et déplacez le curseur de temps : la
 
 ## 3. Lire le programme exécuté
 
-Le `MCU` exécute le fichier désigné par son paramètre **Chemin du script** (`scriptPath`). Dans `BasicBlink`, c'est le programme par défaut, `Resources/Scripts/MCU/demo.py` :
+Le `MCU` exécute le fichier désigné par son paramètre **`scriptPath`** (chemin du script). Dans `BasicBlink`, c'est le programme par défaut, `Resources/Scripts/MCU/demo.py` :
 
 ```python
 from machine import Pin
@@ -59,10 +59,10 @@ La boucle est infinie et chaque `sleep` dure une seconde, pourtant la simulation
 2. Y glisser un `MicroPythonMCU.MCU` depuis l'explorateur, et une masse `Modelica.Electrical.Analog.Basic.Ground` reliée à la broche `GND` du microcontrôleur.
 3. Brancher le circuit à piloter sur les broches `GP0` à `GP7`. Par exemple une résistance de 330 Ω et une `MicroPythonMCU.Peripherals.LED` en série entre `GP0` et la masse.
 4. Écrire votre programme dans un fichier `.py`, n'importe où sur le disque. Partir de `demo.py` est un bon début.
-5. Double-cliquer sur le `MCU`, puis, dans le champ **Chemin du script**, choisir votre fichier avec le bouton *…*.
+5. Double-cliquer sur le `MCU`, puis, dans le champ **`scriptPath`**, choisir votre fichier avec le bouton *…*.
 6. Régler la durée à simuler (*Simulation → Simulation Setup → Stop Time*) et simuler.
 
-<!-- ILLUSTRATION premiers-pas-parametres : boîte de paramètres du MCU, onglet General, champ « Chemin du script » (cf. docs/ILLUSTRATIONS.md) -->
+<!-- ILLUSTRATION premiers-pas-parametres : boîte de paramètres du MCU, onglet General, champ scriptPath (cf. docs/ILLUSTRATIONS.md) -->
 
 !!! tip "Où voir les `print()` ?"
     Tout ce que le script écrit avec `print()` apparaît dans la fenêtre de sortie de la simulation d'OMEdit, dans l'ordre du temps simulé.

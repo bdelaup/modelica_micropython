@@ -7,36 +7,36 @@
    Python". Ce fichier n'est jamais compile seul. */
 
 static PyMethodDef native_methods[] = {
-    {"pin_init", native_pin_init, METH_VARARGS, "Configure la direction d'une broche"},
-    {"pin_write", native_pin_write, METH_VARARGS, "Pilote une broche (si en sortie)"},
-    {"pin_read", native_pin_read, METH_VARARGS, "Lit l'etat resolu d'une broche"},
-    {"pin_irq_set", native_pin_irq_set, METH_VARARGS, "Enregistre/efface le callback IRQ d'une broche"},
-    {"adc_init", native_adc_init, METH_VARARGS, "Passe une broche en entree analogique (coupe son entree numerique : ni IRQ ni reveil)"},
-    {"adc_read",native_adc_read, METH_VARARGS, "Lit la tension brute (V) mesuree sur une broche ADC"},
-    {"pwm_set_freq", native_pwm_set_freq, METH_VARARGS, "Configure la frequence PWM (Hz) d'une broche, la prend en sortie"},
-    {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Configure le rapport cyclique PWM (0-1) d'une broche"},
-    {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Arrete le PWM sur une broche (retombe en sortie numerique classique)"},
-    {"display_write", native_display_write, METH_VARARGS, "Transmet un texte au périphérique d'affichage pédagogique connecté (livraison instantanee)"},
-    {"uart_init", native_uart_init, METH_VARARGS, "Configure l'UART (broches TX/RX, baudrate) et prend les broches"},
-    {"uart_write", native_uart_write, METH_VARARGS, "Met des octets dans la file d'emission (non bloquant), retourne le nombre accepte"},
-    {"uart_any", native_uart_any, METH_VARARGS, "Nombre d'octets recus en attente de lecture"},
-    {"uart_read", native_uart_read, METH_VARARGS, "Lit jusqu'a n octets recus (n < 0 = tout), None si rien"},
-    {"uart_deinit", native_uart_deinit, METH_VARARGS, "Libere l'UART et ses broches"},
-    {"i2c_init", native_i2c_init, METH_VARARGS, "Configure le bus I2C (broches SCL/SDA, frequence) et prend les broches"},
-    {"i2c_xfer", native_i2c_xfer, METH_VARARGS, "Transaction I2C complete (ecriture, lecture apres START repete), bloquante"},
-    {"i2c_deinit", native_i2c_deinit, METH_VARARGS, "Libere le bus I2C et ses broches"},
-    {"timer_new", native_timer_new, METH_VARARGS, "Alloue un slot de Timer() dans le pool fixe"},
-    {"timer_init", native_timer_init, METH_VARARGS, "Arme un Timer (periode, mode, callback)"},
-    {"timer_deinit", native_timer_deinit, METH_VARARGS, "Arrete et libere un Timer"},
-    {"sleep", native_sleep, METH_VARARGS, "Attend N secondes de temps simule"},
-    {"idle", native_idle, METH_VARARGS, "Attend la prochaine milliseconde ronde (ou une transition d'entree)"},
-    {"disable_irq", native_disable_irq, METH_VARARGS, "Masque les callbacks IRQ/Timer, rend l'etat precedent"},
-    {"enable_irq", native_enable_irq, METH_VARARGS, "Retablit l'etat de masquage rendu par disable_irq"},
-    {"ticks_ms", native_ticks_ms, METH_VARARGS, "Horloge simulee, en millisecondes"},
-    {"ticks_us", native_ticks_us, METH_VARARGS, "Horloge simulee, en microsecondes"},
-    {"fs_config", native_fs_config, METH_VARARGS, "Configuration du systeme de fichiers (source, espace de travail, instance, pythonHome)"},
-    {"fs_set_root", native_fs_set_root, METH_VARARGS, "Enregistre la racine de la copie horodatee (dossier hote)"},
-    {"on_worker", native_on_worker, METH_VARARGS, "Vrai si l'appelant est le thread du microcontroleur"},
+    {"pin_init", native_pin_init, METH_VARARGS, "Sets the direction of a pin"},
+    {"pin_write", native_pin_write, METH_VARARGS, "Drives a pin (if it is an output)"},
+    {"pin_read", native_pin_read, METH_VARARGS, "Reads the resolved state of a pin"},
+    {"pin_irq_set", native_pin_irq_set, METH_VARARGS, "Registers/clears the IRQ callback of a pin"},
+    {"adc_init", native_adc_init, METH_VARARGS, "Switches a pin to analog input (disconnects its digital input: no IRQ nor wake-up)"},
+    {"adc_read",native_adc_read, METH_VARARGS, "Reads the raw voltage (V) measured on an ADC pin"},
+    {"pwm_set_freq", native_pwm_set_freq, METH_VARARGS, "Sets the PWM frequency (Hz) of a pin, making it an output"},
+    {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Sets the PWM duty cycle (0-1) of a pin"},
+    {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Stops the PWM on a pin (back to a plain digital output)"},
+    {"display_write", native_display_write, METH_VARARGS, "Sends a text to the connected educational display peripheral (instant delivery)"},
+    {"uart_init", native_uart_init, METH_VARARGS, "Configures the UART (TX/RX pins, baud rate) and takes the pins"},
+    {"uart_write", native_uart_write, METH_VARARGS, "Puts bytes in the transmit queue (non-blocking), returns the number accepted"},
+    {"uart_any", native_uart_any, METH_VARARGS, "Number of received bytes waiting to be read"},
+    {"uart_read", native_uart_read, METH_VARARGS, "Reads up to n received bytes (n < 0 = all), None if nothing"},
+    {"uart_deinit", native_uart_deinit, METH_VARARGS, "Releases the UART and its pins"},
+    {"i2c_init", native_i2c_init, METH_VARARGS, "Configures the I2C bus (SCL/SDA pins, frequency) and takes the pins"},
+    {"i2c_xfer", native_i2c_xfer, METH_VARARGS, "Complete I2C transaction (write, read after repeated START), blocking"},
+    {"i2c_deinit", native_i2c_deinit, METH_VARARGS, "Releases the I2C bus and its pins"},
+    {"timer_new", native_timer_new, METH_VARARGS, "Allocates a Timer() slot in the fixed pool"},
+    {"timer_init", native_timer_init, METH_VARARGS, "Arms a Timer (period, mode, callback)"},
+    {"timer_deinit", native_timer_deinit, METH_VARARGS, "Stops and releases a Timer"},
+    {"sleep", native_sleep, METH_VARARGS, "Waits N seconds of simulated time"},
+    {"idle", native_idle, METH_VARARGS, "Waits for the next whole millisecond (or an input transition)"},
+    {"disable_irq", native_disable_irq, METH_VARARGS, "Masks the IRQ/Timer callbacks, returns the previous state"},
+    {"enable_irq", native_enable_irq, METH_VARARGS, "Restores the masking state returned by disable_irq"},
+    {"ticks_ms", native_ticks_ms, METH_VARARGS, "Simulated clock, in milliseconds"},
+    {"ticks_us", native_ticks_us, METH_VARARGS, "Simulated clock, in microseconds"},
+    {"fs_config", native_fs_config, METH_VARARGS, "File system configuration (source, workspace, instance, pythonHome)"},
+    {"fs_set_root", native_fs_set_root, METH_VARARGS, "Records the root of the timestamped copy (host folder)"},
+    {"on_worker", native_on_worker, METH_VARARGS, "True if the caller is the microcontroller thread"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -76,8 +76,8 @@ static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const ch
     relay_emit_pending();
     if (rc != 0) {
         char msg[128];
-        snprintf(msg, sizeof(msg), "%s a leve une exception non geree - trace ci-dessus",
-                 dir ? name : "le script");
+        snprintf(msg, sizeof(msg), "%s raised an unhandled exception - traceback above",
+                 dir ? name : "the script");
         h->script_error = 1;
         h->error_message = strdup(msg);
     }
@@ -116,7 +116,7 @@ static unsigned __stdcall worker_main(void* arg) {
         if (h->scriptPath[0] != '\0') {
             if (!run_program_file(h, NULL, h->scriptPath)) {
                 h->script_error = 1;
-                h->error_message = strdup("impossible d'ouvrir le script");
+                h->error_message = strdup("cannot open the script");
             }
             ran = 1;
         } else if (h->fs_root) {
@@ -124,7 +124,7 @@ static unsigned __stdcall worker_main(void* arg) {
         }
     }
     if (!ran) {
-        ModelicaFormatMessage("PyRuntime: ni boot.py ni main.py a la racine du systeme de fichiers - microcontroleur inactif\n");
+        ModelicaFormatMessage("PyRuntime: neither boot.py nor main.py at the root of the file system - microcontroller idle\n");
     }
 
     EnterCriticalSection(&h->cs);
@@ -171,8 +171,8 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     /* Sans script, le programme est main.py du systeme de fichiers : il en
        faut un. Verifie avant tout demarrage, l'erreur est de configuration. */
     if (scriptPath[0] == '\0' && !fsEnabled) {
-        ModelicaFormatError("PyRuntime: scriptPath est vide et le systeme de fichiers est inactif - "
-                            "indiquer un script, ou activer un systeme de fichiers contenant main.py");
+        ModelicaFormatError("PyRuntime: scriptPath is empty and the file system is disabled - "
+                            "give a script, or enable a file system containing main.py");
         return NULL;
     }
 
@@ -211,7 +211,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
        "Conception du shim machine/time". */
     char* shim_src = read_text_file(shimPath);
     if (!shim_src) {
-        ModelicaFormatError("PyRuntime: impossible de lire le shim machine/time ('%s')", shimPath);
+        ModelicaFormatError("PyRuntime: cannot read the machine/time shim ('%s')", shimPath);
         return NULL;
     }
 
@@ -220,7 +220,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
 
     /* Module natif du shim : enregistre apres coup dans sys.modules. */
     if (pyhost_register_module("_pyruntime_native", PyModule_Create(&native_module_def)) != 0) {
-        failure = "echec d'enregistrement du module natif du shim";
+        failure = "failed to register the native module of the shim";
     }
 
     /* Import de modules auxiliaires (cf. requirements.md, decision "Import de
@@ -232,14 +232,14 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     if (!failure && addScriptDirToPath) {
         char* dir = dirname_of(scriptPath);
         if (dir[0] != '\0' && pyhost_append_path(dir) != 0) {
-            failure = "echec d'ajout du dossier du script au sys.path";
+            failure = "failed to add the script folder to sys.path";
         }
         free(dir);
     }
     if (!failure && libraryPath && libraryPath[0] != '\0') {
         char* dir = dirname_of(libraryPath);
         if (dir[0] != '\0' && pyhost_append_path(dir) != 0) {
-            failure = "echec d'ajout de libraryPath au sys.path";
+            failure = "failed to add libraryPath to sys.path";
         }
         free(dir);
     }
@@ -247,7 +247,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     if (!failure) {
         g_current = handle;
         if (PyRun_SimpleString(shim_src) != 0) {
-            failure = "echec d'initialisation du shim machine/time ou du systeme de fichiers - trace ci-dessus";
+            failure = "failed to initialise the machine/time shim or the file system - traceback above";
         }
         g_current = NULL;
     }
@@ -263,7 +263,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
 
     handle->thread = (HANDLE) _beginthreadex(NULL, 0, worker_main, handle, 0, NULL);
     if (!handle->thread) {
-        ModelicaFormatError("PyRuntime: echec de creation du thread worker");
+        ModelicaFormatError("PyRuntime: failed to create the worker thread");
         return NULL;
     }
 
@@ -452,7 +452,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
 
     if (error) {
         ModelicaFormatError("PyRuntime (%s): %s", h->scriptPath[0] != '\0' ? h->scriptPath : h->fs_root,
-                            error_message ? error_message : "erreur inconnue");
+                            error_message ? error_message : "unknown error");
         return;
     }
     /* Script termine : seul l'UART peut encore demander un reveil (il finit de

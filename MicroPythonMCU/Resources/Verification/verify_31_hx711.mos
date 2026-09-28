@@ -9,7 +9,7 @@
 //   gain 128, 27 à gain 64), le gain choisi s'applique à la conversion suivante ;
 // - la veille (PD_SCK haute plus de 60 us) et le réveil, qui ramène le gain à 128.
 // Les codes lus par le microcontrôleur sont relus sur l'afficheur :
-//   ligne 2 "128:429497 64:214748", ligne 1 "reveil:429497".
+//   ligne 2 "128:429497 64:214748", ligne 1 "wakeup:429497".
 //
 // NB : val() sur un index de tableau via une variable de boucle .mos ne se
 // resout pas (NaN) - les indices sont donc ecrits en litteral.
@@ -35,7 +35,7 @@ pdEnd := val(hx.poweredDown, 1.9, f);
 // Ligne 2 : "128:429497 64:214748" -> colonnes 5-10 et 15-20
 r128 := (val(display.line2CharCode[5], 1.9, f) - 48) * 100000 + (val(display.line2CharCode[6], 1.9, f) - 48) * 10000 + (val(display.line2CharCode[7], 1.9, f) - 48) * 1000 + (val(display.line2CharCode[8], 1.9, f) - 48) * 100 + (val(display.line2CharCode[9], 1.9, f) - 48) * 10 + (val(display.line2CharCode[10], 1.9, f) - 48);
 r64 := (val(display.line2CharCode[15], 1.9, f) - 48) * 100000 + (val(display.line2CharCode[16], 1.9, f) - 48) * 10000 + (val(display.line2CharCode[17], 1.9, f) - 48) * 1000 + (val(display.line2CharCode[18], 1.9, f) - 48) * 100 + (val(display.line2CharCode[19], 1.9, f) - 48) * 10 + (val(display.line2CharCode[20], 1.9, f) - 48);
-// Ligne 1 : "reveil:429497" -> colonnes 8-13
+// Ligne 1 : "wakeup:429497" -> colonnes 8-13
 rUp := (val(display.line1CharCode[8], 1.9, f) - 48) * 100000 + (val(display.line1CharCode[9], 1.9, f) - 48) * 10000 + (val(display.line1CharCode[10], 1.9, f) - 48) * 1000 + (val(display.line1CharCode[11], 1.9, f) - 48) * 100 + (val(display.line1CharCode[12], 1.9, f) - 48) * 10 + (val(display.line1CharCode[13], 1.9, f) - 48);
 
 if abs(code0 - e128) < 0.5 and abs(p25 - 25) < 0.5 and abs(p27 - 27) < 0.5 and abs(g64 - 64) < 0.5 and abs(pd - 1) < 0.5 and abs(pdEnd) < 0.5 and abs(r128 - e128) < 0.5 and abs(r64 - e64) < 0.5 and abs(rUp - e128) < 0.5 then

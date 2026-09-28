@@ -30,25 +30,25 @@ static int uartdev_script_call(struct UartDevice* dev, PyObject* func, const cha
     char what[96];
 
     if (!args) {
-        devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, "echec de construction des arguments");
+        devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, "failed to build the arguments");
         return 0;   /* jamais atteint : ModelicaFormatError ne revient pas */
     }
     r = PyObject_CallObject(func, args);
     Py_DECREF(args);
     if (!r) {
-        snprintf(what, sizeof(what), "%s() a leve une exception", name);
+        snprintf(what, sizeof(what), "%s() raised an exception", name);
         devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, what);
         return 0;
     }
     n = devscript_payload(r, out, outmax);
     Py_DECREF(r);
     if (n < 0) {
-        snprintf(what, sizeof(what), "valeur de retour de %s() invalide", name);
+        snprintf(what, sizeof(what), "invalid return value from %s()", name);
         devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, what);
         return 0;
     }
     if (devscript_read_outputs(dev->py_outputs, dev->value_out, UARTDEV_MAX_VALUES) != 0) {
-        devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, "outputs() a echoue");
+        devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, "outputs() failed");
         return 0;
     }
     relay_emit_pending();
@@ -100,7 +100,7 @@ static void uartdev_script_load(struct UartDevice* dev, const char* pythonHome, 
 
     /* Valeurs initiales des sorties : celles que le script declare, s'il le fait. */
     if (devscript_read_outputs(dev->py_outputs, dev->value_out, UARTDEV_MAX_VALUES) != 0) {
-        devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, "outputs() a echoue au chargement");
+        devscript_fail(UARTDEV_COMPONENT, dev->script_path, gstate, "outputs() failed while loading");
         return;
     }
     relay_emit_pending();

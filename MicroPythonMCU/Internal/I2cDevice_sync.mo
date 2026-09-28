@@ -1,20 +1,20 @@
 within MicroPythonMCU.Internal;
 
-impure function I2cDevice_sync "Point de synchro d'un périphérique I2C esclave : interprète le front de SCL ou de SDA qui vient de se produire, appelle le script aux bons moments, et renvoie l'état de sa sortie SDA"
+impure function I2cDevice_sync "Sync point of an I2C slave peripheral: interprets the SCL or SDA edge that just occurred, calls the script at the right moments, and returns the state of its SDA output"
   input I2cDevice dev;
   input Real currentTime;
-  input Boolean sclLevel "Niveau logique lu sur SCL (tension seuillée côté Modelica)";
-  input Boolean sdaLevel "Niveau logique lu sur SDA";
-  input Real valueIn[Interfaces.I2C_DEV_MAX_VALUES] "Grandeurs venues du modèle, transmises aux gestionnaires du script (argument v)";
-  output Real valueOut[Interfaces.I2C_DEV_MAX_VALUES] "Grandeurs rendues par outputs() (maintenues entre deux appels)";
-  output Boolean sdaDriveLow "Le périphérique tire SDA à la masse (acquittement, ou bit à 0 d'un octet lu par le maître)";
-  output Boolean busy "Une phase adressée à ce périphérique est en cours (témoin d'activité de l'icône)";
-  output Integer eventSeq "Incrémenté à chaque phase d'écriture ou de lecture close - déclencheur change(eventSeq)";
-  output String lastEvent "Résumé de la dernière phase close, ex. « ecriture 0x3E : 80 01 » (journal)";
-  output String line1 "Première ligne rendue par lines() (afficheurs)";
-  output String line2 "Seconde ligne rendue par lines()";
-  // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
-  // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+  input Boolean sclLevel "Logic level read on SCL (voltage thresholded on the Modelica side)";
+  input Boolean sdaLevel "Logic level read on SDA";
+  input Real valueIn[Interfaces.I2C_DEV_MAX_VALUES] "Quantities coming from the model, passed to the script's handlers (argument v)";
+  output Real valueOut[Interfaces.I2C_DEV_MAX_VALUES] "Quantities returned by outputs() (held between two calls)";
+  output Boolean sdaDriveLow "The peripheral pulls SDA to ground (acknowledge, or 0 bit of a byte read by the master)";
+  output Boolean busy "A phase addressed to this peripheral is in progress (icon activity indicator)";
+  output Integer eventSeq "Incremented at each completed write or read phase - trigger change(eventSeq)";
+  output String lastEvent "Summary of the last completed phase, e.g. \"write 0x3E: 80 01\" (log)";
+  output String line1 "First line returned by lines() (displays)";
+  output String line2 "Second line returned by lines()";
+  // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
+  // the simulation under OpenModelica/Windows (see requirements.md, decision
   // "Comportement en cas d'exception non geree dans le script").
   external "C" I2cDevice_sync(dev, currentTime, sclLevel, sdaLevel, valueIn, valueOut, sdaDriveLow, busy, eventSeq, lastEvent, line1, line2) annotation(
     Include = "#include \"I2cDeviceImpl.c\"",
@@ -22,7 +22,7 @@ impure function I2cDevice_sync "Point de synchro d'un périphérique I2C esclave
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>
-<p><code>impure</code> : la fonction porte l'état du périphérique — comme <code>UartDevice_sync</code>. Elle n'est appelée que depuis un <code>when</code> déclenché par un front de SCL ou de SDA, jamais sur une évaluation d'essai du solveur.</p>
-<p>Rappelée plusieurs fois au même instant avec les mêmes niveaux (itérations d'événements de Modelica), elle ne fait rien : il n'y a pas de nouveau front à interpréter.</p>
+<p><code>impure</code>: the function carries the state of the peripheral — like <code>UartDevice_sync</code>. It is only called from a <code>when</code> triggered by an edge of SCL or SDA, never during a trial evaluation of the solver.</p>
+<p>Called again several times at the same instant with the same levels (Modelica event iterations), it does nothing: there is no new edge to interpret.</p>
 </html>"));
 end I2cDevice_sync;

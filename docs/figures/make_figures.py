@@ -176,8 +176,7 @@ def fig_hx711(work):
     a2.plot(t_us, dout, color=BLUE)
     style(a1, "", "PD_SCK (V)")
     style(a2, "temps depuis la première impulsion (µs)", "DOUT (V)")
-    a2.annotate("DOUT descend : donnée prête,
-l'IRQ du driver lance la lecture", (0, 0.3), (-35, 1.2),
+    a2.annotate("DOUT descend : donnée prête,\nl'IRQ du driver lance la lecture", (0, 0.3), (-35, 1.2),
                 fontsize=7, arrowprops={"arrowstyle": "->"})
     a2.text(200, -1.3, "bits lus, poids fort en tête : 0x068DB9 = 429 497 (1 kg, gain 128)",
             fontsize=8, ha="center")
@@ -188,12 +187,12 @@ l'IRQ du driver lance la lecture", (0, 0.3), (-35, 1.2),
 
 
 def fig_regulation(work):
-    c = simulate("Uart.Regulation", ["procede.y", "capteur.valueOut[1]"], 1.0, 2000, work)
+    c = simulate("Uart.Regulation", ["plant.y", "sensor.valueOut[1]"], 1.0, 2000, work)
     fig, ax = plt.subplots(figsize=(7, 2.8))
-    ax.plot(c["time"], c["procede.y"], color=BLUE, label="mesure (procede.y)")
-    ax.plot(c["time"], c["capteur.valueOut[1]"], color=ORANGE, drawstyle="steps-post",
-            label="commande reçue par SET (capteur.valueOut[1])")
-    ax.axhline(40, color=GREY, linestyle="--", linewidth=0.8, label="consigne (CONSIGNE du script)")
+    ax.plot(c["time"], c["plant.y"], color=BLUE, label="mesure (plant.y)")
+    ax.plot(c["time"], c["sensor.valueOut[1]"], color=ORANGE, drawstyle="steps-post",
+            label="commande reçue par SET (sensor.valueOut[1])")
+    ax.axhline(40, color=GREY, linestyle="--", linewidth=0.8, label="consigne (SETPOINT du script)")
     style(ax, "temps (s)", "")
     ax.legend(fontsize=8, frameon=False)
     ax.set_title("Uart.Regulation : boucle fermée à travers la seule liaison série", loc="left",

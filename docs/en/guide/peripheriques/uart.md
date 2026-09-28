@@ -42,7 +42,7 @@ They all share the same connectors and parameters; they only differ by their def
 | `UartEchoDevice` | Sends back each received byte as is | `echoEnabled = true` |
 | `UartTemperatureSensor` | Answers `AT+TEMP` with the value of its input, `AT+ID` with its identifier, and accepts a setpoint through `SET <number>` | `commandTable = "AT+TEMP=>TEMP={v1:.1f}\r\n|AT+ID=>SIM-TEMP-1\r\n|SET {o1}=>OK\r\n"`, `responseDelay = 5 ms`, `useValueInput = true`, `fixedValue = 20`, `nOut = 1` |
 | `UartGpsModule` | Sends a position frame every second on its own, without being asked | `periodicEnabled = true`, `periodicTemplate = "$GPGLL,{v1:.4f},{v2:.4f},{v3:.1f}\r\n"`, `useValueInput = true`, `nIn = 3` |
-| `UartLcd20x2` | 2 × 20 character display: shows each received line on its icon, the previous one moving down to line 2 | never replies; `comportement` fixed to `Table` |
+| `UartLcd20x2` | 2 × 20 character display: shows each received line on its icon, the previous one moving down to line 2 | never replies; `behaviour` fixed to `Table` |
 
 ## Connectors
 
@@ -60,7 +60,7 @@ They all share the same connectors and parameters; they only differ by their def
 
 | Parameter | Default | Role |
 |---|---|---|
-| `comportement` | `Table` | Where the behaviour comes from: `Table` (command table, below) or `Script` (Python file) |
+| `behaviour` | `Table` | Where the behaviour comes from: `Table` (command table, below) or `Script` (Python file) |
 | `scriptPath` | the device's script | `.py` file describing the behaviour, in `Script` mode. Each supplied device has its own in `Resources/Scripts/Device/` (`generic.py`, `echo.py`, `temperature_sensor.py`, `gps.py`), equivalent to its table |
 | `baudrate` | 1200 | Device baud rate. **It must match the microcontroller's**, otherwise received bytes are wrong, as on a real board |
 | `terminator` | `"\n"` | Character ending a received command (only the first character counts) |
@@ -70,15 +70,15 @@ They all share the same connectors and parameters; they only differ by their def
 
 | Parameter | Default | Group | Role |
 |---|---|---|---|
-| `respondEnabled` | `false` | Requête / réponse (request / reply) | Answer the commands recognised by the table |
-| `commandTable` | `""` | Requête / réponse | Table `"CMD=>REPLY|CMD=>REPLY"` (format below) |
-| `responseDelay` | 2 ms | Requête / réponse | Delay between the end of the received command and the start of the reply. Also used in `Script` mode |
-| `echoEnabled` | `false` | Requête / réponse | Send back each received byte as is, as soon as it is decoded |
-| `periodicEnabled` | `false` | Émission périodique (periodic sending) | Send spontaneously, without being asked |
-| `period` | 1 s | Émission périodique | Period of spontaneous sending (in `Script` mode: period of `on_tick` calls) |
-| `periodicTemplate` | `""` | Émission périodique | Frame sent periodically |
+| `respondEnabled` | `true` | Request / response | Answer the commands recognised by the table |
+| `commandTable` | `""` | Request / response | Table `"CMD=>REPLY|CMD=>REPLY"` (format below) |
+| `responseDelay` | 2 ms | Request / response | Delay between the end of the received command and the start of the reply. Also used in `Script` mode |
+| `echoEnabled` | `false` | Request / response | Send back each received byte as is, as soon as it is decoded |
+| `periodicEnabled` | `false` | Periodic transmission | Send spontaneously, without being asked |
+| `period` | 1 s | Periodic transmission | Period of spontaneous sending (in `Script` mode: period of `on_tick` calls) |
+| `periodicTemplate` | `""` | Periodic transmission | Frame sent periodically |
 
-### Inputs / outputs (*Entrées / sorties* tab)
+### Inputs / outputs (*Inputs / outputs* tab)
 
 | Parameter | Default | Role |
 |---|---|---|
@@ -88,7 +88,7 @@ They all share the same connectors and parameters; they only differ by their def
 | `nOut` | 1 | Number of quantities returned to the model on `valueOut` (4 at most) |
 | `valueOutStart` | 0 | Value of `valueOut` before any capture |
 
-### Electrical (*Électrique* tab)
+### Electrical (*Electrical* tab)
 
 | Parameter | Default | Role |
 |---|---|---|
@@ -118,7 +118,7 @@ With this table, the program reads the temperature over the serial link and send
 
 ## Describing the device with a Python script
 
-With `comportement = Script`, the `scriptPath` file replaces the table. It defines up to three functions, all optional:
+With `behaviour = Script`, the `scriptPath` file replaces the table. It defines up to three functions, all optional:
 
 ```python
 state = 'STOPPED'       # module variables: the device state,

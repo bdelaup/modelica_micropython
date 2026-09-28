@@ -1,5 +1,5 @@
 within MicroPythonMCU.Internal;
-function ResolvePath "Résout une URI (modelica://..., file://...) en chemin de fichier, et rend tout autre chemin tel quel (relatif : résolu plus tard depuis le dossier de simulation) - loadResource échoue sur une chaîne vide ou un chemin simple, d'où ce tri, cf. requirements.md décision Système de fichiers"
+function ResolvePath "Resolves a URI (modelica://..., file://...) into a file path, and returns any other path unchanged (relative: resolved later from the simulation folder) - loadResource fails on an empty string or a plain path, hence this sorting, see requirements.md decision Système de fichiers"
   input String path;
   output String resolved;
 algorithm

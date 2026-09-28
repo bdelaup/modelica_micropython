@@ -1,20 +1,20 @@
 within MicroPythonMCU.Internal;
 
-impure function UartDevice_sync "Point de synchro d'un périphérique série externe : fait avancer émission et réception, livre les lignes reçues, arme les émissions, et renvoie la prochaine échéance"
+impure function UartDevice_sync "Sync point of an external serial device: advances transmission and reception, delivers the received lines, arms the transmissions, and returns the next deadline"
   input UartDevice dev;
   input Real currentTime;
-  input Boolean rxLevel "Niveau logique lu sur la broche de réception (tension seuillée côté Modelica)";
-  input Real valueIn[Interfaces.UART_DEV_MAX_VALUES] "Grandeurs venues du modèle, substituées par {vN} dans les trames émises";
-  output Real valueOut[Interfaces.UART_DEV_MAX_VALUES] "Grandeurs capturées par {oN} dans les trames reçues (maintenues entre deux trames)";
-  output Boolean txActive "Une trame est en cours d'émission (témoin de l'icône)";
-  output Boolean txLevel "Niveau à tenir sur TX jusqu'au point de synchro suivant (repos = haut) : nextWakeTime tombe sur le prochain CHANGEMENT de niveau de la trame";
-  output Boolean rxBusy "Une trame est en cours de réception (témoin d'activité de l'icône)";
-  output Integer eventSeq "Incrémenté à chaque ligne reçue et à chaque charge utile émise - déclencheur d'edge-detection change(eventSeq), motif de Display0.seq";
-  output String lastRx "Dernière ligne complète reçue (journal, afficheur)";
-  output String lastTx "Dernière charge utile émise (journal)";
-  output Real nextWakeTime "Plus proche échéance : front à émettre, fin de trame, milieu du bit de stop d'une trame reçue, réponse armée ou tick périodique";
-  // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
-  // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+  input Boolean rxLevel "Logic level read on the receive pin (voltage thresholded on the Modelica side)";
+  input Real valueIn[Interfaces.UART_DEV_MAX_VALUES] "Quantities coming from the model, substituted by {vN} in the transmitted frames";
+  output Real valueOut[Interfaces.UART_DEV_MAX_VALUES] "Quantities captured by {oN} from the received frames (held between two frames)";
+  output Boolean txActive "A frame is being transmitted (icon indicator)";
+  output Boolean txLevel "Level to hold on TX until the next sync point (idle = high): nextWakeTime falls on the next level CHANGE of the frame";
+  output Boolean rxBusy "A frame is being received (icon activity indicator)";
+  output Integer eventSeq "Incremented at each received line and each transmitted payload - trigger for the edge detection change(eventSeq), same pattern as Display0.seq";
+  output String lastRx "Last complete line received (log, display)";
+  output String lastTx "Last payload transmitted (log)";
+  output Real nextWakeTime "Nearest deadline: edge to transmit, end of frame, middle of the stop bit of a received frame, armed reply or periodic tick";
+  // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
+  // the simulation under OpenModelica/Windows (see requirements.md, decision
   // "Comportement en cas d'exception non geree dans le script").
   external "C" UartDevice_sync(dev, currentTime, rxLevel, valueIn, valueOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) annotation(
     Include = "#include \"UartDeviceImpl.c\"",
@@ -22,7 +22,7 @@ impure function UartDevice_sync "Point de synchro d'un périphérique série ext
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>
-<p><code>impure</code> : la fonction porte l'état du périphérique et ne renvoie pas la même chose pour les mêmes arguments — comme <code>PyRuntime_sync</code>. Elle n'est appelée que depuis un <code>when</code>, jamais sur une évaluation d'essai du solveur.</p>
-<p>Rappelée plusieurs fois au même instant simulé (Modelica itère sur les événements), elle ne refait rien : toutes ses étapes sont pilotées par échéances ou consomment ce qu'elles traitent.</p>
+<p><code>impure</code>: the function carries the state of the device and does not return the same thing for the same arguments — like <code>PyRuntime_sync</code>. It is only called from a <code>when</code>, never during a trial evaluation of the solver.</p>
+<p>Called again several times at the same simulated instant (Modelica iterates over events), it does nothing more: all its steps are driven by deadlines or consume what they process.</p>
 </html>"));
 end UartDevice_sync;

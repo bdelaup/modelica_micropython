@@ -1,16 +1,16 @@
 within MicroPythonMCU.Examples.FileSystem;
 
-model Boot "Système de fichiers : sans script, le microcontrôleur exécute boot.py puis main.py d'une image de flash recopiée à chaque simulation ; main.py enregistre les mesures de l'ADC (GP0) dans /data/mesures.csv"
+model Boot "File system: with no script, the microcontroller runs boot.py then main.py of a flash image copied at each simulation; main.py logs the ADC measurements (GP0) to /data/measurements.csv"
   extends Modelica.Icons.Example;
-  MCU mcu(scriptPath = "", fsEnabled = true, fsSource = "modelica://MicroPythonMCU/Resources/FileSystems/datalogger") "scriptPath vide : boot.py puis main.py de l'image Resources/FileSystems/datalogger ; copie créée dans le dossier de simulation (fsWorkspace = \".\" par défaut), ouverte dans l'Explorateur en fin de simulation" annotation(
+  MCU mcu(scriptPath = "", fsEnabled = true, fsSource = "modelica://MicroPythonMCU/Resources/FileSystems/datalogger") "empty scriptPath: boot.py then main.py of the image Resources/FileSystems/datalogger; copy created in the simulation folder (fsWorkspace = \".\" by default), opened in Explorer at the end of the simulation" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Sources.RampVoltage ramp(V = 3.3, duration = 1) "tension mesurée par l'ADC (GP0) : rampe de 0 à 3,3 V en 1 s" annotation(
+  Modelica.Electrical.Analog.Sources.RampVoltage ramp(V = 3.3, duration = 1) "voltage measured by the ADC (GP0): ramp from 0 to 3.3 V in 1 s" annotation(
     Placement(transformation(origin = {-110, -30}, extent = {{-15, -15}, {15, 15}}, rotation = -90)));
-  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limite le courant de led1 (GP1)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limits the current of led1 (GP1)" annotation(
     Placement(transformation(origin = {-90, 10}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led1 "GP1 : auto-contrôle de main.py réussi" annotation(
+  MicroPythonMCU.Peripherals.LED led1 "GP1: self-check of main.py passed" annotation(
     Placement(transformation(origin = {-140, 10}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -29,13 +29,13 @@ equation
     Diagram(coordinateSystem(extent = {{-180, -120}, {80, 80}})),
     experiment(StopTime = 1.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
-<p>Scénario de vérification 25 (cf. <code>requirements.md</code>, décision « Système de fichiers ») : le système de fichiers est actif (<code>fsEnabled</code>) et <code>scriptPath</code> est vide, donc le microcontrôleur démarre comme une vraie carte — <code>boot.py</code> puis <code>main.py</code>, lus à la racine de la flash.</p>
-<p>À chaque simulation, l'image <code>Resources/FileSystems/datalogger</code> (<code>fsSource</code>) est recopiée dans un nouveau dossier de l'espace de travail (<code>fsWorkspace = \".\"</code> par défaut : le dossier de simulation), nommé <code>mcu_datalogger_&lt;date&gt;_&lt;heure&gt;</code> — son chemin exact est annoncé dans le journal de simulation, au début et à la fin, et l'Explorateur Windows s'ouvre dessus en fin de simulation (<code>fsOpenExplorer</code>). L'image d'origine n'est jamais modifiée : chaque simulation repart du même état et produit les mêmes fichiers.</p>
+<p>Verification scenario 25 (see <code>requirements.md</code>, decision \"Système de fichiers\"): the file system is enabled (<code>fsEnabled</code>) and <code>scriptPath</code> is empty, so the microcontroller starts like a real board — <code>boot.py</code> then <code>main.py</code>, read at the root of the flash.</p>
+<p>At each simulation, the image <code>Resources/FileSystems/datalogger</code> (<code>fsSource</code>) is copied into a new folder of the workspace (<code>fsWorkspace = \".\"</code> by default: the simulation folder), named <code>mcu_datalogger_&lt;date&gt;_&lt;time&gt;</code> — its exact path is announced in the simulation log, at the start and at the end, and Windows Explorer opens on it at the end of the simulation (<code>fsOpenExplorer</code>). The original image is never modified: each simulation starts again from the same state and produces the same files.</p>
 <ul>
-<li><code>boot.py</code> crée le dossier <code>/data</code> ;</li>
-<li><code>main.py</code> lit ses réglages dans <code>/config.txt</code>, importe le module <code>Journal</code> depuis <code>/lib</code>, puis enregistre toutes les 100 ms la tension lue par l'ADC sur <code>GP0</code> (rampe de 0 à 3,3 V) dans <code>/data/mesures.csv</code> ;</li>
-<li>il se contrôle enfin lui-même (relecture du fichier, <code>os.listdir</code>, <code>os.stat</code>, tentative de sortir de la flash par <code>../..</code>) et allume <code>led1</code> (<code>GP1</code>) si tout est conforme.</li>
+<li><code>boot.py</code> creates the <code>/data</code> folder;</li>
+<li><code>main.py</code> reads its settings from <code>/config.txt</code>, imports the <code>DataLog</code> module from <code>/lib</code>, then logs every 100 ms the voltage read by the ADC on <code>GP0</code> (ramp from 0 to 3.3 V) to <code>/data/measurements.csv</code>;</li>
+<li>it finally checks itself (file read-back, <code>os.listdir</code>, <code>os.stat</code>, attempt to escape the flash through <code>../..</code>) and lights <code>led1</code> (<code>GP1</code>) if everything is as expected.</li>
 </ul>
-<p>Pour relancer sur ses propres fichiers : pointer <code>fsSource</code> sur un dossier contenant <code>boot.py</code>/<code>main.py</code>, et éventuellement <code>fsWorkspace</code> sur le dossier où retrouver les copies. Variante avec un script à la place de <code>main.py</code> : <code>Examples.FileSystem.Script</code>.</p>
+<p>To run it on your own files: point <code>fsSource</code> to a folder containing <code>boot.py</code>/<code>main.py</code>, and possibly <code>fsWorkspace</code> to the folder where the copies should go. Variant with a script instead of <code>main.py</code>: <code>Examples.FileSystem.Script</code>.</p>
 </html>"));
 end Boot;

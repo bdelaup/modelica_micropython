@@ -19,7 +19,7 @@
    de REQUIRE_WORKER) : g_current y designe le handle en construction. */
 static PyObject* native_fs_config(PyObject* self, PyObject* args) {
     if (!g_current) {
-        PyErr_SetString(PyExc_RuntimeError, "fs_config n'est appelable que pendant l'initialisation du shim");
+        PyErr_SetString(PyExc_RuntimeError, "fs_config can only be called while the shim initialises");
         return NULL;
     }
     return Py_BuildValue("(Nssss)", PyBool_FromLong(g_current->fsEnabled), g_current->fsSource,
@@ -30,7 +30,7 @@ static PyObject* native_fs_set_root(PyObject* self, PyObject* args) {
     const char* root;
     if (!PyArg_ParseTuple(args, "s", &root)) return NULL;
     if (!g_current) {
-        PyErr_SetString(PyExc_RuntimeError, "fs_set_root n'est appelable que pendant l'initialisation du shim");
+        PyErr_SetString(PyExc_RuntimeError, "fs_set_root can only be called while the shim initialises");
         return NULL;
     }
     free(g_current->fs_root);
@@ -55,7 +55,7 @@ static void fs_at_exit(struct PyRuntimeHandle* h) {
     if (!h->fs_root) {
         return;
     }
-    ModelicaFormatMessage("Systeme de fichiers : fin de simulation, fichiers dans %s\n", h->fs_root);
+    ModelicaFormatMessage("File system: end of simulation, files in %s\n", h->fs_root);
     if (!h->fsOpenExplorer) {
         return;
     }

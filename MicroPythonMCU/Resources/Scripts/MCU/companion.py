@@ -1,5 +1,5 @@
-"""Module auxiliaire pose a cote de import_demo.py : demontre addScriptDirToPath
-(le dossier du script principal est ajoute au chemin de recherche des modules)."""
+"""Helper module placed next to import_demo.py: demonstrates addScriptDirToPath
+(the folder of the main script is added to the module search path)."""
 
 
 def check():

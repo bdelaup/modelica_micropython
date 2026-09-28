@@ -1,6 +1,6 @@
 within MicroPythonMCU.Peripherals;
 
-model UartTemperatureSensor "Capteur de température série : répond AT+TEMP par la valeur mesurée, et accepte une consigne par SET"
+model UartTemperatureSensor "Serial temperature sensor: answers AT+TEMP with the measured value, and accepts a setpoint through SET"
   extends Internal.PartialUartDevice(
     respondEnabled = true,
     commandTable = "AT+TEMP=>TEMP={v1:.1f}\r\n|AT+ID=>SIM-TEMP-1\r\n|SET {o1}=>OK\r\n",
@@ -14,13 +14,13 @@ model UartTemperatureSensor "Capteur de température série : répond AT+TEMP pa
   annotation(
     Icon(graphics = {Text(textColor = {255, 255, 255}, extent = {{-90, -22}, {90, -40}}, textString = "TEMP", textStyle = {TextStyle.Bold})}),
     Documentation(info = "<html>
-<p>Appareil dérivé de <code>Internal.PartialUartDevice</code> par la seule redéfinition de paramètres — aucune logique recodée. Il répond à trois commandes, toutes terminées par un saut de ligne :</p>
+<p>Device derived from <code>Internal.PartialUartDevice</code> by overriding parameters only — no logic coded again. It answers three commands, all ending with a line feed:</p>
 <ul>
-<li><code>AT+TEMP</code> → <code>TEMP=&lt;valeur&gt;</code>, où la valeur est celle présente sur le connecteur <code>valueIn[1]</code> au moment de la question. On y branche une rampe, un modèle thermique, ou n'importe quelle grandeur du modèle.</li>
-<li><code>AT+ID</code> → une chaîne d'identification fixe, comme tout module AT réel.</li>
-<li><code>SET &lt;nombre&gt;</code> → <code>OK</code>, et le nombre reçu ressort sur <code>valueOut[1]</code>.</li>
+<li><code>AT+TEMP</code> → <code>TEMP=&lt;value&gt;</code>, where the value is the one present on the <code>valueIn[1]</code> connector when the question arrives. Connect a ramp, a thermal model, or any quantity of the model to it.</li>
+<li><code>AT+ID</code> → a fixed identification string, like any real AT module.</li>
+<li><code>SET &lt;number&gt;</code> → <code>OK</code>, and the received number comes out on <code>valueOut[1]</code>.</li>
 </ul>
-<p>Cette dernière commande est ce qui fait de l'appareil un <strong>actionneur autant qu'un capteur</strong> : le microcontrôleur lit la mesure par la liaison série et renvoie une consigne par la même liaison, ce qui permet de refermer une boucle de régulation à l'intérieur du modèle, sans aucun fil supplémentaire. Voir <code>Examples.Uart.Regulation</code>.</p>
-<p><code>responseDelay</code> vaut 5 ms : un appareil réel ne répond pas instantanément, et le programme embarqué doit donc attendre sa réponse plutôt que de la supposer déjà arrivée.</p>
+<p>This last command is what makes the device <strong>an actuator as much as a sensor</strong>: the microcontroller reads the measurement through the serial link and sends a setpoint back through the same link, which lets a control loop be closed inside the model, without any extra wire. See <code>Examples.Uart.Regulation</code>.</p>
+<p><code>responseDelay</code> is 5 ms: a real device does not answer instantly, so the embedded program must wait for its reply rather than assume it has already arrived.</p>
 </html>"));
 end UartTemperatureSensor;

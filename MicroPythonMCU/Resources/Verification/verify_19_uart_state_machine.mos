@@ -16,10 +16,10 @@ b := getErrorString();
 
 f := "UartStateMachine_res.mat";
 
-eAvant := val(appareil.valueOut[1], 0.02, f);   // 0 : a l'arret avant START
-eMarche := val(appareil.valueOut[1], 0.15, f);  // 1 : en marche
-eApres := val(appareil.valueOut[1], 0.38, f);   // 0 : de nouveau a l'arret apres STOP
-nFin := val(appareil.valueOut[2], 0.38, f);     // 2 : exactement deux lectures servies
+eAvant := val(device.valueOut[1], 0.02, f);   // 0 : a l'arret avant START
+eMarche := val(device.valueOut[1], 0.15, f);  // 1 : en marche
+eApres := val(device.valueOut[1], 0.38, f);   // 0 : de nouveau a l'arret apres STOP
+nFin := val(device.valueOut[2], 0.38, f);     // 2 : exactement deux lectures servies
 vTemoin := val(mcu.GP7.v, 0.38, f);             // haut : chaque reponse conforme a l'etat
 
 if eAvant < 0.5 and eMarche > 0.5 and eApres < 0.5 and abs(nFin - 2) < 0.5 and vTemoin > 2.0 then

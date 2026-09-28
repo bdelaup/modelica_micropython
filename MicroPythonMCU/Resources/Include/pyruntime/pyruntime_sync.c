@@ -15,8 +15,8 @@
 static int worker_context_ok(void) {
     if (!g_current || GetCurrentThreadId() != g_current->worker_thread_id) {
         PyErr_SetString(PyExc_RuntimeError,
-            "machine et time ne sont utilisables que depuis le script du microcontroleur "
-            "- un script de peripherique serie s'execute hors de son thread");
+            "machine and time can only be used from the microcontroller script "
+            "- a peripheral script runs outside its thread");
         return 0;
     }
     return 1;

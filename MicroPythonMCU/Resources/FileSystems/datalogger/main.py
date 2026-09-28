@@ -1,37 +1,37 @@
-# main.py : execute apres boot.py. Enregistreur de mesures : lit la tension
-# sur GP0 (ADC) a intervalle regulier et l'ajoute a /data/mesures.csv.
-# Les reglages viennent de /config.txt, le module Journal de /lib.
+# main.py: run after boot.py. Data logger: reads the voltage on GP0 (ADC)
+# at regular intervals and appends it to /data/measurements.csv.
+# The settings come from /config.txt, the DataLog module from /lib.
 import os
 import time
 from machine import ADC, Pin
-from journal import Journal
+from datalog import DataLog
 
-reglages = {}
+settings = {}
 with open('config.txt') as f:
-    for ligne in f:
-        if '=' in ligne:
-            cle, valeur = ligne.strip().split('=', 1)
-            reglages[cle] = valeur
-periode_ms = int(reglages['periode_ms'])
-mesures = int(reglages['mesures'])
+    for line in f:
+        if '=' in line:
+            key, value = line.strip().split('=', 1)
+            settings[key] = value
+period_ms = int(settings['period_ms'])
+samples = int(settings['samples'])
 
 adc = ADC(0)
-journal = Journal('/data/mesures.csv', 't_ms;tension_V')
-for i in range(mesures):
-    tension = adc.read_u16() * 3.3 / 65535
-    journal.ajoute('%d;%.3f' % (time.ticks_ms(), tension))
-    time.sleep_ms(periode_ms)
+log = DataLog('/data/measurements.csv', 't_ms;voltage_V')
+for i in range(samples):
+    voltage = adc.read_u16() * 3.3 / 65535
+    log.add('%d;%.3f' % (time.ticks_ms(), voltage))
+    time.sleep_ms(period_ms)
 
-# Auto-controle (utilise par le scenario de verification) : la LED sur GP1
-# s'allume si tout ce qui precede s'est passe comme prevu.
-with open('/data/mesures.csv') as f:
-    lignes = f.read().split('\n')
-ok = lignes[0] == 't_ms;tension_V' and len(lignes) == mesures + 2 and lignes[-1] == ''
-ok = ok and [int(l.split(';')[0]) for l in lignes[1:-1]] == [i * periode_ms for i in range(mesures)]
+# Self-check (used by the verification scenario): the LED on GP1
+# lights up if everything above went as expected.
+with open('/data/measurements.csv') as f:
+    lines = f.read().split('\n')
+ok = lines[0] == 't_ms;voltage_V' and len(lines) == samples + 2 and lines[-1] == ''
+ok = ok and [int(l.split(';')[0]) for l in lines[1:-1]] == [i * period_ms for i in range(samples)]
 ok = ok and os.getcwd() == '/' and os.stat('/data')[0] == 0x4000
-ok = ok and os.listdir('/lib') == ['journal.py']      # pas de __pycache__ dans la flash
-with open('../../hors_flash.txt', 'w') as f:          # ".." s'arrete a la racine :
-    f.write('reste dans la flash\n')                   # le fichier atterrit en /hors_flash.txt
-ok = ok and os.listdir('/') == ['boot.py', 'config.txt', 'data', 'hors_flash.txt', 'lib', 'main.py']
-print('main.py :', len(lignes) - 2, 'mesures enregistrees, auto-controle', 'OK' if ok else 'ECHEC')
+ok = ok and os.listdir('/lib') == ['datalog.py']       # no __pycache__ in the flash
+with open('../../outside_flash.txt', 'w') as f:        # ".." stops at the root:
+    f.write('stays in the flash\n')                     # the file lands in /outside_flash.txt
+ok = ok and os.listdir('/') == ['boot.py', 'config.txt', 'data', 'lib', 'main.py', 'outside_flash.txt']
+print('main.py:', len(lines) - 2, 'samples logged, self-check', 'OK' if ok else 'FAILED')
 Pin(1, Pin.OUT).value(1 if ok else 0)

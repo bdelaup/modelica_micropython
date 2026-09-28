@@ -4,6 +4,9 @@
 
 <!-- ILLUSTRATION mcu-icone : icône du bloc MCU exportée d'OMEdit en SVG, avec le connecteur DISPLAY (cf. docs/ILLUSTRATIONS.md) -->
 
+!!! note "Libellés en anglais"
+    La bibliothèque est en anglais : les onglets, les groupes et les descriptions de la boîte de paramètres s'affichent en anglais dans OMEdit. Cette page les cite tels qu'ils apparaissent, avec leur rôle en français.
+
 ## Connecteurs
 
 | Connecteur | Type | Rôle |
@@ -28,16 +31,16 @@ Une broche que le programme n'utilise pas peut rester non connectée.
 
 Double-cliquer sur le `MCU` ouvre sa boîte de paramètres. Les valeurs par défaut conviennent à la plupart des usages : seul le chemin du script est à régler.
 
-<!-- ILLUSTRATION mcu-parametres : les quatre onglets de la boîte de paramètres du MCU (General, Temps d'exécution, Électrique, Système de fichiers) (cf. docs/ILLUSTRATIONS.md) -->
+<!-- ILLUSTRATION mcu-parametres : les quatre onglets de la boîte de paramètres du MCU (General, Execution time, Electrical, File system) (cf. docs/ILLUSTRATIONS.md) -->
 
 ### Script Python
 
-Onglet *General*, groupe « Script Python ».
+Onglet *General*, groupe « Python script ».
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
 | `scriptPath` | `Resources/Scripts/MCU/demo.py` | **Programme à exécuter** (bouton *…* pour le choisir). Avec un système de fichiers actif, il est exécuté après `boot.py`, à la place de `main.py` ; vide, c'est le `main.py` de la flash qui s'exécute |
-| `addScriptDirToPath` | `true` | Rend importables les fichiers `.py` posés à côté du script (`import mon_module`), comme sur la carte, où la racine de la flash est dans le chemin d'import |
+| `addScriptDirToPath` | `true` | Rend importables les fichiers `.py` posés à côté du script (`import my_module`), comme sur la carte, où la racine de la flash est dans le chemin d'import |
 | `libraryPath` | `""` | Facultatif : un fichier `.py` quelconque d'un dossier de bibliothèque partagée. Son dossier est ajouté au chemin d'import |
 
 Un programme se découpe donc comme sur la carte : `main.py` + des modules, ou un driver du commerce posé à côté du programme qui l'importe (exemples `Program.Imports`, `I2c.GroveLcd`, `Weighing.KitchenScale`).
@@ -52,7 +55,7 @@ Onglet *General*.
 
 ### Temps d'exécution
 
-Onglet *Temps d'exécution*.
+Onglet *Execution time*.
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
@@ -62,20 +65,20 @@ Le calcul Python pur, la création d'une broche, l'ADC, le PWM et la lecture de 
 
 ### Électrique
 
-Onglet *Électrique*. Les valeurs par défaut approchent un RP2040 alimenté en 3,3 V.
+Onglet *Electrical*. Les valeurs par défaut approchent un RP2040 alimenté en 3,3 V.
 
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
-| `VOH` | 3,3 V | Niveaux logiques | Tension de sortie à l'état haut |
-| `VOL` | 0 V | Niveaux logiques | Tension de sortie à l'état bas |
-| `VIH` | 2,0 V | Niveaux logiques | Au-dessus, une entrée est lue à 1 |
-| `VIL` | 0,8 V | Niveaux logiques | Au-dessous, une entrée est lue à 0 |
-| `ROut` | 100 Ω | Étages de sortie | Résistance série de chaque sortie (courant que peut fournir la broche) |
-| `ledSeriesR` | 330 Ω | Étages de sortie | Résistance série de la LED embarquée |
+| `VOH` | 3,3 V | Logic levels | Tension de sortie à l'état haut |
+| `VOL` | 0 V | Logic levels | Tension de sortie à l'état bas |
+| `VIH` | 2,0 V | Logic levels | Au-dessus, une entrée est lue à 1 |
+| `VIL` | 0,8 V | Logic levels | Au-dessous, une entrée est lue à 0 |
+| `ROut` | 100 Ω | Output stages | Résistance série de chaque sortie (courant que peut fournir la broche) |
+| `ledSeriesR` | 330 Ω | Output stages | Résistance série de la LED embarquée |
 
 ### Système de fichiers
 
-Onglet *Système de fichiers*, groupe « Flash simulée ». Détail de ce que voit le programme : [API, système de fichiers](api.md#systeme-de-fichiers-open-et-os).
+Onglet *File system*, groupe « Simulated flash ». Détail de ce que voit le programme : [API, système de fichiers](api.md#systeme-de-fichiers-open-et-os).
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|

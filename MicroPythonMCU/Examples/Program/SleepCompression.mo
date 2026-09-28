@@ -1,12 +1,12 @@
 within MicroPythonMCU.Examples.Program;
 
-model SleepCompression "Scénario de vérification v0 n°2 : deux sleep(3600) simulés ne doivent pas prendre une heure de temps réel chacun"
+model SleepCompression "v0 verification scenario no. 2: two simulated sleep(3600) must not each take an hour of real time"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/sleep_long.py"), tickPeriod = 60) "scriptPath = Verification/sleep_long.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Basic.Resistor led(R = 1000) "Charge simulant une LED sur GP0" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor led(R = 1000) "Load simulating an LED on GP0" annotation(
     Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -19,6 +19,6 @@ equation
     Diagram(coordinateSystem(extent = {{-160, -120}, {80, 80}})),
     experiment(StopTime = 7250, Interval = 10),
     Documentation(info = "<html>
-<p>Succès attendu : la simulation de 7250 s de temps simulé (deux sleep d'1 h) se termine en quelques secondes de temps réel, pas en ~2 h. <code>mcu.GP0.v</code> bascule à t=3600 s et t=7200 s.</p>
+<p>Expected result: the simulation of 7250 s of simulated time (two 1 h sleeps) finishes in a few seconds of real time, not in ~2 h. <code>mcu.GP0.v</code> toggles at t=3600 s and t=7200 s.</p>
 </html>"));
 end SleepCompression;

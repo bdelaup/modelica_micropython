@@ -6,6 +6,6 @@ btn = Pin(1, Pin.IN)
 
 led.off()
 time.sleep(3600)
-print("reveil, GP1 =", btn.value())
+print("woken up, GP1 =", btn.value())
 led.on()
 time.sleep(3600)

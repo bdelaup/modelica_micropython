@@ -1,42 +1,42 @@
 # ---------------------------------------------------------------------------
-# Script de Peripherals.I2cGroveLcdRgb : ecran Grove - LCD RGB Backlight.
+# Script of Peripherals.I2cGroveLcdRgb: Grove - LCD RGB Backlight screen.
 #
-# Un meme module porte DEUX circuits sur le bus I2C, donc deux adresses :
-#   0x3E  JHD1313 : controleur d'ecran caractere 16x2, compatible HD44780
-#   0x62  PCA9633 : driver de LED a 4 voies (PWM), qui pilote le retroeclairage
-#         RGB (voie 0 = bleu, voie 1 = vert, voie 2 = rouge)
-# Le composant decode le protocole I2C ; ce script ne fait qu'emuler, octet par
-# octet, ce que ces deux circuits font des donnees recues - en suivant leurs
-# fiches techniques, sans rien savoir du programme qui les pilote. N'importe
-# quel driver ecrit pour le vrai module doit donc fonctionner tel quel.
+# A single module carries TWO chips on the I2C bus, hence two addresses:
+#   0x3E  JHD1313: 16x2 character display controller, HD44780-compatible
+#   0x62  PCA9633: 4-channel (PWM) LED driver, which drives the RGB
+#         backlight (channel 0 = blue, channel 1 = green, channel 2 = red)
+# The component decodes the I2C protocol; this script only emulates, byte by
+# byte, what these two chips do with the received data - following their
+# datasheets, without knowing anything about the program driving them. Any
+# driver written for the real module must therefore work unchanged.
 #
-# Sorties : outputs() -> (rouge, vert, bleu, ecran allume), intensites 0-255 ;
-#           lines()   -> les deux lignes de 16 caracteres visibles.
+# Outputs: outputs() -> (red, green, blue, display on), intensities 0-255;
+#          lines()   -> the two visible 16-character lines.
 # ---------------------------------------------------------------------------
 
-LCD_ADDR = 0x3E          # toute autre adresse du composant est le driver de LED
+LCD_ADDR = 0x3E          # any other address of the component is the LED driver
 
-COLS = 16                # caracteres visibles par ligne
-LINE_LEN = 40            # la memoire d'affichage (DDRAM) contient 40 caracteres par ligne
-CLEAR_DURATION = 1.52e-3 # clear et home sont lents (datasheet HD44780) ; le reste prend ~40 us
+COLS = 16                # visible characters per line
+LINE_LEN = 40            # the display memory (DDRAM) holds 40 characters per line
+CLEAR_DURATION = 1.52e-3 # clear and home are slow (HD44780 datasheet); the rest takes ~40 us
 
 # ======================= JHD1313 (HD44780) =======================
-# Etat a la mise sous tension (reset interne) : ecran eteint, memoire vide,
-# curseur au debut, ecriture de gauche a droite.
+# State at power-up (internal reset): display off, memory empty,
+# cursor at the start, writing from left to right.
 ddram = bytearray(b' ' * 128)
-ac = 0                   # compteur d'adresse (position d'ecriture)
-increment = True         # I/D : le curseur avance apres chaque caractere
-entry_shift = False      # S : l'affichage defile a chaque caractere
+ac = 0                   # address counter (write position)
+increment = True         # I/D: the cursor moves on after each character
+entry_shift = False      # S: the display scrolls at each character
 display_on = False
-two_lines = True         # N : 2 lignes (le module Grove est toujours cable en 16x2)
-offset = 0               # decalage de l'affichage (commandes de defilement)
-to_cgram = False         # donnees dirigees vers les caracteres personnalises (non affiches ici)
-busy_until = 0.0         # fin de la derniere commande lente (clear, home)
+two_lines = True         # N: 2 lines (the Grove module is always wired as 16x2)
+offset = 0               # display offset (scroll commands)
+to_cgram = False         # data sent to the custom characters (not shown here)
+busy_until = 0.0         # end of the last slow command (clear, home)
 
 
 def _next_address(a, step):
-    # En mode 2 lignes, la ligne 1 occupe 0x00-0x27 et la ligne 2 0x40-0x67 :
-    # le compteur saute de l'une a l'autre.
+    # In 2-line mode, line 1 occupies 0x00-0x27 and line 2 0x40-0x67:
+    # the counter jumps from one to the other.
     a = (a + step) & 0x7F
     if two_lines:
         if step > 0 and a == 0x28:
@@ -52,20 +52,20 @@ def _next_address(a, step):
 
 def lcd_command(cmd, t):
     global ac, increment, entry_shift, display_on, two_lines, offset, to_cgram, busy_until
-    if cmd & 0x80:                      # position d'ecriture (adresse DDRAM)
+    if cmd & 0x80:                      # write position (DDRAM address)
         ac = cmd & 0x7F
         to_cgram = False
-    elif cmd & 0x40:                    # caracteres personnalises (CGRAM) : acceptes, pas affiches
+    elif cmd & 0x40:                    # custom characters (CGRAM): accepted, not shown
         to_cgram = True
     elif cmd & 0x20:                    # function set
         two_lines = bool(cmd & 0x08)
-    elif cmd & 0x10:                    # decalage du curseur ou de tout l'affichage
+    elif cmd & 0x10:                    # shift of the cursor or of the whole display
         step = 1 if cmd & 0x04 else -1
         if cmd & 0x08:
             offset = (offset + step) % LINE_LEN
         else:
             ac = _next_address(ac, step)
-    elif cmd & 0x08:                    # display on/off, curseur, clignotement
+    elif cmd & 0x08:                    # display on/off, cursor, blink
         display_on = bool(cmd & 0x04)
     elif cmd & 0x04:                    # entry mode
         increment = bool(cmd & 0x02)
@@ -94,14 +94,14 @@ def lcd_data(byte):
 
 
 def lcd_write(data, t):
-    # Chaque octet de donnee est precede d'un octet de CONTROLE :
-    #   bit 7 (Co) : 1 = un autre octet de controle suivra, 0 = tout le reste
-    #                de la transaction est de la donnee
-    #   bit 6 (RS) : 0 = commande, 1 = caractere a afficher
-    # Le driver de reference envoie [0x80, commande] et [0x40, caractere].
+    # Each data byte is preceded by a CONTROL byte:
+    #   bit 7 (Co): 1 = another control byte will follow, 0 = all the rest
+    #               of the transaction is data
+    #   bit 6 (RS): 0 = command, 1 = character to display
+    # The reference driver sends [0x80, command] and [0x40, character].
     if t < busy_until:
-        # Sur le vrai module, l'octet serait perdu : le controleur est occupe.
-        print("t=%.4f s : ecran occupe (clear/home en cours depuis moins de %.2f ms), octets ignores :"
+        # On the real module, the byte would be lost: the controller is busy.
+        print("t=%.4f s: display busy (clear/home started less than %.2f ms ago), bytes ignored:"
               % (t, CLEAR_DURATION * 1e3), data.hex(' '))
         return
     i = 0
@@ -124,35 +124,35 @@ def _visible(base):
     out = ''
     for col in range(COLS):
         c = ddram[base + (offset + col) % LINE_LEN]
-        out += chr(c) if 0x20 <= c <= 0x7D and c != 0x5C else ' '   # ROM A00 : ASCII de 0x20 a 0x7D, sauf 0x5C (yen)
+        out += chr(c) if 0x20 <= c <= 0x7D and c != 0x5C else ' '   # ROM A00: ASCII from 0x20 to 0x7D, except 0x5C (yen)
     return out
 
 
 # ======================= PCA9633 =======================
-# Registres : 0 MODE1, 1 MODE2, 2-5 PWM0-PWM3, 6 GRPPWM, 7 GRPFREQ, 8 LEDOUT,
-# 9-12 adresses secondaires. Valeurs a la mise sous tension (datasheet) :
-# MODE1 = 0x11 (oscillateur en veille), LEDOUT = 0 (toutes les voies eteintes).
+# Registers: 0 MODE1, 1 MODE2, 2-5 PWM0-PWM3, 6 GRPPWM, 7 GRPFREQ, 8 LEDOUT,
+# 9-12 secondary addresses. Values at power-up (datasheet):
+# MODE1 = 0x11 (oscillator asleep), LEDOUT = 0 (all channels off).
 regs = bytearray([0x11, 0x05, 0, 0, 0, 0, 0xFF, 0x00, 0x00, 0xE2, 0xE4, 0xE8, 0xE0])
 pointer = 0
-auto_increment = 0       # bits AI2-AI0 de l'octet de controle
+auto_increment = 0       # bits AI2-AI0 of the control byte
 
 
 def _advance():
     global pointer
-    if auto_increment == 0b100:      # tous les registres
+    if auto_increment == 0b100:      # all registers
         pointer = (pointer + 1) % len(regs)
-    elif auto_increment == 0b101:    # luminosites individuelles seulement
+    elif auto_increment == 0b101:    # individual brightnesses only
         pointer = 2 if pointer >= 5 else pointer + 1
-    elif auto_increment == 0b110:    # registres de groupe seulement
+    elif auto_increment == 0b110:    # group registers only
         pointer = 6 if pointer >= 7 else pointer + 1
-    elif auto_increment == 0b111:    # individuelles + groupe
+    elif auto_increment == 0b111:    # individual + group
         pointer = 2 if pointer >= 7 else pointer + 1
 
 
 def rgb_write(data):
     global pointer, auto_increment
-    # Premier octet : registre de controle (pointeur + drapeaux d'auto-increment),
-    # puis les valeurs, ecrites a partir du registre pointe.
+    # First byte: control register (pointer + auto-increment flags),
+    # then the values, written from the pointed register on.
     auto_increment = data[0] >> 5
     pointer = (data[0] & 0x0F) % len(regs)
     for value in data[1:]:
@@ -168,19 +168,19 @@ def rgb_read():
 
 def _channel(n):
     mode = (regs[8] >> (2 * n)) & 0x03
-    asleep = regs[0] & 0x10          # oscillateur arrete : plus de PWM
+    asleep = regs[0] & 0x10          # oscillator stopped: no more PWM
     if mode == 0:
         return 0
     if mode == 1:
-        return 255                   # voie forcee a l'etat passant
+        return 255                   # channel forced fully on
     if asleep:
         return 0
     if mode == 2:
         return regs[2 + n]
-    return regs[2 + n] * regs[6] // 255   # PWM individuel x gradation de groupe
+    return regs[2 + n] * regs[6] // 255   # individual PWM x group dimming
 
 
-# ======================= contrat du composant =======================
+# ======================= contract of the component =======================
 
 def on_write(addr, data, t, v):
     if addr == LCD_ADDR:
@@ -191,7 +191,7 @@ def on_write(addr, data, t, v):
 
 def on_read(addr, t, v):
     if addr == LCD_ADDR:
-        return ac        # lecture du compteur d'adresse (drapeau occupe toujours a 0)
+        return ac        # read of the address counter (busy flag always 0)
     return rgb_read()
 
 

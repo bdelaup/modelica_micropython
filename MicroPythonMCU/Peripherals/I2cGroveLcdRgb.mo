@@ -1,23 +1,23 @@
 within MicroPythonMCU.Peripherals;
 
-model I2cGroveLcdRgb "Écran Grove - LCD RGB Backlight (16x2) : contrôleur d'écran JHD1313 à 0x3E et driver de rétroéclairage PCA9633 à 0x62"
+model I2cGroveLcdRgb "Grove - LCD RGB Backlight screen (16x2): JHD1313 display controller at 0x3E and PCA9633 backlight driver at 0x62"
   extends Internal.PartialI2cDevice(addresses = "0x3E, 0x62", usePullUp = true, nOut = 4, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/grove_lcd_rgb.py"));
   extends Internal.Lcd16x2RgbIcon;
 equation
   when {initial(), change(eventSeq)} then
-    lcdLine1 = Internal.StringToCharCodes(line1, 16) "texte visible rendu par lines() du script";
+    lcdLine1 = Internal.StringToCharCodes(line1, 16) "visible text returned by lines() of the script";
     lcdLine2 = Internal.StringToCharCodes(line2, 16);
   end when;
-  backlight = {valueOut[1], valueOut[2], valueOut[3]} "rouge, vert, bleu rendus par outputs() du script";
+  backlight = {valueOut[1], valueOut[2], valueOut[3]} "red, green, blue returned by outputs() of the script";
   annotation(
     Documentation(info = "<html>
-<p>Jumeau du module <em>Grove - LCD RGB Backlight</em> de Seeed Studio : un écran caractère 16x2 dont le rétroéclairage change de couleur. Le module porte <strong>deux circuits</strong> sur le même bus I2C, d'où deux adresses pour un seul composant :</p>
+<p>Twin of the Seeed Studio <em>Grove - LCD RGB Backlight</em> module: a 16x2 character screen whose backlight changes colour. The module carries <strong>two chips</strong> on the same I2C bus, hence two addresses for a single component:</p>
 <ul>
-<li><code>0x3E</code> — <strong>JHD1313</strong>, contrôleur d'écran compatible HD44780 : chaque octet est précédé d'un octet de contrôle (<code>0x80</code> : commande, <code>0x40</code> : caractère). Commandes émulées : effacement, retour au début, mode d'entrée, écran allumé/éteint, décalage, configuration, position d'écriture (ligne 1 à <code>0x00</code>, ligne 2 à <code>0x40</code>).</li>
-<li><code>0x62</code> — <strong>PCA9633</strong>, driver de LED à 4 voies : registres <code>MODE1</code>/<code>MODE2</code>, luminosités <code>PWM0</code>–<code>PWM3</code> (bleu, vert, rouge), gradation de groupe, <code>LEDOUT</code> ; pointeur de registre à auto-incrément.</li>
+<li><code>0x3E</code> — <strong>JHD1313</strong>, HD44780-compatible display controller: each byte is preceded by a control byte (<code>0x80</code>: command, <code>0x40</code>: character). Emulated commands: clear, return home, entry mode, display on/off, shift, function set, write position (line 1 at <code>0x00</code>, line 2 at <code>0x40</code>).</li>
+<li><code>0x62</code> — <strong>PCA9633</strong>, 4-channel LED driver: <code>MODE1</code>/<code>MODE2</code> registers, <code>PWM0</code>–<code>PWM3</code> brightnesses (blue, green, red), group dimming, <code>LEDOUT</code>; auto-increment register pointer.</li>
 </ul>
-<p>Le comportement est entièrement décrit par <code>Resources/Scripts/Device/grove_lcd_rgb.py</code>, qui suit les fiches techniques des deux circuits sans rien savoir du programme qui les pilote : un driver écrit pour le vrai module fonctionne tel quel — voir <code>Examples.I2c.GroveLcd</code>, qui exécute sans modification un driver MicroPython du commerce. Comme le vrai contrôleur, l'écran est <strong>éteint à la mise sous tension</strong> et le rétroéclairage noir : c'est au programme de l'initialiser. Un octet envoyé pendant un effacement (1,52 ms) est ignoré, avec un avertissement dans le journal — sur le vrai module, il serait perdu.</p>
-<p>Les résistances de tirage du bus sont activées (<code>usePullUp = true</code>), comme sur le module réel. <code>valueOut</code> : intensités rouge, vert, bleu (0-255) et écran allumé (1/0) ; l'icône en reprend la couleur et affiche les deux lignes visibles pendant la relecture animée d'un résultat dans OMEdit.</p>
-<p><em>Note matérielle :</em> les révisions récentes du module (v5) remplacent le PCA9633 par un autre driver de LED, à une autre adresse. Ce composant suit le PCA9633 à <code>0x62</code>, que cible le driver de référence ; l'adresse reste modifiable par <code>addresses</code> (le script traite <code>0x3E</code> comme l'écran et toute autre adresse comme le driver de LED).</p>
+<p>The behaviour is entirely described by <code>Resources/Scripts/Device/grove_lcd_rgb.py</code>, which follows the datasheets of both chips without knowing anything about the program driving them: a driver written for the real module works unchanged — see <code>Examples.I2c.GroveLcd</code>, which runs an off-the-shelf MicroPython driver without modification. Like the real controller, the screen is <strong>off at power-up</strong> and the backlight black: the program has to initialise them. A byte sent during a clear (1.52 ms) is ignored, with a warning in the log — on the real module, it would be lost.</p>
+<p>The pull-up resistors of the bus are enabled (<code>usePullUp = true</code>), as on the real module. <code>valueOut</code>: red, green, blue intensities (0-255) and screen on (1/0); the icon takes this colour and shows the two visible lines while replaying a result with animation in OMEdit.</p>
+<p><em>Hardware note:</em> recent revisions of the module (v5) replace the PCA9633 with another LED driver, at another address. This component follows the PCA9633 at <code>0x62</code>, which the reference driver targets; the address can still be changed through <code>addresses</code> (the script treats <code>0x3E</code> as the screen and any other address as the LED driver).</p>
 </html>"));
 end I2cGroveLcdRgb;

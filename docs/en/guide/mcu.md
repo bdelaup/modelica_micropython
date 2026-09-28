@@ -2,9 +2,6 @@
 
 `MicroPythonMCU.MCU` is the microcontroller: a package with 8 input/output pins, a ground, a link to a teaching display and an on-board LED. Its behaviour is entirely described by the Python program given by `scriptPath`. Its reference is the Raspberry Pi Pico (RP2040), whose MicroPython API it reproduces; the icon deliberately reads "MCU".
 
-!!! note "French labels"
-    The library's parameter dialogs, tab names and descriptions are in French. This page gives the parameter names as they appear in the dialog, with their meaning.
-
 ## Connectors
 
 | Connector | Type | Role |
@@ -31,7 +28,7 @@ Double-clicking the `MCU` opens its parameter dialog. The defaults suit most use
 
 ### Python script
 
-*General* tab, "Script Python" group.
+*General* tab, "Python script" group.
 
 | Parameter | Default | Role |
 |---|---|---|
@@ -51,7 +48,7 @@ A program is therefore split up as on the board: `main.py` + modules, or an off-
 
 ### Execution time
 
-*Temps d'exécution* tab.
+*Execution time* tab.
 
 | Parameter | Default | Role |
 |---|---|---|
@@ -61,20 +58,20 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 
 ### Electrical
 
-*Électrique* tab. The defaults approximate an RP2040 powered at 3.3 V.
+*Electrical* tab. The defaults approximate an RP2040 powered at 3.3 V.
 
 | Parameter | Default | Group | Role |
 |---|---|---|---|
-| `VOH` | 3.3 V | Niveaux logiques (logic levels) | Output voltage in the high state |
-| `VOL` | 0 V | Niveaux logiques | Output voltage in the low state |
-| `VIH` | 2.0 V | Niveaux logiques | Above it, an input reads 1 |
-| `VIL` | 0.8 V | Niveaux logiques | Below it, an input reads 0 |
-| `ROut` | 100 Ω | Étages de sortie (output stages) | Series resistance of each output (current the pin can deliver) |
-| `ledSeriesR` | 330 Ω | Étages de sortie | Series resistance of the on-board LED |
+| `VOH` | 3.3 V | Logic levels | Output voltage in the high state |
+| `VOL` | 0 V | Logic levels | Output voltage in the low state |
+| `VIH` | 2.0 V | Logic levels | Above it, an input reads 1 |
+| `VIL` | 0.8 V | Logic levels | Below it, an input reads 0 |
+| `ROut` | 100 Ω | Output stages | Series resistance of each output (current the pin can deliver) |
+| `ledSeriesR` | 330 Ω | Output stages | Series resistance of the on-board LED |
 
 ### File system
 
-*Système de fichiers* tab, "Flash simulée" group. What the program sees: [API, file system](api.md#file-system-open-and-os).
+*File system* tab, "Simulated flash" group. What the program sees: [API, file system](api.md#file-system-open-and-os).
 
 | Parameter | Default | Role |
 |---|---|---|

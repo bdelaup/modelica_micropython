@@ -1,16 +1,16 @@
 within MicroPythonMCU.Internal;
 
-class I2cDevice "External Object encapsulant l'état d'un périphérique I2C esclave (décodage du bus, script Python) - cf. requirements.md, décision « Bus I2C électrique en drain ouvert »"
+class I2cDevice "External Object wrapping the state of an I2C slave peripheral (bus decoding, Python script) - see requirements.md, decision \"Bus I2C électrique en drain ouvert\""
   extends ExternalObject;
 
   function constructor
-    input String addresses "Adresse(s) sur 7 bits, ex. \"0x42\" ou \"0x3E, 0x62\" - hexadécimal ou décimal, au plus 4 (Modelica n'a pas de littéraux hexadécimaux, d'où une chaîne)";
-    input String scriptPath "Chemin du script .py qui décrit le comportement du périphérique (on_write / on_read / outputs / lines)";
-    input String pythonHome "Distribution Python embarquée (Resources/PythonRuntime) - sert à démarrer CPython si aucun autre composant ne l'a encore fait";
-    input String instanceName "Nom du composant, préfixé aux print() du script";
+    input String addresses "7-bit address(es), e.g. \"0x42\" or \"0x3E, 0x62\" - hexadecimal or decimal, at most 4 (Modelica has no hexadecimal literals, hence a string)";
+    input String scriptPath "Path of the .py script describing the behaviour of the peripheral (on_write / on_read / outputs / lines)";
+    input String pythonHome "Embedded Python distribution (Resources/PythonRuntime) - used to start CPython if no other component has done it yet";
+    input String instanceName "Component name, prefixed to the script's print() output";
     output I2cDevice dev;
-    // Annotation Library : -lwinpthread lie winpthread en dynamique, sinon ModelicaError fait planter
-    // la simulation sous OpenModelica/Windows (cf. requirements.md, decision
+    // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
+    // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
     external "C" dev = I2cDevice_new(addresses, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"I2cDeviceImpl.c\"",
@@ -28,6 +28,6 @@ class I2cDevice "External Object encapsulant l'état d'un périphérique I2C esc
 
   annotation(
     Documentation(info = "<html>
-<p>Pas de thread worker, comme <code>Internal.UartDevice</code> : un périphérique réagit sans jamais se suspendre. Ses gestionnaires Python s'exécutent sur le thread Modelica, dans l'interpréteur partagé avec le microcontrôleur, chacun dans un espace de noms qui lui est propre (<code>Resources/Include/devscript.c</code>, partagé avec les périphériques série).</p>
+<p>No worker thread, like <code>Internal.UartDevice</code>: a peripheral reacts without ever suspending itself. Its Python handlers run on the Modelica thread, in the interpreter shared with the microcontroller, each one in its own namespace (<code>Resources/Include/devscript.c</code>, shared with the serial devices).</p>
 </html>"));
 end I2cDevice;

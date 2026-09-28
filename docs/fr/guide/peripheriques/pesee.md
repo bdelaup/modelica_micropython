@@ -77,12 +77,12 @@ L'icône affiche le gain et le dernier code, un voyant cyan quand une donnée at
 | `AVDD` | 4,3 V | Conversion | Tension d'excitation du pont (module alimenté en 5 V) |
 | `noiseLsb` | 0 | Conversion | Bruit de conversion, écart-type en LSB. 0 : mesure parfaite et reproductible |
 | `seed` | 711 | Conversion | Graine du bruit : même graine, même suite de mesures |
-| `tPowerDown` | 60 µs | Chronogramme | Durée à l'état haut de `PD_SCK` qui met le circuit en veille |
-| `tUpdate` | 10 µs | Chronogramme | Durée pendant laquelle `DOUT` remonte avant chaque nouvelle donnée, quand la précédente n'a pas été lue |
-| `settlingConversions` | 4 | Chronogramme | Conversions écartées après la mise sous tension ou la sortie de veille (400 ms à 10 mesures par seconde) |
-| `VOH`, `VOL` | 3,3 V, 0 V | Électrique | Niveaux de `DOUT` |
-| `VIH`, `VIL` | 2,0 V, 0,8 V | Électrique | Seuils de lecture de `PD_SCK` |
-| `ROut` | 100 Ω | Électrique | Résistance série de la sortie `DOUT` |
+| `tPowerDown` | 60 µs | Timing | Durée à l'état haut de `PD_SCK` qui met le circuit en veille |
+| `tUpdate` | 10 µs | Timing | Durée pendant laquelle `DOUT` remonte avant chaque nouvelle donnée, quand la précédente n'a pas été lue |
+| `settlingConversions` | 4 | Timing | Conversions écartées après la mise sous tension ou la sortie de veille (400 ms à 10 mesures par seconde) |
+| `VOH`, `VOL` | 3,3 V, 0 V | Electrical | Niveaux de `DOUT` |
+| `VIH`, `VIL` | 2,0 V, 0,8 V | Electrical | Seuils de lecture de `PD_SCK` |
+| `ROut` | 100 Ω | Electrical | Résistance série de la sortie `DOUT` |
 
 Grandeurs à tracer (pour un HX711 nommé `hx`) : `hx.code` (dernier résultat), `hx.gain`, `hx.pulses`, `hx.ready`, `hx.poweredDown`, et les tensions `hx.PD_SCK.v`, `hx.DOUT.v`.
 

@@ -1,4 +1,4 @@
 within MicroPythonMCU.Examples;
-package Pwm "Sorties PWM (machine.PWM)"
+package Pwm "PWM outputs (machine.PWM)"
   extends Modelica.Icons.ExamplesPackage;
 end Pwm;

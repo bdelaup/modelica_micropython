@@ -1,21 +1,21 @@
 from machine import Pin, UART
 import time
 
-# Afficheur serie 20x2 (Peripherals.UartLcd20x2) : on lui ecrit du texte ligne
-# par ligne sur une vraie liaison serie. C'est le saut de ligne qui valide la
-# ligne et declenche l'affichage, exactement comme le terminateur d'une commande.
+# Serial 20x2 display (Peripherals.UartLcd20x2): text is written to it line
+# by line over a real serial link. The line feed validates the line and
+# triggers the display, exactly like the terminator of a command.
 #
-# A comparer avec Examples.Display.Demo, qui fait la meme chose a travers la
-# liaison logique machine.Display : la livraison y est instantanee, ici le texte
-# met un temps reel a traverser le fil (1,04 ms par caractere a 9600 bauds).
+# Compare with Examples.Display.Demo, which does the same thing through the
+# logical link machine.Display: delivery is instantaneous there, here the text
+# takes real time to go through the wire (1.04 ms per character at 9600 baud).
 BAUD = 9600
 
 uart = UART(0, baudrate=BAUD, tx=Pin(5), rx=Pin(4))
 
 time.sleep_ms(5)
-uart.write(b'Cuve 3   45.2 degC\n')
-time.sleep_ms(60)          # laisse la ligne finir de traverser le fil
-uart.write(b'Debit    12.8 L-min\n')
+uart.write(b'Tank 3   45.2 degC\n')
+time.sleep_ms(60)          # let the line finish going through the wire
+uart.write(b'Flow     12.8 L-min\n')
 time.sleep_ms(60)
 
-print("LCD : deux lignes envoyees")
+print("LCD: two lines sent")

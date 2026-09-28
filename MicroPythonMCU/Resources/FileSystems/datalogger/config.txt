@@ -1,2 +1,2 @@
-periode_ms=100
-mesures=10
+period_ms=100
+samples=10

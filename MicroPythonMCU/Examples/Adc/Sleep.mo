@@ -1,16 +1,16 @@
 within MicroPythonMCU.Examples.Adc;
 
-model Sleep "Entrée ADC (GP0) traversant le seuil logique pendant des sleep() : ni réveil anticipé ni IRQ, l'ADC coupant l'entrée numérique de la broche ; GP1 (LED) confirme"
+model Sleep "ADC input (GP0) crossing the logic threshold during sleep(): neither early wake-up nor IRQ, since the ADC disconnects the digital input of the pin; GP1 (LED) confirms"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/adc_sleep.py")) "scriptPath = Resources/Scripts/MCU/adc_sleep.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
-  Modelica.Electrical.Analog.Sources.SineVoltage sine(V = 1.65, f = 5, offset = 1.65) "tension lue par l'ADC (GP0) : sinusoïde 0-3,3 V à 5 Hz, qui traverse le seuil logique (~1,4 V) 10 fois par seconde" annotation(
+  Modelica.Electrical.Analog.Sources.SineVoltage sine(V = 1.65, f = 5, offset = 1.65) "voltage read by the ADC (GP0): 0-3.3 V sine wave at 5 Hz, which crosses the logic threshold (~1.4 V) 10 times per second" annotation(
     Placement(transformation(origin = {-110, -30}, extent = {{-15, -15}, {15, 15}}, rotation = -90)));
-  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limite le courant de led1 (GP1)" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limits the current of led1 (GP1)" annotation(
     Placement(transformation(origin = {-90, 10}, extent = {{-15, -15}, {15, 15}})));
-  MicroPythonMCU.Peripherals.LED led1 "GP1 : les cinq sleep(0.2) ont duré 200 ms et l'IRQ n'a vu aucun front" annotation(
+  MicroPythonMCU.Peripherals.LED led1 "GP1: the five sleep(0.2) lasted 200 ms and the IRQ saw no edge" annotation(
     Placement(transformation(origin = {-140, 10}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(
@@ -29,7 +29,7 @@ equation
     Diagram(coordinateSystem(extent = {{-180, -120}, {80, 80}})),
     experiment(StopTime = 1.5, Interval = 0.001),
     Documentation(info = "<html>
-<p>Scénario de vérification 26 (cf. <code>requirements.md</code>, décision « ADC (entrées analogiques) ») : <code>GP0</code>, lue par <code>machine.ADC(0)</code>, reçoit une sinusoïde de 0 à 3,3 V à 5 Hz, qui traverse le seuil logique de la broche 10 fois par seconde. Le script <code>adc_sleep.py</code> arme d'abord une IRQ sur les deux fronts de <code>Pin(0)</code>, crée <code>ADC(0)</code>, puis enchaîne cinq <code>sleep(0.2)</code> en mesurant leur durée.</p>
-<p>Comme sur le RP2040, passer la broche en ADC coupe son entrée numérique : les franchissements du seuil ne doivent ni écourter les <code>sleep()</code>, ni déclencher l'IRQ. <code>led1</code> (<code>GP1</code>) s'allume si les cinq attentes ont bien duré 200 ms et si l'IRQ n'a vu aucun front. Avant la correction, chaque franchissement réveillait le script comme une vraie transition d'entrée.</p>
+<p>Verification scenario 26 (see <code>requirements.md</code>, decision \"ADC (entrées analogiques)\"): <code>GP0</code>, read by <code>machine.ADC(0)</code>, receives a 0 to 3.3 V sine wave at 5 Hz, which crosses the logic threshold of the pin 10 times per second. The script <code>adc_sleep.py</code> first arms an IRQ on both edges of <code>Pin(0)</code>, creates <code>ADC(0)</code>, then chains five <code>sleep(0.2)</code> while measuring their duration.</p>
+<p>As on the RP2040, switching the pin to ADC disconnects its digital input: the threshold crossings must neither shorten the <code>sleep()</code> calls nor trigger the IRQ. <code>led1</code> (<code>GP1</code>) lights up if the five waits did last 200 ms and if the IRQ saw no edge. Before the fix, each crossing woke the script up like a real input transition.</p>
 </html>"));
 end Sleep;

@@ -54,7 +54,7 @@ The `MicroPythonMCU.Examples` package holds 31 ready-to-simulate models: open th
 
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
-| `FileSystem.Boot` | No script: `boot.py` then `main.py` of a flash image; ADC readings logged to `/data/mesures.csv` | copy folder (opened at the end of the simulation) | `datalogger/` image |
+| `FileSystem.Boot` | No script: `boot.py` then `main.py` of a flash image; ADC readings logged to `/data/measurements.csv` | copy folder (opened at the end of the simulation) | `datalogger/` image |
 | `FileSystem.Script` | `boot.py` from the flash, then an external program instead of `main.py` | log, written files | `fs_script.py` |
 
 ## Teaching display (`Examples.Display`)
@@ -70,8 +70,8 @@ The `MicroPythonMCU.Examples` package holds 31 ready-to-simulate models: open th
 | `Uart.Loopback` | 8N1 frame looped back onto the microcontroller | `mcu.GP0.v` | `uart_loopback.py` |
 | `Uart.EchoPy` | Dialogue with an echo device described by a Python script | `mcu.GP5.v`, `mcu.GP4.v`, log | `uart_echo.py` |
 | `Uart.Echo` | Same setup, echo set in the device's table | same | `uart_echo.py` |
-| `Uart.Sensor` | Querying a temperature sensor, then sending a setpoint | `capteur.valueOut[1]`, log | `uart_sensor.py` |
-| `Uart.Regulation` | Closed-loop control through the serial link alone | `procede.y`, `capteur.valueOut[1]` | `uart_regulation.py` |
+| `Uart.Sensor` | Querying a temperature sensor, then sending a setpoint | `sensor.valueOut[1]`, log | `uart_sensor.py` |
+| `Uart.Regulation` | Closed-loop control through the serial link alone | `plant.y`, `sensor.valueOut[1]` | `uart_regulation.py` |
 | `Uart.GpsPy` | A GPS module sends its frames without being asked | log | `uart_gps.py` |
 | `Uart.StateMachinePy` | Device whose reply depends on its history (Python state machine) | log | `uart_state_machine.py` |
 | `Uart.Lcd` | Two lines written to a 20x2 serial display | display icon | `uart_lcd.py` |
