@@ -18,6 +18,9 @@ Each version of the library is a **tag** of the repository, of the form `vX.Y.Z`
 
 2. Unzip it, preferably outside a synchronised folder such as OneDrive. It contains the `MicroPythonMCU` folder, which is the library itself (it holds `package.mo`).
 
+    !!! warning "No accented characters in the path"
+        The full path of the folder must not contain **any accented character** (`é`, `è`, `à`…): otherwise compilation fails with `fatal error: 'PyRuntimeImpl.c' file not found`. This is a limitation of OpenModelica's compilation toolchain on Windows. For instance, `C:\Users\<name>\Downloads\Téléchargements\…` fails, while `C:\Users\<name>\Documents\modelica\…` works. Spaces are fine.
+
 ## Load or install
 
 There is no need to install the library: **loading** it in OMEdit is enough. Three ways, from the lightest to the most lasting.

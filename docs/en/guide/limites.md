@@ -23,6 +23,12 @@ Function-by-function details: [API, limitations](api.md#known-limitations-v0).
 
 ## Troubleshooting
 
+??? question "Compilation fails: `'PyRuntimeImpl.c' file not found`"
+    The path of the library folder contains an accented character (for instance a `Téléchargements` folder). Move the folder to a path without accents, then reload it in OMEdit (see [Installation](installation.md)).
+
+??? question "With OpenModelica 1.26 or earlier, the pins stay at 0 V"
+    The simulation ends without error, but the outputs never change, and the I2C bus stops with `OSError: [Errno 110] ETIMEDOUT`. This is a defect of library versions older than its fix: take the latest version (see [Installation](installation.md)).
+
 ??? question "The simulation stops with a Python error"
     An uncaught exception in the program stops the simulation. The simulation log shows the Python traceback: file, line number, error type and message. Results remain available up to the time of the error.
 

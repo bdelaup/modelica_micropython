@@ -18,6 +18,9 @@ Chaque version de la bibliothèque est un **tag** du dépôt, de la forme `vX.Y.
 
 2. Décompresser le zip, de préférence hors d'un dossier synchronisé comme OneDrive. Il contient le dossier `MicroPythonMCU`, qui est la bibliothèque proprement dite (il contient `package.mo`).
 
+    !!! warning "Pas d'accent dans le chemin"
+        Le chemin complet du dossier ne doit contenir **aucun caractère accentué** (`é`, `è`, `à`…) : sinon la compilation échoue avec `fatal error: 'PyRuntimeImpl.c' file not found`. C'est une limite de la chaîne de compilation d'OpenModelica sous Windows. Par exemple, `C:\Users\<nom>\Downloads\Téléchargements\…` échoue, `C:\Users\<nom>\Documents\modelica\…` fonctionne. Les espaces, eux, ne posent pas de problème.
+
 ## Charger ou installer
 
 Il n'est pas nécessaire d'installer la bibliothèque : il suffit de la **charger** dans OMEdit. Trois façons, de la plus légère à la plus durable.
