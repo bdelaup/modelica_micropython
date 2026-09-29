@@ -1,6 +1,6 @@
 # Installation
 
-`MicroPythonMCU` fonctionne sous **Windows 64 bits** avec [OpenModelica](https://openmodelica.org/download/download-windows/) (OMEdit, testé avec la version 1.27.1). Le runtime Python est fourni avec la bibliothèque et le compilateur C est celui d'OpenModelica : rien d'autre à installer, sinon le *Microsoft Visual C++ Redistributable*, presque toujours déjà présent.
+`MicroPythonMCU` fonctionne sous **Windows 64 bits** avec [OpenModelica](https://openmodelica.org/download/download-windows/) (OMEdit, testé avec les versions 1.24.4, 1.26.8 et 1.27.1). Le runtime Python est fourni avec la bibliothèque et le compilateur C est celui d'OpenModelica : rien d'autre à installer, sinon le *Microsoft Visual C++ Redistributable*, presque toujours déjà présent.
 
 ## Choisir une version
 

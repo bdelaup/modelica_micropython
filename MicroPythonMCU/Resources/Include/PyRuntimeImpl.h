@@ -30,7 +30,11 @@ void PyRuntime_destroy(void* handle);
    8 = LED embarquee interne, cf. PyRuntimeImpl.c). pinAnalogIn: [9] en entree,
    tension brute (V) alignee sur pinBoolIn, lue par machine.ADC (index 8/LED
    jamais utilise cote ADC). pinBoolOut/pinIsOutput: [9] en sortie (deja
-   alloues par l'appelant, convention Modelica External C). pwmFreqOut/
+   alloues par l'appelant, convention Modelica External C). Les trois tableaux
+   de broches sont des Integer (0/1) cote Modelica, jamais des Boolean : un
+   tableau de Boolean arrive tel quel, et modelica_boolean vaut int en
+   OpenModelica 1.27 mais signed char en 1.26 et avant (cf. requirements.md
+   decision "Tableaux de booleens et fonctions externes"). pwmFreqOut/
    pwmDutyOut: [9] en sortie, frequence (Hz, 0 = pas en PWM) et rapport
    cyclique (0-1) par broche - cf. machine.PWM ; Modelica genere le creneau
    en continu a partir de ces deux valeurs, pas de va-et-vient au thread

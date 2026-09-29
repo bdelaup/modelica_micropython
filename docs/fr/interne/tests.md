@@ -39,6 +39,16 @@ Les scripts qui partagent des fichiers sont exécutés **à la suite l'un de l'a
 
 `--copy` attrape le défaut propre à une livraison par tag : un fichier nécessaire (script, source C, image de flash) présent sur le disque mais jamais ajouté à git. Il manquerait aux utilisateurs ; ici, la suite échoue. Les fichiers non suivis sont listés avant la suite. La copie tourne hors du dépôt, donc hors de OneDrive : aucun artefact n'est écrit dans le dossier synchronisé. Elle prend une demi-seconde (443 fichiers, 25 Mo).
 
+### Sous une autre version d'OpenModelica
+
+Les utilisateurs n'ont pas tous la version de développement : les postes du lycée avaient la 1.26.8, où la bibliothèque échouait sans erreur visible à cause d'un changement de taille des booléens (cf. `requirements.md`, décision « Tableaux de booléens et fonctions externes »). Pour rejouer la suite sous une autre version installée à côté, positionner `OPENMODELICAHOME` et le `PATH` sur elle le temps de la commande :
+```
+( export OPENMODELICAHOME="d:/programmes/OpenModelica1.24.4-64bit"
+  export PATH="/d/programmes/OpenModelica1.24.4-64bit/bin:/d/programmes/OpenModelica1.24.4-64bit/tools/msys/ucrt64/bin:$PATH"
+  ./run_tests.sh --copy )
+```
+Le poste de développement a la 1.24.4 en plus de la 1.27.1 : elle représente les versions où `modelica_boolean` fait un octet. Un changement de l'interface C (`Internal/*_sync.mo`, fonctions externes) se vérifie sous les deux.
+
 `--copy` se combine avec les autres options (`-j`, `-k`, liste de scripts), transmises à la copie de `run_tests.sh`. Sous le récapitulatif, il rappelle le commit testé et la mention « + modifications non commitées » s'il y a lieu : un résultat doit dire sur quoi il a tourné. Avec `-k`, la copie est conservée et son chemin affiché.
 
 ### Un script à la fois

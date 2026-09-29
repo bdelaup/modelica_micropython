@@ -57,8 +57,11 @@ model MCU "Simulated programmable microcontroller (v0), driven by a MicroPython-
 protected
   Modelica.Units.SI.Voltage pinNodeVoltage[9] "Actual voltage of each pin (index 9 = internal node of the on-board LED)";
   Boolean pinBoolIn[9](each start = false, each fixed = true) "Logic value read on each pin (voltage compared with the VIL/VIH thresholds), including index 9 (on-board LED), which thus reads back its own state like a normal pin";
-  discrete Boolean pinBoolOut[9](each start = false, each fixed = true) "Value driven on each pin (output of the last sync point); index 9 = on-board LED (real GP25)";
-  discrete Boolean pinIsOutputD[9](each start = false, each fixed = true) "Direction of each pin (output of the last sync point)";
+  Boolean pinBoolOut[9] "Value driven on each pin (output of the last sync point); index 9 = on-board LED (real GP25)";
+  Boolean pinIsOutputD[9] "Direction of each pin (output of the last sync point)";
+  Integer pinBoolInC[9] "pinBoolIn as passed to PyRuntime_sync (0/1): arrays of Boolean are not exchanged with the C code, see Internal.PyRuntime_sync";
+  discrete Integer pinBoolOutC[9](each start = 0, each fixed = true) "pinBoolOut as returned by PyRuntime_sync (0/1)";
+  discrete Integer pinIsOutputC[9](each start = 0, each fixed = true) "pinIsOutputD as returned by PyRuntime_sync (0/1)";
   discrete Modelica.Units.SI.Frequency pwmFreq[9](each start = 0, each fixed = true) "PWM frequency of each pin (Hz); 0 = not in PWM mode (plain digital output through pinBoolOut), see machine.PWM";
   discrete Real pwmDuty[9](each start = 0, each fixed = true) "PWM duty cycle of each pin (0-1), relevant only if pwmFreq > 0";
   Modelica.Units.SI.Time pwmPeriod[9] "1/pwmFreq, with a floor to avoid a division by zero when pwmFreq = 0 (pin not in PWM)";
@@ -102,6 +105,9 @@ equation
     connect(sns[i].n, GND);
     pinNodeVoltage[i] = sns[i].v;
     pinBoolIn[i] = pinNodeVoltage[i] > (VIL + VIH)/2 "logic threshold halfway, v0 approximation";
+    pinBoolInC[i] = if pinBoolIn[i] then 1 else 0;
+    pinBoolOut[i] = pinBoolOutC[i] <> 0;
+    pinIsOutputD[i] = pinIsOutputC[i] <> 0;
     pwmPeriod[i] = 1/max(pwmFreq[i], 1e-6);
     src[i].v = if pinIsOutputD[i] then (if uartTxPin == i then (if uartTxLevel then VOH else VOL) elseif pwmFreq[i] > 0 then (if mod(time, pwmPeriod[i]) < pwmDuty[i]*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "serial frame (level published by the C code at each change) if the pin is assigned to the UART, otherwise PWM square wave if pwmFreq > 0, otherwise plain digital output - see requirements.md";
     sw[i].control = not pinIsOutputD[i] "open (high impedance) if the pin is an input";
@@ -111,7 +117,7 @@ equation
   connect(ledResistor.n, builtinLed.p);
   connect(builtinLed.n, GND);
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), change(pinBoolIn[2]) and not pre(pinIsOutputD[2]), change(pinBoolIn[3]) and not pre(pinIsOutputD[3]), change(pinBoolIn[4]) and not pre(pinIsOutputD[4]), change(pinBoolIn[5]) and not pre(pinIsOutputD[5]), change(pinBoolIn[6]) and not pre(pinIsOutputD[6]), change(pinBoolIn[7]) and not pre(pinIsOutputD[7]), change(pinBoolIn[8]) and not pre(pinIsOutputD[8]), change(pinBoolIn[9]) and not pre(pinIsOutputD[9])} then
-    (pinBoolOut, pinIsOutputD, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
+    (pinBoolOutC, pinIsOutputC, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage);
     Display0.charCode = Internal.StringToCharCodes(Display0.payload, Interfaces.DISPLAY_COLS) "ASCII codes derived from Display0.payload (a String, which cannot be stored in the results), so that the connected display peripheral can animate the text actually received on its icon - see Internal.StringToCharCodes";
   end when;
   annotation(

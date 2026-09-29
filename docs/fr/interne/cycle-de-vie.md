@@ -172,9 +172,11 @@ static void yield_to_modelica(double wake_at) {
 // MCU.mo
 when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod),
       change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), ...} then
-    (pinBoolOut, pinIsOutputD, pwmFreq, pwmDuty, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolIn, pinNodeVoltage);
+    (pinBoolOutC, pinIsOutputC, pwmFreq, pwmDuty, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage);
 end when;
 ```
+
+Les tableaux de broches échangés avec le C sont des entiers 0/1 (`pinBoolInC`, `pinBoolOutC`, `pinIsOutputC`), convertis depuis et vers les booléens `pinBoolIn`, `pinBoolOut` et `pinIsOutputD` hors du `when`. Un tableau de `Boolean` serait passé au C tel quel, et la taille d'un booléen change selon la version d'OpenModelica (cf. `requirements.md`, décision « Tableaux de booléens et fonctions externes »).
 
 ```modelica
 // PyRuntime_sync.mo — le pont entre l'appel Modelica ci-dessus et la fonction C
