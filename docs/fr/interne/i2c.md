@@ -1,4 +1,4 @@
-# Bus I2C : `machine.I2C` et les périphériques esclaves
+# Bus I2C : `machine.I2C`, `machine.I2CTarget` et les périphériques esclaves
 
 !!! info "Référence interne"
     Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Périphériques I2C](../guide/peripheriques/i2c.md).
@@ -46,7 +46,7 @@ Les broches du bus sont **réservées** (`i2c_claimed`, même motif que la réce
 
 ## 3. L'esclave : un décodeur piloté par les fronts
 
-`Resources/Include/I2cDeviceImpl.c` (chapeau) et `i2cdevice/`. L'esclave n'a pas d'horloge : il **suit** celle du maître. Le `when` de `PartialI2cDevice` se déclenche à chaque franchissement de seuil de SCL ou de SDA, et `I2cDevice_sync` compare les niveaux à ceux du dernier appel :
+`Resources/Include/i2ctarget.h/.c` (moteur cible **partagé** par les périphériques, `I2cDeviceImpl.c` + `i2cdevice/`, et par `machine.I2CTarget` du microcontrôleur, §5bis ; même idiome qu'`uartcore`). L'esclave n'a pas d'horloge : il **suit** celle du maître. Le `when` de `PartialI2cDevice` se déclenche à chaque franchissement de seuil de SCL ou de SDA ; `I2cDevice_sync` passe les niveaux à `i2ct_sync`, qui les compare à ceux du dernier appel. Ce que l'hôte fait des octets passe par des crochets (`addr_match`, `write_byte`, `write_end`, `read_byte`, `read_end`) : pour un périphérique, ce sont `on_write()`/`on_read()` et le journal.
 
 | Événement | Interprétation |
 |---|---|
@@ -101,6 +101,24 @@ Rendu : `Internal.Lcd16x2RgbIcon`, 32 cellules générées mécaniquement et un 
 
 `Examples.I2c.GroveLcd` exécute **sans modification** un driver MicroPython existant (`Scripts/MCU/driver_grove_lcd_rgb.py`, importé par le programme principal `Scripts/MCU/i2c_grove_lcd_rgb.py`, comme un module posé à côté de `main.py` sur la vraie carte), écrit pour la vraie carte : c'est la démonstration « jumeau numérique ». Le shim accepte pour cela `I2C(scl=..., sda=..., freq=...)` sans identifiant, en plus de la forme rp2 `I2C(0, scl=..., sda=...)`.
 
+## 5bis. La cible côté microcontrôleur : `machine.I2CTarget`
+
+`Resources/Include/pyruntime/pyruntime_i2ctarget.c`, classe `I2CTarget` du shim. Un `MCU` peut être l'esclave d'un autre `MCU` (`Examples.MultiMcu.I2c` et `I2cIrq`). Le décodeur est **le même** que celui des périphériques (`i2ctarget.c`, §3) ; ce que le microcontrôleur fait des octets passe par les crochets du moteur, appelés sur le thread Modelica pendant `PyRuntime_sync` :
+
+| Crochet | Mode mémoire (`mem=`) | Sans mémoire |
+|---|---|---|
+| `addr_match` | remet à zéro le compteur d'octets d'adresse | — |
+| `write_byte` | `mem_addrsize/8` premiers octets → `memaddr`, puis écriture dans `mem[memaddr++]` (rebouclage) | file `rx` (lue par `readinto()`), `IRQ_WRITE_REQ` |
+| `write_end` | `IRQ_END_WRITE`, sauf si l'écriture n'a fait que choisir l'adresse | `IRQ_END_WRITE` |
+| `read_byte` | `mem[memaddr++]` | file `tx` (remplie par `write()`) ; vide → `I2CT_DEFER` + `IRQ_READ_REQ` si un gestionnaire peut répondre, sinon `0xFF` |
+| `read_end` | `IRQ_END_READ` | `IRQ_END_READ` |
+
+Côté électrique, rien de neuf : les deux broches sont prises (`i2c_claimed`, ni réveil ni IRQ GPIO), SDA est tirée ou relâchée par `i2c_drive` comme pour le maître, SCL n'est jamais tenue (pas de clock stretching).
+
+**La mémoire est écrite sans le GIL.** Le `bytearray` de `mem=` est exporté une fois (`PyObject_GetBuffer`, tampon tenu jusqu'à `deinit()` : sa taille ne peut plus changer), et le C y lit et écrit directement pendant `PyRuntime_sync`. C'est sûr parce que le worker est **garé** pendant toute la synchro (alternance stricte des tours) : aucun code Python du microcontrôleur ne peut toucher `mem` au même moment. Le mode mémoire continue donc de répondre après la fin du programme.
+
+**IRQ au même instant.** Un événement dont le déclencheur est demandé pose `i2ct.irq_pending`. `PyRuntime_sync` ajoute cette condition au drain (`i2ct_due`) : le worker reçoit un pitstop au même instant simulé, `run_due_callbacks` remet les drapeaux (`irq().flags()`) et appelle le gestionnaire. Pour `IRQ_READ_REQ`, le moteur a **différé** l'octet (`read_deferred`, SDA relâchée) ; après le drain, `i2ct_finish` → `i2ct_resume` redemande l'octet (sans nouveau report : `0xFF` si le gestionnaire n'a rien écrit) et fixe SDA avant que les sorties ne soient publiées. Le maître échantillonne SDA un quart de période plus tard : il voit le bon bit, sans clock stretching.
+
 ## 6. Ce que vérifient les scénarios
 
 | Script | Modèle | Ce qui est vérifié |
@@ -109,9 +127,11 @@ Rendu : `Internal.Lcd16x2RgbIcon`, 32 cellules générées mécaniquement et un 
 | `verify_22_i2c_multi.mos` | `Examples.I2c.MultiDevice` | Trois esclaves sur un bus, deux paires de tirages en parallèle, 400 kHz : `scan()` exact, pas de diaphonie, `EIO` sur une adresse absente |
 | `verify_23_i2c_nopullup.mos` | `Examples.I2c.NoPullUp` | Sans tirage : lignes à 0 V, `ETIMEDOUT`, `scan()` vide, aucun esclave sollicité |
 | `verify_24_i2c_grove_lcd.mos` | `Examples.I2c.GroveLcd` | Driver du commerce tel quel : écran éteint puis « hello World », rétroéclairage rouge, vert, bleu |
+| `verify_37_multi_i2c_mem.mos` | `Examples.MultiMcu.I2c` | Cible `MCU` en mode mémoire : `scan()` = `[0x42]`, registre 4 → LED de B, registres 0-1 relus (2,000 V) |
+| `verify_38_multi_i2c_irq.mos` | `Examples.MultiMcu.I2cIrq` | Cible `MCU` à gestionnaire : `ID` → `b'MCU-B'`, puis `CNT` → 2 et 3 (`IRQ_READ_REQ` servi au même instant) |
 
 **Message « Chattering detected ... `time >= pre(mcu.nextWakeTime)` »** dans le journal : information bénigne d'OpenModelica, qui signale 100 événements d'affilée dans un seul pas de sortie. Elle apparaît quand l'intervalle de sortie (`Interval`) est grand devant la période d'horloge du bus ; les exemples fournis choisissent un intervalle qui l'évite. Ce n'est pas une erreur : la séquence I2C est pilotée par événements, pas par le pas de sortie.
 
 ## 7. Restrictions et suites
 
-Maître uniquement (l'I2C esclave côté microcontrôleur suppose un second `MCU`, donc le multi-instance — cf. TODO) ; un seul bus ; pas de clock stretching ni d'arbitrage multi-maître ; 1 kHz - 1 MHz ; 256 octets par transaction ; un esclave acquitte toujours ; au plus 4 adresses par composant. Détails dans `requirements.md`.
+Un seul bus maître et une seule cible (`I2CTarget`, adresse 7 bits, pas d'IRQ après la fin du programme) par microcontrôleur ; pas de clock stretching ni d'arbitrage multi-maître ; 1 kHz - 1 MHz ; 256 octets par transaction ; un esclave acquitte toujours ; au plus 4 adresses par composant. Détails dans `requirements.md`.

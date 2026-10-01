@@ -3,11 +3,13 @@
 
    Partage par les DEUX chapeaux : PyRuntimeImpl.c (le microcontroleur) et
    UartDeviceImpl.c (les peripheriques serie dont le comportement est decrit par
-   un script). Un seul interpreteur CPython existe dans le process, quel que soit
-   le nombre de composants qui s'en servent : c'est le premier construit qui le
+   un script). CPython n'est demarre qu'une fois par process, quel que soit le
+   nombre de composants qui s'en servent : c'est le premier construit qui le
    demarre, les suivants le trouvent deja la (Py_IsInitialized). L'ordre de
    construction des External Objects n'etant pas garanti par Modelica, aucun
-   composant ne peut supposer etre le premier.
+   composant ne peut supposer etre le premier. L'interpreteur PRINCIPAL ainsi
+   demarre sert aux scripts de peripherique ; chaque microcontroleur cree en plus
+   son propre sous-interpreteur, sur son thread worker (cf. pyruntime_module.c).
 
    INVARIANT etabli ici et respecte partout : une fois pyhost_ensure() revenu, le
    thread Modelica NE TIENT PAS le GIL. Tout code qui appelle Python depuis ce
@@ -147,17 +149,46 @@ static char* read_text_file(const char* path) {
    propre ligne dans le journal OMEdit, il faut bufferiser jusqu'a un vrai saut de
    ligne plutot que relayer chaque write() individuellement (sinon un print("a", b)
    se retrouve fragmente sur plusieurs lignes). Le GIL serialise les ecritures du
-   worker et celles des scripts de peripherique : pas de verrou supplementaire. */
+   worker et celles des scripts de peripherique : pas de verrou supplementaire.
 
-static char g_stdout_buf[4096];
-static size_t g_stdout_len = 0;
+   UN TAMPON PAR INTERPRETEUR : chaque microcontroleur a son sous-interpreteur et
+   son relais (tampon dans son handle, cf. pyruntime_module.c), l'interpreteur
+   principal - celui des scripts de peripherique - garde g_relay_main. Sans cela,
+   la ligne commencee par un microcontroleur serait terminee par le texte d'un
+   autre. Le tampon est retrouve par l'etat du module relais (PyModule_GetState),
+   donc sans variable "relais courant". prefix : nom d'instance mis en tete de
+   chaque ligne quand *prefix_on est vrai (plusieurs microcontroleurs), NULL pour
+   l'interpreteur principal - les peripheriques prefixent deja eux-memes. */
 
-static void relay_emit_pending(void) {
-    if (g_stdout_len > 0) {
-        g_stdout_buf[g_stdout_len] = '\0';
-        ModelicaFormatMessage("%s", g_stdout_buf);
-        g_stdout_len = 0;
+struct RelayBuf {
+    char buf[4096];
+    size_t len;
+    const char* prefix;
+    const int* prefix_on;
+};
+
+static struct RelayBuf g_relay_main;
+
+static void relay_flush_buf(struct RelayBuf* r) {
+    if (r->len > 0) {
+        r->buf[r->len] = '\0';
+        if (r->prefix && r->prefix_on && *r->prefix_on) {
+            ModelicaFormatMessage("[%s] %s", r->prefix, r->buf);
+        } else {
+            ModelicaFormatMessage("%s", r->buf);
+        }
+        r->len = 0;
     }
+}
+
+/* Vide le tampon de l'interpreteur principal (scripts de peripherique). */
+static void relay_emit_pending(void) {
+    relay_flush_buf(&g_relay_main);
+}
+
+static struct RelayBuf* relay_of(PyObject* module) {
+    struct RelayBuf** state = (struct RelayBuf**) PyModule_GetState(module);
+    return (state && *state) ? *state : &g_relay_main;
 }
 
 static PyObject* relay_write(PyObject* self, PyObject* args) {
@@ -165,13 +196,14 @@ static PyObject* relay_write(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "s", &text)) {
         return NULL;
     }
+    struct RelayBuf* r = relay_of(self);
     for (const char* p = text; *p != '\0'; ++p) {
         if (*p == '\n') {
-            relay_emit_pending();
+            relay_flush_buf(r);
         } else {
-            g_stdout_buf[g_stdout_len++] = *p;
-            if (g_stdout_len >= sizeof(g_stdout_buf) - 1) {
-                relay_emit_pending();
+            r->buf[r->len++] = *p;
+            if (r->len >= sizeof(r->buf) - 1) {
+                relay_flush_buf(r);
             }
         }
     }
@@ -179,7 +211,7 @@ static PyObject* relay_write(PyObject* self, PyObject* args) {
 }
 
 static PyObject* relay_flush(PyObject* self, PyObject* args) {
-    relay_emit_pending();
+    relay_flush_buf(relay_of(self));
     Py_RETURN_NONE;
 }
 
@@ -189,8 +221,9 @@ static PyMethodDef relay_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+/* Etat du module : un pointeur vers son tampon. */
 static struct PyModuleDef relay_module_def = {
-    PyModuleDef_HEAD_INIT, "pyruntime_stdio", NULL, -1, relay_methods,
+    PyModuleDef_HEAD_INIT, "pyruntime_stdio", NULL, sizeof(struct RelayBuf*), relay_methods,
     NULL, NULL, NULL, NULL
 };
 
@@ -218,6 +251,21 @@ static int pyhost_append_path(const char* dir) {
     int rc = PyList_Append(path, entry);
     Py_DECREF(entry);
     return rc;
+}
+
+/* Installe le relais stdout/stderr dans l'interpreteur COURANT, sur le tampon
+   r (cf. struct RelayBuf). Le GIL doit etre tenu. Retourne 0 ou -1. */
+static int pyhost_install_relay(struct RelayBuf* r) {
+    PyObject* relay = PyModule_Create(&relay_module_def);
+    if (!relay) {
+        return -1;
+    }
+    *(struct RelayBuf**) PyModule_GetState(relay) = r;
+    if (PySys_SetObject("stdout", relay) != 0 || PySys_SetObject("stderr", relay) != 0) {
+        Py_DECREF(relay);
+        return -1;
+    }
+    return pyhost_register_module("pyruntime_stdio", relay);   /* consomme la reference */
 }
 
 /* Demarre CPython s'il ne l'est pas deja. Retourne 0 si l'interpreteur est
@@ -276,15 +324,9 @@ static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
         return -1;
     }
 
-    /* Relais stdout/stderr : installe une fois pour tout le process. */
-    {
-        PyObject* relay = PyModule_Create(&relay_module_def);
-        if (relay) {
-            PySys_SetObject("stdout", relay);
-            PySys_SetObject("stderr", relay);
-            pyhost_register_module("pyruntime_stdio", relay);   /* consomme la reference */
-        }
-    }
+    /* Relais stdout/stderr de l'interpreteur principal (scripts de peripherique) ;
+       chaque microcontroleur installe le sien dans son sous-interpreteur. */
+    pyhost_install_relay(&g_relay_main);
 
     /* Rend le GIL : le thread Modelica ne le tient plus, conformement a
        l'invariant. Chaque composant le reprendra au besoin par PyGILState_Ensure. */

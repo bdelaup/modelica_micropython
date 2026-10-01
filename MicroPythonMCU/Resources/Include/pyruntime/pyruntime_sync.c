@@ -37,7 +37,7 @@ static int worker_context_ok(void) {
    a laisser remonter tel quel - cf. yield_to_modelica et les sites d'appel
    natifs). */
 static int run_due_callbacks(struct PyRuntimeHandle* h) {
-    struct { PyObject* callback; PyObject* arg; } due[NUM_PINS + MAX_TIMERS];
+    struct { PyObject* callback; PyObject* arg; } due[NUM_PINS + MAX_TIMERS + 1];
     int due_count = 0;
     int i;
 
@@ -73,6 +73,17 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
                 Py_CLEAR(h->timer_self[i]);
             }
         }
+    }
+    /* machine.I2CTarget : un seul gestionnaire pour tous les evenements du bus,
+       qui lit lesquels par irq().flags(). */
+    if (h->i2ct.irq_pending && h->i2ct.irq_handler) {
+        h->i2ct.irq_flags = h->i2ct.irq_pending;
+        h->i2ct.irq_pending = 0;
+        due[due_count].callback = h->i2ct.irq_handler;
+        due[due_count].arg = h->i2ct.irq_self;
+        Py_XINCREF(due[due_count].callback);
+        Py_XINCREF(due[due_count].arg);
+        due_count++;
     }
     LeaveCriticalSection(&h->cs);
 

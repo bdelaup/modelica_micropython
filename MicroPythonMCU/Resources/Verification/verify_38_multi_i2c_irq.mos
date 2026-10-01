@@ -1,0 +1,25 @@
+// Scénario de vérification n°38 (cf. requirements.md, décision « I2C cible côté microcontrôleur »).
+// omc verify_38_multi_i2c_irq.mos   (depuis ce dossier)
+//
+// Bus I2C entre deux MCU, cible 0x43 sans mémoire : B répond aux commandes de A
+// depuis un gestionnaire irq() (IRQ_END_WRITE : readinto() de la commande ;
+// IRQ_READ_REQ : write() de la réponse, servie au même instant). Succès : A
+// reçoit b'MCU-B', puis 2 et 3 (compteur de commandes), et allume GP7.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.MultiMcu.I2cIrq, stopTime = 0.03, numberOfIntervals = 3000, fileNamePrefix = "MultiI2cIrq");
+b := getErrorString();
+
+ok := val(mcuA.GP7.v, 0.029, "MultiI2cIrq_res.mat");
+
+ret := system(".\\MultiI2cIrq.bat", "MultiI2cIrq_run.txt");
+log := readFile("MultiI2cIrq_run.txt");
+(nReply, m1) := regex(log, "mcuA] ID -> b'MCU-B' / CNT -> 2 then 3", 1);
+(nCmd, m2) := regex(log, "mcuB] command b'CNT' -> reply", 1);
+
+if ok > 2.0 and nReply >= 1 and nCmd >= 1 then
+  print("PASS: verify_38_multi_i2c_irq (GP7(A)=" + String(ok) + "V, reponses ID/CNT correctes)\n");
+else
+  print("FAIL: verify_38_multi_i2c_irq (GP7(A)=" + String(ok) + ", journal " + String(nReply) + "/" + String(nCmd) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

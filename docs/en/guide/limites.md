@@ -5,7 +5,6 @@
 **Environment**
 
 - **64-bit Windows only**, with OpenModelica ([Installation](installation.md)).
-- **One `MCU` per model.** Serial and I2C devices, even programmed in Python, can be as many as needed.
 
 **Microcontroller**
 
@@ -13,9 +12,10 @@
 - `Pin.PULL_UP` / `Pin.PULL_DOWN` are accepted but have no electrical effect: put a real pull resistor in the diagram.
 - No `SPI`.
 - `UART`: a single link, 8N1 frames only, 50 to 115,200 baud, no receive interrupt.
-- `I2C`: master only, a single bus, 1 kHz to 1 MHz.
+- `I2C`: a single controller bus, 1 kHz to 1 MHz; `I2CTarget`: one target, 7-bit address, no handler any more once the program has ended.
 - `Timer`: 4 timers at most, minimum period 1 ms.
 - Interrupt callbacks (`Pin.irq()`, `Timer`) run at the next synchronisation point, never as an instant pre-emption of the program.
+- Several `MCU` in a model: each has its own program, modules and flash. Two boards that would answer each other without ever letting time pass (`gpioOpTime = 0` and two crossed copies) freeze the simulation at that instant.
 
 Function-by-function details: [API, limitations](api.md#known-limitations-v0).
 

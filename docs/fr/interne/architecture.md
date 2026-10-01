@@ -10,7 +10,7 @@
 ```mermaid
 flowchart TB
     subgraph LIB["MicroPythonMCU (package Modelica)"]
-        Examples["Examples<br/>31 modèles"]
+        Examples["Examples<br/>37 modèles"]
         MCU["MCU<br/>broches + orchestration"]
         Peripherals["Peripherals<br/>LED, Display, Uart*, I2c*, Weighing"]
         Internal["Internal<br/>External Objects + bases partielles"]
@@ -117,17 +117,25 @@ modelica_micropython3/
     │   │   ├── MultiDevice.mo      -- trois échos sur le même bus : scan(), pas de diaphonie, EIO sur une adresse absente
     │   │   ├── NoPullUp.mo         -- hérite de MultiDevice, sans aucun tirage : lignes à 0 V, ETIMEDOUT
     │   │   └── GroveLcd.mo         -- écran Grove LCD RGB piloté par un driver MicroPython du commerce, sans modification
+    │   ├── MultiMcu/               -- plusieurs MCU dans un modèle (un sous-interpréteur chacun, cf. integration-python.md)
+    │   │   ├── Independent.mo      -- même programme et même module importé sur deux cartes : états séparés, journal préfixé
+    │   │   ├── Handshake.mo        -- poignée de main REQ/ACK sur deux fils, B répond depuis un Pin.irq
+    │   │   ├── Uart.mo             -- liaison série croisée entre deux cartes : PING / PONG
+    │   │   ├── FileSystem.mo       -- deux enregistreurs, même image de flash, une copie chacun
+    │   │   ├── I2c.mo              -- A maître, B cible I2C en mode mémoire (machine.I2CTarget, mem=)
+    │   │   └── I2cIrq.mo           -- A maître, B cible I2C à gestionnaire irq() (END_WRITE, READ_REQ)
     │   └── Weighing/               -- pesée (voir peripheriques-pesee.md)
     │       ├── Hx711Read.mo        -- HX711 lu par le driver de robert-hh : codes exacts à gain 128 et 64, veille et réveil
     │       └── KitchenScale.mo     -- balance de cuisine : écran I2C, MCU, HX711, pont, corps d'épreuve, poids, bouton TARE
     └── Resources/
-        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), StringToCharCodes.c, uartcore.h/.c et devscript.c
+        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), StringToCharCodes.c, uartcore.h/.c, i2ctarget.h/.c et devscript.c
         │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
-        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de python312.dll par son chemin absolu dans PythonRuntime/ (table d'import pyimports.h, générée par make_pyimports.sh), démarrage unique de l'interpréteur (le premier composant construit le démarre), relais stdout/stderr, lecture de fichier
+        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de python312.dll par son chemin absolu dans PythonRuntime/ (table d'import pyimports.h, générée par make_pyimports.sh), démarrage unique de l'interpréteur principal (le premier composant construit le démarre ; chaque MCU crée ensuite son sous-interpréteur), relais stdout/stderr avec un tampon par interpréteur, lecture de fichier
         │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame 8N1, niveau de la ligne d'émission, décodage de la réception à partir des fronts, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
-        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _timer.c, _fs.c (système de fichiers : liaison shim <-> handle), _module.c
+        │   ├── i2ctarget.h/.c      -- moteur I2C CIBLE générique PARTAGÉ par les périphériques I2C et machine.I2CTarget du MCU : décodage START/STOP/bits/ACK piloté par les fronts, pilotage de SDA, crochets vers l'hôte. Ni Python ni thread, garde d'inclusion
+        │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _i2ctarget.c (machine.I2CTarget : mémoire, files, IRQ au même instant), _timer.c, _fs.c (système de fichiers : liaison shim <-> handle), _module.c (module natif, création du sous-interpréteur sur le worker, API exportée)
         │   ├── uartdevice/         -- idem côté périphériques : uartdevice_core.h (struct UartDevice), _format.c ({vN} et {oN}), _match.c (table de commandes), _script.c (mode Script : chargement du .py dans un espace de noms propre, appel des gestionnaires), _engine.c (construction, ordonnancement, synchro)
-        │   ├── i2cdevice/          -- idem côté I2C : i2cdevice_core.h (struct I2cDevice), _script.c (contrat on_write / on_read / outputs / lines), _engine.c (décodeur piloté par les fronts, construction, synchro)
+        │   ├── i2cdevice/          -- idem côté I2C : i2cdevice_core.h (struct I2cDevice), _script.c (contrat on_write / on_read / outputs / lines), _engine.c (crochets du moteur cible i2ctarget.c, construction, synchro)
         │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md
         ├── FileSystems/            -- images de flash fournies, désignées par MCU.fsSource (datalogger/ : boot.py, main.py, config.txt, lib/ — Examples.FileSystem.Boot)

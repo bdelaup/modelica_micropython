@@ -25,6 +25,13 @@ static PyMethodDef native_methods[] = {
     {"i2c_init", native_i2c_init, METH_VARARGS, "Configures the I2C bus (SCL/SDA pins, frequency) and takes the pins"},
     {"i2c_xfer", native_i2c_xfer, METH_VARARGS, "Complete I2C transaction (write, read after repeated START), blocking"},
     {"i2c_deinit", native_i2c_deinit, METH_VARARGS, "Releases the I2C bus and its pins"},
+    {"i2ct_init", native_i2ct_init, METH_VARARGS, "Configures the I2C target (address, SCL/SDA pins, optional memory) and takes the pins"},
+    {"i2ct_deinit", native_i2ct_deinit, METH_VARARGS, "Releases the I2C target and its pins"},
+    {"i2ct_irq", native_i2ct_irq, METH_VARARGS, "Registers/clears the IRQ handler of the I2C target"},
+    {"i2ct_flags", native_i2ct_flags, METH_VARARGS, "Events handed to the last call of the I2C target handler"},
+    {"i2ct_memaddr", native_i2ct_memaddr, METH_VARARGS, "Current memory address of the I2C target"},
+    {"i2ct_readinto", native_i2ct_readinto, METH_VARARGS, "Copies the bytes received from the controller into a buffer, returns their number"},
+    {"i2ct_write", native_i2ct_write, METH_VARARGS, "Queues bytes for the next reads of the controller, returns the number accepted"},
     {"timer_new", native_timer_new, METH_VARARGS, "Allocates a Timer() slot in the fixed pool"},
     {"timer_init", native_timer_init, METH_VARARGS, "Arms a Timer (period, mode, callback)"},
     {"timer_deinit", native_timer_deinit, METH_VARARGS, "Stops and releases a Timer"},
@@ -40,10 +47,12 @@ static PyMethodDef native_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-/* Enregistre dans sys.modules APRES l'initialisation (pyhost_register_module),
-   et non plus par PyImport_AppendInittab : ce dernier n'est utilisable qu'avant
-   Py_Initialize, or l'interpreteur peut avoir ete demarre par un peripherique
-   serie construit avant le microcontroleur (cf. pyhost.c). */
+/* Enregistre dans sys.modules du sous-interpreteur du microcontroleur
+   (pyhost_register_module), une instance par MCU, et non par
+   PyImport_AppendInittab : ce dernier n'est utilisable qu'avant Py_Initialize,
+   or l'interpreteur peut avoir ete demarre par un peripherique construit avant
+   le microcontroleur (cf. pyhost.c). Pas d'etat de module : les natives
+   retrouvent leur MCU par g_current, local au thread worker. */
 static struct PyModuleDef native_module_def = {
     PyModuleDef_HEAD_INIT, "_pyruntime_native", NULL, -1, native_methods,
     NULL, NULL, NULL, NULL
@@ -52,7 +61,115 @@ static struct PyModuleDef native_module_def = {
 /* read_text_file, le relais stdout et le demarrage de CPython vivent dans
    pyhost.c, partage avec les peripheriques serie. */
 
+/* --- Module machine de l'interpreteur PRINCIPAL ---
+   Le shim ne vit que dans les sous-interpreteurs des microcontroleurs. Un script
+   de peripherique (interpreteur principal, thread Modelica) qui ferait "import
+   machine" obtiendrait sinon un ModuleNotFoundError obscur : ce module-ci
+   l'importe sans erreur, et tout acces a l'un de ses attributs leve le message
+   de worker_context_ok (__getattr__ de module, PEP 562). time reste le vrai
+   module de la stdlib, dont la bibliotheque standard a besoin. */
+static PyObject* main_machine_getattr(PyObject* self, PyObject* name) {
+    PyErr_SetString(PyExc_RuntimeError,
+        "machine and time can only be used from the microcontroller script "
+        "- a peripheral script runs outside its thread");
+    return NULL;
+}
+
+static PyMethodDef main_machine_methods[] = {
+    {"__getattr__", main_machine_getattr, METH_O, "machine is reserved to the microcontroller script"},
+    {NULL, NULL, 0, NULL}
+};
+
+static struct PyModuleDef main_machine_def = {
+    PyModuleDef_HEAD_INIT, "machine", NULL, -1, main_machine_methods,
+    NULL, NULL, NULL, NULL
+};
+
 /* --- Thread worker --- */
+
+/* Configuration du sous-interpreteur d'un microcontroleur : GIL PARTAGE avec
+   l'interpreteur principal (Modelica n'execute de toute facon qu'un composant a
+   la fois), allocateur commun, et extensions monophases autorisees - plusieurs
+   modules .pyd de la stdlib 3.12 le sont encore. Seuls sys.modules, __main__,
+   sys.path et builtins sont propres au MCU : c'est l'isolation recherchee. Cf.
+   requirements.md, decision "Multi-instances". */
+static const PyInterpreterConfig MCU_INTERP_CONFIG = {
+    .use_main_obmalloc = 1,
+    .allow_fork = 0,
+    .allow_exec = 0,
+    .allow_threads = 1,
+    .allow_daemon_threads = 0,
+    .check_multi_interp_extensions = 0,
+    .gil = PyInterpreterConfig_SHARED_GIL,
+};
+
+/* Arguments de construction transmis au worker (chemins), liberes par lui. */
+struct WorkerInit {
+    char* addScriptDir;          /* NULL : ne rien ajouter a sys.path */
+    char* libraryDir;
+    char* shimSrc;
+};
+
+/* Cree le sous-interpreteur du microcontroleur SUR LE THREAD WORKER - un etat
+   de thread Python est lie au thread systeme qui le cree, et c'est ce thread
+   qui executera tout le Python du MCU - puis y installe relais stdout, module
+   natif, sys.path et shim. Retourne 1 si tout est pret ; le GIL est alors tenu
+   par l'etat de thread du sous-interpreteur. Retourne 0 en cas d'echec, GIL
+   rendu, message dans h->init_failure. */
+static int worker_init(struct PyRuntimeHandle* h, struct WorkerInit* wi) {
+    const char* failure = NULL;
+    PyThreadState* sub = NULL;
+
+    /* Il faut un etat de thread courant pour creer un interpreteur : celui de
+       l'interpreteur principal, pris le temps de la creation puis rendu. */
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    PyThreadState* main_ts = PyThreadState_Get();
+    PyStatus status = Py_NewInterpreterFromConfig(&sub, &MCU_INTERP_CONFIG);
+    if (PyStatus_Exception(status) || !sub) {
+        PyThreadState_Swap(main_ts);
+        PyGILState_Release(gstate);
+        snprintf(h->init_failure, sizeof(h->init_failure), "failed to create the sub-interpreter of the microcontroller");
+        return 0;
+    }
+    /* Rend l'etat de thread principal (GIL partage : rendre l'un relache le
+       GIL commun), puis reprend la main au nom du sous-interpreteur. Le worker
+       n'utilise plus ensuite aucune API PyGILState_*, qui ne connait que
+       l'interpreteur principal. */
+    PyThreadState_Swap(main_ts);
+    PyGILState_Release(gstate);
+    PyEval_RestoreThread(sub);
+
+    if (pyhost_install_relay(&h->relay) != 0) {
+        failure = "failed to install the stdout relay";
+    }
+    if (!failure && pyhost_register_module("_pyruntime_native", PyModule_Create(&native_module_def)) != 0) {
+        failure = "failed to register the native module of the shim";
+    }
+    /* Import de modules auxiliaires (cf. requirements.md, decision "Import de
+       modules auxiliaires") : dossier du script (addScriptDirToPath) et/ou
+       d'une bibliotheque partagee (libraryPath), dans le sys.path de CE
+       microcontroleur seulement. */
+    if (!failure && wi->addScriptDir && pyhost_append_path(wi->addScriptDir) != 0) {
+        failure = "failed to add the script folder to sys.path";
+    }
+    if (!failure && wi->libraryDir && pyhost_append_path(wi->libraryDir) != 0) {
+        failure = "failed to add libraryPath to sys.path";
+    }
+    if (!failure && PyRun_SimpleString(wi->shimSrc) != 0) {
+        failure = "failed to initialise the machine/time shim or the file system - traceback above";
+    }
+    relay_flush_buf(&h->relay);
+    if (failure) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+            relay_flush_buf(&h->relay);
+        }
+        snprintf(h->init_failure, sizeof(h->init_failure), "%s", failure);
+        PyEval_SaveThread();
+        return 0;
+    }
+    return 1;
+}
 
 /* Execute un fichier du programme (dir\name, ou name seul si dir est NULL)
    dans __main__. Retourne 0 si le fichier n'existe pas (rien d'execute), 1
@@ -73,7 +190,7 @@ static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const ch
     }
     int rc = PyRun_SimpleString(buf);
     free(buf);
-    relay_emit_pending();
+    relay_flush_buf(&h->relay);
     if (rc != 0) {
         char msg[128];
         snprintf(msg, sizeof(msg), "%s raised an unhandled exception - traceback above",
@@ -84,11 +201,32 @@ static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const ch
     return 1;
 }
 
+/* Argument du thread worker : le handle et ce qu'il faut pour l'initialiser. */
+struct WorkerArg {
+    struct PyRuntimeHandle* h;
+    struct WorkerInit init;
+};
+
 static unsigned __stdcall worker_main(void* arg) {
-    struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) arg;
+    struct WorkerArg* wa = (struct WorkerArg*) arg;
+    struct PyRuntimeHandle* h = wa->h;
     h->worker_thread_id = GetCurrentThreadId();
-    PyGILState_STATE gstate = PyGILState_Ensure();
     g_current = h;
+
+    int ok = worker_init(h, &wa->init);
+    free(wa->init.addScriptDir);
+    free(wa->init.libraryDir);
+    free(wa->init.shimSrc);
+    free(wa);
+
+    /* Resultat de l'initialisation, attendu par PyRuntime_new. */
+    EnterCriticalSection(&h->cs);
+    h->init_state = ok ? INIT_OK : INIT_FAILED;
+    WakeAllConditionVariable(&h->cv);
+    LeaveCriticalSection(&h->cs);
+    if (!ok) {
+        return 0;   /* GIL deja rendu par worker_init */
+    }
 
     /* Premier tour : attendre que Modelica nous cede la main (t=0, cf. MCU "when initial()").
        GIL RELACHE pendant l'attente : le thread Modelica peut avoir a executer du
@@ -133,8 +271,11 @@ static unsigned __stdcall worker_main(void* arg) {
     WakeConditionVariable(&h->cv);
     LeaveCriticalSection(&h->cs);
 
+    /* Rend le GIL commun pour de bon. Le sous-interpreteur n'est pas finalise :
+       ses objets (callbacks, tampon de mem) restent valides jusqu'a la fin du
+       process, comme le reste (cf. PyRuntime_destroy). */
     g_current = NULL;
-    PyGILState_Release(gstate);
+    PyEval_SaveThread();
     return 0;
 }
 
@@ -203,67 +344,81 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     handle->i2c_scl_pin = -1;
     handle->i2c_sda_pin = -1;
     handle->i2cm.next_time = 1.0e300;
+    handle->i2ct.scl_pin = -1;
+    handle->i2ct.sda_pin = -1;
+    handle->init_state = INIT_PENDING;
 
-    /* Le shim doit exister dans l'interprete AVANT que le script ne fasse
-       "import machine"/"import time" sur le thread worker. Il vit dans un vrai
-       fichier .py de la bibliotheque (Resources/Scripts/_shim/), resolu cote
-       Modelica comme scriptPath/pythonHome - cf. requirements.md, decision
-       "Conception du shim machine/time". */
-    char* shim_src = read_text_file(shimPath);
-    if (!shim_src) {
+    /* Journal : a partir du deuxieme microcontroleur, toutes les lignes des MCU
+       sont prefixees par leur nom d'instance (cf. g_mcu_prefix_on). */
+    handle->relay.prefix = handle->instanceName;
+    handle->relay.prefix_on = &g_mcu_prefix_on;
+    if (++g_mcu_count >= 2) {
+        g_mcu_prefix_on = 1;
+    }
+
+    /* Module machine explicatif dans l'interpreteur principal, une fois. */
+    {
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        PyObject* modules = PyImport_GetModuleDict();
+        if (!PyDict_GetItemString(modules, "machine")) {
+            pyhost_register_module("machine", PyModule_Create(&main_machine_def));
+        }
+        PyErr_Clear();
+        PyGILState_Release(gstate);
+    }
+
+    /* Le shim doit exister dans le sous-interpreteur AVANT que le script ne
+       fasse "import machine"/"import time". Il vit dans un vrai fichier .py de
+       la bibliotheque (Resources/Scripts/_shim/), resolu cote Modelica comme
+       scriptPath/pythonHome - cf. requirements.md, decision "Conception du shim
+       machine/time". Lu ici pour signaler un chemin faux sans demarrer de
+       thread ; execute par le worker (worker_init). */
+    struct WorkerArg* wa = (struct WorkerArg*) calloc(1, sizeof(struct WorkerArg));
+    wa->h = handle;
+    wa->init.shimSrc = read_text_file(shimPath);
+    if (!wa->init.shimSrc) {
         ModelicaFormatError("PyRuntime: cannot read the machine/time shim ('%s')", shimPath);
         return NULL;
     }
-
-    PyGILState_STATE gstate = PyGILState_Ensure();
-    const char* failure = NULL;
-
-    /* Module natif du shim : enregistre apres coup dans sys.modules. */
-    if (pyhost_register_module("_pyruntime_native", PyModule_Create(&native_module_def)) != 0) {
-        failure = "failed to register the native module of the shim";
-    }
-
     /* Import de modules auxiliaires (cf. requirements.md, decision "Import de
-       modules auxiliaires") : ajoute a sys.path le dossier du script
-       (addScriptDirToPath) et/ou celui d'une bibliotheque partagee
-       (libraryPath, desactive si chaine vide). Ajoutes a l'execution plutot que
-       dans la configuration d'initialisation, puisque l'interpreteur peut deja
-       etre demarre ; l'ordre obtenu dans sys.path est le meme. */
-    if (!failure && addScriptDirToPath) {
+       modules auxiliaires") : dossier du script (addScriptDirToPath) et/ou
+       celui d'une bibliotheque partagee (libraryPath, desactive si chaine
+       vide), ajoutes par le worker au sys.path du sous-interpreteur. */
+    if (addScriptDirToPath) {
         char* dir = dirname_of(scriptPath);
-        if (dir[0] != '\0' && pyhost_append_path(dir) != 0) {
-            failure = "failed to add the script folder to sys.path";
+        if (dir[0] != '\0') {
+            wa->init.addScriptDir = dir;
+        } else {
+            free(dir);
         }
-        free(dir);
     }
-    if (!failure && libraryPath && libraryPath[0] != '\0') {
+    if (libraryPath && libraryPath[0] != '\0') {
         char* dir = dirname_of(libraryPath);
-        if (dir[0] != '\0' && pyhost_append_path(dir) != 0) {
-            failure = "failed to add libraryPath to sys.path";
+        if (dir[0] != '\0') {
+            wa->init.libraryDir = dir;
+        } else {
+            free(dir);
         }
-        free(dir);
     }
 
-    if (!failure) {
-        g_current = handle;
-        if (PyRun_SimpleString(shim_src) != 0) {
-            failure = "failed to initialise the machine/time shim or the file system - traceback above";
-        }
-        g_current = NULL;
-    }
-    free(shim_src);
-
-    /* Rend le GIL avant toute sortie en erreur : ModelicaFormatError ne revient
-       pas, et un GIL garde ici bloquerait tout autre composant. */
-    PyGILState_Release(gstate);
-    if (failure) {
-        ModelicaFormatError("PyRuntime: %s", failure);
+    handle->thread = (HANDLE) _beginthreadex(NULL, 0, worker_main, wa, 0, NULL);
+    if (!handle->thread) {
+        ModelicaFormatError("PyRuntime: failed to create the worker thread");
         return NULL;
     }
 
-    handle->thread = (HANDLE) _beginthreadex(NULL, 0, worker_main, handle, 0, NULL);
-    if (!handle->thread) {
-        ModelicaFormatError("PyRuntime: failed to create the worker thread");
+    /* Attend que le worker ait cree son sous-interpreteur et execute le shim :
+       une erreur de configuration (systeme de fichiers introuvable...) arrete
+       ainsi la simulation des la construction, comme avant. GIL non tenu ici
+       (invariant de pyhost.c) : le worker peut le prendre. */
+    EnterCriticalSection(&handle->cs);
+    while (handle->init_state == INIT_PENDING) {
+        SleepConditionVariableCS(&handle->cv, &handle->cs, INFINITE);
+    }
+    int init_state = handle->init_state;
+    LeaveCriticalSection(&handle->cs);
+    if (init_state != INIT_OK) {
+        ModelicaFormatError("PyRuntime (%s): %s", handle->instanceName, handle->init_failure);
         return NULL;
     }
 
@@ -314,6 +469,14 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
         uart_tx_advance(h, currentTime);
         uart_rx_step(h, currentTime, pinBoolIn);
         uart_publish(h, currentTime, uartTxPinOut, uartTxLevelOut);
+        /* La cible I2C en mode memoire continue de repondre, comme le materiel ;
+           sans memoire, plus de gestionnaire pour fournir les octets (0xFF). */
+        i2ct_step(h, pinBoolIn);
+        i2ct_finish(h);
+        for (i = 0; i < NUM_PINS; i++) {
+            pinBoolOut[i] = h->pin_driven_value[i];
+            pinIsOutput[i] = h->pin_is_output[i];
+        }
         /* Seule une echeance UART peut encore demander un reveil apres la fin
            du script (prochain front a emettre, octet recu a clore). */
         *nextWakeTime = earliest_uart_deadline(h, currentTime);
@@ -374,6 +537,13 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
        le script est bloque, c'est un reveil a honorer (i2c_done_wake). */
     i2c_step(h, currentTime, pinBoolIn);
 
+    /* Fait avancer la cible I2C sur les fronts de SCL/SDA. Un evenement dont
+       le script a demande l'IRQ doit etre traite AU MEME INSTANT : pour
+       IRQ_READ_REQ, le gestionnaire fournit l'octet que le maitre va lire
+       (cf. i2ct_finish, apres le drain ci-dessous). */
+    i2ct_step(h, pinBoolIn);
+    int i2ct_due = h->i2ct.irq_pending != 0 && !h->irq_disabled;
+
     /* Un Timer actif dont l'echeance est atteinte doit aussi faire rendre la
        main au worker (sinon son callback ne se declencherait jamais) - meme
        si ni une entree n'a change, ni le propre reveil du worker n'est du.
@@ -386,7 +556,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
        appel de PyRuntime_sync qui arrive plus tot (tick periodique) ne doit
        faire que rafraichir l'etat observe, sans laisser le script avancer
        avant l'heure - sinon un sleep(1) pourrait etre ecourte a tort. */
-    if (input_changed || h->i2c_done_wake || !h->wake_pending || currentTime + PYRUNTIME_EPS >= h->wake_requested_at || timer_due) {
+    if (input_changed || h->i2c_done_wake || !h->wake_pending || currentTime + PYRUNTIME_EPS >= h->wake_requested_at || timer_due || i2ct_due) {
         /* Boucle interne : tant que le worker redemande un reveil immediat
            (ex. plusieurs Pin(...) construits/pilotes a la suite, sans sleep
            entre deux), on lui redonne la main tout de suite plutot que de
@@ -417,6 +587,9 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
             }
         }
     }
+
+    /* Octet differe par IRQ_READ_REQ : le gestionnaire a eu son tour. */
+    i2ct_finish(h);
 
     for (i = 0; i < NUM_PINS; i++) {
         pinBoolOut[i] = h->pin_driven_value[i];
@@ -451,7 +624,8 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     LeaveCriticalSection(&h->cs);
 
     if (error) {
-        ModelicaFormatError("PyRuntime (%s): %s", h->scriptPath[0] != '\0' ? h->scriptPath : h->fs_root,
+        ModelicaFormatError("PyRuntime (%s, %s): %s", h->instanceName,
+                            h->scriptPath[0] != '\0' ? h->scriptPath : h->fs_root,
                             error_message ? error_message : "unknown error");
         return;
     }

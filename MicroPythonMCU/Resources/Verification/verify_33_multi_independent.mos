@@ -1,0 +1,33 @@
+// Scénario de vérification n°33 (cf. requirements.md, décision « Multi-instances »).
+// omc verify_33_multi_independent.mos   (depuis ce dossier)
+//
+// Deux MCU exécutent le même programme (multi_counter.py), qui importe le même
+// module à état (multi_counter_lib.py). Chacun a son sous-interpréteur : chacun
+// compte ses 5 tops et allume GP1 à la fin. Un état partagé (sys.modules ou
+// __main__ commun) donnerait 10 tops et GP1 éteinte sur au moins une carte.
+// Le journal doit porter le préfixe d'instance, puisqu'il y a deux MCU.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.MultiMcu.Independent, stopTime = 0.8, numberOfIntervals = 800, fileNamePrefix = "MultiIndependent");
+b := getErrorString();
+
+ok1 := val(mcu1.GP1.v, 0.75, "MultiIndependent_res.mat");
+ok2 := val(mcu2.GP1.v, 0.75, "MultiIndependent_res.mat");
+// tops 1 (impair, GP0 haute) puis 2 (pair, GP0 basse), sur chaque carte
+hi1 := val(mcu1.GP0.v, 0.05, "MultiIndependent_res.mat");
+lo1 := val(mcu1.GP0.v, 0.15, "MultiIndependent_res.mat");
+hi2 := val(mcu2.GP0.v, 0.05, "MultiIndependent_res.mat");
+lo2 := val(mcu2.GP0.v, 0.15, "MultiIndependent_res.mat");
+
+ret := system(".\\MultiIndependent.bat", "MultiIndependent_run.txt");
+log := readFile("MultiIndependent_run.txt");
+(nIsolated, m1) := regex(log, "mcu[12]] ticks counted by this microcontroller: 5 - isolated", 1);
+(nPrefix1, m2) := regex(log, "mcu1] ", 1);
+(nPrefix2, m3) := regex(log, "mcu2] ", 1);
+
+if ok1 > 2.0 and ok2 > 2.0 and hi1 > 2.0 and lo1 < 0.5 and hi2 > 2.0 and lo2 < 0.5 and nIsolated >= 1 and nPrefix1 >= 1 and nPrefix2 >= 1 then
+  print("PASS: verify_33_multi_independent (GP1 mcu1=" + String(ok1) + "V mcu2=" + String(ok2) + "V : chaque carte a compte ses 5 tops, journal prefixe par instance)\n");
+else
+  print("FAIL: verify_33_multi_independent (GP1 mcu1=" + String(ok1) + " mcu2=" + String(ok2) + ", GP0 mcu1 " + String(hi1) + "/" + String(lo1) + ", mcu2 " + String(hi2) + "/" + String(lo2) + ", isole " + String(nIsolated) + ", prefixes " + String(nPrefix1) + "/" + String(nPrefix2) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

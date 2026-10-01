@@ -219,6 +219,65 @@ class I2C:
         data = self.readfrom_mem(addr, memaddr, len(buf), addrsize=addrsize)
         buf[:len(data)] = data
 
+class _I2CTargetIRQ:
+    # Objet rendu par I2CTarget.irq() : flags() donne les evenements en cours
+    # de traitement, comme sur MicroPython.
+    def flags(self):
+        return _native.i2ct_flags()
+
+_UNSET = object()
+
+class I2CTarget:
+    # Cible (esclave) I2C en drain ouvert, une seule par microcontroleur. Adresse
+    # sur 7 bits. Avec mem= (bytearray), la cible se comporte comme une memoire
+    # sans aucun gestionnaire : les premiers octets ecrits par le maitre
+    # (mem_addrsize bits) choisissent l'adresse, les suivants y sont ecrits, une
+    # lecture sort la memoire a partir de cette adresse. Sans mem=, readinto()
+    # lit les octets recus et write() prepare ceux a sortir, typiquement depuis
+    # un gestionnaire irq(). Tous les gestionnaires s'executent au meme instant
+    # simule que l'evenement, qu'ils soient hard ou non : IRQ_READ_REQ peut donc
+    # fournir l'octet demande sans clock stretching (non modelise).
+    IRQ_ADDR_MATCH_READ = 0x01   # doivent rester alignes sur I2CT_IRQ_* cote C
+    IRQ_ADDR_MATCH_WRITE = 0x02
+    IRQ_READ_REQ = 0x04
+    IRQ_WRITE_REQ = 0x08
+    IRQ_END_READ = 0x10
+    IRQ_END_WRITE = 0x20
+
+    def __init__(self, id=0, addr=None, *, addrsize=7, mem=None, mem_addrsize=8, scl=None, sda=None):
+        if addr is None:
+            raise TypeError('addr must be given (e.g. I2CTarget(0, 0x42, scl=Pin(5), sda=Pin(4)))')
+        if scl is None or sda is None:
+            raise ValueError('scl and sda must be given (e.g. I2CTarget(0, 0x42, scl=Pin(5), sda=Pin(4)))')
+        if isinstance(scl, Pin):
+            scl = scl.id
+        if isinstance(sda, Pin):
+            sda = sda.id
+        self.id = id
+        self._mem = mem          # garde le tampon en vie : le C ecrit dedans
+        self._irq = _I2CTargetIRQ()
+        _native.i2ct_init(id, addr, addrsize, scl, sda, mem, mem_addrsize)
+
+    @property
+    def memaddr(self):
+        return _native.i2ct_memaddr()
+
+    def deinit(self):
+        _native.i2ct_deinit()
+
+    def readinto(self, buf):
+        return _native.i2ct_readinto(buf)
+
+    def write(self, buf):
+        return _native.i2ct_write(bytes(buf))
+
+    def irq(self, handler=_UNSET, trigger=IRQ_END_READ | IRQ_END_WRITE, hard=False):
+        # irq() sans argument ne reconfigure rien et rend l'objet IRQ (flags()),
+        # comme sur MicroPython ; hard= est accepte et sans effet.
+        if handler is not _UNSET or trigger != I2CTarget.IRQ_END_READ | I2CTarget.IRQ_END_WRITE or hard:
+            _native.i2ct_irq(None if handler is _UNSET else handler, trigger, self)
+        return self._irq
+
 class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
@@ -240,6 +299,7 @@ _machine.Display = Display
 _machine.UART = UART
 _machine.I2C = I2C
 _machine.SoftI2C = I2C   # meme maitre : en simulation, logiciel ou materiel ne se distinguent pas
+_machine.I2CTarget = I2CTarget
 _machine.Timer = Timer
 _machine.idle = _native.idle
 _machine.disable_irq = _native.disable_irq

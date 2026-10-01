@@ -5,6 +5,7 @@
 #define PYHOST_IMPORTS(X) \
     X(PyBool_FromLong) \
     X(PyBool_Type) \
+    X(PyBuffer_Release) \
     X(PyByteArray_Type) \
     X(PyBytes_FromObject) \
     X(PyBytes_FromStringAndSize) \
@@ -15,6 +16,7 @@
     X(PyDict_GetItemString) \
     X(PyDict_New) \
     X(PyDict_SetItemString) \
+    X(PyErr_Clear) \
     X(PyErr_Format) \
     X(PyErr_Occurred) \
     X(PyErr_Print) \
@@ -38,11 +40,14 @@
     X(PyLong_AsLong) \
     X(PyLong_FromLong) \
     X(PyLong_FromLongLong) \
+    X(PyLong_FromUnsignedLong) \
     X(PyLong_Type) \
     X(PyModule_Create2) \
+    X(PyModule_GetState) \
     X(PyObject_CallFunctionObjArgs) \
     X(PyObject_CallNoArgs) \
     X(PyObject_CallObject) \
+    X(PyObject_GetBuffer) \
     X(PyRun_SimpleStringFlags) \
     X(PyRun_StringFlags) \
     X(PySequence_Check) \
@@ -51,6 +56,8 @@
     X(PyStatus_Exception) \
     X(PySys_GetObject) \
     X(PySys_SetObject) \
+    X(PyThreadState_Get) \
+    X(PyThreadState_Swap) \
     X(PyTuple_New) \
     X(PyType_IsSubtype) \
     X(PyUnicode_AsUTF8AndSize) \
@@ -61,6 +68,7 @@
     X(Py_DecodeLocale) \
     X(Py_InitializeFromConfig) \
     X(Py_IsInitialized) \
+    X(Py_NewInterpreterFromConfig) \
     X(_PyArg_ParseTuple_SizeT) \
     X(_PyByteArray_empty_string) \
     X(_PyObject_CallFunction_SizeT) \

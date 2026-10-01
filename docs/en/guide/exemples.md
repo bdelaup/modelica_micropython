@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 31 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 37 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
 
 ## Getting started
 
@@ -86,6 +86,19 @@ The `MicroPythonMCU.Examples` package holds 31 ready-to-simulate models: open th
 | `I2c.MultiDevice` | Three devices on a 400 kHz bus, found by `scan()` | log | `i2c_multi.py` |
 | `I2c.NoPullUp` | Bus without pull-up resistors: `OSError(ETIMEDOUT)` | lines at 0 V, log | `i2c_nopullup.py` |
 | `I2c.GroveLcd` | Grove LCD RGB display driven by an unmodified off-the-shelf driver | display icon | `i2c_grove_lcd_rgb.py` |
+
+## Several microcontrollers (`Examples.MultiMcu`)
+
+Several `MCU` blocks in the same model, each with its own program (see [Several microcontrollers](mcu.md#several-microcontrollers-in-a-model)).
+
+| Example | What it shows | What to watch | Program |
+|---|---|---|---|
+| `MultiMcu.Independent` | Two boards run the same program and import the same module: each keeps its own state | `mcu1.GP1.v`, `mcu2.GP1.v`, prefixed log | `multi_counter.py` |
+| `MultiMcu.Handshake` | REQ/ACK handshake over two wires, B answers from a `Pin.irq` | `mcuA.GP0.v`, `mcuB.GP1.v` | `handshake_a.py`, `handshake_b.py` |
+| `MultiMcu.Uart` | Crossed serial link: A sends `PING`, B answers `PONG` | `mcuA.GP0.v`, `mcuB.GP0.v`, log | `uart_ping.py`, `uart_pong.py` |
+| `MultiMcu.FileSystem` | Two data loggers start from the same flash image: one copy each | folders `mcu1_datalogger_*`, `mcu2_datalogger_*` | `boot.py`/`main.py` of `datalogger` |
+| `MultiMcu.I2c` | I2C bus between two boards, B is a target in memory mode (`I2CTarget(mem=...)`) | `mcuA.GP5.v`, LED of B, log | `i2c_controller.py`, `i2c_target_mem.py` |
+| `MultiMcu.I2cIrq` | Same bus, B answers commands from an `I2CTarget.irq()` handler | log | `i2c_controller_irq.py`, `i2c_target_irq.py` |
 
 ## Weighing (`Examples.Weighing`)
 

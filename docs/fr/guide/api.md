@@ -205,6 +205,53 @@ Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le 
 
 **Erreurs** : `OSError(EIO)` (errno 5) si l'adresse n'est pas acquittée ; `OSError(ETIMEDOUT)` (errno 110) si une ligne reste basse (pas de tirage, bus bloqué) ; `OSError(EBUSY)` (errno 16) pour un appel depuis un callback de Timer/IRQ pendant une transaction.
 
+## `machine.I2CTarget`
+
+```python
+from machine import Pin, I2CTarget
+mem = bytearray(8)
+cible = I2CTarget(0, 0x42, mem=mem, scl=Pin(4), sda=Pin(5))   # le maître lit et écrit mem
+mem[0] = 123                                                  # visible par le maître à sa prochaine lecture
+```
+
+Le microcontrôleur est ici une **cible** (esclave) I2C, sur le même bus électrique en drain ouvert que `machine.I2C` : il ne génère jamais l'horloge, il répond au maître — typiquement un autre `MCU` du modèle (voir [Plusieurs microcontrôleurs](mcu.md#plusieurs-microcontroleurs-dans-un-modele)). Il faut toujours des résistances de tirage sur le bus. Comme pour le maître, **les deux broches sont réservées**.
+
+Deux façons de répondre :
+
+- **Mode mémoire** (`mem=` un `bytearray`) : la cible se comporte comme une petite mémoire, **sans aucun gestionnaire**. Les premiers octets écrits par le maître (`mem_addrsize` bits) choisissent l'adresse, les suivants y sont écrits, une lecture sort la mémoire à partir de cette adresse ; l'adresse avance à chaque octet et reboucle en fin de tampon. C'est la forme `writeto_mem` / `readfrom_mem` du maître. Le programme se contente de tenir `mem` à jour ; la mémoire continue de répondre même après la fin du programme.
+- **Gestionnaire d'interruption** (sans `mem=`) : les octets reçus s'accumulent et se lisent par `readinto()`, ceux à envoyer se préparent par `write()`, typiquement depuis un gestionnaire `irq()`.
+
+```python
+def on_i2c(t):
+    flags = t.irq().flags()
+    if flags & I2CTarget.IRQ_END_WRITE:      # le maître a fini d'écrire
+        n = t.readinto(commande)
+    if flags & I2CTarget.IRQ_READ_REQ:       # le maître veut lire et rien n'est prêt
+        t.write(reponse)
+
+cible = I2CTarget(0, 0x43, scl=Pin(4), sda=Pin(5))
+cible.irq(on_i2c, trigger=I2CTarget.IRQ_END_WRITE | I2CTarget.IRQ_READ_REQ, hard=True)
+```
+
+**Le gestionnaire s'exécute au même instant simulé que l'événement**, qu'il soit `hard` ou non : pour `IRQ_READ_REQ`, l'octet fourni par `write()` part aussitôt, sans le clock stretching qu'un vrai circuit pourrait demander.
+
+### Constructeur
+
+`I2CTarget(id=0, addr, *, addrsize=7, mem=None, mem_addrsize=8, scl, sda)` — `id` : `0` (une seule cible par microcontrôleur). `addr` : adresse sur 7 bits (`addrsize=10` refusé). `mem` : `bytearray` (ou tampon modifiable) non vide, ou `None`. `mem_addrsize` : 0, 8, 16, 24 ou 32 bits. `scl`/`sda` : obligatoires, `Pin` ou numéro, deux broches distinctes parmi `0`-`7`, différentes de celles d'un `I2C` maître. Synchronise.
+
+### Méthodes et constantes
+
+| Méthode | Comportement | Synchronise ? |
+|---|---|---|
+| `.readinto(buf)` | Copie dans `buf` les octets reçus du maître (mode sans mémoire), retourne leur nombre | Non |
+| `.write(buf)` | Prépare des octets pour les prochaines lectures du maître, retourne le nombre accepté (file de 256 octets) | Non |
+| `.irq(handler=None, trigger=IRQ_END_READ \| IRQ_END_WRITE, hard=False)` | Enregistre le gestionnaire (appelé avec la cible) ; sans argument, rend seulement l'objet IRQ | Non |
+| `.irq().flags()` | Événements remis au dernier appel du gestionnaire | Non |
+| `.memaddr` | Adresse mémoire courante (mode mémoire) | Non |
+| `.deinit()` | Libère la cible et ses broches | Oui |
+
+Constantes d'événement : `IRQ_ADDR_MATCH_READ`, `IRQ_ADDR_MATCH_WRITE` (adresse reconnue), `IRQ_READ_REQ` (le maître demande un octet et la file est vide), `IRQ_WRITE_REQ` (un octet vient d'être reçu), `IRQ_END_READ`, `IRQ_END_WRITE` (fin de la lecture ou de l'écriture ; en mode mémoire, pas d'`IRQ_END_WRITE` pour une écriture qui n'a fait que choisir l'adresse).
+
 ## Système de fichiers : `open()` et `os`
 
 ```python
@@ -282,7 +329,8 @@ Détails et justifications dans `requirements.md` (section Restrictions v0) :
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).
 - Pas de `SPI` — voir le TODO de `requirements.md` pour les extensions prévues.
 - Système de fichiers : une copie neuve de l'image à chaque simulation (pas de persistance d'un run à l'autre ; pour enchaîner, pointer `fsSource` sur une copie précédente). Cloisonnement pédagogique limité à `open()` et `os` — `io.open` ou `pathlib` n'y sont pas soumis. Hôte insensible à la casse (Windows), pas d'`os.urandom`, ni `mount`/`VfsLfs2`/`dupterm`.
-- `machine.I2C` : **maître uniquement**, un seul bus, pas de clock stretching (SCL tenue basse = `ETIMEDOUT`) ni d'arbitrage multi-maître, 256 octets au plus par transaction, tirages internes du RP2040 non modélisés (il faut `usePullUp` sur un périphérique).
+- `machine.I2C` : un seul bus maître, pas de clock stretching (SCL tenue basse = `ETIMEDOUT`) ni d'arbitrage multi-maître, 256 octets au plus par transaction, tirages internes du RP2040 non modélisés (il faut `usePullUp` sur un périphérique).
+- `machine.I2CTarget` : une seule cible par microcontrôleur, adresse sur 7 bits ; gestionnaires tous servis à l'instant de l'événement (`hard=` sans effet) ; plus aucun gestionnaire une fois le programme terminé (seul le mode `mem=` continue de répondre).
 - `machine.UART` : un seul périphérique (`UART(0)`), **trame 8N1 figée** (`bits`/`parity`/`stop` acceptés mais sans effet), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 256 octets, débordement silencieux ; une trame dont le bit de stop n'est pas haut est ignorée sans erreur de framing. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
 - `machine.Display` : une seule liaison logique, **écriture seule** (pas de réception), livraison instantanée du message entier (pas de bauds simulés) ; liaison modélisée comme un connecteur logique causal, pas électrique — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
 - `Pin.irq()` : tout callback tourne « soft » (déféré au prochain point de réveil du worker) ; `hard=` accepté mais sans effet — aucune notion de contexte d'interruption matérielle possible dans ce modèle mono-thread. Une exception levée dans un callback arrête toute la simulation (même politique que le script principal), pas d'isolation « le callback plante mais le reste continue ».

@@ -1,0 +1,30 @@
+// Scénario de vérification n°35 (cf. requirements.md, décision « Multi-instances »).
+// omc verify_35_multi_uart.mos   (depuis ce dossier)
+//
+// Liaison série électrique croisée entre deux MCU, 9600 bauds : A envoie
+// « PING n », B répond « PONG n », trois fois. Succès : lignes au repos haut
+// avant la première trame, les deux sens portent des trames, A allume GP7, et
+// le journal (préfixé par instance) montre les trois échanges.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.MultiMcu.Uart, stopTime = 0.2, numberOfIntervals = 2000, fileNamePrefix = "MultiUart");
+b := getErrorString();
+
+f := "MultiUart_res.mat";
+idleA := val(mcuA.GP0.v, 0.01, f);
+idleB := val(mcuB.GP0.v, 0.01, f);
+// start bit de 'P', premiere trame de A juste apres t = 20 ms (un bit = 104 us)
+startA := val(mcuA.GP0.v, 0.02005, f);
+ok := val(mcuA.GP7.v, 0.19, f);
+
+ret := system(".\\MultiUart.bat", "MultiUart_run.txt");
+log := readFile("MultiUart_run.txt");
+(nReplies, m1) := regex(log, "mcuA] replies: 3 / 3", 1);
+(nAnswered, m2) := regex(log, "mcuB] answered b'PING 2'", 1);
+
+if idleA > 3.0 and idleB > 3.0 and startA < 0.5 and ok > 2.0 and nReplies >= 1 and nAnswered >= 1 then
+  print("PASS: verify_35_multi_uart (repos A/B " + String(idleA) + "/" + String(idleB) + "V, start bit " + String(startA) + "V, GP7(A)=" + String(ok) + "V, 3 PONG recus)\n");
+else
+  print("FAIL: verify_35_multi_uart (repos " + String(idleA) + "/" + String(idleB) + ", start " + String(startA) + ", GP7(A)=" + String(ok) + ", journal " + String(nReplies) + "/" + String(nAnswered) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

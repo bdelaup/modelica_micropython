@@ -106,10 +106,10 @@ equation
     pinNodeVoltage[i] = sns[i].v;
     pinBoolIn[i] = pinNodeVoltage[i] > (VIL + VIH)/2 "logic threshold halfway, v0 approximation";
     pinBoolInC[i] = if pinBoolIn[i] then 1 else 0;
-    pinBoolOut[i] = pinBoolOutC[i] <> 0;
-    pinIsOutputD[i] = pinIsOutputC[i] <> 0;
-    pwmPeriod[i] = 1/max(pwmFreq[i], 1e-6);
-    src[i].v = if pinIsOutputD[i] then (if uartTxPin == i then (if uartTxLevel then VOH else VOL) elseif pwmFreq[i] > 0 then (if mod(time, pwmPeriod[i]) < pwmDuty[i]*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "serial frame (level published by the C code at each change) if the pin is assigned to the UART, otherwise PWM square wave if pwmFreq > 0, otherwise plain digital output - see requirements.md";
+    pinBoolOut[i] = pre(pinBoolOutC[i]) <> 0;
+    pinIsOutputD[i] = pre(pinIsOutputC[i]) <> 0;
+    pwmPeriod[i] = 1/max(pre(pwmFreq[i]), 1e-6);
+    src[i].v = if pinIsOutputD[i] then (if pre(uartTxPin) == i then (if pre(uartTxLevel) then VOH else VOL) elseif pre(pwmFreq[i]) > 0 then (if mod(time, pwmPeriod[i]) < pre(pwmDuty[i])*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "serial frame (level published by the C code at each change) if the pin is assigned to the UART, otherwise PWM square wave if pwmFreq > 0, otherwise plain digital output - see requirements.md";
     sw[i].control = not pinIsOutputD[i] "open (high impedance) if the pin is an input";
   end for;
   connect(sw[9].n, ledResistor.p);

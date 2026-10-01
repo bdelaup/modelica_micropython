@@ -1,0 +1,42 @@
+// Scénario de vérification n°36 (cf. requirements.md, décision « Multi-instances »).
+// omc verify_36_multi_filesystem.mos   (depuis ce dossier)
+//
+// Deux MCU démarrent de la même image de flash (datalogger) : chacun doit avoir
+// SA copie (mcu1_datalogger_*, mcu2_datalogger_*) et y écrire SES mesures.
+// L'auto-contrôle de main.py (contenu exact de « / », relecture...) passe sur
+// les deux cartes, ce qui n'arriverait pas si elles partageaient une racine.
+// Copies nommées mcu1_/mcu2_ : aucune interférence avec les mcu_datalogger_*
+// des scénarios 25 et 27, d'où pas de chaîne commune dans run_tests.sh.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+system("for /d %d in (mcu1_datalogger_* mcu2_datalogger_*) do rmdir /s /q \"%d\"");
+
+simulate(MicroPythonMCU.Examples.MultiMcu.FileSystem, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "MultiFileSystem");
+b := getErrorString();
+
+ok1 := val(mcu1.GP1.v, 1.4, "MultiFileSystem_res.mat");
+ok2 := val(mcu2.GP1.v, 1.4, "MultiFileSystem_res.mat");
+
+system("dir /b /ad mcu1_datalogger_* > MultiFileSystem_copies1.txt");
+system("dir /b /ad mcu2_datalogger_* > MultiFileSystem_copies2.txt");
+c1 := OpenModelica.Scripting.strtok(readFile("MultiFileSystem_copies1.txt"), "\r\n");
+c2 := OpenModelica.Scripting.strtok(readFile("MultiFileSystem_copies2.txt"), "\r\n");
+n1 := size(c1, 1);
+n2 := size(c2, 1);
+m1 := if n1 == 1 then readFile(c1[1] + "/data/measurements.csv") else "";
+m2 := if n2 == 1 then readFile(c2[1] + "/data/measurements.csv") else "";
+// mcu2 mesure 1 V constant : ses 10 lignes valent 1.000 ; mcu1 mesure la rampe
+(nConst2, x1) := regex(m2, ";1[.]000", 1);
+lines1 := OpenModelica.Scripting.strtok(m1, "\n");
+lines2 := OpenModelica.Scripting.strtok(m2, "\n");
+rampOk := if size(lines1, 1) == 11 and size(lines2, 1) == 11 then lines1[11] <> lines2[11] else false;
+const2 := if size(lines2, 1) == 11 then nConst2 >= 1 and regexBool(lines2[2], ";1[.]000$") and regexBool(lines2[11], ";1[.]000$") else false;
+
+system("for /d %d in (mcu1_datalogger_* mcu2_datalogger_*) do rmdir /s /q \"%d\"");
+
+if ok1 > 2.0 and ok2 > 2.0 and n1 == 1 and n2 == 1 and rampOk and const2 then
+  print("PASS: verify_36_multi_filesystem (GP1 mcu1=" + String(ok1) + "V mcu2=" + String(ok2) + "V, une copie par MCU, mesures distinctes : " + lines1[11] + " / " + lines2[11] + ")\n");
+else
+  print("FAIL: verify_36_multi_filesystem (GP1 " + String(ok1) + "/" + String(ok2) + ", copies " + String(n1) + "/" + String(n2) + ", rampe " + String(rampOk) + ", constante " + String(const2) + ")\n" + b + "\n--- mcu1 ---\n" + m1 + "\n--- mcu2 ---\n" + m2);
+end if;

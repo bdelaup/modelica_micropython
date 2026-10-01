@@ -1,0 +1,30 @@
+// Scénario de vérification n°37 (cf. requirements.md, décision « I2C cible côté microcontrôleur »).
+// omc verify_37_multi_i2c_mem.mos   (depuis ce dossier)
+//
+// Bus I2C électrique entre deux MCU : A est maître, B une cible 0x42 en mode
+// mémoire (machine.I2CTarget avec mem=). A scanne le bus, écrit le registre 4
+// (LED de B), relit les registres 0-1 (mesure ADC de B, 2 V). Succès : la LED
+// de B s'allume, A allume GP7, et le journal montre le scan et la tension lue.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.MultiMcu.I2c, stopTime = 0.06, numberOfIntervals = 6000, fileNamePrefix = "MultiI2cMem");
+b := getErrorString();
+
+f := "MultiI2cMem_res.mat";
+ledOff := val(mcuB.GP3.v, 0.01, f);
+ledOn := val(mcuB.GP3.v, 0.055, f);
+ok := val(mcuA.GP7.v, 0.055, f);
+idleScl := val(mcuA.GP4.v, 0.005, f);
+idleSda := val(mcuA.GP5.v, 0.005, f);
+
+ret := system(".\\MultiI2cMem.bat", "MultiI2cMem_run.txt");
+log := readFile("MultiI2cMem_run.txt");
+(nScan, m1) := regex(log, "mcuA] scan: [[]'0x42'[]]", 1);
+(nVolts, m2) := regex(log, "mcuA] voltage measured by B: 2[.]00", 1);
+
+if idleScl > 3.0 and idleSda > 3.0 and ledOff < 0.5 and ledOn > 2.0 and ok > 2.0 and nScan >= 1 and nVolts >= 1 then
+  print("PASS: verify_37_multi_i2c_mem (bus au repos " + String(idleScl) + "/" + String(idleSda) + "V, LED de B " + String(ledOff) + " -> " + String(ledOn) + "V, GP7(A)=" + String(ok) + "V, scan et mesure relus)\n");
+else
+  print("FAIL: verify_37_multi_i2c_mem (repos " + String(idleScl) + "/" + String(idleSda) + ", LED B " + String(ledOff) + " -> " + String(ledOn) + ", GP7(A)=" + String(ok) + ", journal " + String(nScan) + "/" + String(nVolts) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

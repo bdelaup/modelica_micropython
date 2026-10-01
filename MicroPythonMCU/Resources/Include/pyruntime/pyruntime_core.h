@@ -69,6 +69,40 @@ struct I2cMaster {
     int acks;                        /* octets de donnees acquittes (valeur de retour de writeto) */
 };
 
+/* machine.I2CTarget : cible (esclave) unique, sur deux broches GPx au choix du
+   script, en drain ouvert comme le maitre. Le decodage du bus est celui des
+   peripheriques I2C (struct I2cTarget, i2ctarget.h) ; ce que le
+   microcontroleur fait des octets (memoire ou files, IRQ) est decrit dans
+   pyruntime_i2ctarget.c. */
+struct I2cTargetSide {
+    int configured;
+    int scl_pin;                     /* index interne 0-7, -1 si non affecte */
+    int sda_pin;
+    struct I2cTarget eng;
+
+    /* mode memoire (mem = bytearray du script, tampon tenu jusqu'a deinit) */
+    int has_mem;
+    Py_buffer mem;
+    int mem_addr_bytes;              /* mem_addrsize / 8 : octets d'adresse en tete d'ecriture */
+    int mem_addr_seen;               /* octets d'adresse deja recus dans la phase d'ecriture */
+    int mem_wrote;                   /* la phase d'ecriture a ecrit en memoire (pas seulement l'adresse) */
+    unsigned int memaddr;            /* adresse memoire courante (I2CTarget.memaddr) */
+
+    /* mode sans memoire : files */
+    unsigned char rx[I2CT_BUF_MAX];  /* recus du maitre, lus par readinto() */
+    int rx_len;
+    unsigned char tx[I2CT_BUF_MAX];  /* prepares par write(), sortis aux lectures du maitre */
+    int tx_len;
+    int tx_pos;
+
+    /* irq() : un gestionnaire, un masque de declencheurs */
+    PyObject* irq_handler;
+    PyObject* irq_self;
+    int irq_trigger;
+    int irq_pending;                 /* evenements survenus, pas encore remis au gestionnaire */
+    int irq_flags;                   /* evenements remis au dernier appel (irq().flags()) */
+};
+
 struct PyRuntimeHandle {
     char* scriptPath;            /* chaine vide : main.py du systeme de fichiers tient lieu de programme */
 
@@ -155,6 +189,7 @@ struct PyRuntimeHandle {
     int i2c_claimed[NUM_PINS];   /* broche prise par le bus : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO */
     int i2c_done_wake;
     struct I2cMaster i2cm;
+    struct I2cTargetSide i2ct;   /* machine.I2CTarget, cf. pyruntime_i2ctarget.c */
 
     int script_done;
     int script_error;
@@ -162,11 +197,35 @@ struct PyRuntimeHandle {
 
     HANDLE thread;
     DWORD worker_thread_id;  /* thread autorise a appeler les natives du shim, cf. worker_context_ok */
+
+    /* Initialisation du sous-interpreteur, faite par le worker (cf. worker_init) :
+       PyRuntime_new attend que init_state quitte INIT_PENDING pour signaler une
+       eventuelle erreur de configuration des la construction. */
+    int init_state;
+    char init_failure[256];
+
+    /* Relais stdout/stderr propre a ce microcontroleur (cf. struct RelayBuf,
+       pyhost.c) : prefixe par instanceName des que plusieurs MCU existent. */
+    struct RelayBuf relay;
 };
 
-/* Handle du PyRuntime en cours d'execution sur le thread worker courant.
-   Un seul worker actif a la fois (restriction v0 "une seule instance"),
-   donc une variable globale suffit pour que les fonctions natives du shim
-   (appelees depuis Python, qui ne recoivent pas le handle directement)
-   retrouvent leur contexte. */
-static struct PyRuntimeHandle* g_current = NULL;
+#define INIT_PENDING 0
+#define INIT_OK 1
+#define INIT_FAILED (-1)
+
+/* Handle du microcontroleur dont le thread worker est le thread COURANT.
+   Stockage local de thread : chaque MCU a son worker, et tout son Python s'y
+   execute (shim, programme, callbacks), donc les fonctions natives du shim -
+   appelees depuis Python, qui ne recoivent pas le handle directement -
+   retrouvent ainsi leur microcontroleur, quel que soit le nombre de MCU. Vaut
+   NULL sur tout autre thread, dont le thread Modelica : PyRuntime_sync et ses
+   auxiliaires recoivent le handle en parametre et ne lisent JAMAIS g_current. */
+static __thread struct PyRuntimeHandle* g_current = NULL;
+
+/* Nombre de microcontroleurs construits dans le process. A partir de deux, les
+   lignes de leurs print() sont prefixees par leur nom d'instance (cf.
+   RelayBuf.prefix_on) ; un MCU seul garde le journal d'avant le multi-instance.
+   Tous les constructeurs passent avant t=0 : le prefixe couvre tout ce que les
+   programmes impriment. */
+static int g_mcu_count = 0;
+static int g_mcu_prefix_on = 0;

@@ -1,6 +1,6 @@
 # Exemples
 
-Le paquetage `MicroPythonMCU.Examples` contient 31 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
+Le paquetage `MicroPythonMCU.Examples` contient 37 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
 
 <!-- ILLUSTRATION exemples-vignettes : une vignette (vue Diagramme) par exemple phare : BasicBlink, Gpio.LedChaser, Pwm.LedFade, Uart.Sensor, I2c.GroveLcd, Weighing.KitchenScale (cf. docs/ILLUSTRATIONS.md) -->
 
@@ -86,6 +86,19 @@ Le paquetage `MicroPythonMCU.Examples` contient 31 modèles prêts à simuler : 
 | `I2c.MultiDevice` | Trois périphériques sur un bus à 400 kHz, trouvés par `scan()` | journal | `i2c_multi.py` |
 | `I2c.NoPullUp` | Bus sans résistances de tirage : `OSError(ETIMEDOUT)` | lignes à 0 V, journal | `i2c_nopullup.py` |
 | `I2c.GroveLcd` | Écran Grove LCD RGB piloté par un driver du commerce non modifié | icône de l'écran | `i2c_grove_lcd_rgb.py` |
+
+## Plusieurs microcontrôleurs (`Examples.MultiMcu`)
+
+Plusieurs blocs `MCU` dans un même modèle, chacun avec son programme (voir [Plusieurs microcontrôleurs](mcu.md#plusieurs-microcontroleurs-dans-un-modele)).
+
+| Exemple | Ce qu'il montre | À observer | Programme |
+|---|---|---|---|
+| `MultiMcu.Independent` | Deux cartes exécutent le même programme et importent le même module : chacune garde son état | `mcu1.GP1.v`, `mcu2.GP1.v`, journal préfixé | `multi_counter.py` |
+| `MultiMcu.Handshake` | Poignée de main REQ/ACK sur deux fils, B répond depuis un `Pin.irq` | `mcuA.GP0.v`, `mcuB.GP1.v` | `handshake_a.py`, `handshake_b.py` |
+| `MultiMcu.Uart` | Liaison série croisée : A envoie `PING`, B répond `PONG` | `mcuA.GP0.v`, `mcuB.GP0.v`, journal | `uart_ping.py`, `uart_pong.py` |
+| `MultiMcu.FileSystem` | Deux enregistreurs partent de la même image de flash : une copie chacun | dossiers `mcu1_datalogger_*`, `mcu2_datalogger_*` | `boot.py`/`main.py` de `datalogger` |
+| `MultiMcu.I2c` | Bus I2C entre deux cartes, B cible en mode mémoire (`I2CTarget(mem=...)`) | `mcuA.GP5.v`, LED de B, journal | `i2c_controller.py`, `i2c_target_mem.py` |
+| `MultiMcu.I2cIrq` | Même bus, B répond aux commandes depuis un gestionnaire `I2CTarget.irq()` | journal | `i2c_controller_irq.py`, `i2c_target_irq.py` |
 
 ## Pesée (`Examples.Weighing`)
 

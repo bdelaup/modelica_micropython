@@ -15,8 +15,9 @@
    requirements.md, decision "Structure du package et interface C du runtime
    Python". Ce fichier n'est jamais compile seul. */
 
-/* Appelees par le shim pendant PyRuntime_new, donc sur le thread Modelica (pas
-   de REQUIRE_WORKER) : g_current y designe le handle en construction. */
+/* Appelees par le shim pendant son initialisation (worker_init), sur le thread
+   worker avant le premier tour : pas de REQUIRE_WORKER (aucun point de synchro
+   ici), g_current y designe deja le handle en construction. */
 static PyObject* native_fs_config(PyObject* self, PyObject* args) {
     if (!g_current) {
         PyErr_SetString(PyExc_RuntimeError, "fs_config can only be called while the shim initialises");
@@ -39,9 +40,9 @@ static PyObject* native_fs_set_root(PyObject* self, PyObject* args) {
 }
 
 /* Vrai si l'appelant est le thread worker du microcontroleur. Le shim ne
-   cloisonne que ce thread : un script de peripherique (thread Modelica) partage
-   le meme interpreteur, donc les memes builtins, mais n'a pas de flash. Meme
-   test que worker_context_ok, sans lever d'exception. */
+   cloisonne que ce thread. Un script de peripherique tourne desormais dans un
+   autre interpreteur (le principal), sans ces builtins : le test reste une
+   garde. Meme test que worker_context_ok, sans lever d'exception. */
 static PyObject* native_on_worker(PyObject* self, PyObject* args) {
     return PyBool_FromLong(g_current && GetCurrentThreadId() == g_current->worker_thread_id);
 }

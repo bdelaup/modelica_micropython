@@ -1,6 +1,6 @@
 # I2C devices
 
-On the program side, `machine.I2C` makes the microcontroller the **master** of a real electrical I2C bus: it generates the clock on SCL and exchanges data on SDA ([API](../api.md#machinei2c)). `Peripherals` provides three slave devices to connect to this bus. Their behaviour is always described by a Python script.
+On the program side, `machine.I2C` makes the microcontroller the **master** of a real electrical I2C bus: it generates the clock on SCL and exchanges data on SDA ([API](../api.md#machinei2c)). `Peripherals` provides three slave devices to connect to this bus. Their behaviour is always described by a Python script. Another `MCU` can also be the slave, with `machine.I2CTarget` ([API](../api.md#machinei2ctarget), examples `MultiMcu.I2c` and `MultiMcu.I2cIrq`).
 
 ![Start of an I2C write](../../images/sim/i2c-chronogramme.svg)
 

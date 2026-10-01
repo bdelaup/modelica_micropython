@@ -42,11 +42,11 @@ A `time.sleep(1)` costs no real time: the solver jumps straight to the deadline.
 
 ## Supplied peripherals
 
-LED, teaching display, serial devices (echo, temperature sensor, GPS, 20x2 display, generic device), I2C devices (Grove LCD RGB display, echo, generic device) and a complete weighing chain (load cell, strain-gauge bridge, HX711 converter). The 31 [examples](guide/exemples.md) use all of them, up to a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
+LED, teaching display, serial devices (echo, temperature sensor, GPS, 20x2 display, generic device), I2C devices (Grove LCD RGB display, echo, generic device) and a complete weighing chain (load cell, strain-gauge bridge, HX711 converter). The 37 [examples](guide/exemples.md) use all of them, up to a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
 
 ## Current limits
 
-Windows only, a single microcontroller per model, no SPI. Full list: [Limits and troubleshooting](guide/limites.md).
+Windows only, no SPI. A model can hold several microcontrollers, which talk through their pins, a serial link or an I2C bus. Full list: [Limits and troubleshooting](guide/limites.md).
 
 ## Background
 

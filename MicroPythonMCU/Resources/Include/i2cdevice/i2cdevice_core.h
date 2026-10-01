@@ -9,48 +9,21 @@
 #define I2CDEVICE_CORE_H
 
 #define I2CDEV_MAX_VALUES 4          /* grandeurs reelles echangees avec le modele - aligne sur Interfaces.I2C_DEV_MAX_VALUES */
-#define I2CDEV_MAX_ADDR 4            /* adresses auxquelles un meme composant repond (ex. ecran Grove : 0x3E et 0x62) */
-#define I2CDEV_BUF_MAX 256           /* octets d'une phase d'ecriture, ou lot rendu par on_read() */
+#define I2CDEV_MAX_ADDR I2CT_MAX_ADDR /* adresses auxquelles un meme composant repond (ex. ecran Grove : 0x3E et 0x62) */
+#define I2CDEV_BUF_MAX I2CT_BUF_MAX  /* lot rendu par on_read() */
 #define I2CDEV_PATH_MAX 511
 #define I2CDEV_TEXT_MAX 80           /* une ligne rendue par lines() */
 #define I2CDEV_EVENT_MAX 160         /* resume de la derniere transaction, pour le journal */
 
-/* Etat du decodeur, avance par les FRONTS de SCL et SDA vus depuis Modelica. */
-#define I2CDEV_IDLE 0                /* bus libre : on attend un START */
-#define I2CDEV_ADDR 1                /* reception de l'octet d'adresse */
-#define I2CDEV_WRITE 2               /* adresse reconnue, le maitre ecrit */
-#define I2CDEV_READ 3                /* adresse reconnue, le maitre lit */
-#define I2CDEV_WAIT 4                /* pas pour nous, ou lecture close par NACK : on attend STOP ou START */
-
 struct I2cDevice {
-    int addresses[I2CDEV_MAX_ADDR];
-    int n_addr;
-
-    /* niveaux vus au dernier point de synchro (les fronts s'en deduisent) */
-    int levels_known;
-    int scl;
-    int sda;
-
-    int state;
-    int nbits;                       /* impulsions d'horloge vues dans l'octet courant (0-9) */
-    unsigned int shift;              /* bits recus, poids fort en tete */
-    int addr;                        /* adresse de la phase en cours */
-    int drive_low;                   /* SORTIE : SDA tiree a la masse (drain ouvert) */
-
-    /* phase d'ecriture : octets accumules, livres d'un bloc a on_write() */
-    unsigned char wbuf[I2CDEV_BUF_MAX];
-    int wlen;
-    int write_open;
+    /* decodage du bus et pilotage de SDA : moteur cible partage avec
+       machine.I2CTarget du microcontroleur (cf. i2ctarget.h) */
+    struct I2cTarget bus;
 
     /* phase de lecture : octets fournis par on_read(), sortis un par un */
     unsigned char rbuf[I2CDEV_BUF_MAX];
     int rlen;
     int rpos;
-    unsigned char cur;
-    int master_ack;
-    int read_open;
-    unsigned char rlog[I2CDEV_BUF_MAX];  /* octets effectivement sortis, pour le journal */
-    int rlog_len;
 
     /* grandeurs echangees avec le reste du modele */
     double value_in[I2CDEV_MAX_VALUES];

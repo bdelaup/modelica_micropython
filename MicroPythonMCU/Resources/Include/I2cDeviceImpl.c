@@ -15,8 +15,8 @@
 
    NOTE : omc dedoublonne les annotations Include par leur texte, mais rien ne
    garantit que ce chapeau, UartDeviceImpl.c et PyRuntimeImpl.c atterrissent
-   dans des unites de compilation distinctes - ils partagent pyhost.c et
-   devscript.c. D'ou les gardes d'inclusion dans chaque partie. */
+   dans des unites de compilation distinctes - ils partagent pyhost.c,
+   devscript.c et i2ctarget.c. D'ou les gardes d'inclusion dans chaque partie. */
 
 #include "I2cDeviceImpl.h"
 /* Python.h avant tout en-tete standard, comme l'exige l'API C de CPython. */
@@ -29,8 +29,10 @@
 #include <string.h>
 #include "ModelicaUtilities.h"
 
+#include "i2ctarget.h"                          /* moteur I2C cible (decodage du bus), partage avec PyRuntimeImpl.c */
 #include "i2cdevice/i2cdevice_core.h"           /* struct I2cDevice */
+#include "i2ctarget.c"                          /* START/STOP, bits, ACK, pilotage de SDA */
 #include "pyhost.c"                             /* demarrage unique de CPython, relais stdout - partage */
 #include "devscript.c"                          /* script de peripherique : espace de noms propre, conversions - partage avec UartDeviceImpl.c */
 #include "i2cdevice/i2cdevice_script.c"         /* contrat on_write / on_read / outputs / lines */
-#include "i2cdevice/i2cdevice_engine.c"         /* decodage du bus, construction, point de synchro */
+#include "i2cdevice/i2cdevice_engine.c"         /* crochets du moteur cible, construction, point de synchro */

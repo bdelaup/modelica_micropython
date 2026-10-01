@@ -19,8 +19,9 @@ flowchart TD
         direction TB
         G["LoadLibraryExW(PythonRuntime/python312.dll)<br/>+ table d'import par GetProcAddress"]
         H["Py_InitializeFromConfig<br/>(module_search_paths explicite)"]
-        I["exécution du script utilisateur<br/>dans un thread dédié"]
-        G --> H --> I
+        J["Py_NewInterpreterFromConfig<br/>(un sous-interpréteur par MCU, sur son worker)"]
+        I["exécution du script utilisateur<br/>dans ce thread dédié"]
+        G --> H --> J --> I
     end
     F --> G
 ```
@@ -81,14 +82,36 @@ graph TD
     Native --> Yield
 ```
 
-- **Couche native (C)** : `_pyruntime_native`, un module C minimal (`PyMethodDef`) exposant seulement les primitives bas niveau (`pin_init`, `pin_write`, `pin_read`, `adc_read`, `pwm_set_freq`, `pwm_set_duty`, `pwm_deinit`, `sleep`, `ticks_ms`). Enregistré dans `sys.modules` **après** l'initialisation (`pyhost_register_module`), et non par `PyImport_AppendInittab`, utilisable seulement avant : l'interpréteur peut avoir été démarré par un périphérique série scripté construit avant le `MCU`.
-- **Couche Python (bootstrap)** : un vrai fichier `.py` de la bibliothèque, [`Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté une fois via `PyRun_SimpleString` juste après l'initialisation. Il définit les classes `Pin`, `ADC`, `PWM`, `Display`, `UART`, `Timer` et les fonctions `time.sleep`/`sleep_ms`/`sleep_us`/`ticks_ms`/`ticks_us`/`ticks_diff` par-dessus le module natif, puis les injecte dans `sys.modules['machine']` et `sys.modules['time']`. Il monte enfin le système de fichiers si `MCU.fsWorkspace` est renseigné (copie horodatée de `fsSource` par `shutil.copytree`) et remplace `builtins.open` et `builtins.__import__` (pour `import os`/`uos`) par des versions cloisonnées dans la copie — appliquées seulement au code du microcontrôleur, jamais à la stdlib ni aux scripts de périphériques (cf. `requirements.md`, décision « Système de fichiers »). Son chemin est résolu côté Modelica (`MCU.mo` → paramètre `shimPath` du constructeur `Internal.PyRuntime`) par `Modelica.Utilities.Files.loadResource`, exactement comme `scriptPath`/`pythonHome` — même mécanisme `read_text_file`/`PyRun_SimpleString` que le script utilisateur. Référence complète de cette API côté script (signatures, ce qui synchronise ou non, limitations) : [api-machine.md](../guide/api.md).
+- **Couche native (C)** : `_pyruntime_native`, un module C minimal (`PyMethodDef`) exposant seulement les primitives bas niveau (`pin_init`, `pin_write`, `pin_read`, `adc_read`, `pwm_set_freq`, `pwm_set_duty`, `pwm_deinit`, `sleep`, `ticks_ms`). Enregistré dans `sys.modules` du sous-interpréteur du `MCU` (`pyhost_register_module`), une instance par microcontrôleur, et non par `PyImport_AppendInittab`, utilisable seulement avant `Py_Initialize` : l'interpréteur peut avoir été démarré par un périphérique scripté construit avant le `MCU`.
+- **Couche Python (bootstrap)** : un vrai fichier `.py` de la bibliothèque, [`Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté via `PyRun_SimpleString` dans le sous-interpréteur de chaque `MCU`, à sa création (voir plus bas). Il définit les classes `Pin`, `ADC`, `PWM`, `Display`, `UART`, `I2C`, `I2CTarget`, `Timer` et les fonctions `time.sleep`/`sleep_ms`/`sleep_us`/`ticks_ms`/`ticks_us`/`ticks_diff` par-dessus le module natif, puis les injecte dans `sys.modules['machine']` et `sys.modules['time']`. Il monte enfin le système de fichiers si `MCU.fsWorkspace` est renseigné (copie horodatée de `fsSource` par `shutil.copytree`) et remplace `builtins.open` et `builtins.__import__` (pour `import os`/`uos`) par des versions cloisonnées dans la copie — appliquées seulement au code du microcontrôleur, jamais à la stdlib ni aux scripts de périphériques (cf. `requirements.md`, décision « Système de fichiers »). Son chemin est résolu côté Modelica (`MCU.mo` → paramètre `shimPath` du constructeur `Internal.PyRuntime`) par `Modelica.Utilities.Files.loadResource`, exactement comme `scriptPath`/`pythonHome` — même mécanisme `read_text_file`/`PyRun_SimpleString` que le script utilisateur. Référence complète de cette API côté script (signatures, ce qui synchronise ou non, limitations) : [api-machine.md](../guide/api.md).
 
 Écrire le shim en deux couches (un minimum de C, le reste en Python) limite la quantité de code C à maintenir — une classe `Pin` en `PyTypeObject` fait main aurait demandé beaucoup plus de code pour le même résultat.
 
 **Redirection `stdout`/`stderr`** : sur le même principe, un module `pyruntime_stdio` (deux fonctions C, `write`/`flush`) est injecté comme `sys.stdout`/`sys.stderr` ; chaque appel à `ModelicaFormatMessage` produit sa propre ligne dans le journal de simulation OMEdit, donc `print()` apparaît dans ce journal (voir `requirements.md`, décision « Sortie des print() »).
 
 **Piège rencontré en session** : `print()` avec plusieurs arguments (ex. `print("Companion :", True)`) déclenche plusieurs `write()` distincts côté CPython (un par argument + séparateur), pas un seul appel avec la ligne déjà assemblée. Relayer chaque `write()` tel quel vers `ModelicaFormatMessage` fragmentait donc un seul `print()` sur plusieurs lignes du journal (`"Companion :"`, une ligne quasi vide pour le séparateur, puis `"True"`). Corrigé en bufferisant côté C (`relay_emit_pending` dans `PyRuntimeImpl.c`) : les caractères s'accumulent jusqu'à un vrai `\n`, un seul appel à `ModelicaFormatMessage` par ligne complète. Le buffer est aussi vidé explicitement après `PyRun_SimpleString` (fin de script) pour ne pas perdre une dernière ligne sans saut de ligne final (ex. `print(..., end="")`).
+
+## Un sous-interpréteur par microcontrôleur
+
+CPython n'est démarré qu'une fois par process (`pyhost_ensure`), mais **chaque `MCU` exécute son programme dans son propre sous-interpréteur** (`Py_NewInterpreterFromConfig`, configuration `MCU_INTERP_CONFIG` de `pyruntime_module.c`). C'est ce qui permet d'avoir plusieurs microcontrôleurs dans un modèle (`Examples.MultiMcu`) :
+
+```mermaid
+graph TD
+    Main["Interpréteur principal<br/>(scripts de périphérique, devscript.c)<br/>module machine explicatif"]
+    A["Sous-interpréteur de mcuA<br/>sys.modules, __main__, sys.path, builtins<br/>shim machine/time, flash de mcuA"]
+    B["Sous-interpréteur de mcuB<br/>idem, totalement séparé"]
+    GIL(("GIL partagé"))
+    Main --- GIL
+    A --- GIL
+    B --- GIL
+```
+
+- **Ce qui est propre à chaque MCU** : `sys.modules` (un driver importé par deux cartes est chargé deux fois, avec deux états), `__main__` (globales du programme), `sys.path` (dossier du script, `libraryPath`, flash), `builtins` (donc `open`/`__import__` cloisonnés sur **sa** flash), et les globales du shim, exécuté une fois par sous-interpréteur sans aucune adaptation.
+- **GIL partagé** (`PyInterpreterConfig_SHARED_GIL`), allocateur commun, extensions monophases autorisées : les modules `.pyd` de la stdlib 3.12 s'importent dans chaque sous-interpréteur. Un GIL propre n'apporterait aucun parallélisme, Modelica n'exécutant qu'un composant à la fois.
+- **Création sur le thread worker** (`worker_init`) : un état de thread Python est lié au thread système qui le crée, et c'est le worker qui exécutera tout le Python du MCU. `PyRuntime_new` attend le résultat pour lever une éventuelle erreur dès la construction. Après la création, le worker n'utilise plus `PyGILState_*`, qui ne connaît que l'interpréteur principal : il rend et reprend le GIL par `PyEval_SaveThread`/`PyEval_RestoreThread`.
+- **`g_current`**, le pointeur par lequel une native retrouve son microcontrôleur, est **local au thread** (`static __thread`) : un worker, un MCU.
+- **Journal** : chaque interpréteur a son relais `pyruntime_stdio` et son tampon de ligne (`struct RelayBuf`, retrouvé par l'état du module) ; à partir de deux MCU, chaque ligne est préfixée par le nom d'instance.
+- **Scripts de périphérique** : ils restent dans l'interpréteur principal, sur le thread Modelica. Un `import machine` y obtient un module dont chaque attribut lève une erreur explicite, le shim n'existant que dans les sous-interpréteurs.
 
 ## Portabilité : Windows uniquement (v0)
 

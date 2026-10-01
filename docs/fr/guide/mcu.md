@@ -98,6 +98,12 @@ L'image source n'est jamais modifiée : chaque simulation repart d'une copie neu
 | `mcu.builtinLed.…` | LED embarquée |
 | `mcu.Display0.seq` | Nombre de messages envoyés à l'afficheur |
 
-## Un seul microcontrôleur par modèle
+## Plusieurs microcontrôleurs dans un modèle
 
-Un modèle ne peut contenir qu'un `MCU` dans cette version : l'interpréteur Python est partagé. Les périphériques programmables en Python (appareils série et I2C) ne sont pas concernés et peuvent être aussi nombreux que nécessaire.
+Un modèle peut contenir autant de blocs `MCU` que nécessaire, câblés entre eux comme de vraies cartes : broche à broche (`GP` de l'un sur `GP` de l'autre), par une liaison série croisée, ou sur un même bus I2C où l'un est maître (`machine.I2C`) et l'autre cible (`machine.I2CTarget`). Une masse commune reste indispensable.
+
+Chaque microcontrôleur exécute **son propre programme, isolé des autres** : ses variables, ses modules importés (un même driver importé par deux cartes est chargé deux fois), `machine`, `time` et son système de fichiers (chacun a sa copie de la flash, même s'ils partent de la même image `fsSource`). Deux cartes peuvent donc exécuter le même fichier sans se gêner.
+
+Dès qu'il y a deux microcontrôleurs, chaque ligne affichée par leurs `print()` est précédée du nom de l'instance dans le journal de simulation (`[MonModele.mcuA] ...`), comme pour les périphériques programmés en Python. Avec un seul `MCU`, le journal est inchangé.
+
+Exemples : [Plusieurs microcontrôleurs](exemples.md#plusieurs-microcontroleurs-examplesmultimcu).

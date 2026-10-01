@@ -5,7 +5,6 @@
 **Environnement**
 
 - **Windows 64 bits uniquement**, avec OpenModelica ([Installation](installation.md)).
-- **Un seul `MCU` par modèle.** Les appareils série et I2C, même programmés en Python, peuvent être aussi nombreux que nécessaire.
 
 **Microcontrôleur**
 
@@ -13,9 +12,10 @@
 - `Pin.PULL_UP` / `Pin.PULL_DOWN` sont acceptés mais sans effet électrique : mettre une vraie résistance de tirage dans le schéma.
 - Pas de `SPI`.
 - `UART` : une seule liaison, trame 8N1 uniquement, 50 à 115 200 bauds, pas d'interruption en réception.
-- `I2C` : maître uniquement, un seul bus, 1 kHz à 1 MHz.
+- `I2C` : un seul bus maître, 1 kHz à 1 MHz ; `I2CTarget` : une seule cible, adresse sur 7 bits, plus de gestionnaire une fois le programme terminé.
 - `Timer` : 4 minuteurs au plus, période minimale 1 ms.
 - Les callbacks d'interruption (`Pin.irq()`, `Timer`) s'exécutent au prochain point de synchronisation, jamais en préemption instantanée du programme.
+- Plusieurs `MCU` dans un modèle : chacun a son programme, ses modules et sa flash. Deux cartes qui se répondraient sans jamais laisser passer de temps (`gpioOpTime = 0` et deux recopies croisées) bloquent la simulation au même instant.
 
 Détail fonction par fonction : [API, limitations](api.md#limitations-connues-v0).
 

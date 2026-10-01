@@ -1,6 +1,6 @@
 # Cycle de vie : instanciation et pas de temps
 
-Cette page détaille ce qui se passe concrètement (1) à la construction du modèle, (2) à chaque pas de temps de la simulation, et (3) à sa fin — ainsi que trois pièges réels rencontrés pendant l'implémentation, parce qu'ils expliquent pourquoi le mécanisme final est ce qu'il est.
+Cette page détaille ce qui se passe concrètement (1) à la construction du modèle, (2) à chaque pas de temps de la simulation, et (3) à sa fin — ainsi que six pièges réels rencontrés pendant l'implémentation, parce qu'ils expliquent pourquoi le mécanisme final est ce qu'il est.
 
 ## 1. Instanciation (t = 0)
 
@@ -11,24 +11,23 @@ sequenceDiagram
     participant Sim as Exécutable de simulation<br/>(process OS, un par run)
     participant MCU as MCU (équations Modelica)
     participant Ctor as PyRuntime_new (C)
-    participant CPy as CPython
+    participant CPy as CPython (interpréteur principal)
     participant Worker as Thread worker
 
     Sim->>MCU: initialisation du modèle
-    MCU->>Ctor: PyRuntime(scriptPath, pythonHome)
-    Ctor->>CPy: pyhost_ensure() — LoadLibraryExW(PythonRuntime/python312.dll),<br/>Py_InitializeFromConfig + relais stdout,<br/>sauf si un périphérique série l'a déjà fait, puis rend le GIL
-    Ctor->>CPy: PyGILState_Ensure()
-    Ctor->>CPy: enregistre _pyruntime_native dans sys.modules, complète sys.path
-    Ctor->>CPy: PyRun_SimpleString(machine_time_shim.py)<br/>définit machine.Pin, time.sleep...
-    Ctor->>CPy: PyGILState_Release()
+    MCU->>Ctor: PyRuntime(scriptPath, pythonHome, ...)
+    Ctor->>CPy: pyhost_ensure() — LoadLibraryExW(PythonRuntime/python312.dll),<br/>Py_InitializeFromConfig + relais stdout,<br/>sauf si un autre composant l'a déjà fait, puis rend le GIL
+    Ctor->>CPy: module machine explicatif (scripts de périphérique), une fois
     Ctor->>Worker: _beginthreadex(worker_main)
-    Worker->>Worker: PyGILState_Ensure()
+    Worker->>CPy: PyGILState_Ensure() puis Py_NewInterpreterFromConfig (GIL partagé)
+    Worker->>Worker: dans SON sous-interpréteur : relais stdout,<br/>_pyruntime_native, sys.path, PyRun_SimpleString(machine_time_shim.py)
+    Worker-->>Ctor: init_state = INIT_OK (ou INIT_FAILED + message)
+    Ctor-->>MCU: handle (ou ModelicaFormatError)
     Worker->>Worker: attend son tour (turn == TURN_MODELICA au départ), GIL relâché pendant l'attente
-    Ctor-->>MCU: handle
     Note over MCU: le when {initial(), ...} de MCU<br/>va déclencher le premier PyRuntime_sync juste après
 ```
 
-Point notable : un **seul** interpréteur CPython existe dans le process, démarré par le premier composant construit (`pyhost_ensure`, dans `Resources/Include/pyhost.c`) — le `MCU` ou un périphérique série scripté, l'ordre de construction des External Objects n'étant pas garanti. Au retour, le thread Modelica **ne tient pas le GIL** : c'est un invariant. Tout code qui appelle Python depuis ce thread (construction du `MCU`, gestionnaires d'un périphérique scripté) l'encadre de `PyGILState_Ensure`/`Release`, et le worker le **relâche chaque fois qu'il se gare** — dans son attente initiale comme dans `yield_to_modelica`. Sans cela, le worker garderait le GIL pendant presque toute la simulation, et aucun périphérique ne pourrait exécuter une ligne de Python. Le protocole de tour garantit par ailleurs qu'un seul des deux threads travaille à un instant donné : le GIL ne fait qu'entériner cette alternance.
+Point notable : CPython n'est **démarré qu'une fois** par process, par le premier composant construit (`pyhost_ensure`, dans `Resources/Include/pyhost.c`) — un `MCU` ou un périphérique scripté, l'ordre de construction des External Objects n'étant pas garanti. Cet interpréteur **principal** sert aux scripts de périphérique ; **chaque `MCU` crée en plus son sous-interpréteur**, sur son propre thread worker (`worker_init`, `pyruntime_module.c`), avec ses `sys.modules`, `__main__`, `sys.path` et `builtins` : plusieurs microcontrôleurs ne partagent rien (cf. `requirements.md`, décision « Multi-instances »). Le sous-interpréteur naît sur le worker parce qu'un état de thread Python est lié au thread qui le crée, et que tout le Python du MCU s'exécute là ; `PyRuntime_new` attend son résultat pour signaler une erreur de configuration dès la construction. Le GIL est **partagé** entre tous les interpréteurs. Au retour de `pyhost_ensure`, le thread Modelica **ne tient pas le GIL** : c'est un invariant. Tout code qui appelle Python depuis ce thread (gestionnaires d'un périphérique scripté) l'encadre de `PyGILState_Ensure`/`Release`, et chaque worker le **relâche chaque fois qu'il se gare** — dans son attente initiale comme dans `yield_to_modelica`. Sans cela, un worker garderait le GIL pendant presque toute la simulation, et aucun autre composant ne pourrait exécuter une ligne de Python. Le protocole de tour garantit par ailleurs qu'un seul thread travaille à un instant donné : le GIL ne fait qu'entériner cette alternance. Les natives retrouvent leur microcontrôleur par `g_current`, **local au thread** (`__thread`) : un worker, un MCU.
 
 ## 2. Le protocole de synchro, à chaque pas de temps
 
@@ -301,9 +300,9 @@ C'est cette ligne-là, et non « périphérique contre microcontrôleur », qui 
 
 `PyRuntime_destroy` **ne tente pas** de réveiller/joindre proprement le thread worker (probablement bloqué en plein `sleep()`), ni d'appeler `Py_FinalizeEx`. Choix délibéré, pas un oubli : chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé** qui se termine juste après cet appel — l'OS récupère tout (thread compris) à la sortie du process. Ça évite les pièges classiques d'un arrêt propre multi-thread pour un bénéfice nul dans ce contexte. C'est aussi pour ça qu'une relance de simulation redémarre le script à zéro sans rien de spécial à coder (scénario de vérification 5) : un nouveau process = un nouvel interpréteur CPython, sans aucun état résiduel. `UartDevice_destroy` est un no-op pour exactement la même raison.
 
-## Cinq pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
+## Six pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
 
-Ces cinq bugs, trouvés pendant l'implémentation, ont directement façonné le protocole ci-dessus — les documenter évite de les réintroduire par inadvertance lors d'une future extension.
+Ces six bugs, trouvés pendant l'implémentation, ont directement façonné le protocole ci-dessus — les documenter évite de les réintroduire par inadvertance lors d'une future extension.
 
 ### a) Boucle de réveil intempestif (auto-déclenchement)
 
@@ -356,3 +355,9 @@ Bug latent depuis l'ajout du pont à 9 broches (LED embarquée) — potentiellem
 Repéré en concevant le mécanisme de « pitstop » (§3bis), pas par un bug reproduit en pratique : un `Timer(period=0)` (ou une période sous la tolérance numérique) redeviendrait dû immédiatement après son propre déclenchement. Contrairement au piège (d) — borné, drainé en une seule invocation C — celui-ci ne serait **pas** contenu par la boucle de drain de `PyRuntime_sync` : cette boucle ne s'applique qu'au sein d'un même `currentTime`, alors qu'ici chaque pitstop rend la main à Modelica (le `sleep()` du worker restant lointain) avant le pitstop suivant. Résultat : une suite non bornée d'appels `PyRuntime_sync` à `currentTime` inchangé, potentiellement un blocage du solveur ou de sa limite d'itération d'événements.
 
 **Correctif** : `native_timer_init` rejette (`ValueError`) toute période sous un plancher `TIMER_MIN_PERIOD = 1 ms`, avant même d'armer le minuteur — même style que `native_pwm_set_freq`, qui rejette déjà les fréquences négatives.
+
+### f) Deux microcontrôleurs câblés l'un à l'autre : boucle algébrique entre leurs `when`
+
+Trouvé avec `Examples.MultiMcu.Handshake` (A.GP0 → B.GP0, B.GP1 → A.GP1) : omc refuse de construire le modèle (« The language feature non-linear equations within when-equations is not supported »), alors que `checkModel` passe. La sortie de la synchro de A fixe la tension de sa source, donc, par un simple fil, le niveau lu par B, donc le déclenchement et les sorties du `when` de B, donc le niveau lu par A : les deux `when` sont pris dans une même boucle algébrique. C'est le défaut déjà rencontré entre un `MCU` et un périphérique série, résolu côté périphérique par sa capacité d'entrée `CIn` — mais le `MCU` n'en a pas.
+
+**Correctif** : dans `MCU.mo`, les sources de tension des broches (`src[i].v`, `sw[i].control`) lisent `pre()` des sorties de la synchro (`pinBoolOutC`, `pinIsOutputC`, `uartTxPin`, `uartTxLevel`, `pwmFreq`, `pwmDuty`). Une écriture publiée par `PyRuntime_sync` n'apparaît électriquement qu'à l'itération d'événement suivante, **au même instant simulé** : la boucle algébrique devient une itération d'événements, que Modelica sait résoudre. Les entrées (`pinBoolIn`, `pinNodeVoltage` lu par l'ADC) ne sont pas retardées. Aucun scénario existant n'a changé de résultat ; dans la poignée de main, ACK monte 5 µs après REQ : le `gpioOpTime` de la lecture de REQ par le gestionnaire de B, le passage d'une carte à l'autre ne coûtant aucun temps simulé.

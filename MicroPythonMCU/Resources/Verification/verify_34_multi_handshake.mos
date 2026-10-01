@@ -1,0 +1,27 @@
+// Scénario de vérification n°34 (cf. requirements.md, décision « Multi-instances »).
+// omc verify_34_multi_handshake.mos   (depuis ce dossier)
+//
+// Poignée de main REQ/ACK entre deux MCU : A lève REQ (GP0) à t = 0,02 + 0,1 k s
+// pendant 30 ms, B recopie REQ sur ACK (GP1) depuis un gestionnaire Pin.irq.
+// Succès : ACK suit REQ à moins de 0,5 ms près, dans les deux sens et à chaque
+// tour, et A allume GP2 après trois tours acquittés.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.MultiMcu.Handshake, stopTime = 0.35, numberOfIntervals = 3500, fileNamePrefix = "MultiHandshake");
+b := getErrorString();
+
+f := "MultiHandshake_res.mat";
+reqHi0 := val(mcuA.GP0.v, 0.035, f);   ackHi0 := val(mcuB.GP1.v, 0.035, f);
+reqLo0 := val(mcuA.GP0.v, 0.08, f);    ackLo0 := val(mcuB.GP1.v, 0.08, f);
+reqHi2 := val(mcuA.GP0.v, 0.235, f);   ackHi2 := val(mcuB.GP1.v, 0.235, f);
+// réactivité : 0,5 ms après chaque front de REQ, ACK a déjà suivi
+ackFast1 := val(mcuB.GP1.v, 0.1205, f);
+ackFast0 := val(mcuB.GP1.v, 0.1505, f);
+done := val(mcuA.GP2.v, 0.34, f);
+
+if reqHi0 > 2.0 and ackHi0 > 2.0 and reqLo0 < 0.5 and ackLo0 < 0.5 and reqHi2 > 2.0 and ackHi2 > 2.0 and ackFast1 > 2.0 and ackFast0 < 0.5 and done > 2.0 then
+  print("PASS: verify_34_multi_handshake (REQ/ACK hauts " + String(reqHi0) + "/" + String(ackHi0) + "V, bas " + String(reqLo0) + "/" + String(ackLo0) + "V, ACK suit REQ a moins de 0,5 ms, GP2(A)=" + String(done) + "V)\n");
+else
+  print("FAIL: verify_34_multi_handshake (tour 0 haut " + String(reqHi0) + "/" + String(ackHi0) + ", bas " + String(reqLo0) + "/" + String(ackLo0) + ", tour 2 " + String(reqHi2) + "/" + String(ackHi2) + ", reactivite " + String(ackFast1) + "/" + String(ackFast0) + ", GP2(A)=" + String(done) + ")\n" + b);
+end if;

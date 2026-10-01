@@ -91,6 +91,12 @@ The source image is never modified: each simulation starts from a fresh copy, wh
 | `mcu.builtinLed.…` | On-board LED |
 | `mcu.Display0.seq` | Number of messages sent to the display |
 
-## One microcontroller per model
+## Several microcontrollers in a model
 
-A model can hold only one `MCU` in this version: the Python interpreter is shared. Python-programmable peripherals (serial and I2C devices) are not affected and can be as many as needed.
+A model can hold as many `MCU` blocks as needed, wired together like real boards: pin to pin (`GP` of one to `GP` of the other), through a crossed serial link, or on a shared I2C bus where one is the controller (`machine.I2C`) and the other a target (`machine.I2CTarget`). A common ground is still required.
+
+Each microcontroller runs **its own program, isolated from the others**: its variables, its imported modules (a driver imported by two boards is loaded twice), `machine`, `time` and its file system (each one gets its own copy of the flash, even when they start from the same `fsSource` image). Two boards can therefore run the same file without interfering.
+
+As soon as there are two microcontrollers, every line printed by their `print()` is prefixed with the instance name in the simulation log (`[MyModel.mcuA] ...`), as Python-programmable peripherals already do. With a single `MCU`, the log is unchanged.
+
+Examples: [Several microcontrollers](exemples.md#several-microcontrollers-examplesmultimcu).

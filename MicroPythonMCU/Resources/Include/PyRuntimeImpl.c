@@ -37,14 +37,17 @@
 #include "ModelicaUtilities.h"
 
 #include "uartcore.h"                      /* moteur UART generique (sans Python ni thread), partage avec UartDeviceImpl.c */
+#include "i2ctarget.h"                     /* moteur I2C cible generique (sans Python ni thread), partage avec I2cDeviceImpl.c */
+#include "pyhost.c"                        /* demarrage unique de CPython, relais stdout, lecture de fichier - partage avec UartDeviceImpl.c ; avant pyruntime_core.h, qui embarque un struct RelayBuf */
 #include "pyruntime/pyruntime_core.h"      /* constantes, PyRuntimeHandle, handle courant */
 #include "uartcore.c"                      /* files TX/RX, trame 8N1, decodage - avant pyruntime_uart.c qui l'utilise */
-#include "pyhost.c"                        /* demarrage unique de CPython, relais stdout, lecture de fichier - partage avec UartDeviceImpl.c */
+#include "i2ctarget.c"                     /* decodage START/STOP/bits/ACK - avant pyruntime_i2ctarget.c qui l'utilise */
 #include "pyruntime/pyruntime_sync.c"      /* dispatch des callbacks + yield_to_modelica */
 #include "pyruntime/pyruntime_pin.c"       /* machine.Pin / ADC / PWM / Pin.irq + time.sleep */
 #include "pyruntime/pyruntime_display.c"   /* machine.Display */
 #include "pyruntime/pyruntime_uart.c"      /* machine.UART (TX/RX, trame 8N1) */
 #include "pyruntime/pyruntime_i2c.c"       /* machine.I2C (maitre, drain ouvert) */
+#include "pyruntime/pyruntime_i2ctarget.c" /* machine.I2CTarget (cible, drain ouvert) - apres pyruntime_i2c.c, dont il reprend i2c_drive */
 #include "pyruntime/pyruntime_timer.c"     /* machine.Timer */
 #include "pyruntime/pyruntime_fs.c"        /* systeme de fichiers : liaison shim <-> handle */
 #include "pyruntime/pyruntime_module.c"    /* module natif, thread worker, API exportee */

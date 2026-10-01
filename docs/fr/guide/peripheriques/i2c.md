@@ -1,6 +1,6 @@
 # Périphériques I2C
 
-Côté programme, `machine.I2C` fait du microcontrôleur le **maître** d'un vrai bus I2C électrique : il génère l'horloge sur SCL et échange les données sur SDA ([API](../api.md#machinei2c)). `Peripherals` fournit trois périphériques esclaves à brancher sur ce bus. Leur comportement est toujours décrit par un script Python.
+Côté programme, `machine.I2C` fait du microcontrôleur le **maître** d'un vrai bus I2C électrique : il génère l'horloge sur SCL et échange les données sur SDA ([API](../api.md#machinei2c)). `Peripherals` fournit trois périphériques esclaves à brancher sur ce bus. Leur comportement est toujours décrit par un script Python. Un autre `MCU` peut aussi être l'esclave, avec `machine.I2CTarget` ([API](../api.md#machinei2ctarget), exemples `MultiMcu.I2c` et `MultiMcu.I2cIrq`).
 
 ![Début d'une écriture I2C](../../images/sim/i2c-chronogramme.svg)
 

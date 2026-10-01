@@ -205,6 +205,53 @@ print(i2c.readfrom_mem(0x42, 0x10, 2))              # register 0x10, after a rep
 
 **Errors**: `OSError(EIO)` (errno 5) if the address is not acknowledged; `OSError(ETIMEDOUT)` (errno 110) if a line stays low (no pull-up, stuck bus); `OSError(EBUSY)` (errno 16) for a call from a Timer/IRQ callback during a transaction.
 
+## `machine.I2CTarget`
+
+```python
+from machine import Pin, I2CTarget
+mem = bytearray(8)
+target = I2CTarget(0, 0x42, mem=mem, scl=Pin(4), sda=Pin(5))   # the controller reads and writes mem
+mem[0] = 123                                                    # seen by the controller at its next read
+```
+
+Here the microcontroller is an I2C **target** (slave), on the same open-drain electrical bus as `machine.I2C`: it never generates the clock, it answers the controller — typically another `MCU` of the model (see [Several microcontrollers](mcu.md#several-microcontrollers-in-a-model)). The bus always needs pull-up resistors. As for the controller, **both pins are reserved**.
+
+Two ways to answer:
+
+- **Memory mode** (`mem=` a `bytearray`): the target behaves as a small memory, **with no handler at all**. The first bytes written by the controller (`mem_addrsize` bits) select the address, the following ones are written there, a read sends the memory from that address on; the address moves on at each byte and wraps around at the end of the buffer. This is the `writeto_mem` / `readfrom_mem` form on the controller side. The program only keeps `mem` up to date; the memory keeps answering even after the program has ended.
+- **Interrupt handler** (no `mem=`): received bytes pile up and are read with `readinto()`, bytes to send are queued with `write()`, typically from an `irq()` handler.
+
+```python
+def on_i2c(t):
+    flags = t.irq().flags()
+    if flags & I2CTarget.IRQ_END_WRITE:      # the controller has finished writing
+        n = t.readinto(command)
+    if flags & I2CTarget.IRQ_READ_REQ:       # the controller wants to read and nothing is queued
+        t.write(reply)
+
+target = I2CTarget(0, 0x43, scl=Pin(4), sda=Pin(5))
+target.irq(on_i2c, trigger=I2CTarget.IRQ_END_WRITE | I2CTarget.IRQ_READ_REQ, hard=True)
+```
+
+**The handler runs at the same simulated instant as the event**, `hard` or not: for `IRQ_READ_REQ`, the byte given to `write()` leaves at once, without the clock stretching a real circuit might need.
+
+### Constructor
+
+`I2CTarget(id=0, addr, *, addrsize=7, mem=None, mem_addrsize=8, scl, sda)` — `id`: `0` (one target per microcontroller). `addr`: 7-bit address (`addrsize=10` is rejected). `mem`: a non-empty `bytearray` (or writable buffer), or `None`. `mem_addrsize`: 0, 8, 16, 24 or 32 bits. `scl`/`sda`: mandatory, a `Pin` or a number, two distinct pins among `0`-`7`, other than those of an `I2C` controller. Synchronises.
+
+### Methods and constants
+
+| Method | Behaviour | Synchronises? |
+|---|---|---|
+| `.readinto(buf)` | Copies into `buf` the bytes received from the controller (no-memory mode), returns their number | No |
+| `.write(buf)` | Queues bytes for the next reads of the controller, returns the number accepted (256-byte queue) | No |
+| `.irq(handler=None, trigger=IRQ_END_READ \| IRQ_END_WRITE, hard=False)` | Registers the handler (called with the target); with no argument, only returns the IRQ object | No |
+| `.irq().flags()` | Events handed to the last call of the handler | No |
+| `.memaddr` | Current memory address (memory mode) | No |
+| `.deinit()` | Releases the target and its pins | Yes |
+
+Event constants: `IRQ_ADDR_MATCH_READ`, `IRQ_ADDR_MATCH_WRITE` (address recognised), `IRQ_READ_REQ` (the controller asks for a byte and the queue is empty), `IRQ_WRITE_REQ` (a byte has just been received), `IRQ_END_READ`, `IRQ_END_WRITE` (end of the read or of the write; in memory mode, no `IRQ_END_WRITE` for a write that only selected the address).
+
 ## File system: `open()` and `os`
 
 ```python
@@ -280,7 +327,8 @@ time.sleep(1)
 - Only pins `0`-`7` and `25`/`Pin.LED` are recognised (not the 29 pins of the real Pico).
 - No `SPI`.
 - File system: a fresh copy of the image at each simulation (no persistence from one run to the next; to chain runs, point `fsSource` to a previous copy). Sandboxing is limited to `open()` and `os` — `io.open` or `pathlib` are not subject to it. Case-insensitive host (Windows), no `os.urandom`, nor `mount`/`VfsLfs2`/`dupterm`.
-- `machine.I2C`: **master only**, a single bus, no clock stretching (SCL held low = `ETIMEDOUT`) nor multi-master arbitration, at most 256 bytes per transaction, RP2040 internal pull-ups not modelled (`usePullUp` is needed on a peripheral).
+- `machine.I2C`: a single controller bus, no clock stretching (SCL held low = `ETIMEDOUT`) nor multi-master arbitration, at most 256 bytes per transaction, RP2040 internal pull-ups not modelled (`usePullUp` is needed on a peripheral).
+- `machine.I2CTarget`: one target per microcontroller, 7-bit address; every handler runs at the instant of the event (`hard=` has no effect); no handler any more once the program has ended (only the `mem=` mode keeps answering).
 - `machine.UART`: a single peripheral (`UART(0)`), **fixed 8N1 frame** (`bits`/`parity`/`stop` accepted but with no effect), baud rate limited to 50-115200. 256-byte queues, silent overflow; a frame whose stop bit is not high is ignored with no framing error. No `uart.irq()` (reception does not wake the script: poll it with `any()`/`read()`), no RTS/CTS flow control.
 - `machine.Display`: a single logical link, **write-only**, instant delivery of the whole message (no simulated baud rate).
 - `Pin.irq()`: every callback runs "soft" (deferred to the program's next wake-up point); `hard=` accepted but with no effect. An exception raised in a callback stops the whole simulation (same policy as the main script).
