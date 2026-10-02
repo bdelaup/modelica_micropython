@@ -25,7 +25,7 @@ i2c.writeto(0x42, b'Hello')
 print(i2c.readfrom(0x42, 5))
 ```
 
-The bus is **open-drain**: each member can only pull a line low or release it, and **pull-up resistors** bring the lines back up. **At least one device on the bus must carry these resistors** (`usePullUp = true`); without them, the lines stay at 0 V and every transaction raises `OSError(ETIMEDOUT)`, as on a board where they were forgotten (`I2c.NoPullUp` example). The Grove display carries them by default, like the real module.
+The bus is **open-drain**: each member can only pull a line low or release it, and **pull-up resistors** bring the lines back up. **At least one device on the bus must carry these resistors** (`usePullUp = true`). `I2C()` does switch on the internal pull-ups of the microcontroller on SCL and SDA, as on the Pico, but 50 kΩ against the input capacitances of the devices is far too slow: a released line has no time to rise, and every transaction raises `OSError(ETIMEDOUT)`, as on a board where the resistors were forgotten (`I2c.NoPullUp` example). The Grove display carries them by default, like the real module.
 
 Any number of devices can share the two wires; each one only answers its own addresses (`I2c.MultiDevice` example).
 
@@ -144,6 +144,6 @@ To create a new device: copy `Resources/Scripts/Device/i2c_generic.py` and selec
 |---|---|
 | `I2c.Echo` | Writing then reading back a frame; reading a register after a repeated START |
 | `I2c.MultiDevice` | Three devices on a 400 kHz bus, found by `scan()` |
-| `I2c.NoPullUp` | The same bus without pull-up resistors: `OSError(ETIMEDOUT)` |
+| `I2c.NoPullUp` | The same bus without external pull-up resistors: the internal pull-ups alone are too slow, `OSError(ETIMEDOUT)` |
 | `I2c.GroveLcd` | Grove LCD RGB display driven by an off-the-shelf driver |
 | `Weighing.KitchenScale` | Kitchen scale with a Grove display |

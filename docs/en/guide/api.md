@@ -19,8 +19,8 @@ led = Pin(0, Pin.OUT)          # or Pin(Pin.LED, Pin.OUT) for the on-board LED
 |---|---|---|
 | `Pin.IN` | `0` | input mode, passed to `mode=` |
 | `Pin.OUT` | `1` | output mode, passed to `mode=` |
-| `Pin.PULL_UP` | `2` | passed to `pull=` — accepted but **with no electrical effect** (see Limitations) |
-| `Pin.PULL_DOWN` | `3` | same |
+| `Pin.PULL_UP` | `1` | passed to `pull=`: switches on the internal pull-up to `VOH` (`MCU.RPullUp`, 50 kΩ) |
+| `Pin.PULL_DOWN` | `2` | passed to `pull=`: switches on the internal pull-down to ground (`MCU.RPullDown`, 50 kΩ) |
 | `Pin.LED` | `25` | identifier of the on-board LED (wired inside the `MCU`, not a `GPx` connector) |
 
 ### Constructor
@@ -28,8 +28,10 @@ led = Pin(0, Pin.OUT)          # or Pin(Pin.LED, Pin.OUT) for the on-board LED
 `Pin(id, mode=None, pull=None)`
 
 - `id`: `0`-`7` (pins `GP0`-`GP7`), or `25`/`Pin.LED`/`"LED"` (on-board LED). Any other value raises `ValueError` at the first call that uses it.
-- `mode`: `Pin.IN` or `Pin.OUT`. If omitted, the direction is not (re)configured — handy to just read the current state. **Synchronises** if given.
-- `pull`: accepted for signature compatibility with MicroPython, ignored.
+- `mode`: `Pin.IN` or `Pin.OUT`. If omitted, the direction is not (re)configured — handy to just read the current state.
+- `pull`: `Pin.PULL_UP`, `Pin.PULL_DOWN` or `None`. Electrically real: see the [electrical model of a pin](mcu.md#electrical-model-of-a-pin).
+
+As on the `rp2` port, `Pin(n)` alone changes nothing; as soon as `mode` or `pull` is given, the constructor calls `init(mode, pull)`, which **always rewrites the pull**: `Pin(n, Pin.IN)` switches off a pull set before. **Synchronises** in that case.
 
 ### Methods
 
@@ -38,6 +40,7 @@ led = Pin(0, Pin.OUT)          # or Pin(Pin.LED, Pin.OUT) for the on-board LED
 | `.value()` | `value() -> int` | Waits `gpioOpTime`, then reads the resolved pin state (0/1) at the end of the access, whatever its direction | Yes |
 | `.value(x)` | `value(x)` | Drives the pin to `x` (0/1) right away — no effect if the pin is currently an input —, then waits `gpioOpTime` | Yes |
 | `pin()` / `pin(x)` | `__call__(x=None)` | Shorthand for `value()` / `value(x)`, common in MicroPython drivers | Yes |
+| `.init(mode, pull)` | `init(mode=None, pull=None)` | Reconfigures the pin: direction if `mode` is given, pull always (`None` switches it off) | Yes |
 | `.on()` | `on()` | Same as `value(1)` | Yes |
 | `.off()` | `off()` | Same as `value(0)` | Yes |
 | `.toggle()` | `toggle()` | Inverts the current state (reads, then writes the opposite) | Yes (through `value()`, twice) |
@@ -181,7 +184,7 @@ print(i2c.readfrom(0x42, 5))
 print(i2c.readfrom_mem(0x42, 0x10, 2))              # register 0x10, after a repeated START
 ```
 
-**Electrically real**, open-drain I2C bus on two `GPx` pins: the microcontroller is the **master**, it generates the clock and only pulls SDA/SCL low or releases them. The lines only go back up thanks to pull-up resistors carried by a peripheral (`usePullUp = true`) — without them, every transaction raises `OSError(ETIMEDOUT)`. Wiring and components: [I2C devices](peripheriques/i2c.md).
+**Electrically real**, open-drain I2C bus on two `GPx` pins: the microcontroller is the **master**, it generates the clock and only pulls SDA/SCL low or releases them. The lines only go back up thanks to pull-up resistors. `I2C()` switches on the internal pull-ups of SCL and SDA (50 kΩ), as the `rp2` port does, but they are far too weak for a real bus: the pull-up resistors carried by a peripheral are needed (`usePullUp = true`). Without them, a released line rises too slowly and every transaction raises `OSError(ETIMEDOUT)`. Wiring and components: [I2C devices](peripheriques/i2c.md).
 
 **Each transaction is blocking**: the script resumes only at the real end of the sequence on the bus, in simulated time (about 9 bits per byte, at `1/freq` per bit). **Both pins are reserved**: their edges do not generate GPIO interrupts and do not wake a `sleep()`.
 
@@ -203,7 +206,7 @@ print(i2c.readfrom_mem(0x42, 0x10, 2))              # register 0x10, after a rep
 | `.readfrom_mem_into(addr, memaddr, buf, *, addrsize=8)` | Same, into an existing buffer | Yes, blocking |
 | `.init(scl=, sda=, freq=)` / `.deinit()` | Reconfigures / releases the bus and its pins | Yes |
 
-**Errors**: `OSError(EIO)` (errno 5) if the address is not acknowledged; `OSError(ETIMEDOUT)` (errno 110) if a line stays low (no pull-up, stuck bus); `OSError(EBUSY)` (errno 16) for a call from a Timer/IRQ callback during a transaction.
+**Errors**: `OSError(EIO)` (errno 5) if the address is not acknowledged; `OSError(ETIMEDOUT)` (errno 110) if a line stays low (no external pull-up, stuck bus); `OSError(EBUSY)` (errno 16) for a call from a Timer/IRQ callback during a transaction.
 
 ## `machine.I2CTarget`
 
@@ -323,11 +326,11 @@ time.sleep(1)
 
 ## Known limitations (v0)
 
-- `pull` (`Pin.PULL_UP`/`Pin.PULL_DOWN`) accepted as a parameter but no pull-up resistor is actually modelled: put a real resistor in the diagram.
+- No open-drain mode (`Pin.OPEN_DRAIN`), nor `ALT`, `ANALOG`, `drive=`, `value=` in the constructor.
 - Only pins `0`-`7` and `25`/`Pin.LED` are recognised (not the 29 pins of the real Pico).
 - No `SPI`.
 - File system: a fresh copy of the image at each simulation (no persistence from one run to the next; to chain runs, point `fsSource` to a previous copy). Sandboxing is limited to `open()` and `os` — `io.open` or `pathlib` are not subject to it. Case-insensitive host (Windows), no `os.urandom`, nor `mount`/`VfsLfs2`/`dupterm`.
-- `machine.I2C`: a single controller bus, no clock stretching (SCL held low = `ETIMEDOUT`) nor multi-master arbitration, at most 256 bytes per transaction, RP2040 internal pull-ups not modelled (`usePullUp` is needed on a peripheral).
+- `machine.I2C`: a single controller bus, no clock stretching (SCL held low = `ETIMEDOUT`) nor multi-master arbitration, at most 256 bytes per transaction, 50 kΩ internal pull-ups too weak for a real bus (`usePullUp` is needed on a peripheral).
 - `machine.I2CTarget`: one target per microcontroller, 7-bit address; every handler runs at the instant of the event (`hard=` has no effect); no handler any more once the program has ended (only the `mem=` mode keeps answering).
 - `machine.UART`: a single peripheral (`UART(0)`), **fixed 8N1 frame** (`bits`/`parity`/`stop` accepted but with no effect), baud rate limited to 50-115200. 256-byte queues, silent overflow; a frame whose stop bit is not high is ignored with no framing error. No `uart.irq()` (reception does not wake the script: poll it with `any()`/`read()`), no RTS/CTS flow control.
 - `machine.Display`: a single logical link, **write-only**, instant delivery of the whole message (no simulated baud rate).

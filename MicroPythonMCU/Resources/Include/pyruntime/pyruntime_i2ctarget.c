@@ -233,7 +233,9 @@ static PyObject* native_i2ct_init(PyObject* self, PyObject* args) {
     h->i2c_claimed[sda] = 1;
     h->pwm_freq[scl] = 0;
     h->pwm_freq[sda] = 0;
-    h->pin_is_output[scl] = 0;   /* la cible ne tient jamais SCL (pas de clock stretching) */
+    h->pin_pull[scl] = PIN_PULL_UP;   /* comme le maitre (pyruntime_i2c.c) */
+    h->pin_pull[sda] = PIN_PULL_UP;
+    h->pin_is_output[scl] = 0;  /* la cible ne tient jamais SCL (pas de clock stretching) */
     i2c_drive(h, sda, 0);
     LeaveCriticalSection(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;

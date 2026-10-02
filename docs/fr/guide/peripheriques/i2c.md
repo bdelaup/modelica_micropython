@@ -25,7 +25,7 @@ i2c.writeto(0x42, b'Hello')
 print(i2c.readfrom(0x42, 5))
 ```
 
-Le bus est en **drain ouvert** : chaque acteur ne sait que tirer une ligne à la masse ou la relâcher, et ce sont des **résistances de tirage** qui remontent les lignes. **Au moins un périphérique du bus doit porter ces résistances** (`usePullUp = true`) ; sans elles, les lignes restent à 0 V et chaque transaction lève `OSError(ETIMEDOUT)`, comme sur un montage où on les a oubliées (exemple `I2c.NoPullUp`). L'écran Grove les porte par défaut, comme le module réel.
+Le bus est en **drain ouvert** : chaque acteur ne sait que tirer une ligne à la masse ou la relâcher, et ce sont des **résistances de tirage** qui remontent les lignes. **Au moins un périphérique du bus doit porter ces résistances** (`usePullUp = true`). `I2C()` active bien les tirages internes du microcontrôleur sur SCL et SDA, comme sur le Pico, mais 50 kΩ face aux capacités d'entrée des périphériques, c'est beaucoup trop lent : une ligne relâchée n'a pas le temps de remonter, et chaque transaction lève `OSError(ETIMEDOUT)`, comme sur un montage où on a oublié les résistances (exemple `I2c.NoPullUp`). L'écran Grove les porte par défaut, comme le module réel.
 
 Autant de périphériques qu'on veut se partagent les deux fils ; chacun ne répond qu'à ses adresses (exemple `I2c.MultiDevice`).
 
@@ -148,6 +148,6 @@ Pour créer un nouveau périphérique : copier `Resources/Scripts/Device/i2c_gen
 |---|---|
 | `I2c.Echo` | Écriture puis relecture d'une trame ; lecture d'un registre derrière un START répété |
 | `I2c.MultiDevice` | Trois périphériques sur un bus à 400 kHz, trouvés par `scan()` |
-| `I2c.NoPullUp` | Le même bus sans résistances de tirage : `OSError(ETIMEDOUT)` |
+| `I2c.NoPullUp` | Le même bus sans résistances de tirage externes : les tirages internes seuls sont trop lents, `OSError(ETIMEDOUT)` |
 | `I2c.GroveLcd` | Écran Grove LCD RGB piloté par un driver du commerce |
 | `Weighing.KitchenScale` | Balance de cuisine avec écran Grove |

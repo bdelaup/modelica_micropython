@@ -19,13 +19,18 @@ La **LED embarquée** (`Pin.LED`, broche 25 du Pico) est câblée à l'intérieu
 
 ## Modèle électrique d'une broche
 
-Chaque broche `GPx` est un petit circuit, résolu avec le reste du schéma :
+Chaque broche `GPx` est un petit circuit de composants électriques standard, résolu avec le reste du schéma. Le programme ne fait que le commander.
 
-- **en sortie**, une source de tension `VOH` (niveau haut) ou `VOL` (niveau bas) derrière une résistance `ROut`. La tension réelle de la broche dépend donc de ce qu'on y branche : ≈ 3,07 V avec une LED et 330 Ω, par exemple ;
-- **en entrée**, la sortie est déconnectée par un interrupteur ouvert. Il reste la fuite de cet interrupteur, **≈ 100 kΩ vers la masse**. Le programme lit 1 au-dessus de `VIH`, 0 au-dessous de `VIL` ;
-- **en entrée analogique** (`ADC`), la tension est mesurée telle quelle, sur 16 bits, avec une référence de 3,3 V.
+![Schéma électrique d'une broche : source VOH/VOL et résistance ROut derrière un interrupteur, tirages internes vers VOH et vers la masse, capteur de tension lu par le programme](../images/broche-modele.svg){ width="700" }
 
-Une broche que le programme n'utilise pas peut rester non connectée.
+- **Étage de sortie** : une source de tension `src` (`VOH` au niveau haut, `VOL` au niveau bas) derrière une résistance `ROut`. L'interrupteur `sw` le branche sur la broche quand elle est en sortie (`Pin.OUT`, `PWM`, émission `UART`). La tension réelle de la broche dépend de ce qu'on y branche : ≈ 3,07 V avec une LED et 330 Ω, par exemple.
+- **En entrée**, l'interrupteur est ouvert : la broche est en **haute impédance**. Il ne reste qu'une fuite de 1 GΩ (`GOff`) : une broche en l'air finit à 0 V, et la plus faible résistance externe suffit à imposer son niveau.
+- **Tirages internes** : deux résistances de 50 kΩ, l'une vers `VOH` (`Pin.PULL_UP`), l'autre vers la masse (`Pin.PULL_DOWN`), branchées par `Pin(n, mode, pull)`. Elles agissent quelle que soit la direction. `I2C()` et `I2CTarget()` activent le tirage haut de SCL et de SDA, comme sur le Pico ; `ADC(n)` coupe les tirages de sa broche.
+- **Lecture** : un capteur de tension mesure la broche en permanence, quelle que soit sa direction. Le programme lit 1 au-dessus de **1,4 V**, 0 au-dessous : c'est un seuil unique, `(VIL + VIH)/2`, sans hystérésis. L'`ADC` lit la tension telle quelle, sur 16 bits, avec une référence de 3,3 V.
+
+Les tirages sont des conductances commandées plutôt que des interrupteurs : 1/50 kΩ quand ils sont actifs, 1 pS sinon. Une broche que le programme n'utilise pas peut rester non connectée. Au démarrage, aucune broche n'a de tirage. Pas de mode drain ouvert pour l'instant (`Pin.OPEN_DRAIN`) : voir les [limitations](limites.md).
+
+Exemple : [`Gpio.Pull`](exemples.md#broches-numeriques-examplesgpio), deux boutons sans résistance externe.
 
 ## Paramètres
 
@@ -71,10 +76,13 @@ Onglet *Electrical*. Les valeurs par défaut approchent un RP2040 alimenté en 3
 |---|---|---|---|
 | `VOH` | 3,3 V | Logic levels | Tension de sortie à l'état haut |
 | `VOL` | 0 V | Logic levels | Tension de sortie à l'état bas |
-| `VIH` | 2,0 V | Logic levels | Au-dessus, une entrée est lue à 1 |
-| `VIL` | 0,8 V | Logic levels | Au-dessous, une entrée est lue à 0 |
+| `VIH` | 2,0 V | Logic levels | Avec `VIL`, fixe le seuil de lecture unique `(VIL + VIH)/2` = 1,4 V : au-dessus, une entrée est lue à 1 |
+| `VIL` | 0,8 V | Logic levels | Voir `VIH` : au-dessous du seuil, une entrée est lue à 0 |
 | `ROut` | 100 Ω | Output stages | Résistance série de chaque sortie (courant que peut fournir la broche) |
 | `ledSeriesR` | 330 Ω | Output stages | Résistance série de la LED embarquée |
+| `RPullUp` | 50 kΩ | Input stages | Tirage interne vers `VOH`, branché par `Pin.PULL_UP` et par `I2C()` / `I2CTarget()` sur SCL et SDA |
+| `RPullDown` | 50 kΩ | Input stages | Tirage interne vers la masse, branché par `Pin.PULL_DOWN` |
+| `GOff` | 1e-9 S | Input stages | Fuite d'une broche qui ne pilote pas sa ligne (entrée, ligne I2C relâchée), vers la masse : 1 GΩ |
 
 ### Système de fichiers
 

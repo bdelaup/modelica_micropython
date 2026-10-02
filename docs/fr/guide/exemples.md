@@ -1,6 +1,6 @@
 # Exemples
 
-Le paquetage `MicroPythonMCU.Examples` contient 37 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
+Le paquetage `MicroPythonMCU.Examples` contient 38 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
 
 <!-- ILLUSTRATION exemples-vignettes : une vignette (vue Diagramme) par exemple phare : BasicBlink, Gpio.LedChaser, Pwm.LedFade, Uart.Sensor, I2c.GroveLcd, Weighing.KitchenScale (cf. docs/ILLUSTRATIONS.md) -->
 
@@ -18,6 +18,7 @@ Le paquetage `MicroPythonMCU.Examples` contient 37 modèles prêts à simuler : 
 | `Gpio.PinEcho` | `GP1` oscille, `GP2` relit son état électrique, `GP3` le recopie | `mcu.GP1.v`, `mcu.GP3.v` | `pin_echo.py` |
 | `Gpio.InputReactivity` | Un bouton sur `GP1` réveille le programme pendant un `sleep(3600)` | `mcu.GP1.v`, sortie du programme | `input_reactive.py` *(V)* |
 | `Gpio.Timing` | Coût d'un accès aux broches (`gpioOpTime`) : impulsion `on()`/`off()` sans `sleep`, rafale, attente active, IRQ masquée | `mcu.GP0.v` (zoom à la µs) | `gpio_timing.py` *(V)* |
+| `Gpio.Pull` | Tirages internes : deux boutons sans résistance externe (`Pin.PULL_UP` vers la masse, `Pin.PULL_DOWN` vers 3,3 V), et une broche dont le tirage change face à une résistance externe de 1 MΩ | `mcu.GP0.v`, `mcu.GP3.v`, `mcu.GP4.v` | `gpio_pull.py` |
 
 ## Entrées analogiques (`Examples.Adc`)
 
@@ -84,7 +85,7 @@ Le paquetage `MicroPythonMCU.Examples` contient 37 modèles prêts à simuler : 
 |---|---|---|---|
 | `I2c.Echo` | Écriture et relecture d'une trame, lecture d'un registre derrière un START répété | `echo.SDA.v`, `echo.SCL.v` | `i2c_echo.py` |
 | `I2c.MultiDevice` | Trois périphériques sur un bus à 400 kHz, trouvés par `scan()` | journal | `i2c_multi.py` |
-| `I2c.NoPullUp` | Bus sans résistances de tirage : `OSError(ETIMEDOUT)` | lignes à 0 V, journal | `i2c_nopullup.py` |
+| `I2c.NoPullUp` | Bus sans résistances de tirage externes : les seuls tirages internes (50 kΩ) sont trop lents à 400 kHz, `OSError(ETIMEDOUT)` | fronts montants lents, journal | `i2c_nopullup.py` |
 | `I2c.GroveLcd` | Écran Grove LCD RGB piloté par un driver du commerce non modifié | icône de l'écran | `i2c_grove_lcd_rgb.py` |
 
 ## Plusieurs microcontrôleurs (`Examples.MultiMcu`)

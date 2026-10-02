@@ -17,18 +17,29 @@ static int resolve_pin_index(int id) {
     return -1;
 }
 
+/* Pin.init(mode, pull), appele aussi par le constructeur des qu'il recoit un
+   mode ou un pull. Comme sur le port rp2, le tirage est toujours reecrit :
+   pull absent (PIN_PULL_NONE) coupe un tirage pose avant. mode =
+   PIN_MODE_KEEP laisse la direction telle quelle (Pin(n, pull=...)). */
 static PyObject* native_pin_init(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
-    int id, is_output;
-    if (!PyArg_ParseTuple(args, "ii", &id, &is_output)) return NULL;
+    int id, mode, pull;
+    if (!PyArg_ParseTuple(args, "iii", &id, &mode, &pull)) return NULL;
     int idx = resolve_pin_index(id);
     if (idx < 0) {
         PyErr_Format(PyExc_ValueError, "GPIO %d not supported in v0 (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
         return NULL;
     }
+    if (pull != PIN_PULL_NONE && pull != PIN_PULL_UP && pull != PIN_PULL_DOWN) {
+        PyErr_Format(PyExc_ValueError, "invalid pull value %d (Pin.PULL_UP, Pin.PULL_DOWN or None)", pull);
+        return NULL;
+    }
     EnterCriticalSection(&g_current->cs);
-    g_current->pin_is_output[idx] = is_output;
-    g_current->adc_claimed[idx] = 0;   /* Pin(n, mode) rend la broche au GPIO, meme apres un ADC(n) - comme sur le RP2040 */
+    if (mode != PIN_MODE_KEEP) {
+        g_current->pin_is_output[idx] = mode;
+        g_current->adc_claimed[idx] = 0;   /* Pin(n, mode) rend la broche au GPIO, meme apres un ADC(n) - comme sur le RP2040 */
+    }
+    g_current->pin_pull[idx] = pull;
     LeaveCriticalSection(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
@@ -78,8 +89,8 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
 /* machine.ADC(n) : la broche passe en entree analogique. Sur le RP2040, cela
    coupe son etage d'entree numerique : ses variations ne declenchent plus
    d'IRQ et ne reveillent plus un sleep(), meme quand la tension franchit le
-   seuil logique (cf. adc_claimed dans PyRuntime_sync). Pin(n, mode) la rend
-   au GPIO (native_pin_init). */
+   seuil logique (cf. adc_claimed dans PyRuntime_sync), et ses tirages internes
+   sont coupes. Pin(n, mode) la rend au GPIO (native_pin_init). */
 static PyObject* native_adc_init(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int id;
@@ -91,6 +102,7 @@ static PyObject* native_adc_init(PyObject* self, PyObject* args) {
     }
     EnterCriticalSection(&g_current->cs);
     g_current->adc_claimed[idx] = 1;
+    g_current->pin_pull[idx] = PIN_PULL_NONE;   /* adc_gpio_init coupe aussi les tirages : la mesure n'est pas faussee */
     LeaveCriticalSection(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;

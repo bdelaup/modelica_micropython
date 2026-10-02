@@ -14,13 +14,20 @@ The **on-board LED** (`Pin.LED`, pin 25 on the Pico) is wired inside the block, 
 
 ## Electrical model of a pin
 
-Each `GPx` pin is a small circuit, solved together with the rest of the diagram:
+Each `GPx` pin is a small circuit made of standard electrical components, solved together with the rest of the diagram. The program only controls it.
 
-- **as an output**, a voltage source `VOH` (high) or `VOL` (low) behind a resistance `ROut`. The actual pin voltage therefore depends on what is connected: ≈ 3.07 V with an LED and 330 Ω, for instance;
-- **as an input**, the output is disconnected by an open switch. What remains is the leakage of that switch, **≈ 100 kΩ to ground**. The program reads 1 above `VIH`, 0 below `VIL`;
-- **as an analog input** (`ADC`), the voltage is measured as is, on 16 bits, with a 3.3 V reference.
+![Electrical diagram of a pin: VOH/VOL source and ROut resistor behind a switch, internal pull resistors to VOH and to ground, voltage sensor read by the program](../images/broche-modele.svg){ width="700" }
 
-A pin that the program does not use can be left unconnected.
+*Labels of the diagram, in French: "Intérieur du MCU : une broche" = inside the MCU, one pin (same circuit for GP0 to GP7); "Commandé par le programme" = controlled by the program; "0 V en entrée" = 0 V as an input; "fermé en sortie" = closed as an output; "ouvert" = open; "tirages" = pull resistors; "v brute" = raw voltage.*
+
+- **Output stage**: a voltage source `src` (`VOH` when high, `VOL` when low) behind a resistance `ROut`. The switch `sw` connects it to the pin when the pin is an output (`Pin.OUT`, `PWM`, `UART` transmission). The actual pin voltage depends on what is connected: ≈ 3.07 V with an LED and 330 Ω, for instance.
+- **As an input**, the switch is open: the pin is in **high impedance**. Only a 1 GΩ leakage remains (`GOff`): a floating pin ends up at 0 V, and the weakest external resistor is enough to set its level.
+- **Internal pull resistors**: two 50 kΩ resistors, one to `VOH` (`Pin.PULL_UP`), the other to ground (`Pin.PULL_DOWN`), switched on by `Pin(n, mode, pull)`. They act whatever the direction. `I2C()` and `I2CTarget()` switch on the pull-up of SCL and SDA, as on the Pico; `ADC(n)` switches off the pulls of its pin.
+- **Reading**: a voltage sensor measures the pin at all times, whatever its direction. The program reads 1 above **1.4 V**, 0 below: a single threshold, `(VIL + VIH)/2`, without hysteresis. The `ADC` reads the voltage as is, on 16 bits, with a 3.3 V reference.
+
+The pull resistors are controlled conductances rather than switches: 1/50 kΩ when active, 1 pS otherwise. A pin that the program does not use can be left unconnected. At start-up, no pin has a pull resistor. No open-drain mode yet (`Pin.OPEN_DRAIN`): see the [limitations](limites.md).
+
+Example: [`Gpio.Pull`](exemples.md#digital-pins-examplesgpio), two buttons without any external resistor.
 
 ## Parameters
 
@@ -64,10 +71,13 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 |---|---|---|---|
 | `VOH` | 3.3 V | Logic levels | Output voltage in the high state |
 | `VOL` | 0 V | Logic levels | Output voltage in the low state |
-| `VIH` | 2.0 V | Logic levels | Above it, an input reads 1 |
-| `VIL` | 0.8 V | Logic levels | Below it, an input reads 0 |
+| `VIH` | 2.0 V | Logic levels | With `VIL`, sets the single reading threshold `(VIL + VIH)/2` = 1.4 V: above it, an input reads 1 |
+| `VIL` | 0.8 V | Logic levels | See `VIH`: below the threshold, an input reads 0 |
 | `ROut` | 100 Ω | Output stages | Series resistance of each output (current the pin can deliver) |
 | `ledSeriesR` | 330 Ω | Output stages | Series resistance of the on-board LED |
+| `RPullUp` | 50 kΩ | Input stages | Internal pull-up to `VOH`, switched on by `Pin.PULL_UP` and by `I2C()` / `I2CTarget()` on SCL and SDA |
+| `RPullDown` | 50 kΩ | Input stages | Internal pull-down to ground, switched on by `Pin.PULL_DOWN` |
+| `GOff` | 1e-9 S | Input stages | Leakage of a pin that does not drive its line (input, released I2C line), to ground: 1 GΩ |
 
 ### File system
 

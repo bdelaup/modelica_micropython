@@ -49,8 +49,8 @@ modelica_micropython3/
 ├── make_docs.sh                    -- construit les deux langues dans public/ (appelé par .gitlab-ci.yml)
 └── MicroPythonMCU/                 -- la bibliothèque OpenModelica elle-même
     ├── package.mo, package.order   -- déclaration du package racine
-    ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique OU PWM, au choix du script), pont électrique, LED embarquée GP25 (même pont, interne, pas de connecteur), port Display0 (connecteur logique causal vers un périphérique d'affichage pédagogique), import de modules auxiliaires (addScriptDirToPath/libraryPath), durée d'un accès à une broche (gpioOpTime, 5 µs par défaut : bit-banging), orchestration de la synchro
-    ├── Interfaces/                 -- constantes de niveaux de tension (VOH, VOL, VIH, VIL, ROut) — approximation RP2040 ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique)
+    ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique OU PWM, au choix du script), pont électrique avec tirages internes (gPullUp/gPullDown, commandés par pinPull), LED embarquée GP25 (même pont, interne, pas de connecteur), port Display0 (connecteur logique causal vers un périphérique d'affichage pédagogique), import de modules auxiliaires (addScriptDirToPath/libraryPath), durée d'un accès à une broche (gpioOpTime, 5 µs par défaut : bit-banging), orchestration de la synchro
+    ├── Interfaces/                 -- constantes électriques (VOH, VOL, VIH, VIL, ROut, RPull, GOff) — approximation RP2040 ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique)
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
     │   ├── PyRuntime_sync.mo       -- impure function : le point de synchro appelé depuis le `when` de MCU
@@ -84,7 +84,8 @@ modelica_micropython3/
     │   │   ├── LedChaser.mo        -- chenillard bidirectionnel sur les 8 GPIO (démonstrateur, pas un scénario de requirements.md)
     │   │   ├── PinEcho.mo          -- scénario 7 : bouclage électrique entre deux broches du même MCU (GP1 pilotée, GP2 relit, GP3 reproduit)
     │   │   ├── InputReactivity.mo  -- scénario 3 : réactivité à une entrée pendant un sleep
-    │   │   └── Timing.mo           -- coût temporel des accès GPIO : impulsion on()/off() sans sleep, rafale, attente active, IRQ masquée, idle()
+    │   │   ├── Timing.mo           -- coût temporel des accès GPIO : impulsion on()/off() sans sleep, rafale, attente active, IRQ masquée, idle()
+    │   │   └── Pull.mo             -- scénario 39 : tirages internes (boutons sans résistance externe) et vraie haute impédance
     │   ├── Adc/
     │   │   ├── Read.mo             -- scénario 8 : GP1 en entrée analogique (machine.ADC), pont diviseur externe, seuil recopié sur GP0
     │   │   └── Sleep.mo            -- entrée ADC traversant le seuil logique pendant des sleep() : ni réveil ni IRQ (verify_26_adc_sleep.mos)
@@ -115,7 +116,7 @@ modelica_micropython3/
     │   ├── I2c/                    -- bus I2C électrique en drain ouvert (voir peripheriques-i2c.md)
     │   │   ├── Echo.mo             -- un maître, un écho : trame de 9 octets écrite puis relue, registre lu derrière un START répété
     │   │   ├── MultiDevice.mo      -- trois échos sur le même bus : scan(), pas de diaphonie, EIO sur une adresse absente
-    │   │   ├── NoPullUp.mo         -- hérite de MultiDevice, sans aucun tirage : lignes à 0 V, ETIMEDOUT
+    │   │   ├── NoPullUp.mo         -- hérite de MultiDevice, sans tirage externe : les tirages internes seuls sont trop lents, ETIMEDOUT
     │   │   └── GroveLcd.mo         -- écran Grove LCD RGB piloté par un driver MicroPython du commerce, sans modification
     │   ├── MultiMcu/               -- plusieurs MCU dans un modèle (un sous-interpréteur chacun, cf. integration-python.md)
     │   │   ├── Independent.mo      -- même programme et même module importé sur deux cartes : états séparés, journal préfixé
@@ -150,9 +151,9 @@ modelica_micropython3/
 
 | Composant | Rôle | Quand il intervient |
 |---|---|---|
-| `MCU.mo` (Modelica) | Modélise le pont électrique GPIO (source de tension, résistance série, interrupteur, capteur), déclenche les points de synchro | Continuellement (équations électriques) + aux instants d'événement (`when`) |
+| `MCU.mo` (Modelica) | Modélise le pont électrique GPIO (source de tension, résistance série, interrupteur, tirages internes, capteur : schéma dans le [guide](../guide/mcu.md#modele-electrique-dune-broche)), déclenche les points de synchro | Continuellement (équations électriques) + aux instants d'événement (`when`) |
 | `PyRuntime.mo` (Modelica) | Déclare l'External Object et ses fonctions `constructor`/`destructor` | Une fois à l'initialisation, une fois (nominalement) à la fin |
-| `PyRuntime_sync.mo` (Modelica) | Point d'entrée appelé depuis le `when` de `MCU` ; transmet `pinBoolIn` (seuillé, numérique) et `pinAnalogIn`/`pinNodeVoltage` (brut, lu par `machine.ADC`) en entrée ; `pwmFreq`/`pwmDuty` (configurés par `machine.PWM`), `displaySeq`/`displayPayload` (configurés par `machine.Display.write()`) et les sorties série `uartTxPin`/`uartTxLevel` (broche d'émission et niveau à y tenir jusqu'au prochain changement, cf. `peripherique-uart.md`) en sortie, en plus de `pinBoolOut`/`pinIsOutput` | À chaque événement de synchro |
+| `PyRuntime_sync.mo` (Modelica) | Point d'entrée appelé depuis le `when` de `MCU` ; transmet `pinBoolIn` (seuillé, numérique) et `pinAnalogIn`/`pinNodeVoltage` (brut, lu par `machine.ADC`) en entrée ; `pwmFreq`/`pwmDuty` (configurés par `machine.PWM`), `displaySeq`/`displayPayload` (configurés par `machine.Display.write()`) et les sorties série `uartTxPin`/`uartTxLevel` (broche d'émission et niveau à y tenir jusqu'au prochain changement, cf. `peripherique-uart.md`) en sortie, en plus de `pinBoolOut`/`pinIsOutput`/`pinPull` (tirage interne de chaque broche) | À chaque événement de synchro |
 | `PyRuntimeImpl.c` (C) | Fichier chapeau : inclut les parties de `pyruntime/` qui implémentent `PyRuntime_new`/`_destroy`/`_sync`, le thread worker, le shim (dont `machine.Pin.irq()`/`machine.Timer`/`machine.Display`, cf. `cycle-de-vie.md` §3bis), le décodage de la réception série (machine à états entièrement en C, cf. `peripherique-uart.md`) et la redirection stdout | Compilé une fois par `omc` (une seule unité de compilation), exécuté à chaque appel externe |
 | Distribution Python vendorée | Fournit l'interpréteur (DLL) et la bibliothèque standard (zip) | Chargée dynamiquement au démarrage de l'exécutable de simulation |
 | Script utilisateur (`.py`) | Le code écrit par l'élève/l'utilisateur, exécuté par le thread worker | Depuis t=0 jusqu'à sa fin/erreur, entrecoupé de pauses (voir cycle-de-vie.md) |

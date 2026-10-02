@@ -445,7 +445,7 @@ void PyRuntime_destroy(void* handle_) {
 
 void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
                      const double* pinAnalogIn,
-                     int* pinBoolOut, int* pinIsOutput,
+                     int* pinBoolOut, int* pinIsOutput, int* pinPull,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
                      int* uartTxPinOut, int* uartTxLevelOut,
@@ -457,6 +457,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
         for (i = 0; i < NUM_PINS; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
             pinIsOutput[i] = h->pin_is_output[i];
+            pinPull[i] = h->pin_pull[i];
             pwmFreqOut[i] = h->pwm_freq[i];
             pwmDutyOut[i] = h->pwm_duty[i];
         }
@@ -594,6 +595,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     for (i = 0; i < NUM_PINS; i++) {
         pinBoolOut[i] = h->pin_driven_value[i];
         pinIsOutput[i] = h->pin_is_output[i];
+        pinPull[i] = h->pin_pull[i];
         pwmFreqOut[i] = h->pwm_freq[i];
         pwmDutyOut[i] = h->pwm_duty[i];
     }

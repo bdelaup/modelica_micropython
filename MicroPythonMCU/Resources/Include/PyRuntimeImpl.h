@@ -34,7 +34,10 @@ void PyRuntime_destroy(void* handle);
    de broches sont des Integer (0/1) cote Modelica, jamais des Boolean : un
    tableau de Boolean arrive tel quel, et modelica_boolean vaut int en
    OpenModelica 1.27 mais signed char en 1.26 et avant (cf. requirements.md
-   decision "Tableaux de booleens et fonctions externes"). pwmFreqOut/
+   decision "Tableaux de booleens et fonctions externes"). pinPull: [9] en
+   sortie, tirage interne de chaque broche (0 = aucun, 1 = PULL_UP, 2 =
+   PULL_DOWN) : MCU.mo branche en consequence une conductance vers VOH ou vers
+   GND, cf. requirements.md decision "Tirages internes". pwmFreqOut/
    pwmDutyOut: [9] en sortie, frequence (Hz, 0 = pas en PWM) et rapport
    cyclique (0-1) par broche - cf. machine.PWM ; Modelica genere le creneau
    en continu a partir de ces deux valeurs, pas de va-et-vient au thread
@@ -53,7 +56,7 @@ void PyRuntime_destroy(void* handle);
    scalaire. */
 void PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn,
                      const double* pinAnalogIn,
-                     int* pinBoolOut, int* pinIsOutput,
+                     int* pinBoolOut, int* pinIsOutput, int* pinPull,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
                      int* uartTxPinOut, int* uartTxLevelOut,

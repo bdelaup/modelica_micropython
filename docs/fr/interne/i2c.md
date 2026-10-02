@@ -10,7 +10,7 @@ Cette page décrit **comment** est construit le bus I2C : le maître côté micr
 Deux fils partagés, `SDA` (données) et `SCL` (horloge), plus la masse. Personne ne force jamais une ligne à l'état haut : chaque acteur (le microcontrôleur, chaque périphérique) ne sait que **tirer la ligne à la masse** ou la **relâcher**. Ce sont les **résistances de tirage** qui remontent une ligne relâchée. Conséquences directes, sans une ligne de code pour les obtenir :
 
 - **ET câblé** : une ligne est basse dès qu'au moins un acteur la tire. C'est ainsi qu'un esclave acquitte (il tire SDA pendant que le maître la relâche), et qu'autant de périphériques qu'on veut se partagent les deux fils — Kirchhoff fait la résolution de bus.
-- **Sans tirage, rien ne marche** : les lignes relâchées restent à 0 V. C'est le symptôme d'un montage réel où on a oublié les résistances, et le maître le signale par `OSError(ETIMEDOUT)` (`Examples.I2c.NoPullUp`).
+- **Sans tirage externe, rien ne marche** : `I2C()` active les tirages internes de 50 kΩ de SCL et SDA (`pin_pull`, comme le port `rp2`), mais face aux 10 pF d'entrée de chaque périphérique ils donnent des fronts montants de plusieurs microsecondes. SCL relâchée est encore basse un quart de période plus tard : le maître lève `OSError(ETIMEDOUT)`, le symptôme d'un montage réel où on a oublié les résistances (`Examples.I2c.NoPullUp` : 50 kΩ × 30 pF = 1,5 µs, contre 0,625 µs à 400 kHz).
 
 | Côté | Tirer à la masse | Relâcher | Lire |
 |---|---|---|---|
@@ -125,7 +125,7 @@ Côté électrique, rien de neuf : les deux broches sont prises (`i2c_claimed`, 
 |---|---|---|
 | `verify_21_i2c_echo.mos` | `Examples.I2c.Echo` | START conforme, ACK de l'adresse tenu par l'esclave, trame de 9 octets écrite puis relue, lecture de registre derrière un START répété |
 | `verify_22_i2c_multi.mos` | `Examples.I2c.MultiDevice` | Trois esclaves sur un bus, deux paires de tirages en parallèle, 400 kHz : `scan()` exact, pas de diaphonie, `EIO` sur une adresse absente |
-| `verify_23_i2c_nopullup.mos` | `Examples.I2c.NoPullUp` | Sans tirage : lignes à 0 V, `ETIMEDOUT`, `scan()` vide, aucun esclave sollicité |
+| `verify_23_i2c_nopullup.mos` | `Examples.I2c.NoPullUp` | Sans tirage externe : lignes au repos à 3,3 V (tirages internes), mais `ETIMEDOUT`, `scan()` vide, aucun esclave sollicité |
 | `verify_24_i2c_grove_lcd.mos` | `Examples.I2c.GroveLcd` | Driver du commerce tel quel : écran éteint puis « hello World », rétroéclairage rouge, vert, bleu |
 | `verify_37_multi_i2c_mem.mos` | `Examples.MultiMcu.I2c` | Cible `MCU` en mode mémoire : `scan()` = `[0x42]`, registre 4 → LED de B, registres 0-1 relus (2,000 V) |
 | `verify_38_multi_i2c_irq.mos` | `Examples.MultiMcu.I2cIrq` | Cible `MCU` à gestionnaire : `ID` → `b'MCU-B'`, puis `CNT` → 2 et 3 (`IRQ_READ_REQ` servi au même instant) |

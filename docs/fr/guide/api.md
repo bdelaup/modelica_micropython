@@ -19,8 +19,8 @@ led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
 |---|---|---|
 | `Pin.IN` | `0` | mode entrée, passé à `mode=` |
 | `Pin.OUT` | `1` | mode sortie, passé à `mode=` |
-| `Pin.PULL_UP` | `2` | passé à `pull=` — accepté mais **sans effet électrique** (cf. Limitations) |
-| `Pin.PULL_DOWN` | `3` | idem |
+| `Pin.PULL_UP` | `1` | passé à `pull=` : branche le tirage interne vers `VOH` (`MCU.RPullUp`, 50 kΩ) |
+| `Pin.PULL_DOWN` | `2` | passé à `pull=` : branche le tirage interne vers la masse (`MCU.RPullDown`, 50 kΩ) |
 | `Pin.LED` | `25` | identifiant de la LED embarquée (câblée en interne sur `MCU`, pas un connecteur `GPx`) |
 
 ### Constructeur
@@ -28,8 +28,10 @@ led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
 `Pin(id, mode=None, pull=None)`
 
 - `id` : `0`-`7` (broches `GP0`-`GP7`), ou `25`/`Pin.LED`/`"LED"` (LED embarquée). Toute autre valeur lève `ValueError` au premier appel qui la résout (`pin_init`/`pin_write`/`pin_read`).
-- `mode` : `Pin.IN` ou `Pin.OUT`. Si omis, la direction n'est pas (re)configurée — utile pour se contenter de lire l'état déjà en place. **Synchronise** si fourni (appelle `pin_init`).
-- `pull` : accepté pour compatibilité de signature avec MicroPython, ignoré (v0).
+- `mode` : `Pin.IN` ou `Pin.OUT`. Si omis, la direction n'est pas (re)configurée — utile pour se contenter de lire l'état déjà en place.
+- `pull` : `Pin.PULL_UP`, `Pin.PULL_DOWN` ou `None`. Électriquement réel : voir le [modèle d'une broche](mcu.md#modele-electrique-dune-broche).
+
+Comme sur le port `rp2`, `Pin(n)` seul ne touche à rien ; dès que `mode` ou `pull` est fourni, le constructeur appelle `init(mode, pull)`, qui **réécrit toujours le tirage** : `Pin(n, Pin.IN)` coupe un tirage posé avant. **Synchronise** dans ce cas.
 
 ### Méthodes
 
@@ -38,6 +40,7 @@ led = Pin(0, Pin.OUT)          # ou Pin(Pin.LED, Pin.OUT) pour la LED embarquée
 | `.value()` | `value() -> int` | Attend `gpioOpTime`, puis lit l'état résolu de la broche (0/1) à la fin de l'accès, quelle que soit sa direction | Oui |
 | `.value(x)` | `value(x)` | Pilote la broche à `x` (0/1) tout de suite — sans effet si la broche est actuellement en entrée —, puis attend `gpioOpTime` | Oui |
 | `pin()` / `pin(x)` | `__call__(x=None)` | Raccourci de `value()` / `value(x)`, courant dans les drivers MicroPython | Oui |
+| `.init(mode, pull)` | `init(mode=None, pull=None)` | Reconfigure la broche : direction si `mode` est fourni, tirage toujours (`None` le coupe) | Oui |
 | `.on()` | `on()` | Équivalent à `value(1)` | Oui |
 | `.off()` | `off()` | Équivalent à `value(0)` | Oui |
 | `.toggle()` | `toggle()` | Inverse l'état courant (lit puis réécrit l'opposé) — implémenté en Python pur au-dessus de `value()`, pas d'appel natif dédié | Oui (via `value()`, deux fois) |
@@ -181,7 +184,7 @@ print(i2c.readfrom(0x42, 5))
 print(i2c.readfrom_mem(0x42, 0x10, 2))              # registre 0x10, derrière un START répété
 ```
 
-Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le microcontrôleur est le **maître**, il génère l'horloge et ne fait que tirer SDA/SCL à la masse ou les relâcher. Les lignes ne remontent que grâce aux résistances de tirage portées par un périphérique (`usePullUp = true`) — sans elles, toute transaction lève `OSError(ETIMEDOUT)`. Les périphériques se branchent sur les deux mêmes fils (`Internal.PartialI2cDevice` et ses dérivés). Câblage et composants : [Périphériques I2C](peripheriques/i2c.md).
+Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le microcontrôleur est le **maître**, il génère l'horloge et ne fait que tirer SDA/SCL à la masse ou les relâcher. Les lignes ne remontent que grâce aux résistances de tirage. `I2C()` active les tirages internes de SCL et SDA (50 kΩ), comme le port `rp2`, mais ils sont bien trop faibles pour un bus réel : il faut les résistances de tirage portées par un périphérique (`usePullUp = true`). Sans elles, une ligne relâchée monte trop lentement et toute transaction lève `OSError(ETIMEDOUT)`. Les périphériques se branchent sur les deux mêmes fils (`Internal.PartialI2cDevice` et ses dérivés). Câblage et composants : [Périphériques I2C](peripheriques/i2c.md).
 
 **Chaque transaction est bloquante** : le script ne reprend la main qu'à la fin réelle de la séquence sur le bus, en temps simulé (environ 9 bits par octet, à `1/freq` le bit). **Les deux broches sont réservées** : leurs fronts ne génèrent pas d'interruption GPIO et ne réveillent pas un `sleep()`.
 
@@ -203,7 +206,7 @@ Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le 
 | `.readfrom_mem_into(addr, memaddr, buf, *, addrsize=8)` | Idem, dans un tampon existant | Oui, bloquant |
 | `.init(scl=, sda=, freq=)` / `.deinit()` | Reconfigure / libère le bus et ses broches | Oui |
 
-**Erreurs** : `OSError(EIO)` (errno 5) si l'adresse n'est pas acquittée ; `OSError(ETIMEDOUT)` (errno 110) si une ligne reste basse (pas de tirage, bus bloqué) ; `OSError(EBUSY)` (errno 16) pour un appel depuis un callback de Timer/IRQ pendant une transaction.
+**Erreurs** : `OSError(EIO)` (errno 5) si l'adresse n'est pas acquittée ; `OSError(ETIMEDOUT)` (errno 110) si une ligne reste basse (pas de tirage externe, bus bloqué) ; `OSError(EBUSY)` (errno 16) pour un appel depuis un callback de Timer/IRQ pendant une transaction.
 
 ## `machine.I2CTarget`
 
@@ -325,11 +328,11 @@ time.sleep(1)
 
 Détails et justifications dans `requirements.md` (section Restrictions v0) :
 
-- `pull` (`Pin.PULL_UP`/`Pin.PULL_DOWN`) accepté en paramètre mais sans résistance de tirage réellement modélisée.
+- Pas de mode drain ouvert (`Pin.OPEN_DRAIN`), ni `ALT`, `ANALOG`, `drive=`, `value=` dans le constructeur.
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).
 - Pas de `SPI` — voir le TODO de `requirements.md` pour les extensions prévues.
 - Système de fichiers : une copie neuve de l'image à chaque simulation (pas de persistance d'un run à l'autre ; pour enchaîner, pointer `fsSource` sur une copie précédente). Cloisonnement pédagogique limité à `open()` et `os` — `io.open` ou `pathlib` n'y sont pas soumis. Hôte insensible à la casse (Windows), pas d'`os.urandom`, ni `mount`/`VfsLfs2`/`dupterm`.
-- `machine.I2C` : un seul bus maître, pas de clock stretching (SCL tenue basse = `ETIMEDOUT`) ni d'arbitrage multi-maître, 256 octets au plus par transaction, tirages internes du RP2040 non modélisés (il faut `usePullUp` sur un périphérique).
+- `machine.I2C` : un seul bus maître, pas de clock stretching (SCL tenue basse = `ETIMEDOUT`) ni d'arbitrage multi-maître, 256 octets au plus par transaction, tirages internes de 50 kΩ trop faibles pour un vrai bus (il faut `usePullUp` sur un périphérique).
 - `machine.I2CTarget` : une seule cible par microcontrôleur, adresse sur 7 bits ; gestionnaires tous servis à l'instant de l'événement (`hard=` sans effet) ; plus aucun gestionnaire une fois le programme terminé (seul le mode `mem=` continue de répondre).
 - `machine.UART` : un seul périphérique (`UART(0)`), **trame 8N1 figée** (`bits`/`parity`/`stop` acceptés mais sans effet), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 256 octets, débordement silencieux ; une trame dont le bit de stop n'est pas haut est ignorée sans erreur de framing. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
 - `machine.Display` : une seule liaison logique, **écriture seule** (pas de réception), livraison instantanée du message entier (pas de bauds simulés) ; liaison modélisée comme un connecteur logique causal, pas électrique — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».

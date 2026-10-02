@@ -9,7 +9,7 @@
 **Microcontroller**
 
 - 8 pins (`GP0`-`GP7`) and the on-board LED, instead of the Pico's 29 pins; all of them can be analog inputs.
-- `Pin.PULL_UP` / `Pin.PULL_DOWN` are accepted but have no electrical effect: put a real pull resistor in the diagram.
+- No open-drain mode (`Pin.OPEN_DRAIN`): only the I2C bus drives its lines that way. The internal pull resistors (`Pin.PULL_UP`, `Pin.PULL_DOWN`), on the other hand, are really modelled.
 - No `SPI`.
 - `UART`: a single link, 8N1 frames only, 50 to 115,200 baud, no receive interrupt.
 - `I2C`: a single controller bus, 1 kHz to 1 MHz; `I2CTarget`: one target, 7-bit address, no handler any more once the program has ended.
@@ -36,7 +36,7 @@ Function-by-function details: [API, limitations](api.md#known-limitations-v0).
     They go to OMEdit's simulation output window (and its log), not to a Python console. A `print()` from a serial or I2C device is prefixed with the component name.
 
 ??? question "`OSError: [Errno 110] ETIMEDOUT` on the I2C bus"
-    No pull-up resistor on the bus: tick `usePullUp` on at least one device ([I2C devices](peripheriques/i2c.md#wiring)). Another possible cause: a line held low by a short circuit in the diagram.
+    No external pull-up resistor on the bus (the 50 kΩ internal pull-ups are not enough): tick `usePullUp` on at least one device ([I2C devices](peripheriques/i2c.md#wiring)). Another possible cause: a line held low by a short circuit in the diagram.
 
 ??? question "`OSError: [Errno 5] EIO` on the I2C bus"
     No device answers the requested address. Check the device's `addresses` parameter and run `i2c.scan()`.

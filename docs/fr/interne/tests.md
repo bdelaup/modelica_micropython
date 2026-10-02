@@ -89,6 +89,13 @@ omc verify_29_python_dll.mos
 omc verify_30_stdlib_import.mos
 omc verify_31_hx711.mos
 omc verify_32_kitchen_scale.mos
+omc verify_33_multi_independent.mos
+omc verify_34_multi_handshake.mos
+omc verify_35_multi_uart.mos
+omc verify_36_multi_filesystem.mos
+omc verify_37_multi_i2c_mem.mos
+omc verify_38_multi_i2c_irq.mos
+omc verify_39_gpio_pull.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -118,7 +125,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_20_uart_echo_table.mos` | `Examples.Uart.Echo` | Même montage que `Uart.EchoPy`, **en mode Table** | Écho octet par octet : le périphérique émet déjà à t=17 ms, avant la fin de la ligne — complément exact de `verify_14` |
 | `verify_21_i2c_echo.mos` | `Examples.I2c.Echo` | Bus I2C électrique, un maître et un esclave | Bus au repos haut, START conforme, ACK de l'adresse tenu par l'esclave, trame de 9 octets écrite puis relue, registre lu derrière un START répété, témoin `GP7` allumé |
 | `verify_22_i2c_multi.mos` | `Examples.I2c.MultiDevice` | Trois esclaves sur le même bus, deux paires de tirages en parallèle, 400 kHz | `scan()` exact, chaque écho ne reçoit que sa trame (pas de diaphonie), `EIO` sur une adresse absente, témoin `GP7` allumé |
-| `verify_23_i2c_nopullup.mos` | `Examples.I2c.NoPullUp` | Même bus sans aucune résistance de tirage | Lignes à 0 V, `ETIMEDOUT`, `scan()` vide, aucun esclave sollicité, témoin `GP7` allumé |
+| `verify_23_i2c_nopullup.mos` | `Examples.I2c.NoPullUp` | Même bus sans résistance de tirage externe : seuls restent les tirages internes que `I2C()` active | Lignes au repos à plus de 3 V, mais `ETIMEDOUT` (SCL trop lente à remonter à 400 kHz), `scan()` vide, aucun esclave sollicité, témoin `GP7` allumé |
 | `verify_24_i2c_grove_lcd.mos` | `Examples.I2c.GroveLcd` | Écran Grove LCD RGB piloté par un driver du commerce, sans modification | Écran éteint et noir avant l'initialisation, puis « hello World » en ligne 1 dès la colonne 2, rétroéclairage rouge, vert, bleu |
 | `verify_25_filesystem.mos` | `Examples.FileSystem.Boot` | Système de fichiers, démarrage `boot.py`/`main.py`, déterminisme | Deux simulations : `GP1` allumée (auto-contrôle de `main.py`), deux copies horodatées distinctes aux `measurements.csv` identiques, `..` bloqué à la racine de la flash, image source intacte. Le script supprime lui-même ses copies en fin de scénario |
 | `verify_27_filesystem_script.mos` | `Examples.FileSystem.Script` | `boot.py` de la flash, puis un script à la place de `main.py` | `GP1` allumée, la copie contient `data/notes.txt` et pas `data/measurements.csv` (main.py n'a pas tourné) |
@@ -134,6 +141,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_36_multi_filesystem.mos` | `Examples.MultiMcu.FileSystem` | Deux systèmes de fichiers à partir de la même image | Une copie `mcu1_datalogger_*` et une `mcu2_datalogger_*`, auto-contrôles passés, mesures distinctes |
 | `verify_37_multi_i2c_mem.mos` | `Examples.MultiMcu.I2c` | `machine.I2CTarget` en mode mémoire, maître sur un autre MCU | `scan()` = `[0x42]`, LED de B allumée par `writeto_mem`, 2,000 V relus, `GP7` de A allumée |
 | `verify_38_multi_i2c_irq.mos` | `Examples.MultiMcu.I2cIrq` | `machine.I2CTarget` à gestionnaire IRQ (`END_WRITE`, `READ_REQ`) | `ID` → `b'MCU-B'`, `CNT` → 2 puis 3, `GP7` de A allumée |
+| `verify_39_gpio_pull.mos` | `Examples.Gpio.Pull` | Tirages internes (`Pin.PULL_UP`, `Pin.PULL_DOWN`) et vraie haute impédance | Boutons sans résistance externe : `GP0` à 3,3 V relâché / 0 V appuyé, `GP3` l'inverse, recopiés sur `GP6`/`GP7` ; `GP4` (1 MΩ vers 3,3 V) à 3,3 V sans tirage, 0,16 V avec le tirage bas, 3,3 V avec le tirage haut |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

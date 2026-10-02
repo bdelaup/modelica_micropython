@@ -50,6 +50,7 @@ Le serveur MCP-OpenModelica n'était pas joignable lors de la refonte du 2026-09
 | `library_tree.png` | `guide/premiers-pas.md` | Capture de l'explorateur d'OMEdit |
 | `exemple-basicblink.svg` | `interne/architecture.md` | Export OMEdit de la vue *Diagramme* de `BasicBlink` |
 | `mcu-icone.svg` | `interne/architecture.md` | Périmé, voir `mcu-icone` ci-dessus |
+| `broche-modele.svg` | `guide/mcu.md` (FR et EN) | Schéma du pont électrique d'une broche (source, `ROut`, interrupteur, tirages internes, capteur), dessiné à la main en SVG d'après `MCU.mo`. À retoucher si le pont change (drain ouvert, etc.). Texte en français, traduit dans la légende de la page anglaise |
 | `sim/*.svg` | pages du guide | Générées par `docs/figures/make_figures.py` |
 
 ## Courbes de simulation générées

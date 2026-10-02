@@ -9,7 +9,7 @@
 **Microcontrôleur**
 
 - 8 broches (`GP0`-`GP7`) et la LED embarquée, au lieu des 29 broches du Pico ; toutes peuvent servir d'entrée analogique.
-- `Pin.PULL_UP` / `Pin.PULL_DOWN` sont acceptés mais sans effet électrique : mettre une vraie résistance de tirage dans le schéma.
+- Pas de mode drain ouvert (`Pin.OPEN_DRAIN`) : seul le bus I2C pilote ses lignes ainsi. Les tirages internes (`Pin.PULL_UP`, `Pin.PULL_DOWN`) sont, eux, réellement modélisés.
 - Pas de `SPI`.
 - `UART` : une seule liaison, trame 8N1 uniquement, 50 à 115 200 bauds, pas d'interruption en réception.
 - `I2C` : un seul bus maître, 1 kHz à 1 MHz ; `I2CTarget` : une seule cible, adresse sur 7 bits, plus de gestionnaire une fois le programme terminé.
@@ -36,7 +36,7 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues-v0
     Ils s'affichent dans la fenêtre de sortie de la simulation d'OMEdit (et dans son journal), pas dans une console Python. Un `print()` d'appareil série ou I2C est préfixé du nom du composant.
 
 ??? question "`OSError: [Errno 110] ETIMEDOUT` sur le bus I2C"
-    Aucune résistance de tirage sur le bus : cocher `usePullUp` sur au moins un périphérique ([Périphériques I2C](peripheriques/i2c.md#cablage)). Autre cause possible : une ligne tenue basse par un court-circuit dans le schéma.
+    Aucune résistance de tirage externe sur le bus (les tirages internes de 50 kΩ ne suffisent pas) : cocher `usePullUp` sur au moins un périphérique ([Périphériques I2C](peripheriques/i2c.md#cablage)). Autre cause possible : une ligne tenue basse par un court-circuit dans le schéma.
 
 ??? question "`OSError: [Errno 5] EIO` sur le bus I2C"
     Aucun périphérique ne répond à l'adresse demandée. Vérifier le paramètre `addresses` du périphérique et lancer `i2c.scan()`.

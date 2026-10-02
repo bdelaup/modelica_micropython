@@ -9,12 +9,13 @@
 
    ELECTRIQUE. Le pont GPIO du microcontroleur sert tel quel : tirer une ligne a
    la masse, c'est la mettre en sortie a l'etat bas ; la relacher, c'est la
-   repasser en entree (interrupteur ouvert, haute impedance). La ligne ne remonte
-   que par les resistances de tirage du bus, portees par les peripheriques
-   (Internal.PartialI2cDevice, parametre usePullUp). Sans elles, une ligne
-   relachee reste basse : le maitre le constate et leve OSError(ETIMEDOUT),
-   comme un vrai bus sans tirage. Les tirages internes du RP2040 ne sont pas
-   modelises (trop faibles pour un vrai bus, et c'est tout le propos pedagogique).
+   repasser en entree (interrupteur ouvert, haute impedance). La ligne remonte
+   par les resistances de tirage : celles du bus, portees par les peripheriques
+   (Internal.PartialI2cDevice, parametre usePullUp), et les tirages internes de
+   SCL/SDA que i2c_init active comme le port rp2 (MCU.RPullUp, 50 kOhm). Seuls,
+   ceux-ci sont trop faibles face aux capacites du bus : une SCL relachee ne
+   franchit pas le seuil dans le quart de periode, le maitre leve
+   OSError(ETIMEDOUT), comme un vrai bus sans tirage externe a 400 kHz.
 
    SEQUENCEMENT. Tout avance par echeances (nextWakeTime), un QUART DE PERIODE
    d'horloge a la fois, sans aucun front a detecter cote maitre :
@@ -307,7 +308,9 @@ static PyObject* native_i2c_init(PyObject* self, PyObject* args) {
     h->i2c_claimed[sda] = 1;
     h->pwm_freq[scl] = 0;          /* la broche change de fonction, comme sur le vrai RP2040 */
     h->pwm_freq[sda] = 0;
-    i2c_scl(h, 0);                 /* bus au repos : les deux lignes relachees */
+    h->pin_pull[scl] = PIN_PULL_UP;   /* le port rp2 active les tirages internes de SCL/SDA (gpio_set_pulls) */
+    h->pin_pull[sda] = PIN_PULL_UP;
+    i2c_scl(h, 0);                /* bus au repos : les deux lignes relachees */
     i2c_sda(h, 0);
     LeaveCriticalSection(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;

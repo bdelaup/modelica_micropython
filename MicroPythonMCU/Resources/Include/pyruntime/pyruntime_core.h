@@ -17,6 +17,10 @@
 #define TIMER_MIN_PERIOD 0.001       /* plancher (1 ms) : evite une tempete d'evenements Modelica a duree simulee nulle si period<=0, cf. requirements.md */
 #define IRQ_TRIGGER_RISING 1
 #define IRQ_TRIGGER_FALLING 2
+#define PIN_MODE_KEEP (-1)           /* native_pin_init : ne pas toucher a la direction (Pin(n, pull=...)) */
+#define PIN_PULL_NONE 0              /* valeurs de Pin.PULL_UP/PULL_DOWN du port rp2, alignees sur le shim et sur MCU.mo */
+#define PIN_PULL_UP 1
+#define PIN_PULL_DOWN 2
 
 #define DISPLAY_MSG_MAX_LEN 128      /* tres au-dessus des 40 caracteres d'un afficheur 20x2, buffer fixe modeste (meme esprit que g_stdout_buf) */
 
@@ -142,6 +146,7 @@ struct PyRuntimeHandle {
     int adc_claimed[NUM_PINS];   /* broche passee en ADC : ses franchissements du seuil logique ne reveillent pas le script et ne declenchent pas d'IRQ GPIO, cf. native_adc_init */
     double pwm_freq[NUM_PINS];   /* 0 = pas en mode PWM */
     double pwm_duty[NUM_PINS];   /* 0-1, pertinent seulement si pwm_freq > 0 */
+    int pin_pull[NUM_PINS];      /* tirage interne : PIN_PULL_NONE/UP/DOWN, publie a Modelica (pinPull), cf. native_pin_init */
 
     /* machine.Pin.irq() : au plus un handler par broche */
     PyObject* pin_irq_handler[NUM_PINS];  /* NULL = pas de callback enregistre */

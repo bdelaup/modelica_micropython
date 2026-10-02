@@ -32,6 +32,12 @@ model MCU "Simulated programmable microcontroller (v0), driven by a MicroPython-
     Dialog(tab = "Electrical", group = "Output stages"));
   parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Series resistance of the on-board LED (internal, GP25)" annotation(
     Dialog(tab = "Electrical", group = "Output stages"));
+  parameter Modelica.Units.SI.Resistance RPullUp = Interfaces.RPull "Internal pull-up resistor to VOH, switched on by Pin(n, mode, Pin.PULL_UP) and by I2C() on SCL/SDA" annotation(
+    Dialog(tab = "Electrical", group = "Input stages"));
+  parameter Modelica.Units.SI.Resistance RPullDown = Interfaces.RPull "Internal pull-down resistor to GND, switched on by Pin(n, mode, Pin.PULL_DOWN)" annotation(
+    Dialog(tab = "Electrical", group = "Input stages"));
+  parameter Modelica.Units.SI.Conductance GOff = Interfaces.GOff "Leakage of a pin that does not drive its line (input, released I2C line), towards GND: 1e-9 S = 1 GOhm" annotation(
+    Dialog(tab = "Electrical", group = "Input stages"));
   Modelica.Electrical.Analog.Interfaces.PositivePin GP0 "GPIO 0 (machine.Pin(0), machine.ADC(0) or machine.PWM(0))" annotation(
     Placement(transformation(origin = {-62, 50}, extent = {{-7, -7}, {7, 7}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin GP1 "GPIO 1 (machine.Pin(1), machine.ADC(1) or machine.PWM(1))" annotation(
@@ -62,6 +68,8 @@ protected
   Integer pinBoolInC[9] "pinBoolIn as passed to PyRuntime_sync (0/1): arrays of Boolean are not exchanged with the C code, see Internal.PyRuntime_sync";
   discrete Integer pinBoolOutC[9](each start = 0, each fixed = true) "pinBoolOut as returned by PyRuntime_sync (0/1)";
   discrete Integer pinIsOutputC[9](each start = 0, each fixed = true) "pinIsOutputD as returned by PyRuntime_sync (0/1)";
+  discrete Integer pinPullC[9](each start = 0, each fixed = true) "Internal pull resistor of each pin as returned by PyRuntime_sync: 0 = none, 1 = PULL_UP, 2 = PULL_DOWN";
+  constant Modelica.Units.SI.Conductance GPullOff = 1e-12 "Conductance of a switched-off pull branch: never exactly 0 (a VariableConductor should not reach zero), and far below GOff so that a floating input still settles towards GND";
   discrete Modelica.Units.SI.Frequency pwmFreq[9](each start = 0, each fixed = true) "PWM frequency of each pin (Hz); 0 = not in PWM mode (plain digital output through pinBoolOut), see machine.PWM";
   discrete Real pwmDuty[9](each start = 0, each fixed = true) "PWM duty cycle of each pin (0-1), relevant only if pwmFreq > 0";
   Modelica.Units.SI.Time pwmPeriod[9] "1/pwmFreq, with a floor to avoid a division by zero when pwmFreq = 0 (pin not in PWM)";
@@ -74,10 +82,16 @@ protected
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));
   Modelica.Electrical.Analog.Basic.Resistor rOut[9](each R = ROut) "Series resistance (drive strength); index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-130, -90}, {-90, -50}})));
-  Modelica.Electrical.Analog.Ideal.IdealOpeningSwitch sw[9] "Open (high impedance) when the pin is an input; index 9 = on-board LED" annotation(
+  Modelica.Electrical.Analog.Ideal.IdealOpeningSwitch sw[9](each Goff = GOff) "Open (high impedance, leakage GOff) when the pin is an input; index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-70, -90}, {-30, -50}})));
   Modelica.Electrical.Analog.Sensors.VoltageSensor sns[9] "Measures the voltage actually present on the pin, whatever its direction; index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-10, -90}, {30, -50}})));
+  Modelica.Electrical.Analog.Sources.ConstantVoltage vPull(V = VOH) "Internal supply rail of the pull-up resistors" annotation(
+    Placement(visible = false, transformation(extent = {{30, -130}, {50, -110}})));
+  Modelica.Electrical.Analog.Basic.VariableConductor gPullUp[9] "Internal pull-up of each pin, between the pin and vPull: 1/RPullUp when active, GPullOff otherwise - a conductance rather than an Ideal switch, see requirements.md decision \"LED embarquée\" (trap 2)" annotation(
+    Placement(visible = false, transformation(extent = {{60, -90}, {100, -50}})));
+  Modelica.Electrical.Analog.Basic.VariableConductor gPullDown[9] "Internal pull-down of each pin, between the pin and GND: 1/RPullDown when active, GPullOff otherwise" annotation(
+    Placement(visible = false, transformation(extent = {{110, -90}, {150, -50}})));
   Modelica.Electrical.Analog.Basic.Resistor ledResistor(R = ledSeriesR) "Series resistance of the on-board LED, between the internal GPIO bridge (index 9) and builtinLed" annotation(
     Placement(visible = false, transformation(extent = {{-190, -125}, {-170, -115}})));
 public
@@ -111,13 +125,20 @@ equation
     pwmPeriod[i] = 1/max(pre(pwmFreq[i]), 1e-6);
     src[i].v = if pinIsOutputD[i] then (if pre(uartTxPin) == i then (if pre(uartTxLevel) then VOH else VOL) elseif pre(pwmFreq[i]) > 0 then (if mod(time, pwmPeriod[i]) < pre(pwmDuty[i])*pwmPeriod[i] then VOH else VOL) else (if pinBoolOut[i] then VOH else VOL)) else 0 "serial frame (level published by the C code at each change) if the pin is assigned to the UART, otherwise PWM square wave if pwmFreq > 0, otherwise plain digital output - see requirements.md";
     sw[i].control = not pinIsOutputD[i] "open (high impedance) if the pin is an input";
+    connect(gPullUp[i].p, vPull.p);
+    connect(gPullUp[i].n, sns[i].p);
+    connect(gPullDown[i].p, sns[i].p);
+    connect(gPullDown[i].n, GND);
+    gPullUp[i].G = if pre(pinPullC[i]) == 1 then 1/RPullUp else GPullOff;
+    gPullDown[i].G = if pre(pinPullC[i]) == 2 then 1/RPullDown else GPullOff;
   end for;
+  connect(vPull.n, GND);
   connect(sw[9].n, ledResistor.p);
   connect(sns[9].p, ledResistor.p);
   connect(ledResistor.n, builtinLed.p);
   connect(builtinLed.n, GND);
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(pinBoolIn[1]) and not pre(pinIsOutputD[1]), change(pinBoolIn[2]) and not pre(pinIsOutputD[2]), change(pinBoolIn[3]) and not pre(pinIsOutputD[3]), change(pinBoolIn[4]) and not pre(pinIsOutputD[4]), change(pinBoolIn[5]) and not pre(pinIsOutputD[5]), change(pinBoolIn[6]) and not pre(pinIsOutputD[6]), change(pinBoolIn[7]) and not pre(pinIsOutputD[7]), change(pinBoolIn[8]) and not pre(pinIsOutputD[8]), change(pinBoolIn[9]) and not pre(pinIsOutputD[9])} then
-    (pinBoolOutC, pinIsOutputC, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage);
+    (pinBoolOutC, pinIsOutputC, pinPullC, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage);
     Display0.charCode = Internal.StringToCharCodes(Display0.payload, Interfaces.DISPLAY_COLS) "ASCII codes derived from Display0.payload (a String, which cannot be stored in the results), so that the connected display peripheral can animate the text actually received on its icon - see Internal.StringToCharCodes";
   end when;
   annotation(

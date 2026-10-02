@@ -24,8 +24,8 @@ _warnings.filterwarnings('ignore', category=SyntaxWarning)
 class Pin:
     IN = 0
     OUT = 1
-    PULL_UP = 2
-    PULL_DOWN = 3
+    PULL_UP = 1      # valeurs du port rp2, alignees sur PIN_PULL_UP/PIN_PULL_DOWN cote C
+    PULL_DOWN = 2
     LED = 25  # doit rester aligne sur LED_PIN_ID cote C (PyRuntimeImpl.c)
     IRQ_RISING = 1   # doit rester aligne sur IRQ_TRIGGER_RISING cote C
     IRQ_FALLING = 2  # doit rester aligne sur IRQ_TRIGGER_FALLING cote C
@@ -34,8 +34,14 @@ class Pin:
         if id == 'LED':
             id = Pin.LED
         self.id = id
-        if mode is not None:
-            _native.pin_init(self.id, 1 if mode == Pin.OUT else 0)
+        # Comme le port rp2 : Pin(n) seul ne touche a rien, un mode ou un pull
+        # reconfigure la broche (init)
+        if mode is not None or pull is not None:
+            self.init(mode, pull)
+
+    def init(self, mode=None, pull=None):
+        # Le tirage est toujours reecrit : pull=None coupe celui pose avant
+        _native.pin_init(self.id, -1 if mode is None else (1 if mode == Pin.OUT else 0), 0 if pull is None else pull)
 
     def value(self, x=None):
         if x is None:

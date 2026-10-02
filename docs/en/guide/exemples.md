@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 37 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 38 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
 
 ## Getting started
 
@@ -16,6 +16,7 @@ The `MicroPythonMCU.Examples` package holds 37 ready-to-simulate models: open th
 | `Gpio.PinEcho` | `GP1` toggles, `GP2` reads back its electrical state, `GP3` copies it | `mcu.GP1.v`, `mcu.GP3.v` | `pin_echo.py` |
 | `Gpio.InputReactivity` | A button on `GP1` wakes the program during a `sleep(3600)` | `mcu.GP1.v`, program output | `input_reactive.py` *(V)* |
 | `Gpio.Timing` | Cost of a pin access (`gpioOpTime`): `on()`/`off()` pulse without `sleep`, burst, busy-wait, masked IRQ | `mcu.GP0.v` (zoom to the µs) | `gpio_timing.py` *(V)* |
+| `Gpio.Pull` | Internal pull resistors: two buttons without any external resistor (`Pin.PULL_UP` to ground, `Pin.PULL_DOWN` to 3.3 V), and a pin whose pull changes against a 1 MΩ external resistor | `mcu.GP0.v`, `mcu.GP3.v`, `mcu.GP4.v` | `gpio_pull.py` |
 
 ## Analog inputs (`Examples.Adc`)
 
@@ -84,7 +85,7 @@ The `MicroPythonMCU.Examples` package holds 37 ready-to-simulate models: open th
 |---|---|---|---|
 | `I2c.Echo` | Writing and reading back a frame, reading a register after a repeated START | `echo.SDA.v`, `echo.SCL.v` | `i2c_echo.py` |
 | `I2c.MultiDevice` | Three devices on a 400 kHz bus, found by `scan()` | log | `i2c_multi.py` |
-| `I2c.NoPullUp` | Bus without pull-up resistors: `OSError(ETIMEDOUT)` | lines at 0 V, log | `i2c_nopullup.py` |
+| `I2c.NoPullUp` | Bus without external pull-up resistors: the internal pull-ups alone (50 kΩ) are too slow at 400 kHz, `OSError(ETIMEDOUT)` | slow rising edges, log | `i2c_nopullup.py` |
 | `I2c.GroveLcd` | Grove LCD RGB display driven by an unmodified off-the-shelf driver | display icon | `i2c_grove_lcd_rgb.py` |
 
 ## Several microcontrollers (`Examples.MultiMcu`)
