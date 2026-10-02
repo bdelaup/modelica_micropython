@@ -1,5 +1,5 @@
 within MicroPythonMCU.Examples.Gpio;
-model Timing "Time cost of GPIO accesses (gpioOpTime): on()/off() pulse without sleep, bit-bang burst, busy wait, masked IRQ, idle()"
+model Timing "Time cost of GPIO accesses (gpioOpTime): on()/off() pulse without sleep, bit-bang burst, busy wait, masked IRQ, idle(), high()/low()"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/gpio_timing.py")) "scriptPath = Verification/gpio_timing.py; default gpioOpTime (5 µs)" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
@@ -64,7 +64,8 @@ equation
 <li>t = 200 ms: 10 pulses through <code>out(1); out(0)</code> → 11 pulses in total (<code>pulseCount</code>), and the script measures 100 µs with <code>ticks_us()</code>;</li>
 <li>t = 280 ms: busy wait <code>while not inp(): pass</code>, without <code>sleep()</code>: time moves forward by 5 µs per read, and the edge of GP1 at t = 300 ms is seen → GP2 rises just after (<code>tFlag</code>);</li>
 <li>t = 400 ms: <code>disable_irq()</code>; the edge of GP3 at t = 450 ms does not trigger the callback right away, it runs at <code>enable_irq()</code>, at t = 500 ms (<code>tIrq</code>, GP4);</li>
-<li>finally <code>idle()</code> returns at the next whole millisecond.</li>
+<li><code>idle()</code> returns at the next whole millisecond;</li>
+<li>t = 550 ms: <code>high()</code> then <code>low()</code> (aliases of <code>on()</code>/<code>off()</code> on the rp2 port) → a last 5 µs pulse, 12 in total.</li>
 </ul>
 <p>The script shows <code>dt=100 id=0</code> on the <code>Display0</code> link (duration of the burst in µs, remainder of <code>ticks_us()</code> modulo 1000 after <code>idle()</code>).</p>
 </html>"));

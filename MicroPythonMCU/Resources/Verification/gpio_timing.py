@@ -51,3 +51,8 @@ idle()
 t_idle = time.ticks_us()
 
 disp.write("dt=%d id=%d" % (dt, t_idle % 1000))
+
+# 6) high() then low() (rp2 aliases of on()/off()): one more 5 us pulse, at t = 550 ms
+until_ms(550)
+out.high()
+out.low()

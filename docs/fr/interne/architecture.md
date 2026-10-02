@@ -160,9 +160,9 @@ modelica_micropython3/
 
 ## Icône du modèle `MCU`
 
-![Icône du modèle MCU](../images/mcu-icone.svg){ width="220" }
+![Icône du modèle MCU](../images/mcu-icone.png){ width="200" }
 
-*Diagramme vectoriel généré directement à partir des coordonnées de l'annotation `Icon` de `MCU.mo` (pas une capture d'écran) — fidèle au rendu réel vérifié dans OMEdit au moment de sa génération ; ne reflète pas encore le connecteur `Display0` ajouté depuis (miroir SVG statique, resynchronisé manuellement comme `logo.svg`, cf. « Icône du package » ci-dessous).*
+*Capture du rendu d'OMEdit par le serveur MCP-OpenModelica (`iconDiagram`), recadrée par `docs/figures/crop_mcp.py` (fond, quadrillage et texte `%name` retirés). À refaire si l'icône change : recharger la bibliothèque dans OMEdit, capturer, recadrer (cf. `docs/ILLUSTRATIONS.md`).*
 
 L'icône représente le microcontrôleur comme un boîtier avec ses 8 broches réparties sur le pourtour — `GP0`-`GP3` sur le bord gauche, `GP4`-`GP7` sur le bord droit, chacune étiquetée en blanc (carré bleu plein = `PositivePin`) — et la broche `GND` en bas (carré à bord bleu = `NegativePin`). Le nom de classe et l'icône affichent volontairement « MCU » plutôt que « Pico »/RP2040 : cf. `requirements.md`, décision « Nom de la classe modèle et identité visuelle ». Voir aussi le scénario de vérification 6 pour l'historique des deux défauts de rendu trouvés et corrigés lors de la toute première version de l'icône (connecteurs fusionnés, `GND` hors cadre). Un petit connecteur triangulaire en haut, aligné avec `GP4` et étiqueté « DISPLAY », expose la liaison logique vers un périphérique d'affichage pédagogique (`machine.Display(0)`) — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
 
@@ -170,11 +170,11 @@ L'icône représente le microcontrôleur comme un boîtier avec ses 8 broches r�
 
 ![Logo MicroPythonMCU](../images/logo.svg){ width="160" }
 
-`MicroPythonMCU/package.mo` reprend la même silhouette que l'icône du modèle `MCU` ci-dessus (boîtier, 8 broches, `GND`, pastille LED), avec le texte central remplacé par « µPy » (police « Trebuchet MS », plus grande) — cf. `requirements.md`, décision « Logo du projet / icône du package ». `docs/fr/images/logo.svg` en est un miroir SVG (même méthode que `mcu-icone.svg`), utilisé comme logo du site ; à resynchroniser manuellement si l'icône du package change.
+`MicroPythonMCU/package.mo` reprend la même silhouette que l'icône du modèle `MCU` ci-dessus (boîtier, 8 broches, `GND`, pastille LED), avec le texte central remplacé par « µPy » (police « Trebuchet MS », plus grande) — cf. `requirements.md`, décision « Logo du projet / icône du package ». `docs/fr/images/logo.svg` en est un miroir SVG (coordonnées de l'annotation `Icon` recopiées, axe des ordonnées inversé), utilisé comme logo du site ; à resynchroniser manuellement si l'icône du package change.
 
 ## Schémas des exemples
 
-![Schéma simplifié du scénario BasicBlink](../images/exemple-basicblink.svg){ width="480" }
+![Schéma du scénario BasicBlink](../images/exemple-basicblink.png){ width="480" }
 
 Les 4 premiers modèles de scénario d'`Examples/` suivent tous le même agencement : `mcu` au centre, `GP0` câblée vers une vraie `Peripherals.LED` (résistance série + LED) à gauche, `GP1` vers `btnSrc` pour `Gpio.InputReactivity` (les broches non utilisées par le script sont laissées non connectées, cf. `requirements.md`, décision « Nettoyage du schéma interne de MCU et simplification du câblage des exemples »), avec une masse commune (`ground`) en bas. Le schéma interne du modèle `MCU` lui-même (le pont électrique par broche) est documenté dans `integration-python.md` et `cycle-de-vie.md` ; il est volontairement laissé vide dans la vue `Diagram` d'OMEdit (composants masqués, `visible = false`) depuis la même décision.
 
@@ -195,5 +195,3 @@ Les 4 premiers modèles de scénario d'`Examples/` suivent tous le même agencem
 `Display/Demo.mo` (`verify_12_display.mos`) démontre le périphérique d'affichage pédagogique du projet (`machine.Display`, cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ») : le script `display_demo.py` (`Resources/Scripts/`) appelle `Display(0).write(...)` à deux instants séparés par un `sleep(1)` ; un `Peripherals.Display` (nouveau paquet, cf. arborescence ci-dessus) reçoit chaque message via son connecteur `displayLink`, câblé sur `mcu.Display0` — un connecteur **logique causal** (`Interfaces.DisplayLinkOutput`/`DisplayLinkInput`), pas électrique comme les `GPx`, cf. `docs/peripherique-display.md`. Aucune broche `GPx` utilisée dans ce scénario. Détail à noter pour qui modifie l'icône de l'afficheur : le texte reçu s'affiche **réellement sur l'icône**, fidèle à un vrai 20×2 (20 caractères par ligne, un `Text` par colonne, cf. `Internal.StringToCharCodes` et `docs/peripherique-display.md` §4) — à chaque nouvelle réception, l'ancien message décale vers la ligne 2 (`line2CharCode = pre(displayLink.charCode)`) et le nouveau occupe la ligne 1 — en plus d'apparaître dans le journal de simulation (`Streams.print`, texte complet). Écran de couleur fixe (pas d'animation lumineuse). Le contournement (une `String` ne peut pas être stockée dans les résultats de simulation, `.mat`/`.csv`, vérifié empiriquement pendant ce chantier) passe par un tableau `Integer` de codes ASCII, lui bien storable, comme n'importe quelle grandeur numérique déjà utilisée pour `Peripherals.LED`.
 
 `Uart/Loopback.mo` (scénario de vérification 14) est le seul exemple où une broche `GPx` porte un **signal série réel** : le script `uart_loopback.py` configure `machine.UART(0, baudrate=1200, tx=Pin(0), rx=Pin(1))` et émet `b'Hi'` ; `GP0` (TX) est bouclée électriquement sur `GP1` (RX) par le motif `loopR`/`loopC` de `Gpio.PinEcho` (obligatoire : un `connect()` direct entre deux broches du même `MCU` fait disparaître la tension pilotée des résultats), et `led3` (GP3) confirme que les octets relus sont intacts. Tracer `mcu.GP0.v` donne une vraie trame 8N1 lisible comme à l'oscilloscope. Mécanisme complet (émission générée en continu par Modelica, réception décodée côté C) : [peripherique-uart.md](uart.md).
-
-<!-- ILLUSTRATION mcu-icone : remplacer mcu-icone.svg ci-dessus (périmé, sans Display0) par l'export OMEdit de l'icône actuelle (cf. docs/ILLUSTRATIONS.md) -->

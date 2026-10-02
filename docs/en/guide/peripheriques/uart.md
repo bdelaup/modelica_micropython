@@ -29,6 +29,8 @@ if uart.any():
 
 Reception does not wake the program up: it polls the link with `any()`, `read()` or `readline()`.
 
+![An MCU and a serial temperature sensor, TX/RX wires crossed (Examples.Uart.Sensor)](../../images/uart-schema.png){ width="560" }
+
 !!! tip "Why `GP4`/`GP5` in the examples?"
     These pins are on the right edge of the `MCU` icon, on the side where the device is placed: wires stay short. Any pair of `GP0`-`GP7` works.
 
@@ -43,6 +45,8 @@ They all share the same connectors and parameters; they only differ by their def
 | `UartTemperatureSensor` | Answers `AT+TEMP` with the value of its input, `AT+ID` with its identifier, and accepts a setpoint through `SET <number>` | `commandTable = "AT+TEMP=>TEMP={v1:.1f}\r\n|AT+ID=>SIM-TEMP-1\r\n|SET {o1}=>OK\r\n"`, `responseDelay = 5 ms`, `useValueInput = true`, `fixedValue = 20`, `nOut = 1` |
 | `UartGpsModule` | Sends a position frame every second on its own, without being asked | `periodicEnabled = true`, `periodicTemplate = "$GPGLL,{v1:.4f},{v2:.4f},{v3:.1f}\r\n"`, `useValueInput = true`, `nIn = 3` |
 | `UartLcd20x2` | 2 × 20 character display: shows each received line on its icon, the previous one moving down to line 2 | never replies; `behaviour` fixed to `Table` |
+
+![The five serial devices: generic, echo, temperature sensor, GPS, 20x2 display](../../images/uart-icones.png)
 
 ## Connectors
 

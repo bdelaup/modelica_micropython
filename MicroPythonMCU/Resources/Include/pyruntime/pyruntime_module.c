@@ -139,7 +139,7 @@ static int worker_init(struct PyRuntimeHandle* h, struct WorkerInit* wi) {
     PyGILState_Release(gstate);
     PyEval_RestoreThread(sub);
 
-    if (pyhost_install_relay(&h->relay) != 0) {
+    if (pyhost_install_relay(&h->relay, &h->relay_err) != 0) {
         failure = "failed to install the stdout relay";
     }
     if (!failure && pyhost_register_module("_pyruntime_native", PyModule_Create(&native_module_def)) != 0) {
@@ -159,10 +159,12 @@ static int worker_init(struct PyRuntimeHandle* h, struct WorkerInit* wi) {
         failure = "failed to initialise the machine/time shim or the file system - traceback above";
     }
     relay_flush_buf(&h->relay);
+    relay_flush_buf(&h->relay_err);
     if (failure) {
         if (PyErr_Occurred()) {
             PyErr_Print();
             relay_flush_buf(&h->relay);
+            relay_flush_buf(&h->relay_err);
         }
         snprintf(h->init_failure, sizeof(h->init_failure), "%s", failure);
         PyEval_SaveThread();
@@ -191,6 +193,7 @@ static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const ch
     int rc = PyRun_SimpleString(buf);
     free(buf);
     relay_flush_buf(&h->relay);
+    relay_flush_buf(&h->relay_err);
     if (rc != 0) {
         char msg[128];
         snprintf(msg, sizeof(msg), "%s raised an unhandled exception - traceback above",
@@ -352,6 +355,9 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
        sont prefixees par leur nom d'instance (cf. g_mcu_prefix_on). */
     handle->relay.prefix = handle->instanceName;
     handle->relay.prefix_on = &g_mcu_prefix_on;
+    handle->relay.time = &handle->sim_time;
+    handle->relay_err = handle->relay;
+    handle->relay_err.is_err = 1;
     if (++g_mcu_count >= 2) {
         g_mcu_prefix_on = 1;
     }

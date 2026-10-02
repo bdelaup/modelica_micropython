@@ -151,6 +151,7 @@ void I2cDevice_sync(void* dev_, double currentTime, int sclLevel, int sdaLevel, 
     int k;
 
     dev->now = currentTime;
+    g_host_time = currentTime;   /* horodatage des print() du script (relais, pyhost.c) */
     for (k = 0; k < I2CDEV_MAX_VALUES; k++) {
         dev->value_in[k] = valueIn[k];
     }

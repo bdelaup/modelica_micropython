@@ -3,8 +3,9 @@
 //
 // Ce que ce scénario vérifie :
 // - on() puis off() sans sleep donnent une impulsion de 5 µs VUE PAR LE CIRCUIT
-//   (pulseWidth, mesurée côté Modelica), et la rafale de 10 impulsions par
-//   pin(x) en donne 10 de plus (pulseCount = 11) ;
+//   (pulseWidth, mesurée côté Modelica), la rafale de 10 impulsions par
+//   pin(x) en donne 10 de plus, et high() puis low() à t = 550 ms une dernière,
+//   elle aussi de 5 µs (pulseCount = 12) ;
 // - ticks_us() avance pendant la rafale : 20 écritures = 100 µs (affiché "dt=100") ;
 // - une attente active sans sleep (while not inp(): pass) fait avancer le temps
 //   et voit le front de t = 300 ms (tFlag juste après) au lieu de figer la simulation ;
@@ -35,7 +36,7 @@ d7 := val(mcu.Display0.charCode[7], 0.59, f);    // ' ' = 32
 d11 := val(mcu.Display0.charCode[11], 0.59, f);  // '0' = 48
 d12 := val(mcu.Display0.charCode[12], 0.59, f);  // ' ' = 32 (fin du texte)
 
-if abs(w - 5e-6) < 1e-8 and abs(n - 11) < 0.5 and tf >= 0.3 and tf < 0.30002 and ti >= 0.5 and ti < 0.50002 and abs(d4 - 49) < 0.5 and abs(d5 - 48) < 0.5 and abs(d6 - 48) < 0.5 and abs(d7 - 32) < 0.5 and abs(d11 - 48) < 0.5 and abs(d12 - 32) < 0.5 then
+if abs(w - 5e-6) < 1e-8 and abs(n - 12) < 0.5 and tf >= 0.3 and tf < 0.30002 and ti >= 0.5 and ti < 0.50002 and abs(d4 - 49) < 0.5 and abs(d5 - 48) < 0.5 and abs(d6 - 48) < 0.5 and abs(d7 - 32) < 0.5 and abs(d11 - 48) < 0.5 and abs(d12 - 32) < 0.5 then
   print("PASS: verify_28_gpio_timing (impulsion " + String(w * 1e6) + " us, " + String(n) + " impulsions ; attente active sortie a t=" + String(tf) + " s ; callback IRQ masque execute a t=" + String(ti) + " s ; affichage 'dt=100 id=0')\n");
 else
   print("FAIL: verify_28_gpio_timing (w=" + String(w) + " n=" + String(n) + " tf=" + String(tf) + " ti=" + String(ti) + " d=" + String(d4) + "," + String(d5) + "," + String(d6) + "," + String(d7) + "," + String(d11) + "," + String(d12) + ")\n" + b);

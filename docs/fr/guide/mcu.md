@@ -2,7 +2,7 @@
 
 `MicroPythonMCU.MCU` est le microcontrôleur : un boîtier à 8 broches d'entrée/sortie, une masse, une liaison vers un afficheur pédagogique et une LED embarquée. Son comportement est entièrement décrit par le programme Python désigné par `scriptPath`. Sa référence est le Raspberry Pi Pico (RP2040), dont il reprend l'API MicroPython ; l'icône affiche volontairement « MCU ».
 
-<!-- ILLUSTRATION mcu-icone : icône du bloc MCU exportée d'OMEdit en SVG, avec le connecteur DISPLAY (cf. docs/ILLUSTRATIONS.md) -->
+![Icône du bloc MCU](../images/mcu-icone.png){ width="200" }
 
 !!! note "Libellés en anglais"
     La bibliothèque est en anglais : les onglets, les groupes et les descriptions de la boîte de paramètres s'affichent en anglais dans OMEdit. Cette page les cite tels qu'ils apparaissent, avec leur rôle en français.
@@ -13,7 +13,7 @@
 |---|---|---|
 | `GP0` … `GP7` | Broche électrique (`PositivePin`) | Chacune au choix du programme : entrée ou sortie numérique (`Pin`), entrée analogique (`ADC`), sortie PWM (`PWM`), ligne série (`UART`) ou ligne de bus I2C (`I2C`). `GP0`-`GP3` sont sur le bord gauche de l'icône, `GP4`-`GP7` sur le bord droit |
 | `GND` | Broche électrique (`NegativePin`) | Référence commune de toutes les broches. **À relier à la masse du circuit** (`Ground`), comme sur un vrai montage |
-| `Display0` | Liaison logique (`DisplayLinkOutput`) | Vers un `Peripherals.Display` : texte envoyé par `machine.Display(0).write()`. Pas électrique : voir [LED et afficheur](peripheriques/led-afficheur.md) |
+| `Display0` | Liaison logique (`DisplayLinkOutput`) | Vers un `Peripherals.Display`, `Display4x32` ou `Display8x32` (un ou plusieurs) : texte envoyé par `machine.Display(0).write()`. Pas électrique : voir [LED et afficheur](peripheriques/led-afficheur.md) |
 
 La **LED embarquée** (`Pin.LED`, broche 25 du Pico) est câblée à l'intérieur du bloc, avec sa résistance série : elle n'a pas de connecteur. Elle s'allume sur l'icône, et son courant se trace sous `mcu.builtinLed`.
 
@@ -112,6 +112,6 @@ Un modèle peut contenir autant de blocs `MCU` que nécessaire, câblés entre e
 
 Chaque microcontrôleur exécute **son propre programme, isolé des autres** : ses variables, ses modules importés (un même driver importé par deux cartes est chargé deux fois), `machine`, `time` et son système de fichiers (chacun a sa copie de la flash, même s'ils partent de la même image `fsSource`). Deux cartes peuvent donc exécuter le même fichier sans se gêner.
 
-Dès qu'il y a deux microcontrôleurs, chaque ligne affichée par leurs `print()` est précédée du nom de l'instance dans le journal de simulation (`[MonModele.mcuA] ...`), comme pour les périphériques programmés en Python. Avec un seul `MCU`, le journal est inchangé.
+Dès qu'il y a deux microcontrôleurs, chaque ligne affichée par leurs `print()` porte, après le temps simulé, le nom de l'instance dans le journal de simulation (`[t=0.500030 s] [MonModele.mcuA] ...`), comme pour les périphériques programmés en Python. Avec un seul `MCU`, seul le temps précède la ligne.
 
 Exemples : [Plusieurs microcontrôleurs](exemples.md#plusieurs-microcontroleurs-examplesmultimcu).

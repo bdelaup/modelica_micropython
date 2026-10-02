@@ -1,0 +1,65 @@
+// Scénario de vérification n°40 : grands écrans de texte et horodatage du journal
+// (Examples.Display.Large, script Scripts/MCU/display_large.py).
+// omc verify_40_display_large.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie :
+// - remplissage sous la dernière ligne : à t = 0,25 s (messages 1 et 2 reçus),
+//   screen8 a écrit 2 lignes, la 2e commence par 'M' et la 3e est encore vide ;
+// - défilement une fois plein : à la fin, screen4 montre les messages 7 à 10 et
+//   screen8 les messages 3 à 10 (caractère 9 de chaque ligne = numéro) ;
+// - troncature à 32 colonnes : la ligne du message 5 se termine par le 32e
+//   caractère du texte ('l' de "col") ;
+// - journal : chaque print() du script est précédé du temps simulé
+//   ("[t=0.100000 s] message 1 sent") ;
+// - icônes : les DynamicSelect des icônes générées trouvent textCode. La
+//   simulation peut être juste alors que les écrans restent vides en relecture :
+//   omc résout ces noms dans la classe qui porte l'icône, et getModelInstance
+//   signale un nom introuvable par un "$error" (cf. make_text_icons.py).
+//
+// Indices : ligne i, colonne j -> textCode[(i - 1)*32 + j], écrits en littéral
+// (val() ne résout pas un indice calculé dans un .mos).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+simulate(MicroPythonMCU.Examples.Display.Large, stopTime = 1.2, numberOfIntervals = 1200, fileNamePrefix = "DisplayLarge");
+b := getErrorString();
+
+f := "DisplayLarge_res.mat";
+
+// à mi-parcours : deux lignes écrites sur screen8
+midFilled := val(screen8.filled, 0.25, f);
+midLine2 := val(screen8.textCode[33], 0.25, f);   // 'M' = 77
+midLine3 := val(screen8.textCode[65], 0.25, f);   // ' ' = 32 (pas encore écrite)
+
+// à la fin : screen4 = messages 7..10, screen8 = messages 3..10
+f4 := val(screen4.filled, 1.15, f);
+f8 := val(screen8.filled, 1.15, f);
+s4l1 := val(screen4.textCode[9], 1.15, f);     // '7' = 55
+s4l4a := val(screen4.textCode[105], 1.15, f);  // '1' = 49
+s4l4b := val(screen4.textCode[106], 1.15, f);  // '0' = 48
+s8l1 := val(screen8.textCode[9], 1.15, f);     // '3' = 51
+s8l3 := val(screen8.textCode[96], 1.15, f);    // ligne du message 5, 32e caractère : 'l' = 108
+s8l8a := val(screen8.textCode[233], 1.15, f);  // '1' = 49
+s8l8b := val(screen8.textCode[234], 1.15, f);  // '0' = 48
+
+ret := system(".\\DisplayLarge.bat", "DisplayLarge_run.txt");
+log := readFile("DisplayLarge_run.txt");
+(nStamp1, m1) := regex(log, "[[]t=0[.]100000 s[]] message 1 sent", 1);
+(nStamp10, m2) := regex(log, "[[]t=1[.]000000 s[]] message 10 sent", 1);
+
+(nErr4, e4) := regex(getModelInstance(MicroPythonMCU.Peripherals.Display4x32), "[$]error", 1);
+(nErr8, e8) := regex(getModelInstance(MicroPythonMCU.Peripherals.Display8x32), "[$]error", 1);
+
+if nErr4 == 0 and nErr8 == 0 and abs(midFilled - 2) < 0.5 and abs(midLine2 - 77) < 0.5 and abs(midLine3 - 32) < 0.5
+   and abs(f4 - 4) < 0.5 and abs(f8 - 8) < 0.5
+   and abs(s4l1 - 55) < 0.5 and abs(s4l4a - 49) < 0.5 and abs(s4l4b - 48) < 0.5
+   and abs(s8l1 - 51) < 0.5 and abs(s8l3 - 108) < 0.5 and abs(s8l8a - 49) < 0.5 and abs(s8l8b - 48) < 0.5
+   and nStamp1 >= 1 and nStamp10 >= 1 then
+  print("PASS: verify_40_display_large (remplissage ligne apres ligne puis defilement : screen4 = messages 7-10, screen8 = messages 3-10, troncature a 32 colonnes ; journal horodate ; icones sans nom introuvable)\n");
+else
+  print("FAIL: verify_40_display_large (mi-parcours filled=" + String(midFilled) + " l2=" + String(midLine2) + " l3=" + String(midLine3)
+    + " ; fin filled=" + String(f4) + "/" + String(f8) + " screen4 " + String(s4l1) + "," + String(s4l4a) + "," + String(s4l4b)
+    + " screen8 " + String(s8l1) + "," + String(s8l3) + "," + String(s8l8a) + "," + String(s8l8b)
+    + " ; horodatage " + String(nStamp1) + "/" + String(nStamp10)
+    + " ; erreurs d'icone " + String(nErr4) + "/" + String(nErr8) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

@@ -143,7 +143,7 @@ static char* read_text_file(const char* path) {
     return buf;
 }
 
-/* --- Relais stdout/stderr -> ModelicaFormatMessage ---
+/* --- Relais stdout/stderr -> ModelicaFormatMessage / ModelicaFormatWarning ---
    print() avec plusieurs arguments declenche plusieurs write() distincts (un par
    argument/separateur) ; comme chaque appel a ModelicaFormatMessage produit sa
    propre ligne dans le journal OMEdit, il faut bufferiser jusqu'a un vrai saut de
@@ -158,32 +158,61 @@ static char* read_text_file(const char* path) {
    autre. Le tampon est retrouve par l'etat du module relais (PyModule_GetState),
    donc sans variable "relais courant". prefix : nom d'instance mis en tete de
    chaque ligne quand *prefix_on est vrai (plusieurs microcontroleurs), NULL pour
-   l'interpreteur principal - les peripheriques prefixent deja eux-memes. */
+   l'interpreteur principal - les peripheriques prefixent deja eux-memes.
+
+   HORODATAGE : chaque ligne commence par le temps simule lu a travers time
+   ("[t=0.250000 s] ", a la microseconde comme ticks_us), DEVANT le prefixe
+   d'instance (les scenarios cherchent "mcuX] texte"). time pointe sur sim_time
+   du handle pour un microcontroleur, sur g_host_time pour l'interpreteur
+   principal (pose par les points de synchro des peripheriques).
+
+   STDOUT ET STDERR : deux tampons par interpreteur (is_err), pour ne pas
+   melanger leurs lignes ; une ligne de stderr (dont les traces de PyErr_Print)
+   part par ModelicaFormatWarning, signalee autrement par OMEdit. */
 
 struct RelayBuf {
     char buf[4096];
     size_t len;
     const char* prefix;
     const int* prefix_on;
+    const double* time;
+    int is_err;
 };
 
-static struct RelayBuf g_relay_main;
+/* Temps simule des scripts de peripherique : pose par UartDevice_sync et
+   I2cDevice_sync avant d'appeler leurs gestionnaires Python (0 pendant le
+   chargement des scripts, a la construction). */
+static double g_host_time;
+
+static struct RelayBuf g_relay_main = { .time = &g_host_time };
+static struct RelayBuf g_relay_main_err = { .time = &g_host_time, .is_err = 1 };
 
 static void relay_flush_buf(struct RelayBuf* r) {
     if (r->len > 0) {
+        char stamp[48] = "";
         r->buf[r->len] = '\0';
+        if (r->time) {
+            snprintf(stamp, sizeof(stamp), "[t=%.6f s] ", *r->time);
+        }
         if (r->prefix && r->prefix_on && *r->prefix_on) {
-            ModelicaFormatMessage("[%s] %s", r->prefix, r->buf);
+            if (r->is_err) {
+                ModelicaFormatWarning("%s[%s] %s", stamp, r->prefix, r->buf);
+            } else {
+                ModelicaFormatMessage("%s[%s] %s", stamp, r->prefix, r->buf);
+            }
+        } else if (r->is_err) {
+            ModelicaFormatWarning("%s%s", stamp, r->buf);
         } else {
-            ModelicaFormatMessage("%s", r->buf);
+            ModelicaFormatMessage("%s%s", stamp, r->buf);
         }
         r->len = 0;
     }
 }
 
-/* Vide le tampon de l'interpreteur principal (scripts de peripherique). */
+/* Vide les tampons de l'interpreteur principal (scripts de peripherique). */
 static void relay_emit_pending(void) {
     relay_flush_buf(&g_relay_main);
+    relay_flush_buf(&g_relay_main_err);
 }
 
 static struct RelayBuf* relay_of(PyObject* module) {
@@ -253,15 +282,22 @@ static int pyhost_append_path(const char* dir) {
     return rc;
 }
 
-/* Installe le relais stdout/stderr dans l'interpreteur COURANT, sur le tampon
-   r (cf. struct RelayBuf). Le GIL doit etre tenu. Retourne 0 ou -1. */
-static int pyhost_install_relay(struct RelayBuf* r) {
+/* Installe le relais stdout/stderr dans l'interpreteur COURANT : un objet par
+   flux, sur les tampons out et err (cf. struct RelayBuf). Le GIL doit etre
+   tenu. Retourne 0 ou -1. */
+static int pyhost_install_relay(struct RelayBuf* out, struct RelayBuf* err) {
     PyObject* relay = PyModule_Create(&relay_module_def);
-    if (!relay) {
+    PyObject* relay_err = PyModule_Create(&relay_module_def);
+    if (!relay || !relay_err) {
+        Py_XDECREF(relay);
+        Py_XDECREF(relay_err);
         return -1;
     }
-    *(struct RelayBuf**) PyModule_GetState(relay) = r;
-    if (PySys_SetObject("stdout", relay) != 0 || PySys_SetObject("stderr", relay) != 0) {
+    *(struct RelayBuf**) PyModule_GetState(relay) = out;
+    *(struct RelayBuf**) PyModule_GetState(relay_err) = err;
+    int rc = (PySys_SetObject("stdout", relay) != 0 || PySys_SetObject("stderr", relay_err) != 0) ? -1 : 0;
+    Py_DECREF(relay_err);   /* sys.stderr garde sa propre reference */
+    if (rc != 0) {
         Py_DECREF(relay);
         return -1;
     }
@@ -326,7 +362,7 @@ static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
 
     /* Relais stdout/stderr de l'interpreteur principal (scripts de peripherique) ;
        chaque microcontroleur installe le sien dans son sous-interpreteur. */
-    pyhost_install_relay(&g_relay_main);
+    pyhost_install_relay(&g_relay_main, &g_relay_main_err);
 
     /* Rend le GIL : le thread Modelica ne le tient plus, conformement a
        l'invariant. Chaque composant le reprendra au besoin par PyGILState_Ensure. */

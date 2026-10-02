@@ -14,7 +14,7 @@ flowchart LR
 | Pont de jauges | `Weighing.WheatstoneBridge` | `eps` → tension `S+ − S−` | 500 µm/m → 1 mV/V |
 | Convertisseur | `Weighing.Hx711` | `A+ − A−` → code 24 bits | 1 kg à gain 128 → 429 497 |
 
-<!-- ILLUSTRATION pesee-schema : vue Diagramme de Examples.Weighing.KitchenScale (chaîne complète, écran, bouton TARE) (cf. docs/ILLUSTRATIONS.md) -->
+![La balance de cuisine complète (Examples.Weighing.KitchenScale)](../../images/pesee-schema.png){ width="700" }
 
 ## `Weighing.LoadCell` : le corps d'épreuve
 
@@ -106,6 +106,8 @@ Ce driver produit l'horloge bit par bit, sans pause entre deux écritures. Cela 
 
 - **`Weighing.Hx711Read`** : 1 kg posé, lecture brute à gain 128, puis à gain 64, mise en veille et réveil. Les codes lus sont les codes théoriques : 429 497, puis 214 748.
 - **`Weighing.KitchenScale`** : la balance complète. Écran Grove LCD RGB en I2C, HX711 avec un bruit de 25 LSB, bouton TARE sur une interruption, plateau de 200 g, puis un bol de 350 g et 250 g de farine. L'écran affiche « 0 g », « 350 g », « Tare... », « 0 g », « 250 g ».
+
+![Masse posée et code du HX711 pendant la balance de cuisine](../../images/sim/kitchen-scale.svg)
 
 !!! note "Simulation longue"
     La balance complète demande environ 45 s de calcul pour 7 s simulées : chaque caractère envoyé à l'écran est une transaction I2C, et le driver attend chaque donnée du HX711 par pas d'une milliseconde. C'est le prix d'une simulation électrique fidèle de deux bus.

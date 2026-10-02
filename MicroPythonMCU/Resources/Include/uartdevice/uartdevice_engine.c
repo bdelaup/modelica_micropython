@@ -226,6 +226,7 @@ void UartDevice_sync(void* dev_, double currentTime, int rxLevel, const double* 
 
     /* 1. grandeurs venues du modele */
     dev->now = currentTime;
+    g_host_time = currentTime;   /* horodatage des print() du script (relais, pyhost.c) */
     for (k = 0; k < UARTDEV_MAX_VALUES; k++) {
         dev->value_in[k] = valueIn[k];
     }

@@ -1,8 +1,14 @@
 # Exemples
 
-Le paquetage `MicroPythonMCU.Examples` contient 38 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
+Le paquetage `MicroPythonMCU.Examples` contient 39 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
 
-<!-- ILLUSTRATION exemples-vignettes : une vignette (vue Diagramme) par exemple phare : BasicBlink, Gpio.LedChaser, Pwm.LedFade, Uart.Sensor, I2c.GroveLcd, Weighing.KitchenScale (cf. docs/ILLUSTRATIONS.md) -->
+| `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
+|---|---|---|
+| ![BasicBlink](../images/exemple-basicblink.png){ width="240" } | ![Gpio.LedChaser](../images/exemple-ledchaser.png){ width="240" } | ![Pwm.LedFade](../images/exemple-ledfade.png){ width="240" } |
+
+| `Uart.Sensor` | `I2c.GroveLcd` | `Weighing.KitchenScale` |
+|---|---|---|
+| ![Uart.Sensor](../images/uart-schema.png){ width="240" } | ![I2c.GroveLcd](../images/exemple-grovelcd.png){ width="240" } | ![Weighing.KitchenScale](../images/pesee-schema.png){ width="240" } |
 
 ## Pour commencer
 
@@ -20,6 +26,8 @@ Le paquetage `MicroPythonMCU.Examples` contient 38 modèles prêts à simuler : 
 | `Gpio.Timing` | Coût d'un accès aux broches (`gpioOpTime`) : impulsion `on()`/`off()` sans `sleep`, rafale, attente active, IRQ masquée | `mcu.GP0.v` (zoom à la µs) | `gpio_timing.py` *(V)* |
 | `Gpio.Pull` | Tirages internes : deux boutons sans résistance externe (`Pin.PULL_UP` vers la masse, `Pin.PULL_DOWN` vers 3,3 V), et une broche dont le tirage change face à une résistance externe de 1 MΩ | `mcu.GP0.v`, `mcu.GP3.v`, `mcu.GP4.v` | `gpio_pull.py` |
 
+![Réveil par une entrée pendant un sleep](../images/sim/input-reactivity.svg)
+
 ## Entrées analogiques (`Examples.Adc`)
 
 | Exemple | Ce qu'il montre | À observer | Programme |
@@ -35,6 +43,8 @@ Le paquetage `MicroPythonMCU.Examples` contient 38 modèles prêts à simuler : 
 | `Pwm.LedFade` | Variation progressive du rapport cyclique : la LED s'allume en fondu | icône de la LED, `led0.p.i` | `pwm_led_fade.py` |
 
 ![PWM à 200 Hz](../images/sim/pwm-led.svg)
+
+![Fondu de la LED : rapport cyclique et signal PWM](../images/sim/pwm-fade.svg)
 
 ## Interruptions et minuteurs (`Examples.Irq`)
 
@@ -63,6 +73,7 @@ Le paquetage `MicroPythonMCU.Examples` contient 38 modèles prêts à simuler : 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
 | `Display.Demo` | Deux messages envoyés à un `Peripherals.Display` ; le premier descend en ligne 2 | icône de l'afficheur, journal | `display_demo.py` |
+| `Display.Large` | Dix messages reçus à la fois par un `Display` 20x2 et par les grands écrans `Display4x32` et `Display8x32`, qui se remplissent ligne après ligne puis défilent | icônes des trois afficheurs (relecture animée) | `display_large.py` |
 
 ## Liaison série (`Examples.Uart`)
 

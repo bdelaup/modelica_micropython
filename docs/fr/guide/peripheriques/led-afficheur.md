@@ -1,6 +1,6 @@
 # LED et afficheur pédagogique
 
-Deux composants simples pour voir ce que fait le programme : une LED dont l'icône s'éclaire selon le courant qui la traverse, et un afficheur de texte relié au microcontrôleur par une liaison logique.
+Des composants simples pour voir ce que fait le programme : une LED dont l'icône s'éclaire selon le courant qui la traverse, et des afficheurs de texte reliés au microcontrôleur par une liaison logique (un 20x2, et deux grands écrans qui se remplissent ligne après ligne).
 
 ## `Peripherals.LED`
 
@@ -64,3 +64,40 @@ Le composant n'a pas de paramètre.
 Pour un afficheur relié par une **vraie** liaison électrique, voir `UartLcd20x2` ([Appareils série](uart.md)) ou l'écran Grove LCD RGB ([Périphériques I2C](i2c.md)).
 
 Exemples : `Display.Demo`, `Weighing.Hx711Read`.
+
+## `Peripherals.Display4x32` et `Peripherals.Display8x32`
+
+Deux grands écrans de texte, de 4 et 8 lignes de 32 caractères, qui reçoivent les mêmes messages que `Display` (`machine.Display(0).write(...)`). Ils se lisent comme un terminal : chaque message s'écrit **sous la dernière ligne écrite** ; une fois l'écran plein, tout remonte d'une ligne et le nouveau message prend la ligne du bas. Pratiques pour suivre un historique de mesures ou d'états sans ouvrir le journal.
+
+<!-- ILLUSTRATION grands-ecrans : icônes de Display4x32 et Display8x32 en fin de simulation de Display.Large (cf. docs/ILLUSTRATIONS.md) -->
+
+```python
+from machine import Display
+import time
+
+ecran = Display(0)
+for i in range(10):
+    ecran.write("Mesure %d : %d mV" % (i, 1650 + 10 * i))
+    time.sleep_ms(100)
+```
+
+### Connecteur
+
+| Connecteur | Rôle |
+|---|---|
+| `displayLink` | À relier à `mcu.Display0`, comme pour `Display`. Plusieurs afficheurs peuvent être reliés au même `Display0` : ils reçoivent tous chaque message |
+
+### Paramètre
+
+| Paramètre | Défaut | Rôle |
+|---|---|---|
+| `logReceived` | `true` | Imprime aussi chaque message reçu dans le journal de simulation. À mettre à `false` quand plusieurs afficheurs partagent `Display0`, pour ne pas avoir chaque message en double |
+
+### Comportement
+
+- L'écran démarre vide ; le premier message prend la ligne du haut.
+- Au-delà de 32 caractères, le message est coupé sur l'icône ; il reste entier dans le journal.
+- Caractères affichables : lettres sans accent, chiffres, espace et `! " # & ' ( ) * + , - . / : < = > ? _`. Les autres s'affichent comme des espaces.
+- Le texte de l'icône est enregistré dans `textCode` (codes ASCII, ligne `i`, colonne `j` à l'indice `(i - 1)*32 + j`) et le nombre de lignes écrites dans `filled` : on les retrouve dans les résultats.
+
+Exemple : `Display.Large` (les trois afficheurs côte à côte).

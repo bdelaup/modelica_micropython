@@ -29,6 +29,8 @@ The bus is **open-drain**: each member can only pull a line low or release it, a
 
 Any number of devices can share the two wires; each one only answers its own addresses (`I2c.MultiDevice` example).
 
+![Three I2C devices on the same bus (Examples.I2c.MultiDevice)](../../images/i2c-schema.png){ width="520" }
+
 ## Supplied devices
 
 | Component | Address(es) | Default script | Role |

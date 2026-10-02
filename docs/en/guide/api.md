@@ -6,6 +6,10 @@ This page lists what a program run by the [`MCU`](mcu.md) can call: the subset o
 
 **Time cost of pin accesses**: each `value()`, `on()`, `off()` or `pin(x)` keeps the processor busy for `MCU.gpioOpTime` of simulated time (*Execution time* tab, **5 µs by default**, the order of magnitude of MicroPython on an RP2040). Two writes without a `sleep` in between therefore produce a real pulse, visible to the circuit: this is what enables bit-banging (HX711 driver, see [Weighing chain](peripheriques/pesee.md)), and what makes time advance in a busy-wait loop (`while not button(): pass`). Pure Python computation, `Pin()`, `irq()`, the ADC, PWM and `ticks_*` remain instantaneous. `gpioOpTime = 0` makes all accesses instantaneous.
 
+![Pulse and burst produced without sleep](../images/sim/gpio-timing.svg)
+
+*`Gpio.Timing`: each pin access lasts `gpioOpTime` = 5 µs of simulated time. Figure labels are in French: « temps » = time, « 20 accès = 100 µs, mesurés aussi par ticks_us() » = 20 accesses = 100 µs, also measured by ticks_us().*
+
 ## `machine.Pin`
 
 ```python
@@ -43,6 +47,7 @@ As on the `rp2` port, `Pin(n)` alone changes nothing; as soon as `mode` or `pull
 | `.init(mode, pull)` | `init(mode=None, pull=None)` | Reconfigures the pin: direction if `mode` is given, pull always (`None` switches it off) | Yes |
 | `.on()` | `on()` | Same as `value(1)` | Yes |
 | `.off()` | `off()` | Same as `value(0)` | Yes |
+| `.high()` / `.low()` | `high()` / `low()` | Same as `on()` / `off()` (aliases specific to the `rp2` port) | Yes |
 | `.toggle()` | `toggle()` | Inverts the current state (reads, then writes the opposite) | Yes (through `value()`, twice) |
 | `.irq(handler, trigger)` | `irq(handler=None, trigger=IRQ_RISING|IRQ_FALLING, **kwargs)` | Registers (or clears, if `handler=None`) a callback called on an edge matching `trigger`. The callback receives the `Pin` object (`handler(pin)`), as on real MicroPython. `**kwargs` absorbs `hard=`/`priority=`/`wake=` for signature compatibility, with no effect (see Limitations) | Yes |
 
@@ -288,7 +293,7 @@ import sensors                 # /lib/sensors.py on the flash, or folder given b
 ```
 
 - **Imports**: the program's folder is on the import path (`MCU.addScriptDirToPath`, on by default), like the flash root on the board. `MCU.libraryPath` adds a shared library folder. With a file system enabled, the flash root and `/lib` are on it too. The CPython 3.12 standard library is available, but a program meant for the board must stick to what MicroPython offers.
-- **`print()`**: shown in OMEdit's simulation output window.
+- **`print()`**: shown in OMEdit's simulation output window, each line preceded by the simulated time at which it was written, to the microsecond: `[t=0.250000 s] value = 12`. What goes to `sys.stderr` (including the traceback of an exception) is shown as a **warning**, flagged differently by OMEdit.
 - **Uncaught exception**: stops the simulation; the Python traceback is shown in the log (`Program.Error` example).
 
 ## `machine` functions

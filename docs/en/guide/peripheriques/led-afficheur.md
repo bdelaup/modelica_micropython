@@ -1,6 +1,6 @@
 # LED and teaching display
 
-Two simple components to see what the program does: an LED whose icon lights up according to the current flowing through it, and a text display connected to the microcontroller by a logical link.
+Simple components to see what the program does: an LED whose icon lights up according to the current flowing through it, and text displays connected to the microcontroller by a logical link (a 20x2 one, and two large screens that fill line after line).
 
 ## `Peripherals.LED`
 
@@ -60,3 +60,38 @@ The component has no parameters.
 For a display connected by a **real** electrical link, see `UartLcd20x2` ([Serial devices](uart.md)) or the Grove LCD RGB display ([I2C devices](i2c.md)).
 
 Examples: `Display.Demo`, `Weighing.Hx711Read`.
+
+## `Peripherals.Display4x32` and `Peripherals.Display8x32`
+
+Two large text screens, of 4 and 8 lines of 32 characters, which receive the same messages as `Display` (`machine.Display(0).write(...)`). They read like a terminal: each message is written **under the last written line**; once the screen is full, everything moves up by one line and the new message takes the bottom line. Handy to follow a history of measurements or states without opening the log.
+
+```python
+from machine import Display
+import time
+
+screen = Display(0)
+for i in range(10):
+    screen.write("Reading %d: %d mV" % (i, 1650 + 10 * i))
+    time.sleep_ms(100)
+```
+
+### Connector
+
+| Connector | Role |
+|---|---|
+| `displayLink` | To connect to `mcu.Display0`, as for `Display`. Several displays may be connected to the same `Display0`: they all receive every message |
+
+### Parameter
+
+| Parameter | Default | Role |
+|---|---|---|
+| `logReceived` | `true` | Also prints every received message in the simulation log. Set it to `false` when several displays share `Display0`, so that each message is not logged twice |
+
+### Behaviour
+
+- The screen starts empty; the first message takes the top line.
+- Beyond 32 characters, the message is cut on the icon; it stays complete in the log.
+- Displayable characters: unaccented letters, digits, space and `! " # & ' ( ) * + , - . / : < = > ? _`. Others are shown as spaces.
+- The text of the icon is stored in `textCode` (ASCII codes, line `i`, column `j` at index `(i - 1)*32 + j`) and the number of written lines in `filled`: both can be found in the results.
+
+Example: `Display.Large` (the three displays side by side).

@@ -14,6 +14,8 @@ flowchart LR
 | Gauge bridge | `Weighing.WheatstoneBridge` | `eps` → voltage `S+ − S−` | 500 µm/m → 1 mV/V |
 | Converter | `Weighing.Hx711` | `A+ − A−` → 24-bit code | 1 kg at gain 128 → 429,497 |
 
+![The complete kitchen scale (Examples.Weighing.KitchenScale)](../../images/pesee-schema.png){ width="700" }
+
 ## `Weighing.LoadCell`: the load cell
 
 A massless spring resting on a fixed point: the force applied to its flange deforms it, and the strain at the gauges follows the force instantly (`eps = epsNom · F / FNom`). It does not oscillate when a weight is placed, which is legitimate as long as the load varies slowly. The icon turns red on overload (more than 150 % of the capacity).
@@ -104,6 +106,10 @@ This driver generates the clock bit by bit, with no pause between two writes. Th
 
 - **`Weighing.Hx711Read`**: 1 kg on the scale, raw reading at gain 128, then at gain 64, power-down and wake-up. The codes read are the theoretical ones: 429,497, then 214,748.
 - **`Weighing.KitchenScale`**: the complete scale. Grove LCD RGB display over I2C, HX711 with 25 LSB of noise, TARE button on an interrupt, a 200 g pan, then a 350 g bowl and 250 g of flour. The display shows "0 g", "350 g", "Tare...", "0 g", "250 g".
+
+![Mass placed and HX711 code during the kitchen scale run](../../images/sim/kitchen-scale.svg)
+
+*Figure labels are in French: « masse posée » = mass placed, « code du HX711 » = HX711 code; the title reads "200 g pan, 350 g bowl, tare, 250 g of flour (in quotes: the display)".*
 
 !!! note "Long simulation"
     The complete scale takes about 45 s of computation for 7 simulated seconds: each character sent to the display is an I2C transaction, and the driver waits for each HX711 sample in 1 ms steps. That is the price of a faithful electrical simulation of two buses.

@@ -1,5 +1,7 @@
 LED
 Display
+Display4x32
+Display8x32
 UartGenericDevice
 UartEchoDevice
 UartTemperatureSensor

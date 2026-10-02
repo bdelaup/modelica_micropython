@@ -6,6 +6,8 @@ Cette page liste ce qu'un programme exécuté par le [`MCU`](mcu.md) peut appele
 
 **Coût temporel des accès aux broches** : chaque `value()`, `on()`, `off()` ou `pin(x)` occupe le processeur pendant `MCU.gpioOpTime` de temps simulé (onglet « Execution time », **5 µs par défaut**, l'ordre de grandeur de MicroPython sur RP2040). Deux écritures sans `sleep` entre elles donnent donc une vraie impulsion, visible par le circuit : c'est ce qui permet le *bit-banging* (driver HX711, cf. [Chaîne de pesée](peripheriques/pesee.md)), et ce qui fait avancer le temps dans une boucle d'attente active (`while not bouton(): pass`). Le calcul Python pur, `Pin()`, `irq()`, l'ADC, le PWM et `ticks_*` restent instantanés. `gpioOpTime = 0` rend tous les accès instantanés (comportement d'avant le 2026-09-27).
 
+![Impulsion et rafale produites sans sleep](../images/sim/gpio-timing.svg)
+
 ## `machine.Pin`
 
 ```python
@@ -43,6 +45,7 @@ Comme sur le port `rp2`, `Pin(n)` seul ne touche à rien ; dès que `mode` ou `p
 | `.init(mode, pull)` | `init(mode=None, pull=None)` | Reconfigure la broche : direction si `mode` est fourni, tirage toujours (`None` le coupe) | Oui |
 | `.on()` | `on()` | Équivalent à `value(1)` | Oui |
 | `.off()` | `off()` | Équivalent à `value(0)` | Oui |
+| `.high()` / `.low()` | `high()` / `low()` | Équivalents à `on()` / `off()` (alias propres au port `rp2`) | Oui |
 | `.toggle()` | `toggle()` | Inverse l'état courant (lit puis réécrit l'opposé) — implémenté en Python pur au-dessus de `value()`, pas d'appel natif dédié | Oui (via `value()`, deux fois) |
 | `.irq(handler, trigger)` | `irq(handler=None, trigger=IRQ_RISING|IRQ_FALLING, **kwargs)` | Enregistre (ou efface, si `handler=None`) un callback appelé sur un front correspondant au `trigger`. Le callback reçoit l'objet `Pin` en argument (`handler(pin)`), comme sur le vrai MicroPython. `**kwargs` absorbe `hard=`/`priority=`/`wake=` pour compatibilité de signature, sans effet (cf. Limitations). | Oui |
 
@@ -288,7 +291,7 @@ import capteurs                # /lib/capteurs.py de la flash, ou dossier désig
 ```
 
 - **Import** : le dossier du programme est dans le chemin d'import (`MCU.addScriptDirToPath`, actif par défaut), comme la racine de la flash sur la carte. `MCU.libraryPath` y ajoute un dossier de bibliothèque partagée. Avec un système de fichiers actif, la racine de la flash et `/lib` y sont aussi. La bibliothèque standard de CPython 3.12 est disponible, mais un programme destiné à la carte doit s'en tenir à ce que MicroPython propose.
-- **`print()`** : s'affiche dans la fenêtre de sortie de la simulation d'OMEdit.
+- **`print()`** : s'affiche dans la fenêtre de sortie de la simulation d'OMEdit, chaque ligne précédée du temps simulé où elle a été écrite, à la microseconde : `[t=0.250000 s] valeur = 12`. Ce qui part sur `sys.stderr` (dont la trace d'une exception) s'affiche en **avertissement**, signalé autrement par OMEdit.
 - **Exception non rattrapée** : arrête la simulation ; la trace Python s'affiche dans le journal (exemple `Program.Error`).
 
 ## Fonctions de `machine`

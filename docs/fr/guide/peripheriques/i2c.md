@@ -29,7 +29,7 @@ Le bus est en **drain ouvert** : chaque acteur ne sait que tirer une ligne à la
 
 Autant de périphériques qu'on veut se partagent les deux fils ; chacun ne répond qu'à ses adresses (exemple `I2c.MultiDevice`).
 
-<!-- ILLUSTRATION i2c-schema : vue Diagramme de Examples.I2c.MultiDevice (trois esclaves sur le même bus) (cf. docs/ILLUSTRATIONS.md) -->
+![Trois périphériques I2C sur le même bus (Examples.I2c.MultiDevice)](../../images/i2c-schema.png){ width="520" }
 
 ## Les périphériques fournis
 

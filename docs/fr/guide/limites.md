@@ -33,7 +33,7 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues).
     Une exception non rattrapée dans le programme arrête la simulation. Le journal de simulation affiche la trace Python : fichier, numéro de ligne, type d'erreur et message. Les résultats restent consultables jusqu'à l'instant de l'erreur.
 
 ??? question "Mes `print()` n'apparaissent pas"
-    Ils s'affichent dans la fenêtre de sortie de la simulation d'OMEdit (et dans son journal), pas dans une console Python. Un `print()` d'appareil série ou I2C est préfixé du nom du composant.
+    Ils s'affichent dans la fenêtre de sortie de la simulation d'OMEdit (et dans son journal), pas dans une console Python, précédés du temps simulé (`[t=0.250000 s] ...`). Un `print()` d'appareil série ou I2C porte en plus le nom du composant.
 
 ??? question "`OSError: [Errno 110] ETIMEDOUT` sur le bus I2C"
     Aucune résistance de tirage externe sur le bus (les tirages internes de 50 kΩ ne suffisent pas) : cocher `usePullUp` sur au moins un périphérique ([Périphériques I2C](peripheriques/i2c.md#cablage)). Autre cause possible : une ligne tenue basse par un court-circuit dans le schéma.

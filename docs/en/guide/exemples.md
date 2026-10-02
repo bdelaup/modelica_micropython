@@ -1,6 +1,14 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 38 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 39 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+
+| `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
+|---|---|---|
+| ![BasicBlink](../images/exemple-basicblink.png){ width="240" } | ![Gpio.LedChaser](../images/exemple-ledchaser.png){ width="240" } | ![Pwm.LedFade](../images/exemple-ledfade.png){ width="240" } |
+
+| `Uart.Sensor` | `I2c.GroveLcd` | `Weighing.KitchenScale` |
+|---|---|---|
+| ![Uart.Sensor](../images/uart-schema.png){ width="240" } | ![I2c.GroveLcd](../images/exemple-grovelcd.png){ width="240" } | ![Weighing.KitchenScale](../images/pesee-schema.png){ width="240" } |
 
 ## Getting started
 
@@ -17,6 +25,10 @@ The `MicroPythonMCU.Examples` package holds 38 ready-to-simulate models: open th
 | `Gpio.InputReactivity` | A button on `GP1` wakes the program during a `sleep(3600)` | `mcu.GP1.v`, program output | `input_reactive.py` *(V)* |
 | `Gpio.Timing` | Cost of a pin access (`gpioOpTime`): `on()`/`off()` pulse without `sleep`, burst, busy-wait, masked IRQ | `mcu.GP0.v` (zoom to the µs) | `gpio_timing.py` *(V)* |
 | `Gpio.Pull` | Internal pull resistors: two buttons without any external resistor (`Pin.PULL_UP` to ground, `Pin.PULL_DOWN` to 3.3 V), and a pin whose pull changes against a 1 MΩ external resistor | `mcu.GP0.v`, `mcu.GP3.v`, `mcu.GP4.v` | `gpio_pull.py` |
+
+![Woken up by an input during a sleep](../images/sim/input-reactivity.svg)
+
+*`Gpio.InputReactivity`: an input edge interrupts a one-hour `sleep()`. Figure labels are in French: « bouton » = button, « le programme dort » = the program sleeps, « réveillé par le front de GP1 : led.on() aussitôt » = woken up by the edge of GP1: led.on() at once.*
 
 ## Analog inputs (`Examples.Adc`)
 
@@ -35,6 +47,10 @@ The `MicroPythonMCU.Examples` package holds 38 ready-to-simulate models: open th
 ![200 Hz PWM](../images/sim/pwm-led.svg)
 
 *Figure labels are in French: « temps » = time, « courant LED » = LED current, « rapport cyclique » = duty cycle.*
+
+![LED fade: duty cycle and PWM signal](../images/sim/pwm-fade.svg)
+
+*`Pwm.LedFade`: duty cycle written by `duty_u16()` every millisecond (top), and the 1 kHz PWM signal at 25 % and 75 % (bottom). Figure labels are in French: « rapport cyclique » = duty cycle, « temps » = time.*
 
 ## Interrupts and timers (`Examples.Irq`)
 
@@ -63,6 +79,7 @@ The `MicroPythonMCU.Examples` package holds 38 ready-to-simulate models: open th
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
 | `Display.Demo` | Two messages sent to a `Peripherals.Display`; the first one moves down to line 2 | display icon, log | `display_demo.py` |
+| `Display.Large` | Ten messages received at once by a 20x2 `Display` and by the large screens `Display4x32` and `Display8x32`, which fill line after line, then scroll | icons of the three displays (animated replay) | `display_large.py` |
 
 ## Serial link (`Examples.Uart`)
 

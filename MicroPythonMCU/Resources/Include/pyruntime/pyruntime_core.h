@@ -209,9 +209,11 @@ struct PyRuntimeHandle {
     int init_state;
     char init_failure[256];
 
-    /* Relais stdout/stderr propre a ce microcontroleur (cf. struct RelayBuf,
-       pyhost.c) : prefixe par instanceName des que plusieurs MCU existent. */
+    /* Relais stdout et stderr propres a ce microcontroleur (cf. struct
+       RelayBuf, pyhost.c) : horodates par sim_time, prefixes par instanceName
+       des que plusieurs MCU existent. */
     struct RelayBuf relay;
+    struct RelayBuf relay_err;
 };
 
 #define INIT_PENDING 0

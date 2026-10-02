@@ -58,6 +58,13 @@ class Pin:
     def off(self):
         _native.pin_write(self.id, 0)
 
+    # high()/low() : alias d'on()/off() propres au port rp2
+    def high(self):
+        _native.pin_write(self.id, 1)
+
+    def low(self):
+        _native.pin_write(self.id, 0)
+
     def toggle(self):
         self.value(0 if self.value() else 1)
 

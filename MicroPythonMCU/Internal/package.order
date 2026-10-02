@@ -10,3 +10,6 @@ I2cDevice
 I2cDevice_sync
 PartialI2cDevice
 Lcd16x2RgbIcon
+PartialTextDisplay
+TextIcon4x32
+TextIcon8x32

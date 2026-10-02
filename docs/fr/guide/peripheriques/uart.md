@@ -29,7 +29,7 @@ if uart.any():
 
 La réception ne réveille pas le programme : il interroge la liaison avec `any()`, `read()` ou `readline()`.
 
-<!-- ILLUSTRATION uart-schema : vue Diagramme de Examples.Uart.Sensor (MCU + UartTemperatureSensor, fils TX/RX croisés) (cf. docs/ILLUSTRATIONS.md) -->
+![Un MCU et un capteur de température série, fils TX/RX croisés (Examples.Uart.Sensor)](../../images/uart-schema.png){ width="560" }
 
 !!! tip "Pourquoi `GP4`/`GP5` dans les exemples ?"
     Ces broches sont sur le bord droit de l'icône du `MCU`, du côté où l'appareil est posé : les fils restent courts. N'importe quelle paire de `GP0`-`GP7` convient.
@@ -46,7 +46,7 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 | `UartGpsModule` | Émet spontanément une trame de position chaque seconde, sans être interrogé | `periodicEnabled = true`, `periodicTemplate = "$GPGLL,{v1:.4f},{v2:.4f},{v3:.1f}\r\n"`, `useValueInput = true`, `nIn = 3` |
 | `UartLcd20x2` | Afficheur 2 × 20 caractères : affiche sur son icône chaque ligne reçue, la précédente descendant en ligne 2 | ne répond rien ; `behaviour` fixé à `Table` |
 
-<!-- ILLUSTRATION uart-icones : les cinq icônes des appareils série côte à côte (cf. docs/ILLUSTRATIONS.md) -->
+![Les cinq appareils série : générique, écho, capteur de température, GPS, afficheur 20x2](../../images/uart-icones.png)
 
 ## Connecteurs
 
