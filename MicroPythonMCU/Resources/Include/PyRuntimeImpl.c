@@ -1,7 +1,7 @@
 /* Jalon M5 : thread worker + condition variable pour interception de sleep()
    et des appels au shim machine/time comme points de synchro potentiels
    (cf. requirements.md, decisions "Mecanisme d'execution" et "Protection
-   contre un script qui ne rend jamais la main"). Windows uniquement (v0).
+   contre un script qui ne rend jamais la main"). Windows uniquement.
 
    FICHIER CHAPEAU : l'implementation est decoupee en parties thematiques dans
    pyruntime/, incluses ci-dessous dans l'ordre. omc compile ce fichier comme

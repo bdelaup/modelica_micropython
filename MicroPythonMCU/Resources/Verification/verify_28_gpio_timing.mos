@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°28 : coût temporel des accès GPIO
+// Scénario de vérification n°28 : coût temporel des accès GPIO
 // (Examples.Gpio.Timing, script Verification/gpio_timing.py, gpioOpTime = 5 µs).
 //
 // Ce que ce scénario vérifie :

@@ -23,7 +23,7 @@
              -> [q] SDA echantillonnee (et SCL verifiee haute) -> [q] SCL basse
    START (SDA descend pendant que SCL est haute), START repete et STOP (SDA
    monte pendant que SCL est haute) suivent les memes pas. Pas de clock
-   stretching ni d'arbitrage multi-maitre en v0 : une SCL qui ne remonte pas
+   stretching ni d'arbitrage multi-maitre : une SCL qui ne remonte pas
    est une erreur, pas une attente.
 
    Toutes les fonctions internes prennent le handle en parametre : seules les
@@ -164,7 +164,7 @@ static void i2c_act(struct PyRuntimeHandle* h, double now, const int* pinBoolIn)
     case I2CM_BIT_SAMPLE:
         if (!scl_high) {
             /* SCL relachee mais restee basse : pas de tirage, ou esclave qui
-               etire l'horloge (non supporte en v0) */
+               etire l'horloge (non supporte) */
             i2c_abort(h, I2C_ERR_ETIMEDOUT);
             return;
         }
@@ -243,7 +243,7 @@ static void i2c_step(struct PyRuntimeHandle* h, double now, const int* pinBoolIn
     }
 }
 
-/* Un seul bus en v0 : I2C(0) (ou I2C(1), accepte pour la compatibilite des
+/* Un seul bus : I2C(0) (ou I2C(1), accepte pour la compatibilite des
    scripts rp2, mais c'est le meme). */
 static int resolve_i2c_index(int id) {
     return (id == 0 || id == 1) ? 0 : -1;
@@ -266,7 +266,7 @@ static PyObject* native_i2c_init(PyObject* self, PyObject* args) {
     double freq;
     if (!PyArg_ParseTuple(args, "iiid", &id, &scl_id, &sda_id, &freq)) return NULL;
     if (resolve_i2c_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "I2C %d not supported in v0 (single bus, I2C(0))", id);
+        PyErr_Format(PyExc_ValueError, "I2C %d not supported (single bus, I2C(0))", id);
         return NULL;
     }
     int scl = resolve_pin_index(scl_id);
@@ -331,7 +331,7 @@ static PyObject* native_i2c_xfer(PyObject* self, PyObject* args) {
     Py_ssize_t wlen = 0;
     if (!PyArg_ParseTuple(args, "iiOip", &id, &addr, &wobj, &nread, &stop)) return NULL;
     if (resolve_i2c_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "I2C %d not supported in v0 (single bus, I2C(0))", id);
+        PyErr_Format(PyExc_ValueError, "I2C %d not supported (single bus, I2C(0))", id);
         return NULL;
     }
     if (!h->i2c_configured) {
@@ -350,7 +350,7 @@ static PyObject* native_i2c_xfer(PyObject* self, PyObject* args) {
         wdata = PyBytes_AS_STRING(wobj);
         wlen = PyBytes_GET_SIZE(wobj);
         if (wlen > I2C_XFER_MAX) {
-            PyErr_Format(PyExc_ValueError, "at most %d bytes per I2C transaction in v0", I2C_XFER_MAX);
+            PyErr_Format(PyExc_ValueError, "at most %d bytes per I2C transaction", I2C_XFER_MAX);
             return NULL;
         }
     }

@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°22 : trois périphériques I2C sur le même bus
+// Scénario de vérification n°22 : trois périphériques I2C sur le même bus
 // (Examples.I2c.MultiDevice), aux adresses 0x10, 0x11 et 0x12, dont deux
 // portent des résistances de tirage (en parallèle). Le microcontrôleur, à
 // 400 kHz, les retrouve par scan(), écrit à chacun une trame de longueur

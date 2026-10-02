@@ -1,6 +1,6 @@
 within MicroPythonMCU.Sandbox;
 
-model BasicBlink_test "Scénario de vérification v0 n°1 : le script de démo par défaut fait clignoter GP0 à 1 Hz"
+model BasicBlink_test "Scénario de vérification n°1 : le script de démo par défaut fait clignoter GP0 à 1 Hz"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = "D:/benoit/OneDrive - LYCEE Jules Haag/modelica_micropython3/MicroPythonMCU/Sandbox/BasicBlink_test.py")  "scriptPath par défaut = Resources/Scripts/MCU/demo.py" annotation(
     Placement(transformation(extent = {{-250, -100}, {-50, 100}})));

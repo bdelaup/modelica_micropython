@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°5 (cf. requirements.md).
+// Scénario de vérification n°5 (cf. requirements.md).
 // omc verify_05_reset.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();

@@ -67,7 +67,7 @@ protected
   // Open-drain electrical bridge. No switching Ideal.* component: the SDA output
   // is a variable conductance (ROut or GOff), see the pitfall of Ideal.* components left
   // for a long time in an unsolicited state (requirements.md). SCL has no output:
-  // the peripheral never stretches it (no clock stretching in v0).
+  // the peripheral never stretches it (no clock stretching).
   Modelica.Electrical.Analog.Basic.VariableConductor sdaOut "SDA output transistor: ROut when it pulls the line, GOff otherwise" annotation(
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));
   Modelica.Electrical.Analog.Sensors.VoltageSensor sdaSns "Voltage actually present on SDA" annotation(

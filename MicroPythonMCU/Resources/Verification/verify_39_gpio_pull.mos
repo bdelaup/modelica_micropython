@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°39 : tirages internes (Examples.Gpio.Pull).
+// Scénario de vérification n°39 : tirages internes (Examples.Gpio.Pull).
 // omc verify_39_gpio_pull.mos   (depuis ce dossier)
 //
 // Ce que ce scénario vérifie : Pin(n, mode, pull) branche réellement une

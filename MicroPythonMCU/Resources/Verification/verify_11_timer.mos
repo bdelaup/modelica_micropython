@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°12 (cf. requirements.md).
+// Scénario de vérification n°12 (cf. requirements.md).
 // omc verify_11_timer.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();

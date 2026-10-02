@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°15 : dialogue avec un vrai périphérique série externe
+// Scénario de vérification n°15 : dialogue avec un vrai périphérique série externe
 // (Examples.Uart.EchoPy). Le microcontrôleur envoie "Hi\n" sur GP5 ; le périphérique,
 // en mode Script (Device/echo.py), renvoie la ligne sur GP4 ; le
 // microcontrôleur la relit et met GP7 à l'état haut.

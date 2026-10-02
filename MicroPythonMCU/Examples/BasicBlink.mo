@@ -1,6 +1,6 @@
 within MicroPythonMCU.Examples;
 
-model BasicBlink "v0 verification scenario no. 1: the default demo script blinks GP0 (external LED) and the on-board LED at 1 Hz"
+model BasicBlink "Verification scenario no. 1: the default demo script blinks GP0 (external LED) and the on-board LED at 1 Hz"
   extends Modelica.Icons.Example;
   MCU mcu "default scriptPath = Resources/Scripts/MCU/demo.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));

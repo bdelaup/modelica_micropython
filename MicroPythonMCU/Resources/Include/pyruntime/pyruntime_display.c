@@ -21,12 +21,12 @@ static PyObject* native_display_write(PyObject* self, PyObject* args) {
     const char* text;
     if (!PyArg_ParseTuple(args, "is", &id, &text)) return NULL;
     if (resolve_display_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "Display %d not supported in v0 (only Display(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "Display %d not supported (only Display(0) exists)", id);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
     strncpy(g_current->display_payload, text, DISPLAY_MSG_MAX_LEN);
-    g_current->display_payload[DISPLAY_MSG_MAX_LEN] = '\0';  /* tronque si trop long, restriction v0 assumee */
+    g_current->display_payload[DISPLAY_MSG_MAX_LEN] = '\0';  /* tronque si trop long, restriction assumee */
     g_current->display_seq++;
     LeaveCriticalSection(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;

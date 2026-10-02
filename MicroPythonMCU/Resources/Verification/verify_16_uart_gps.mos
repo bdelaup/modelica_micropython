@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°17 : émission périodique spontanée, décrite par
+// Scénario de vérification n°17 : émission périodique spontanée, décrite par
 // un SCRIPT (Examples.Uart.GpsPy, gps.behaviour = Script). Le périphérique parle
 // sans être sollicité ; le microcontrôleur vérifie les sommes de contrôle.
 //

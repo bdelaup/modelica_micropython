@@ -47,6 +47,8 @@ Une version est un **tag** `vX.Y.Z` du dépôt, rien de plus : les utilisateurs 
 
 Le dépôt ne porte pas de numéro de version : **le tag fait foi**.
 
+Tant que les versions sont en `0.x`, l'API n'est pas déclarée stable : une rupture de compatibilité ne fait monter que la mineure (`0.2.0` → `0.3.0`). `1.0.0` sera posée une fois la bibliothèque éprouvée en usage réel ; le tableau ci-dessous s'applique pleinement à partir de là.
+
 | Changement | Exemple | Version |
 |---|---|---|
 | Un modèle ou un script existant d'un utilisateur peut cesser de fonctionner | paramètre renommé, connecteur supprimé, comportement du shim modifié | **majeure** : `1.3.0` → `2.0.0` |

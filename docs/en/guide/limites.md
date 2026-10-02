@@ -17,7 +17,7 @@
 - Interrupt callbacks (`Pin.irq()`, `Timer`) run at the next synchronisation point, never as an instant pre-emption of the program.
 - Several `MCU` in a model: each has its own program, modules and flash. Two boards that would answer each other without ever letting time pass (`gpioOpTime = 0` and two crossed copies) freeze the simulation at that instant.
 
-Function-by-function details: [API, limitations](api.md#known-limitations-v0).
+Function-by-function details: [API, limitations](api.md#known-limitations).
 
 **Peripherals**: see the end of each page ([serial devices](peripheriques/uart.md), [I2C](peripheriques/i2c.md), [weighing](peripheriques/pesee.md#limits)).
 

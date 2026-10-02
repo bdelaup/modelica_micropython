@@ -3,7 +3,7 @@ within MicroPythonMCU.Examples.Weighing;
 model KitchenScale "Kitchen scale: I2C screen, microcontroller, HX711, gauge bridge, load cell body, weight; tare button"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/kitchen_scale.py")) "scriptPath = Resources/Scripts/MCU/kitchen_scale.py - imports the drivers hx711_gpio.py and driver_grove_lcd_rgb.py placed next to it" annotation(
-    Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(extent = {{-50, -50}, {50, 50}})));
   MicroPythonMCU.Peripherals.I2cGroveLcdRgb lcd "16x2 screen with RGB backlight, carrying the pull-ups of the I2C bus" annotation(
     Placement(transformation(origin = {150, 100}, extent = {{-50, -50}, {50, 50}})));
   MicroPythonMCU.Peripherals.Weighing.Hx711 hx(noiseLsb = 25) "Converter, with realistic noise (25 LSB, i.e. 0.06 g)" annotation(

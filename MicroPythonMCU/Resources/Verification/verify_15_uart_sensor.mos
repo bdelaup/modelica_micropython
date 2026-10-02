@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°16 : dialogue requête/réponse avec un capteur
+// Scénario de vérification n°16 : dialogue requête/réponse avec un capteur
 // série externe (Examples.Uart.Sensor), DANS LES DEUX SENS.
 //
 // Ce que ce scénario vérifie et qu'aucun autre ne vérifie :

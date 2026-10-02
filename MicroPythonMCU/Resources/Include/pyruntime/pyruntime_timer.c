@@ -40,7 +40,7 @@ static PyObject* native_timer_new(PyObject* self, PyObject* args) {
         }
     }
     LeaveCriticalSection(&g_current->cs);
-    PyErr_Format(PyExc_RuntimeError, "maximum number of Timer() reached (%d) in v0", MAX_TIMERS);
+    PyErr_Format(PyExc_RuntimeError, "maximum number of Timer() reached (%d)", MAX_TIMERS);
     return NULL;
 }
 
@@ -60,7 +60,7 @@ static PyObject* native_timer_init(PyObject* self, PyObject* args) {
         char period_str[64], min_str[64];
         snprintf(period_str, sizeof(period_str), "%f", period_seconds);
         snprintf(min_str, sizeof(min_str), "%f", TIMER_MIN_PERIOD);
-        PyErr_Format(PyExc_ValueError, "Timer period too short (%s s, minimum %s s in v0)", period_str, min_str);
+        PyErr_Format(PyExc_ValueError, "Timer period too short (%s s, minimum %s s)", period_str, min_str);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);

@@ -6,7 +6,7 @@ import time
 # serial input, splits the incoming NMEA sentences and checks their
 # checksum - exactly what the embedded code of a GPS receiver would do.
 #
-# Reception never wakes the script up (no uart.irq() in v0): uart.any() must
+# Reception never wakes the script up (no uart.irq()): uart.any() must
 # be polled in a loop, sleeping between two passes so as not to prevent
 # simulated time from moving forward.
 BAUD = 9600

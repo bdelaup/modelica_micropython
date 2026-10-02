@@ -87,7 +87,7 @@ Rappelée plusieurs fois au même instant (itérations d'événement de Modelica
 Deux corrections sans lesquelles le décodeur est faux, et qui méritent d'être comprises avant de toucher à ce code :
 
 - **Le bit de start se détecte sur un FRONT descendant, jamais sur un niveau bas** (`uart_rx_last_level`). Bug réel, resté masqué longtemps : au tout premier point de synchro, `PyRuntime_sync` reçoit l'état électrique d'**avant** que le script n'ait configuré l'UART — la broche TX n'est pas encore pilotée et la ligne est à 0 V. Un test sur le niveau y voyait un bit de start et fabriquait un octet fantôme qui polluait la file de réception. Le défaut était invisible tant que le script émettait dès `t=0` (le faux start coïncidait avec le vrai) ; il est apparu dès qu'un délai a précédé le premier `write()`. Exiger le front impose d'avoir vu la ligne au repos au moins une fois avant d'écouter — ce que fait aussi un vrai récepteur.
-- **Le décodeur attend le bit de stop** avant de repasser au repos, au lieu de s'arrêter au 8ᵉ bit de données : sinon un dernier bit de données à 0 (ligne basse) serait aussitôt relu comme un nouveau bit de start. Une trame dont le stop n'est pas haut est ignorée, sans remontée d'erreur de framing (simplification v0).
+- **Le décodeur attend le bit de stop** avant de repasser au repos, au lieu de s'arrêter au 8ᵉ bit de données : sinon un dernier bit de données à 0 (ligne basse) serait aussitôt relu comme un nouveau bit de start. Une trame dont le stop n'est pas haut est ignorée, sans remontée d'erreur de framing (simplification assumée).
 
 La réception **ne réveille pas le script** : les octets s'accumulent dans un FIFO de 256 octets (`UART_RX_BUF_LEN`, débordement silencieux) que le script consulte à son rythme par `any()`/`read()`/`readline()`.
 
@@ -117,7 +117,7 @@ Le script attend `REPOS_MS = 5` ms avant d'émettre, précisément pour que l'é
 
 Le témoin `GP3` sert aussi de **détecteur d'octet fantôme** : un faux bit de start décodé avant la première trame ferait échouer la comparaison — c'est ainsi qu'a été trouvé le bug de détection sur niveau plutôt que sur front (§4).
 
-## 7. Restrictions v0
+## 7. Restrictions
 
 - Un seul périphérique (`UART(0)`), deux broches distinctes obligatoires parmi `GP0`-`GP7`.
 - **Format de trame 8N1 figé** : `bits`/`parity`/`stop` sont acceptés pour compatibilité d'API mais **sans effet**, comme `pull=` sur `Pin`.

@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°1 (cf. requirements.md).
+// Scénario de vérification n°1 (cf. requirements.md).
 // À exécuter avec ce dossier (Resources/Verification) comme répertoire courant :
 //   omc verify_01_basic_blink.mos
 loadModel(Modelica); getErrorString();

@@ -58,7 +58,7 @@ v = adc.read_u16()             # 0-65535
 
 ### Constructeur
 
-`ADC(id)` — `id` : `0`-`7` (n'importe laquelle des broches `GP0`-`GP7`, utilisées en analogique plutôt qu'en numérique — v0 : **toutes** ADC-capables, contrairement au vrai Pico où seules `GP26`-`GP28` le sont) ou un objet `Pin` (son `.id` est utilisé). La LED embarquée (`25`/`Pin.LED`) n'est pas ADC-capable. Synchronise. Ne modifie ni la direction ni l'état piloté de la broche, mais **coupe son entrée numérique**, comme sur le RP2040 : les franchissements du seuil logique par la tension analogique ne réveillent plus un `sleep()` en cours et ne déclenchent plus d'IRQ (`Pin.irq()`). Un `Pin(id, mode)` ultérieur rend la broche au GPIO.
+`ADC(id)` — `id` : `0`-`7` (n'importe laquelle des broches `GP0`-`GP7`, utilisées en analogique plutôt qu'en numérique — **toutes** ADC-capables ici, contrairement au vrai Pico où seules `GP26`-`GP28` le sont) ou un objet `Pin` (son `.id` est utilisé). La LED embarquée (`25`/`Pin.LED`) n'est pas ADC-capable. Synchronise. Ne modifie ni la direction ni l'état piloté de la broche, mais **coupe son entrée numérique**, comme sur le RP2040 : les franchissements du seuil logique par la tension analogique ne réveillent plus un `sleep()` en cours et ne déclenchent plus d'IRQ (`Pin.irq()`). Un `Pin(id, mode)` ultérieur rend la broche au GPIO.
 
 ### Méthodes
 
@@ -111,7 +111,7 @@ Minuteur logiciel : une fois armé, le callback continue de se déclencher **pen
 
 ### Constructeur
 
-`Timer(id=-1)` — `id` accepté pour compatibilité de signature avec MicroPython, ignoré (v0 : un pool fixe de 4 minuteurs logiciels partagé par tous les `Timer()`, cf. Limitations). Ne synchronise pas (pure allocation d'un emplacement dans le pool).
+`Timer(id=-1)` — `id` accepté pour compatibilité de signature avec MicroPython, ignoré (un pool fixe de 4 minuteurs logiciels partagé par tous les `Timer()`, cf. Limitations). Ne synchronise pas (pure allocation d'un emplacement dans le pool).
 
 ### Méthodes
 
@@ -132,7 +132,7 @@ Liaison logique unique et **écriture seule** vers un périphérique d'affichage
 
 ### Constructeur
 
-`Display(id=0, **kwargs)` — `id` : seul `0` est supporté (`ValueError` sinon). `**kwargs` accepté pour une signature volontairement souple mais sans effet en v0. Ne synchronise pas.
+`Display(id=0, **kwargs)` — `id` : seul `0` est supporté (`ValueError` sinon). `**kwargs` accepté pour une signature volontairement souple mais sans effet. Ne synchronise pas.
 
 ### Méthodes
 
@@ -160,7 +160,7 @@ Câblage et appareils à brancher au bout de la liaison : [Appareils série](per
 
 ### Constructeur
 
-`UART(id=0, baudrate=1200, tx=None, rx=None, **kwargs)` — `id` : seul `0` est supporté. `tx`/`rx` : obligatoires, un objet `Pin` ou un numéro de broche, deux broches distinctes parmi `0`-`7`. `baudrate` : 50 à 115200 (`ValueError` hors bornes). `**kwargs` absorbe `bits`/`parity`/`stop`, acceptés pour compatibilité d'API mais **sans effet** (seul 8N1 est émis en v0). Synchronise.
+`UART(id=0, baudrate=1200, tx=None, rx=None, **kwargs)` — `id` : seul `0` est supporté. `tx`/`rx` : obligatoires, un objet `Pin` ou un numéro de broche, deux broches distinctes parmi `0`-`7`. `baudrate` : 50 à 115200 (`ValueError` hors bornes). `**kwargs` absorbe `bits`/`parity`/`stop`, acceptés pour compatibilité d'API mais **sans effet** (seul 8N1 est émis). Synchronise.
 
 ### Méthodes
 
@@ -324,9 +324,9 @@ time.sleep(1)
 
 `ticks_ms()`/`ticks_us()` sont délibérément exclus de la synchronisation : une boucle de polling non bloquante (`while ticks_diff(...) < ...`) resterait ainsi bon marché plutôt que de déclencher un point de synchro à chaque itération.
 
-## Limitations connues (v0)
+## Limitations connues
 
-Détails et justifications dans `requirements.md` (section Restrictions v0) :
+Détails et justifications dans `requirements.md` (section Restrictions actuelles) :
 
 - Pas de mode drain ouvert (`Pin.OPEN_DRAIN`), ni `ALT`, `ANALOG`, `drive=`, `value=` dans le constructeur.
 - Seules les broches `0`-`7` et `25`/`Pin.LED` sont reconnues (pas les 29 broches du vrai Pico).

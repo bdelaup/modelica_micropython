@@ -1,6 +1,6 @@
 within MicroPythonMCU.Examples.Program;
 
-model SleepCompression "v0 verification scenario no. 2: two simulated sleep(3600) must not each take an hour of real time"
+model SleepCompression "Verification scenario no. 2: two simulated sleep(3600) must not each take an hour of real time"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/sleep_long.py"), tickPeriod = 60) "scriptPath = Verification/sleep_long.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));

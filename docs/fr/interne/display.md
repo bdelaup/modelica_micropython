@@ -33,7 +33,7 @@ graph LR
     DISP["display : Peripherals.Display<br/>displayLink (DisplayLinkInput)"] -->|"connect()"| MCU0["mcu.Display0 (DisplayLinkOutput)"]
 ```
 
-Un seul port logique en v0 (connecteur scalaire `MCU.Display0` — pas de tableau). `Peripherals.Display` est un composant optionnel : à brancher ou non dans un circuit selon le besoin pédagogique, comme n'importe quel autre périphérique de `Peripherals`.
+Un seul port logique (connecteur scalaire `MCU.Display0` — pas de tableau). `Peripherals.Display` est un composant optionnel : à brancher ou non dans un circuit selon le besoin pédagogique, comme n'importe quel autre périphérique de `Peripherals`.
 
 ## 3. Séquence — écriture (`machine.Display.write()`)
 
@@ -84,7 +84,7 @@ Côté `Display.mo`, 40 éléments `Text` (20 colonnes × 2 lignes), chacun avec
 
 **Alternative écartée** : rendu pixel par pixel (police en matrice de points façon vrai afficheur LCD, ~20×7×5 formes) — bien plus lourd pour un gain de fidélité non nécessaire (composant caractère, pas graphique).
 
-## 5. Restrictions v0
+## 5. Restrictions
 
 - Livraison instantanée du message entier (pas de bauds simulés), message tronqué à 128 caractères (`DISPLAY_MSG_MAX_LEN`), un seul port logique. Écriture seule : pas de `.any()`/`.readline()`, pas de réception modélisée (`Peripherals.Display` ne peut être qu'un récepteur).
 - La liaison est un connecteur logique causal, pas électrique — cf. §1.

@@ -24,7 +24,7 @@
 
 #define DISPLAY_MSG_MAX_LEN 128      /* tres au-dessus des 40 caracteres d'un afficheur 20x2, buffer fixe modeste (meme esprit que g_stdout_buf) */
 
-/* machine.UART : un seul peripherique (id 0) en v0, sur deux broches GPx au choix
+/* machine.UART : un seul peripherique (id 0), sur deux broches GPx au choix
    du script. Les constantes du protocole (UART_TX_BUF_LEN, UART_MAX_FRAME_BITS,
    UART_MIN_BAUD/UART_MAX_BAUD, UART_RX_IDLE/RECEIVING) et la mecanique bit/octet
    vivent desormais dans uartcore.h / uartcore.c, a la racine d'Include/ : le meme
@@ -32,7 +32,7 @@
    ni Python ni thread. Ne restent ici que les notions propres au microcontroleur :
    quelle broche fait TX, quelle broche fait RX, et le drapeau de reservation. */
 
-/* machine.I2C : maitre unique (un seul bus en v0), sur deux broches GPx au choix
+/* machine.I2C : maitre unique (un seul bus), sur deux broches GPx au choix
    du script, en DRAIN OUVERT - la broche est soit tiree a la masse, soit relachee
    (haute impedance), jamais forcee a l'etat haut : ce sont les resistances de
    tirage du bus qui remontent la ligne. Cf. pyruntime_i2c.c et requirements.md,

@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°29 : origine de python312.dll.
+// Scénario de vérification n°29 : origine de python312.dll.
 // omc verify_29_python_dll.mos   (depuis ce dossier)
 //
 // Ce que ce scénario vérifie : la DLL Python chargée dans le process de

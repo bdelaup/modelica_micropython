@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°8 (cf. requirements.md).
+// Scénario de vérification n°8 (cf. requirements.md).
 // omc verify_07_adc_read.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
@@ -9,7 +9,7 @@ b := getErrorString();
 vTap := val(mcu.GP1.v, 0.05, "AdcRead_res.mat");
 // LED controlee apres la 2e lecture (t=0.2 s) : la toute premiere, a t=0,
 // voit encore 0 V (etat electrique pas encore etabli au premier point de
-// synchro, cf. requirements.md, restrictions v0). Ce scenario ne passait a
+// synchro, cf. requirements.md, restrictions). Ce scenario ne passait a
 // t=0.05 que grace au bug corrige par verify_26 (le franchissement du seuil
 // logique par GP1 reveillait le sleep(0.2) juste apres t=0).
 vLed := val(mcu.GP0.v, 0.3, "AdcRead_res.mat");

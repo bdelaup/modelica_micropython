@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°24 : écran Grove - LCD RGB Backlight
+// Scénario de vérification n°24 : écran Grove - LCD RGB Backlight
 // (Examples.I2c.GroveLcd) piloté par un driver MicroPython du commerce
 // (Scripts/MCU/driver_grove_lcd_rgb.py, importé par le programme principal
 // Scripts/MCU/i2c_grove_lcd_rgb.py), exécuté SANS MODIFICATION.

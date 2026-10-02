@@ -1,6 +1,6 @@
 within MicroPythonMCU.Examples.Gpio;
 
-model InputReactivity "v0 verification scenario no. 3: GP1 (input) toggles during a sleep(3600), the script must react without waiting for the end of the sleep"
+model InputReactivity "Verification scenario no. 3: GP1 (input) toggles during a sleep(3600), the script must react without waiting for the end of the sleep"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/input_reactive.py"), tickPeriod = 60) "scriptPath = Verification/input_reactive.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));

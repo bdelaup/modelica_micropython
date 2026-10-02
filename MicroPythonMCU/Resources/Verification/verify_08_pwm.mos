@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°9 (cf. requirements.md).
+// Scénario de vérification n°9 (cf. requirements.md).
 // omc verify_08_pwm.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();

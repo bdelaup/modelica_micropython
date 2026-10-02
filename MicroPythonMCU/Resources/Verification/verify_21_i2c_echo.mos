@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°21 : bus I2C électrique, un maître et un
+// Scénario de vérification n°21 : bus I2C électrique, un maître et un
 // esclave (Examples.I2c.Echo). Le microcontrôleur écrit b'Hello I2C' (9 octets)
 // à l'écho 0x42, la relit, puis lit un registre derrière un START répété
 // (readfrom_mem) ; GP7 passe à l'état haut si les trois échanges sont conformes.

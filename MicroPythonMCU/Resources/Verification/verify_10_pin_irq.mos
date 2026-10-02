@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°11 (cf. requirements.md).
+// Scénario de vérification n°11 (cf. requirements.md).
 // omc verify_10_pin_irq.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();

@@ -1,6 +1,6 @@
 within MicroPythonMCU.Examples.Program;
 
-model Error "v0 verification scenario no. 4: an unhandled exception must stop the simulation with the traceback visible in the log"
+model Error "Verification scenario no. 4: an unhandled exception must stop the simulation with the traceback visible in the log"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/script_error.py")) "scriptPath = Verification/script_error.py" annotation(
     Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));

@@ -46,7 +46,7 @@ Le serveur MCP-OpenModelica n'était pas joignable lors de la refonte du 2026-09
 | Fichier | Page(s) | Origine |
 |---|---|---|
 | `logo.svg`, `logo.png` | en-tête et onglet du site, `interne/architecture.md` | Miroir de l'icône de `package.mo`, resynchronisé à la main |
-| `BasicBlink.gif`, `BasicBlink.png` | accueil, `guide/premiers-pas.md` | Capture de la relecture de `BasicBlink` |
+| `BasicBlink.gif`, `BasicBlink.png` | accueil, `guide/premiers-pas.md` | Capture de la relecture de `BasicBlink`. **À refaire** : montre encore « (v0) » sous « MCU », retiré de l'icône le 2026-10-02 |
 | `library_tree.png` | `guide/premiers-pas.md` | Capture de l'explorateur d'OMEdit |
 | `exemple-basicblink.svg` | `interne/architecture.md` | Export OMEdit de la vue *Diagramme* de `BasicBlink` |
 | `mcu-icone.svg` | `interne/architecture.md` | Périmé, voir `mcu-icone` ci-dessus |

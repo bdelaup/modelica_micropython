@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°23 : bus I2C SANS résistance de tirage de bus
+// Scénario de vérification n°23 : bus I2C SANS résistance de tirage de bus
 // (Examples.I2c.NoPullUp, même schéma que MultiDevice avec usePullUp = false
 // partout). Le microcontrôleur tente une écriture puis un scan().
 //

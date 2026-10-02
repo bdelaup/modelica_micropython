@@ -426,13 +426,13 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
 }
 
 void PyRuntime_destroy(void* handle_) {
-    /* v0 : chaque simulation tourne dans son propre process (simulate() genere
+    /* Chaque simulation tourne dans son propre process (simulate() genere
        un executable independant a chaque run - verifie en session), qui se
        termine juste apres cet appel. On ne tente donc pas de reveiller/joindre
        proprement le thread worker (probablement bloque en plein sleep()) ni
        de finaliser CPython : l'OS recupere tout a la sortie du process. Choix
        delibere pour eviter les pieges d'un arret propre multi-thread pour un
-       gain nul en v0 - a revisiter si ce choix s'avere un jour gener (cf.
+       gain nul - a revisiter si ce choix s'avere un jour gener (cf.
        principe de revisabilite, requirements.md). Les references Python
        accumulees par les callbacks IRQ/Timer (pin_irq_handler/timer_callback
        etc.) suivent le meme principe : jamais decref explicitement, le
@@ -490,7 +490,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     /* Une vraie transition d'une broche actuellement en ENTREE justifie de
        reveiller le worker avant l'heure demandee par son sleep() (cf.
        scenario de verification "reactivite en entree" - la broche doit
-       pouvoir interrompre une attente en cours, cote v0 sans vraie
+       pouvoir interrompre une attente en cours, en l'absence de vraie
        interruption materielle). Une broche en SORTIE qui "change" ne compte
        pas : ce n'est que le reflet de notre propre ecriture. Meme boucle :
        si un handler machine.Pin.irq() est enregistre sur cette broche et que

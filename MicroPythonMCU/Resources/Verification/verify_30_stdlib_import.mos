@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°30 : modules de la stdlib importés par le script.
+// Scénario de vérification n°30 : modules de la stdlib importés par le script.
 // omc verify_30_stdlib_import.mos   (depuis ce dossier)
 //
 // Ce que ce scénario vérifie : le cloisonnement de os (le script du

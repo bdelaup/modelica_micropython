@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°32 : balance de cuisine (Examples.Weighing.KitchenScale).
+// Scénario de vérification n°32 : balance de cuisine (Examples.Weighing.KitchenScale).
 // Écran Grove LCD I2C <- microcontrôleur <- HX711 <- pont de jauges <- corps
 // d'épreuve <- poids, avec un bouton de tare ; deux drivers du commerce sans
 // modification (hx711_gpio.py, driver_grove_lcd_rgb.py), bruit du HX711 actif.

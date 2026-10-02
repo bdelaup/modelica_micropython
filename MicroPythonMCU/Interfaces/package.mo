@@ -15,6 +15,6 @@ package Interfaces "Reference logic voltage levels (RP2040 approximation, 3.3 V)
 
   annotation(
     Documentation(info = "<html>
-<p>Approximate values inspired by the Raspberry Pi Pico (RP2040, 3.3 V supply). Not exact datasheet values — enough for v0 (proof of concept), to be refined later if needed.</p>
+<p>Approximate values inspired by the Raspberry Pi Pico (RP2040, 3.3 V supply). Not exact datasheet values — enough for the intended use, to be refined later if needed.</p>
 </html>"));
 end Interfaces;

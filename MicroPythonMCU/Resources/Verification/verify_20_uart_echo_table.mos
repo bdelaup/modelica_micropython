@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°21 : écho paramétré, mode Table
+// Scénario de vérification n°21 : écho paramétré, mode Table
 // (Examples.Uart.Echo - même montage que Uart.EchoPy, echo.behaviour = Table).
 //
 // Ce que ce scénario vérifie et que verify_14 ne vérifie plus : l'écho OCTET PAR

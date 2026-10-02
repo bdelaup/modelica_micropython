@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°7 (cf. requirements.md).
+// Scénario de vérification n°7 (cf. requirements.md).
 // omc verify_06_pin_echo.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();

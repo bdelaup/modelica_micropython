@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°26 (cf. requirements.md, décision « ADC (entrées analogiques) »).
+// Scénario de vérification n°26 (cf. requirements.md, décision « ADC (entrées analogiques) »).
 // omc verify_26_adc_sleep.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();

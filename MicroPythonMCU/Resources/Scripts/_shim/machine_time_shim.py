@@ -114,7 +114,7 @@ class Display:
 
 class UART:
     # bits/parity/stop sont absorbes par **kwargs : acceptes pour compatibilite
-    # d'API mais sans effet, seul le format 8N1 est emis en v0 (meme approche
+    # d'API mais sans effet, seul le format 8N1 est emis (meme approche
     # que pull= sur Pin). Le format de trame vit entierement cote C.
     def __init__(self, id=0, baudrate=1200, tx=None, rx=None, **kwargs):
         self.id = id
@@ -159,7 +159,7 @@ class UART:
         _native.uart_deinit(self.id)
 
 class I2C:
-    # Maitre I2C en drain ouvert (un seul bus en v0). L'identifiant est
+    # Maitre I2C en drain ouvert (un seul bus). L'identifiant est
     # facultatif : I2C(0, scl=..., sda=...) (forme rp2) et I2C(scl=..., sda=...)
     # (forme des drivers ecrits pour d'autres ports) sont acceptes tous les deux.
     # Chaque transaction est BLOQUANTE jusqu'a la fin de la sequence sur le bus,

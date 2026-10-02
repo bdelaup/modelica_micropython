@@ -113,6 +113,6 @@ graph TD
 - **Journal** : chaque interpréteur a son relais `pyruntime_stdio` et son tampon de ligne (`struct RelayBuf`, retrouvé par l'état du module) ; à partir de deux MCU, chaque ligne est préfixée par le nom d'instance.
 - **Scripts de périphérique** : ils restent dans l'interpréteur principal, sur le thread Modelica. Un `import machine` y obtient un module dont chaque attribut lève une erreur explicite, le shim n'existant que dans les sous-interpréteurs.
 
-## Portabilité : Windows uniquement (v0)
+## Portabilité : Windows uniquement
 
-L'implémentation C utilise directement les API Windows pour le threading (`CRITICAL_SECTION`, `CONDITION_VARIABLE`, `_beginthreadex`) — voir `cycle-de-vie.md`. Ce n'est ni testé ni fonctionnel tel quel sur Linux/macOS ; la distribution Python « embeddable » est elle-même une notion Windows uniquement. Cf. `requirements.md`, restrictions v0 et TODO.
+L'implémentation C utilise directement les API Windows pour le threading (`CRITICAL_SECTION`, `CONDITION_VARIABLE`, `_beginthreadex`) — voir `cycle-de-vie.md`. Ce n'est ni testé ni fonctionnel tel quel sur Linux/macOS ; la distribution Python « embeddable » est elle-même une notion Windows uniquement. Cf. `requirements.md`, restrictions et TODO.

@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°19 : boucle de régulation fermée à travers la
+// Scénario de vérification n°19 : boucle de régulation fermée à travers la
 // seule liaison série (Examples.Uart.Regulation).
 //
 // Ce que ce scénario vérifie et qu'aucun autre ne vérifie : la SORTIE REELLE de

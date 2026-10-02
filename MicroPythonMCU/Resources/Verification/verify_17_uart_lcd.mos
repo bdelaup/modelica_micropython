@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°18 : afficheur 20x2 alimenté par une VRAIE
+// Scénario de vérification n°18 : afficheur 20x2 alimenté par une VRAIE
 // trame série (Examples.Uart.Lcd), et non plus par la liaison logique
 // machine.Display de verify_12.
 //

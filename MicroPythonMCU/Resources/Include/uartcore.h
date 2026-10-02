@@ -30,7 +30,7 @@
 
 #define UART_TX_BUF_LEN 256          /* file d'emission : une phrase NMEA complete (82 caracteres au plus selon la norme) doit y tenir d'un bloc - a 64, sa fin etait perdue */
 #define UART_RX_BUF_LEN 256          /* file de reception, meme dimensionnement */
-#define UART_MAX_FRAME_BITS 13       /* 1 start + 9 data + 1 parite + 2 stop : dimensionne pour un futur format parametrable, seul 8N1 (10 bits) est emis en v0 */
+#define UART_MAX_FRAME_BITS 13       /* 1 start + 9 data + 1 parite + 2 stop : dimensionne pour un futur format parametrable, seul 8N1 (10 bits) est emis pour l'instant */
 #define UART_MIN_BAUD 50
 #define UART_MAX_BAUD 115200         /* garde-fou contre une tempete d'evenements Modelica (jusqu'a un evenement par front de bit), meme esprit que TIMER_MIN_PERIOD */
 #define UART_RX_IDLE 0

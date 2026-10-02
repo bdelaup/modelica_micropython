@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°31 : convertisseur HX711 lu par le driver
+// Scénario de vérification n°31 : convertisseur HX711 lu par le driver
 // MicroPython de robert-hh (hx711_gpio.py, sans modification) - Examples.Weighing.Hx711Read.
 //
 // Ce que ce scénario vérifie :

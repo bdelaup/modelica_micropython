@@ -324,7 +324,7 @@ time.sleep(1)
 
 `ticks_ms()`/`ticks_us()` are deliberately excluded from synchronisation: a non-blocking polling loop (`while ticks_diff(...) < ...`) thus stays cheap instead of triggering a synchronisation point at each iteration.
 
-## Known limitations (v0)
+## Known limitations
 
 - No open-drain mode (`Pin.OPEN_DRAIN`), nor `ALT`, `ANALOG`, `drive=`, `value=` in the constructor.
 - Only pins `0`-`7` and `25`/`Pin.LED` are recognised (not the 29 pins of the real Pico).

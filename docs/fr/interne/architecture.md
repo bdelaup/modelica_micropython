@@ -36,13 +36,13 @@ flowchart TB
     Verification -. "simule" .-> Examples
 ```
 
-*Nom de classe* : le modèle s'appelait `Pico` pendant l'implémentation v0, renommé `MCU` ensuite pour ne pas afficher la carte cible (Raspberry Pi Pico / RP2040) directement sur l'identité visuelle publique — cf. `requirements.md`, décision « Nom de la classe modèle et identité visuelle ». La référence RP2040 reste la cible d'API interne (`machine`/`time`).
+*Nom de classe* : le modèle s'appelait `Pico` pendant les premiers jalons (M0-M11), renommé `MCU` ensuite pour ne pas afficher la carte cible (Raspberry Pi Pico / RP2040) directement sur l'identité visuelle publique — cf. `requirements.md`, décision « Nom de la classe modèle et identité visuelle ». La référence RP2040 reste la cible d'API interne (`machine`/`time`).
 
 ## Arborescence commentée
 
 ```
 modelica_micropython3/
-├── requirements.md                 -- besoin, décisions d'architecture, restrictions v0, TODO (source de vérité du "pourquoi")
+├── requirements.md                 -- besoin, décisions d'architecture, restrictions, TODO (source de vérité du "pourquoi")
 ├── CLAUDE.md                       -- guidance pour Claude Code dans ce dépôt
 ├── docs/                           -- ce site : fr/ (guide utilisateur + référence interne), en/ (guide utilisateur traduit, mêmes chemins), figures/make_figures.py (courbes de simulation), ILLUSTRATIONS.md (images attendues, non publié)
 ├── zensical.fr.toml, zensical.en.toml -- configuration du site, une par langue

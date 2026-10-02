@@ -1,4 +1,4 @@
-// Scénario de vérification v0 n°20 : périphérique série dont le comportement
+// Scénario de vérification n°20 : périphérique série dont le comportement
 // est décrit par un SCRIPT PYTHON à machine d'état (Examples.Uart.StateMachinePy).
 //
 // Ce que ce scénario vérifie : le mode Script de bout en bout -

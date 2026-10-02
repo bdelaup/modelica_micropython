@@ -7,7 +7,6 @@
   <!-- Corps du microcontrôleur -->
   <rect x="-55" y="-65" width="110" height="130" fill="rgb(60,60,60)" stroke="black" stroke-width="0.5"/>
   <text x="0" y="-8" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="20" font-weight="bold">MCU</text>
-  <text x="0" y="11" text-anchor="middle" dominant-baseline="middle" fill="rgb(200,200,200)" font-size="11">(v0)</text>
 
   <!-- Broches GPIO gauche (GP0-GP3) : carré bleu plein = PositivePin, étiquette en blanc alignée à gauche -->
   <g fill="white" font-size="12">

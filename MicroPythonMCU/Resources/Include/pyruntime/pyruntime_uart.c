@@ -41,7 +41,7 @@ static void uart_rx_step(struct PyRuntimeHandle* h, double now, const int* pinBo
     uartcore_rx_step(&h->uart, now, pinBoolIn[h->uart_rx_pin]);
 }
 
-/* Un seul id supporte en v0 - meme esprit que resolve_display_index. */
+/* Un seul id supporte - meme esprit que resolve_display_index. */
 static int resolve_uart_index(int id) {
     if (id == 0) return 0;
     return -1;
@@ -53,7 +53,7 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
     double baudrate;
     if (!PyArg_ParseTuple(args, "iiid", &id, &tx_id, &rx_id, &baudrate)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
         return NULL;
     }
     int tx = resolve_pin_index(tx_id);
@@ -98,7 +98,7 @@ static PyObject* native_uart_write(PyObject* self, PyObject* args) {
     /* "y#" : bytes + longueur. Pas "s", qui s'arrete au premier NUL et refuse les bytes. */
     if (!PyArg_ParseTuple(args, "iy#", &id, &data, &len)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
         return NULL;
     }
     if (!g_current->uart_configured) {
@@ -127,7 +127,7 @@ static PyObject* native_uart_any(PyObject* self, PyObject* args) {
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
@@ -143,7 +143,7 @@ static PyObject* native_uart_read(PyObject* self, PyObject* args) {
     int id, n;
     if (!PyArg_ParseTuple(args, "ii", &id, &n)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
@@ -171,7 +171,7 @@ static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported in v0 (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);

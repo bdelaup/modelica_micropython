@@ -3,7 +3,7 @@
    Format de la table : "CMD=>REPONSE|CMD=>REPONSE|..."
    '|' separe les entrees, "=>" separe la commande de sa reponse. Ces deux
    suites sont RESERVEES et ne peuvent pas apparaitre dans une commande ou une
-   reponse (restriction v0 documentee). Les echappements usuels (\r, \n) sont
+   reponse (restriction documentee). Les echappements usuels (\r, \n) sont
    deja resolus par Modelica dans le litteral de chaine : le C recoit les vrais
    octets, il n'a rien a desechapper.
 

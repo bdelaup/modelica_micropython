@@ -204,7 +204,7 @@ static void uartcore_rx_step(struct UartEngine* e, double now, int level) {
             /* Bit de stop : la ligne doit etre revenue au niveau haut. Attendre
                ce bit avant de repasser au repos est indispensable - sinon un
                dernier bit de donnees a 0 serait relu comme un nouveau bit de
-               start. Trame invalide (stop bas) = octet ignore, simplification v0. */
+               start. Trame invalide (stop bas) = octet ignore, simplification assumee. */
             if (bit) {
                 uartcore_rx_push(e, (unsigned char) (e->rx_shift & 0xFF));
             }
