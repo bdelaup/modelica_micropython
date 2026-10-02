@@ -292,7 +292,10 @@ import capteurs                # /lib/capteurs.py de la flash, ou dossier désig
 
 - **Import** : le dossier du programme est dans le chemin d'import (`MCU.addScriptDirToPath`, actif par défaut), comme la racine de la flash sur la carte. `MCU.libraryPath` y ajoute un dossier de bibliothèque partagée. Avec un système de fichiers actif, la racine de la flash et `/lib` y sont aussi. La bibliothèque standard de CPython 3.12 est disponible, mais un programme destiné à la carte doit s'en tenir à ce que MicroPython propose.
 - **`print()`** : s'affiche dans la fenêtre de sortie de la simulation d'OMEdit, chaque ligne précédée du temps simulé où elle a été écrite, à la microseconde : `[t=0.250000 s] valeur = 12`. Ce qui part sur `sys.stderr` (dont la trace d'une exception) s'affiche en **avertissement**, signalé autrement par OMEdit.
-- **Exception non rattrapée** : arrête la simulation ; la trace Python s'affiche dans le journal (exemple `Program.Error`).
+- **Exception non rattrapée** : arrête la simulation ; la trace Python s'affiche dans le journal, avec le chemin du fichier, le numéro de la ligne et la ligne de code fautive (exemple `Program.Error`). Pour `boot.py`/`main.py`, le chemin est celui du fichier dans la copie de la flash.
+- **`sys.exit()`** : termine le programme sans erreur, comme sur la carte ; la simulation continue jusqu'à son terme, les sorties gardent leur dernier état. Dans `boot.py`, il saute aussi `main.py`.
+- **Fin de la simulation** : le programme encore en cours (presque toujours dans un `sleep()`) est interrompu par `SystemExit` : ses blocs `finally` et `with` s'exécutent, puis les fichiers qu'il a laissés ouverts sont fermés et leur contenu écrit sur disque. Un programme qui rattrape `SystemExit` (par un `except:` nu dans une boucle) est abandonné au bout de 2 s, avec un avertissement.
+- **Programme qui ne rend pas la main** : une boucle sans `sleep()` ni accès à une broche fige la simulation à l'instant courant. Au bout de `MCU.hangWarningTime` (10 s de temps réel par défaut), un avertissement le signale dans le journal ; la simulation continue d'attendre.
 
 ## Fonctions de `machine`
 

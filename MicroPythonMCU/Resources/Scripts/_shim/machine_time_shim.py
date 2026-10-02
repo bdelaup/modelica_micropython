@@ -14,6 +14,7 @@ import sys, types, _pyruntime_native as _native
 import builtins as _builtins, errno as _errno, os as _host_os
 import datetime as _host_datetime, shutil as _host_shutil
 import warnings as _warnings
+import atexit as _atexit, weakref as _weakref
 
 # CPython avertit a la compilation de tournures que MicroPython accepte sans
 # rien dire - typiquement "gain is 128" (driver HX711 de robert-hh). Le code
@@ -374,6 +375,7 @@ _fs_cwd = '/'
 _fs_stdlib = ()           # prefixes de co_filename du code de la stdlib, jamais cloisonne
 _host_open = _builtins.open
 _host_import = _builtins.__import__
+_fs_files = _weakref.WeakSet()   # fichiers ouverts par le programme, fermes en fin de simulation
 
 def _fs_err(code):
     # Message MicroPython ("[Errno 2] ENOENT") plutot que celui de l'hote, qui
@@ -403,7 +405,7 @@ def _fs_mount():
         return
     ws = _fs_host_dir(workspace or '.')
     src = None
-    name = 'vierge'
+    name = 'blank'
     if source:
         src = _fs_host_dir(source)
         if not _host_os.path.isdir(src):
@@ -450,7 +452,8 @@ def _fs_user(depth):
     # __file__ du module plutot que co_filename : les modules de la stdlib
     # charges depuis python312.zip ont un co_filename relatif ("ctypes\
     # __init__.py"), mais un __file__ dans le zip, donc sous home. Le programme
-    # du microcontroleur tourne dans __main__, sans __file__ : "<string>".
+    # du microcontroleur tourne dans __main__, sans __file__ : co_filename est
+    # alors le chemin de son fichier (cf. run_source, pyruntime_module.c).
     name = f.f_globals.get('__file__') or f.f_code.co_filename
     return not _host_os.path.normcase(name).startswith(_fs_stdlib)
 
@@ -488,7 +491,27 @@ def _fs_open(file, mode='r', buffering=-1, encoding=None, errors=None, newline=N
         # (sinon "\n" deviendrait "\r\n" sur un hote Windows).
         encoding = encoding or 'utf-8'
         newline = '' if newline is None else newline
-    return _fs_call(_host_open, real, mode, buffering, encoding, errors, newline)
+    f = _fs_call(_host_open, real, mode, buffering, encoding, errors, newline)
+    _fs_files.add(f)
+    return f
+
+def _fs_close_files():
+    # Fin de simulation (fin du sous-interpreteur, cf. PyRuntime_destroy) : les
+    # fichiers que le programme n'a pas fermes le sont ici, tampons vides sur
+    # disque. Sans cela, ils restaient ouverts jusqu'a la fin du process et
+    # leurs dernieres ecritures etaient perdues (constate : l'espace de noms
+    # __main__, que le programme partage avec le shim, survit a la
+    # finalisation des modules - une simple reference faible sur __main__
+    # suffisait a changer ce comportement, d'ou une fermeture explicite plutot
+    # que de compter sur le ramasse-miettes). Enregistre avant tout atexit du
+    # programme, donc execute apres eux.
+    for f in list(_fs_files):
+        try:
+            f.close()
+        except Exception:
+            pass
+
+_atexit.register(_fs_close_files)
 
 def _fs_import(name, globals=None, locals=None, fromlist=(), level=0):
     # "import os" (ou uos) depuis le code du microcontroleur donne le module os

@@ -17,9 +17,11 @@
     X(PyDict_New) \
     X(PyDict_SetItemString) \
     X(PyErr_Clear) \
+    X(PyErr_ExceptionMatches) \
     X(PyErr_Format) \
     X(PyErr_Occurred) \
     X(PyErr_Print) \
+    X(PyErr_SetNone) \
     X(PyErr_SetObject) \
     X(PyErr_SetString) \
     X(PyEval_EvalCode) \
@@ -28,6 +30,7 @@
     X(PyEval_SaveThread) \
     X(PyExc_OSError) \
     X(PyExc_RuntimeError) \
+    X(PyExc_SystemExit) \
     X(PyExc_TypeError) \
     X(PyExc_ValueError) \
     X(PyFloat_AsDouble) \
@@ -35,7 +38,9 @@
     X(PyFloat_Type) \
     X(PyGILState_Ensure) \
     X(PyGILState_Release) \
+    X(PyImport_AddModule) \
     X(PyImport_GetModuleDict) \
+    X(PyInterpreterState_ThreadHead) \
     X(PyList_Append) \
     X(PyLong_AsLong) \
     X(PyLong_FromLong) \
@@ -43,12 +48,12 @@
     X(PyLong_FromUnsignedLong) \
     X(PyLong_Type) \
     X(PyModule_Create2) \
+    X(PyModule_GetDict) \
     X(PyModule_GetState) \
     X(PyObject_CallFunctionObjArgs) \
     X(PyObject_CallNoArgs) \
     X(PyObject_CallObject) \
     X(PyObject_GetBuffer) \
-    X(PyRun_SimpleStringFlags) \
     X(PyRun_StringFlags) \
     X(PySequence_Check) \
     X(PySequence_GetItem) \
@@ -57,6 +62,8 @@
     X(PySys_GetObject) \
     X(PySys_SetObject) \
     X(PyThreadState_Get) \
+    X(PyThreadState_GetInterpreter) \
+    X(PyThreadState_Next) \
     X(PyThreadState_Swap) \
     X(PyTuple_New) \
     X(PyType_IsSubtype) \
@@ -66,6 +73,8 @@
     X(PyWideStringList_Append) \
     X(Py_CompileStringExFlags) \
     X(Py_DecodeLocale) \
+    X(Py_EndInterpreter) \
+    X(Py_FinalizeEx) \
     X(Py_InitializeFromConfig) \
     X(Py_IsInitialized) \
     X(Py_NewInterpreterFromConfig) \

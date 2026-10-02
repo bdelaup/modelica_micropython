@@ -97,6 +97,9 @@ omc verify_37_multi_i2c_mem.mos
 omc verify_38_multi_i2c_irq.mos
 omc verify_39_gpio_pull.mos
 omc verify_40_display_large.mos
+omc verify_41_sys_exit.mos
+omc verify_42_hang_warning.mos
+omc verify_43_shutdown.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -107,10 +110,10 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_01_basic_blink.mos` | `Examples.BasicBlink` | Clignotement de base (shim `machine`/`time`, boucle de synchro) | `GP0` alterne ≈3 V / 0 V à la bonne période |
 | `verify_02_sleep_compression.mos` | `Examples.Program.SleepCompression` | Compression du `sleep` (cœur de la valeur du projet) | Bascules aux instants attendus, simulation rapide (pas de temps réel proportionnel au temps simulé) |
 | `verify_03_input_reactivity.mos` | `Examples.Gpio.InputReactivity` | Réactivité en entrée pendant un `sleep` | Réaction peu après la transition, pas à l'échéance du `sleep` |
-| `verify_04_script_error.mos` | `Examples.Program.Error` | Exception non gérée dans le script | La simulation s'arrête **proprement** en erreur : l'exécutable, relancé par son `.bat`, sort avec le code `-1` (et non `-1073741819`, le plantage que contourne `Library = "-lwinpthread"`), et son journal contient `ZeroDivisionError` et le message du runtime |
+| `verify_04_script_error.mos` | `Examples.Program.Error` | Exception non gérée dans le script | La simulation s'arrête **proprement** en erreur : l'exécutable, relancé par son `.bat`, sort avec le code `-1` (et non `-1073741819`, le plantage que contourne `Library = "-lwinpthread"`), et son journal contient `ZeroDivisionError`, le message du runtime et le vrai nom de fichier (`File "...script_error.py", line 7`, et non `<string>`) |
 | `verify_05_reset.mos` | `Examples.BasicBlink` (relancé deux fois) | Cycle de vie de l'External Object | Deux relances produisent des résultats strictement identiques |
 | `verify_06_pin_echo.mos` | `Examples.Gpio.PinEcho` | Bouclage entre deux broches du même `MCU` | `GP3` suit `GP1` (relu via `GP2`) à chaque phase, sans lecture périmée |
-| `verify_07_adc_read.mos` | `Examples.Adc.Read` | Entrée analogique (`machine.ADC`) | `GP1` reflète le pont diviseur (~2,2 V), `GP0` (LED) allumée à t=0,3 s, après la 2e lecture (la 1re, à t=0, voit encore 0 V) |
+| `verify_07_adc_read.mos` | `Examples.Adc.Read` | Entrée analogique (`machine.ADC`) | `GP1` reflète le pont diviseur (~2,2 V), `GP0` (LED) allumée à t=0,1 s, avant la 2e lecture : la 1re, à t=0, voit déjà les 2,2 V (lectures justes dès t=0 depuis la coupure par `pre()` des sorties publiées) |
 | `verify_08_pwm.mos` | `Examples.Pwm.Led` | Sortie PWM (`machine.PWM`) | `GP0` suit le créneau attendu (haut/bas conformes à la période/rapport cyclique), y compris bien après la fin du script |
 | `verify_09_import.mos` | `Examples.Program.Imports` | Import de modules auxiliaires (`addScriptDirToPath`/`libraryPath`) | `GP0`/`GP1` (LED) s'allument, confirmant que les deux imports (dossier du script, bibliothèque partagée) ont réussi |
 | `verify_10_pin_irq.mos` | `Examples.Irq.Pin` | Interruption sur broche (`machine.Pin.irq`) | `GP0` bascule au front montant, reste inchangée au front descendant (filtrage par sens de front) |
@@ -144,6 +147,9 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_38_multi_i2c_irq.mos` | `Examples.MultiMcu.I2cIrq` | `machine.I2CTarget` à gestionnaire IRQ (`END_WRITE`, `READ_REQ`) | `ID` → `b'MCU-B'`, `CNT` → 2 puis 3, `GP7` de A allumée |
 | `verify_39_gpio_pull.mos` | `Examples.Gpio.Pull` | Tirages internes (`Pin.PULL_UP`, `Pin.PULL_DOWN`) et vraie haute impédance | Boutons sans résistance externe : `GP0` à 3,3 V relâché / 0 V appuyé, `GP3` l'inverse, recopiés sur `GP6`/`GP7` ; `GP4` (1 MΩ vers 3,3 V) à 3,3 V sans tirage, 0,16 V avec le tirage bas, 3,3 V avec le tirage haut |
 | `verify_40_display_large.mos` | `Examples.Display.Large` | Grands écrans de texte (`Display4x32`, `Display8x32`) sur `Display0`, horodatage du journal | À mi-parcours, `screen8` a écrit 2 lignes et la 3e est vide ; à la fin, `screen4` montre les messages 7 à 10 et `screen8` les messages 3 à 10, la ligne du message 5 coupée à 32 colonnes ; le journal contient `[t=0.100000 s] message 1 sent` ; `getModelInstance` des deux écrans sans `$error` (sinon icônes vides en relecture alors que la simulation est juste) |
+| `verify_41_sys_exit.mos` | `SysExit`, défini dans le script (`Examples.BasicBlink` avec `Verification/sys_exit.py`) | `sys.exit()` dans le programme | Programme terminé sans erreur à t=0,1 s (« before exit » au journal, pas « after exit »), simulation menée à son terme (code 0, « The simulation finished successfully »), `GP0` toujours allumée à t=0,4 s |
+| `verify_42_hang_warning.mos` | `HangWarning`, défini dans le script (`Examples.BasicBlink` avec `Verification/hang_warning.py`, `hangWarningTime = 1`) | Programme qui ne rend pas la main (timeout mou, avertissement seul) | Boucle de calcul de ~2,5 s réelles sans appel au shim : avertissements « more than 1 s » puis « more than 2 s », pas « more than 4 s » ; le programme et la simulation vont à leur terme |
+| `verify_43_shutdown.mos` | `Shutdown`, défini dans le script (`Examples.BasicBlink` avec `Verification/shutdown.py`, flash vierge dans `Shutdown_ws`) | Arrêt propre en fin de simulation | Bloc `finally` exécuté (« finally ran after 10 lines »), `log.txt` jamais fermé par le programme mais complet sur disque (10 lignes), code de sortie 0 |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

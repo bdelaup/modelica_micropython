@@ -294,7 +294,10 @@ import sensors                 # /lib/sensors.py on the flash, or folder given b
 
 - **Imports**: the program's folder is on the import path (`MCU.addScriptDirToPath`, on by default), like the flash root on the board. `MCU.libraryPath` adds a shared library folder. With a file system enabled, the flash root and `/lib` are on it too. The CPython 3.12 standard library is available, but a program meant for the board must stick to what MicroPython offers.
 - **`print()`**: shown in OMEdit's simulation output window, each line preceded by the simulated time at which it was written, to the microsecond: `[t=0.250000 s] value = 12`. What goes to `sys.stderr` (including the traceback of an exception) is shown as a **warning**, flagged differently by OMEdit.
-- **Uncaught exception**: stops the simulation; the Python traceback is shown in the log (`Program.Error` example).
+- **Uncaught exception**: stops the simulation; the Python traceback is shown in the log, with the file path, the line number and the offending line of code (`Program.Error` example). For `boot.py`/`main.py`, the path is the one of the file in the copy of the flash.
+- **`sys.exit()`**: ends the program without error, as on the board; the simulation goes on to its end, the outputs keep their last state. In `boot.py`, it also skips `main.py`.
+- **End of the simulation**: the program still running (almost always in a `sleep()`) is interrupted by `SystemExit`: its `finally` and `with` blocks run, then the files it left open are closed and their content written to disk. A program that catches `SystemExit` (with a bare `except:` in a loop) is abandoned after 2 s, with a warning.
+- **Program that never hands control back**: a loop without `sleep()` nor pin access freezes the simulation at the current instant. After `MCU.hangWarningTime` (10 s of real time by default), a warning reports it in the log; the simulation keeps waiting.
 
 ## `machine` functions
 

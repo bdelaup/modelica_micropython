@@ -1,0 +1,33 @@
+// Scénario de vérification n°41 : sys.exit() dans le programme.
+// omc verify_41_sys_exit.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : sys.exit() termine le programme du
+// microcontrôleur comme sur la carte (SystemExit, sans trace), et la simulation
+// va à son terme. Avant correction, le programme était exécuté par
+// PyRun_SimpleString, qui passe SystemExit à PyErr_Print... lequel appelle
+// exit() : le process de simulation s'arrêtait net à t = 0,1 s, code 0 mais
+// sans « The simulation finished successfully » et avec un fichier de
+// résultats tronqué. Le script Verification/sys_exit.py allume GP0, imprime
+// « before exit », dort 0,1 s puis appelle sys.exit() avant un dernier print.
+// Modèle défini ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model SysExit
+  extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/sys_exit.py\")));
+end SysExit;"); getErrorString();
+
+buildModel(SysExit, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "SysExit");
+b := getErrorString();
+
+ret := system(".\SysExit.bat", "SysExit_run.txt");
+log := readFile("SysExit_run.txt");
+(nBefore, m1) := regex(log, "before exit", 1);
+(nAfter, m2) := regex(log, "after exit", 1);
+(nEnd, m3) := regex(log, "The simulation finished successfully", 1);
+v := val(mcu.GP0.v, 0.4, "SysExit_res.mat");
+
+if ret == 0 and nBefore >= 1 and nAfter == 0 and nEnd >= 1 and v > 2 then
+  print("PASS: verify_41_sys_exit (programme termine par sys.exit(), simulation menee a son terme, GP0=" + String(v) + "V a t=0.4 s)\n");
+else
+  print("FAIL: verify_41_sys_exit (code de sortie " + String(ret) + ", before " + String(nBefore) + ", after " + String(nAfter) + ", fin " + String(nEnd) + ", GP0=" + String(v) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

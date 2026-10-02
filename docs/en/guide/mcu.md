@@ -62,6 +62,7 @@ A program is therefore split up as on the board: `main.py` + modules, or an off-
 | Parameter | Default | Role |
 |---|---|---|
 | `gpioOpTime` | `5e-6` s | Duration of a pin access (`value()`, `on()`, `off()`, `pin(x)`), the order of magnitude of MicroPython on an RP2040. Two successive writes without a `sleep` thus produce a real 5 µs pulse, which enables bit-banging (HX711 driver). `0` makes accesses instantaneous |
+| `hangWarningTime` | `10` s | **Real** (wall-clock) time after which a warning in the log reports a program that does not let the simulation advance: a loop without `sleep()` nor pin access, or a loop of pin accesses with `gpioOpTime = 0`. Repeated at 20 s, 40 s… The simulation is not interrupted (stop it from OMEdit if needed). `0`: never any warning |
 
 Pure Python computation, creating a pin, the ADC, PWM and reading the clock remain instantaneous.
 
@@ -89,7 +90,7 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 |---|---|---|
 | `fsEnabled` | `false` | Enables the simulated flash. When disabled, `open()` and `os` raise `OSError` |
 | `fsSource` | `""` | Initial flash image: a folder (data, `boot.py`, `main.py`, `lib/`), given by any of its files, by its path or by a `modelica://` URI. Empty: blank flash |
-| `fsWorkspace` | `"."` | Folder where each simulation creates its copy of the flash, named `<instance>_<FS name>_<date>_<time>`. Relative to the simulation folder |
+| `fsWorkspace` | `"."` | Folder where each simulation creates its copy of the flash, named `<instance>_<FS name>_<date>_<time>` (`blank` for a blank flash). Relative to the simulation folder |
 | `fsOpenExplorer` | `true` | Opens Windows Explorer on the copy at the end of the simulation |
 
 The source image is never modified: each simulation starts from a fresh copy, whose path is shown in the log. To chain two simulations, use the copy left by the previous one as `fsSource`. Example image supplied: `Resources/FileSystems/datalogger/` (examples `FileSystem.Boot` and `FileSystem.Script`).

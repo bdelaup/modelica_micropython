@@ -1,0 +1,34 @@
+// Scénario de vérification n°42 : timeout mou (avertissement seul).
+// omc verify_42_hang_warning.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : avec hangWarningTime = 1 s, un script qui
+// calcule pendant ~2,5 s de temps réel sans rendre la main (boucle sans sleep
+// ni accès broche, Verification/hang_warning.py) fait écrire dans le journal un
+// avertissement du runtime après 1 s, puis après 2 s (intervalle doublé), mais
+// pas après 4 s ; la simulation n'est pas interrompue : le
+// programme va au bout (« computation done », GP0 éteinte à t=0,3 s) et la
+// simulation se termine normalement. Modèle défini ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model HangWarning
+  extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/hang_warning.py\"), hangWarningTime = 1));
+end HangWarning;"); getErrorString();
+
+buildModel(HangWarning, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "HangWarning");
+b := getErrorString();
+
+ret := system(".\HangWarning.bat", "HangWarning_run.txt");
+log := readFile("HangWarning_run.txt");
+(nWarn1, m1) := regex(log, "warning.*the script has been running for more than 1 s of real time", 1);
+(nWarn2, m4) := regex(log, "warning.*the script has been running for more than 2 s of real time", 1);
+(nWarn4, m5) := regex(log, "the script has been running for more than 4 s", 1);
+(nDone, m2) := regex(log, "computation done", 1);
+(nEnd, m3) := regex(log, "The simulation finished successfully", 1);
+vOn := val(mcu.GP0.v, 0.05, "HangWarning_res.mat");
+vOff := val(mcu.GP0.v, 0.3, "HangWarning_res.mat");
+
+if ret == 0 and nWarn1 == 1 and nWarn2 == 1 and nWarn4 == 0 and nDone >= 1 and nEnd >= 1 and vOn > 2 and vOff < 0.5 then
+  print("PASS: verify_42_hang_warning (avertissements a 1 s et 2 s de temps reel, programme et simulation menes a leur terme)\n");
+else
+  print("FAIL: verify_42_hang_warning (code de sortie " + String(ret) + ", avertissements 1 s/2 s/4 s " + String(nWarn1) + "/" + String(nWarn2) + "/" + String(nWarn4) + ", computation done " + String(nDone) + ", fin " + String(nEnd) + ", GP0=" + String(vOn) + "/" + String(vOff) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

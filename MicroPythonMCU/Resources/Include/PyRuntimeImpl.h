@@ -18,12 +18,17 @@
    puis scriptPath, ou main.py de la flash si scriptPath est vide - cf.
    requirements.md, decision "Systeme de fichiers". gpioOpTime : duree
    d'execution (s) d'un acces a une broche (Pin.value()/on()/off()), 0 = acces
-   instantanes - cf. requirements.md, decision "Cout temporel des acces GPIO". */
+   instantanes - cf. requirements.md, decision "Cout temporel des acces GPIO".
+   hangWarningTime : temps REEL (s) au-dela duquel PyRuntime_sync signale un
+   script qui ne laisse pas avancer la simulation, 0 = jamais - cf.
+   requirements.md, decision "Protection contre un script qui ne rend jamais
+   la main". */
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
                      const char* shimPath, int fsEnabled, const char* fsSource,
                      const char* fsWorkspace, int fsOpenExplorer,
-                     const char* instanceName, double gpioOpTime);
+                     const char* instanceName, double gpioOpTime,
+                     double hangWarningTime);
 void PyRuntime_destroy(void* handle);
 
 /* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,

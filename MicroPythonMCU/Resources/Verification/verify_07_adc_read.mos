@@ -7,12 +7,14 @@ simulate(MicroPythonMCU.Examples.Adc.Read, stopTime = 1, numberOfIntervals = 100
 b := getErrorString();
 
 vTap := val(mcu.GP1.v, 0.05, "AdcRead_res.mat");
-// LED controlee apres la 2e lecture (t=0.2 s) : la toute premiere, a t=0,
-// voit encore 0 V (etat electrique pas encore etabli au premier point de
-// synchro, cf. requirements.md, restrictions). Ce scenario ne passait a
-// t=0.05 que grace au bug corrige par verify_26 (le franchissement du seuil
-// logique par GP1 reveillait le sleep(0.2) juste apres t=0).
-vLed := val(mcu.GP0.v, 0.3, "AdcRead_res.mat");
+// LED relevee a t=0.1 s, AVANT la 2e lecture (t=0.2 s) : elle ne peut etre
+// allumee que si la toute premiere lecture, a t=0, a vu les 2,2 V du pont.
+// Avant le multi-instances (2026-10-01), cette lecture voyait 0 V (etat
+// electrique pas encore etabli au premier point de synchro) et le scenario
+// relevait la LED a t=0.3 s ; la coupure par pre() des sorties publiees a
+// leve ce defaut, que ce releve garde sous controle - cf. requirements.md,
+// TODO « Lectures justes des t=0 ».
+vLed := val(mcu.GP0.v, 0.1, "AdcRead_res.mat");
 
 if vTap > 1.5 and vTap < 3.0 and vLed > 2.0 then
   print("PASS: verify_07_adc_read (GP1(ADC)=" + String(vTap) + "V, GP0(led)=" + String(vLed) + "V)\n");

@@ -30,7 +30,10 @@ Function-by-function details: [API, limitations](api.md#known-limitations).
     The simulation ends without error, but the outputs never change, and the I2C bus stops with `OSError: [Errno 110] ETIMEDOUT`. This is a defect of library versions older than its fix: take the latest version (see [Installation](installation.md)).
 
 ??? question "The simulation stops with a Python error"
-    An uncaught exception in the program stops the simulation. The simulation log shows the Python traceback: file, line number, error type and message. Results remain available up to the time of the error.
+    An uncaught exception in the program stops the simulation. The simulation log shows the Python traceback: file path, line number, offending line of code, error type and message. Results remain available up to the time of the error.
+
+??? question "The simulation looks frozen, with the warning « the script has been running for more than 10 s of real time »"
+    The program runs a loop that never hands control back to the circuit: no `sleep()`, no pin access (waiting on `time.ticks_ms()`, endless computation). Simulated time can no longer advance. Add a `time.sleep_ms()` in the loop, then stop the simulation from OMEdit. The variant « acting for more than ... at the same simulated instant » points to a loop of pin accesses with `gpioOpTime = 0`. The delay is set by `hangWarningTime` ([The MCU block](mcu.md#execution-time)); a long but legitimate computation ends normally despite the warning.
 
 ??? question "My `print()` calls do not show up"
     They go to OMEdit's simulation output window (and its log), not to a Python console, preceded by the simulated time (`[t=0.250000 s] ...`). A `print()` from a serial or I2C device also carries the component name.
@@ -60,7 +63,7 @@ Function-by-function details: [API, limitations](api.md#known-limitations).
     The file system is not enabled: tick `fsEnabled` in the `MCU`'s *File system* tab ([The MCU block](mcu.md#file-system)).
 
 ??? question "Where are the files written by my program?"
-    In the flash copy created at each simulation, in the `fsWorkspace` folder (the simulation folder by default). Its path is shown in the log at the start and end of the simulation, and Windows Explorer opens on it at the end of the simulation (`fsOpenExplorer`).
+    In the flash copy created at each simulation, in the `fsWorkspace` folder (the simulation folder by default). Its path is shown in the log at the start and end of the simulation, and Windows Explorer opens on it at the end of the simulation (`fsOpenExplorer`). A file the program did not close is closed at the end of the simulation, its full content written to disk.
 
 ??? question "Two successive pin reads return a stale value"
     Only with `gpioOpTime = 0`: reading a pin right after writing another one may return the state from before the write. Leave `gpioOpTime` at its default, or insert a `time.sleep_us(1)`.

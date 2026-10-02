@@ -20,7 +20,7 @@ sequenceDiagram
     Ctor->>CPy: module machine explicatif (scripts de périphérique), une fois
     Ctor->>Worker: _beginthreadex(worker_main)
     Worker->>CPy: PyGILState_Ensure() puis Py_NewInterpreterFromConfig (GIL partagé)
-    Worker->>Worker: dans SON sous-interpréteur : relais stdout,<br/>_pyruntime_native, sys.path, PyRun_SimpleString(machine_time_shim.py)
+    Worker->>Worker: dans SON sous-interpréteur : relais stdout,<br/>_pyruntime_native, sys.path, run_source(machine_time_shim.py)
     Worker-->>Ctor: init_state = INIT_OK (ou INIT_FAILED + message)
     Ctor-->>MCU: handle (ou ModelicaFormatError)
     Worker->>Worker: attend son tour (turn == TURN_MODELICA au départ), GIL relâché pendant l'attente
@@ -73,9 +73,11 @@ stateDiagram-v2
     Actif --> BloquéIO: Pin/.value/.on/.off
     BloquéSleep --> Actif: sync, réveil dû
     BloquéIO --> Actif: sync (immédiat)
-    Actif --> Terminé: fin du script
+    Actif --> Terminé: fin du script, sys.exit()
     Actif --> Erreur: exception
-    Terminé --> [*]
+    BloquéSleep --> Terminé: fin de simulation (SystemExit)
+    BloquéIO --> Terminé: fin de simulation (SystemExit)
+    Terminé --> [*]: destruction (Py_EndInterpreter)
     Erreur --> [*]: ModelicaError
 ```
 
@@ -87,8 +89,11 @@ stateDiagram-v2
 | `Actif → BloquéIO` | Le script appelle `machine.Pin(...)` → `yield_to_modelica(sim_time)` (yield immédiat) ; ou `.value()`/`.on()`/`.off()` → `yield_until(sim_time + gpioOpTime, 0)` (processeur occupé pendant la durée d'un accès, 5 µs par défaut ; immédiat si `gpioOpTime = 0`) |
 | `BloquéSleep → Actif` | `PyRuntime_sync` rappelé avec `currentTime >= wake_requested_at` |
 | `BloquéIO → Actif` | `PyRuntime_sync` rappelé à l'échéance demandée — une transition d'entrée n'écourte pas l'attente d'un accès à une broche (§3bis) |
-| `Actif → Terminé` | Fin normale du script (retour de `PyRun_SimpleString`) — `script_done=1`, `nextWakeTime=+inf`, plus de handoff |
+| `Actif → Terminé` | Fin normale du script (retour de `run_source`, ou `SystemExit` levée par `sys.exit()`) — `script_done=1`, `nextWakeTime=+inf`, plus de handoff ; le worker se gare jusqu'à la destruction (§4) |
 | `Actif → Erreur` | Exception Python non gérée — `script_error=1`, `ModelicaError` arrête la simulation |
+| `Bloqué* → Terminé` | Fin de simulation : `PyRuntime_destroy` pose `shutdown`, l'attente en cours lève `SystemExit` et le programme se déroule (§4) |
+
+**Programme qui ne rend pas la main** : pendant que le worker a son tour, le thread Modelica attend dans la boucle de drain de `PyRuntime_sync`. Avec `MCU.hangWarningTime > 0` (10 s par défaut), cette attente se fait par tranches de 250 ms (`HANG_CHECK_MS`), et `hang_check` compare au seuil le temps **réel** écoulé depuis l'entrée dans le drain : au-delà, un `ModelicaFormatWarning`, répété à seuil doublé (10, 20, 40 s…). Deux cas, deux messages : le worker n'a pas rendu la main (boucle de calcul, attente sur `ticks_ms()`), ou il la rend sans cesse au même instant simulé (boucle d'accès aux broches avec `gpioOpTime = 0`). Rien n'est fait au script : un calcul long mais légitime finit normalement (`verify_42`).
 
 Chaque appel au shim (`Pin.value()`, `.on()`, `.off()`, `time.sleep*`) passe par `yield_to_modelica()` ou sa variante `yield_until()`, qui rendent systématiquement la main à Modelica — c'est le mécanisme concret qui réalise le principe « tout appel au shim est un point de synchro potentiel » (cf. `requirements.md`). `time.ticks_ms()`/`ticks_us()` font exception : ce sont de simples lectures de l'horloge déjà connue, elles ne synchronisent pas (sinon une boucle de polling non bloquante deviendrait très coûteuse).
 
@@ -298,7 +303,16 @@ C'est cette ligne-là, et non « périphérique contre microcontrôleur », qui 
 
 ## 4. Fin de simulation
 
-`PyRuntime_destroy` **ne tente pas** de réveiller/joindre proprement le thread worker (probablement bloqué en plein `sleep()`), ni d'appeler `Py_FinalizeEx`. Choix délibéré, pas un oubli : chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé** qui se termine juste après cet appel — l'OS récupère tout (thread compris) à la sortie du process. Ça évite les pièges classiques d'un arrêt propre multi-thread pour un bénéfice nul dans ce contexte. C'est aussi pour ça qu'une relance de simulation redémarre le script à zéro sans rien de spécial à coder (scénario de vérification 5) : un nouveau process = un nouvel interpréteur CPython, sans aucun état résiduel. `UartDevice_destroy` est un no-op pour exactement la même raison.
+Chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **process OS séparé** : une relance redémarre le script à zéro sans rien de spécial à coder (scénario de vérification 5). L'arrêt n'en est pas moins **propre** (lot 2, 2026-10-02), pour que le programme finisse comme un programme interrompu sur la carte et que ses fichiers soient complets :
+
+1. **`PyRuntime_destroy`** pose `h->shutdown` et réveille le worker (`WakeAllConditionVariable`), puis l'attend au plus `SHUTDOWN_WAIT_MS` (2 s).
+2. **Déroulement** : le programme est presque toujours garé dans `yield_until` (un `sleep()`). Celui-ci voit `shutdown`, n'attend plus et lève `SystemExit` — à chaque appel suivant aussi, sans jamais rendre la main à Modelica. Les blocs `finally`/`with` s'exécutent ; `run_source` efface la `SystemExit` sans trace.
+3. **Fin du sous-interpréteur** : le worker, garé depuis la fin du programme (`while (!h->shutdown)`), reprend le GIL et appelle `Py_EndInterpreter`. Les gestionnaires `atexit` du sous-interpréteur s'exécutent, dont celui du shim qui **ferme les fichiers que le programme a laissés ouverts** (`_fs_close_files`, `WeakSet` tenu par `_fs_open`) : sans lui, leurs tampons étaient perdus (cf. ci-dessous). Le sous-interpréteur vit jusqu'ici, et non jusqu'à la fin du programme : la mémoire `mem=` d'`I2CTarget`, que la synchro lit encore après la fin du programme, reste valide.
+4. **Finalisation de CPython** : chaque composant qui a obtenu CPython par `pyhost_ensure()` le rend par `pyhost_release()` (microcontrôleurs, et périphériques en mode Script, qui libèrent d'abord leurs références) ; le dernier appelle `Py_FinalizeEx`. Compteur et drapeau sont en `__declspec(selectany)` : uniques pour le process, même si `pyhost.c` est compilé dans deux unités.
+
+**Replis** : un programme qui avale `SystemExit` (`except:` nu dans une boucle) n'est pas joint dans le délai ; un thread Python lancé par le programme (`_thread`) vivrait encore dans le sous-interpréteur, et `Py_EndInterpreter` arrêterait le process (`Py_FatalError`). Dans les deux cas : avertissement, `pyhost_abandon()`, et **plus aucun appel à Python** dans le process — l'OS récupère tout à la sortie, comme avant que l'arrêt propre n'existe. Vérifié par `verify_43` (bloc `finally` exécuté, fichier jamais fermé complet sur disque) ; les deux replis ont été vérifiés à la main.
+
+**Fichiers non fermés : la fermeture est explicite.** Constaté en écrivant `verify_43` : sans `_fs_close_files`, un fichier ouvert dans `__main__` et jamais fermé restait vide après `Py_EndInterpreter`, alors que le même code dans un sous-interpréteur créé par `_xxsubinterpreters` (même CPython 3.12.4, modes isolé et non isolé, depuis un thread secondaire) écrit bien son contenu. L'objet fichier n'est jamais libéré : un `close()` surchargé n'est pas appelé, alors qu'au moment des `atexit` le fichier est encore ouvert et son `flush()` fonctionne. Une simple référence faible sur le module `__main__` (`sys._k = weakref.ref(sys.modules['__main__'])`) suffit à rétablir l'écriture : l'espace de noms `__main__`, que le programme partage avec le shim (exécuté lui aussi dans `__main__`), survit à la finalisation des modules dans notre configuration. Cause exacte non élucidée ; plutôt que de dépendre de l'ordre de finalisation, le shim ferme explicitement ce qu'il a ouvert.
 
 ## Six pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
 
@@ -320,7 +334,9 @@ Même après le correctif (a), `PyRuntime_sync` réveillait systématiquement le
 
 La première version de la gestion d'erreur récupérait la trace Python manuellement (`PyErr_Fetch` + module `traceback`) pour produire un message d'erreur unique avec le vrai chemin du script. Ça fonctionnait isolément (testé hors du contexte OpenModelica) mais provoquait un plantage systématique (violation d'accès) une fois exécuté dans l'exécutable de simulation généré — cause précise non identifiée.
 
-**Correctif** : `PyRun_SimpleString` à la place, qui affiche elle-même la trace via `sys.stderr` (donc relayée vers `ModelicaFormatMessage`, cf. `integration-python.md`) avant de rendre la main en cas d'échec ; `PyRuntime_sync` se contente de détecter l'échec pour déclencher `ModelicaError`. Limitation résiduelle : le nom de fichier affiché dans la trace est `<string>`, pas le vrai chemin du script.
+**Correctif d'alors** : `PyRun_SimpleString` à la place, qui affiche elle-même la trace via `sys.stderr` (donc relayée vers `ModelicaFormatMessage`, cf. `integration-python.md`) avant de rendre la main en cas d'échec ; `PyRuntime_sync` se contente de détecter l'échec pour déclencher `ModelicaError`. Limitation : le nom de fichier affiché dans la trace était `<string>`.
+
+**Réexamen (lot 2, 2026-10-02)** : le plantage était très probablement le défaut d'OpenModelica contourné depuis par `Library = "-lwinpthread"` (tout `ModelicaError` plantait). Les scripts de périphérique compilaient déjà leur source sous son chemin (`devscript.c` : `Py_CompileString(src, path)` + `PyEval_EvalCode` + `PyErr_Print`) sans incident. Le programme du microcontrôleur passe désormais par le même chemin (`run_source`, `pyruntime_module.c`) : la trace nomme le fichier, cite la ligne fautive, et `verify_04` le contrôle. `PyRun_SimpleString` avait un second défaut : sur `SystemExit` (`sys.exit()` dans le programme), `PyErr_Print` appelle `exit()` — le process de simulation s'arrêtait net, sans « The simulation finished successfully », fichier de résultats tronqué. `run_source` traite `SystemExit` comme une fin normale du programme (`verify_41`).
 
 ### d) Réveils immédiats chaînés au même instant simulé (script bloqué en silence)
 

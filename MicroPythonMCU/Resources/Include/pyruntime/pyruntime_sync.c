@@ -105,8 +105,9 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
 
 /* --- Point de synchro : rend la main a Modelica et attend le tour suivant ---
    Retourne 0 en cas de reveil normal, -1 si un callback IRQ/Timer declenche
-   pendant l'attente a leve une exception (l'appelant doit alors "return NULL"
-   immediatement, PyErr est deja positionne - cf. run_due_callbacks). Boucle
+   pendant l'attente a leve une exception, ou en fin de simulation (SystemExit)
+   - l'appelant doit alors "return NULL" immediatement, PyErr est deja
+   positionne (cf. run_due_callbacks). Boucle
    interne : si le reveil n'est "authentique" ni parce que l'echeance propre
    demandee (wake_at) est atteinte, ni parce qu'une broche en entree a
    vraiment change (h->wake_had_input_change), alors ce n'est qu'un "pitstop"
@@ -121,7 +122,12 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
    que l'on vient d'emettre (HX711 qui pose DOUT sur le front montant de
    PD_SCK), l'impulsion retomberait a duree nulle. Ce reveil reste un pitstop
    : les callbacks IRQ dus s'executent, comme une interruption entre deux
-   instructions. */
+   instructions.
+
+   FIN DE SIMULATION (h->shutdown, pose par PyRuntime_destroy) : le worker
+   n'attend plus et leve SystemExit, a chaque appel et des le premier - le
+   programme se deroule (blocs finally/with, fichiers fermes), cf.
+   PyRuntime_destroy. */
 static int yield_until(double wake_at, int interruptible) {
     struct PyRuntimeHandle* h = g_current;
     for (;;) {
@@ -133,17 +139,24 @@ static int yield_until(double wake_at, int interruptible) {
            donc pas d'inversion d'ordre de verrous possible. */
         PyThreadState* saved = PyEval_SaveThread();
         EnterCriticalSection(&h->cs);
-        h->wake_requested_at = wake_at;
-        h->wake_pending = 1;
-        h->turn = TURN_MODELICA;
-        WakeConditionVariable(&h->cv);
-        while (h->turn != TURN_WORKER) {
-            SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        if (!h->shutdown) {
+            h->wake_requested_at = wake_at;
+            h->wake_pending = 1;
+            h->turn = TURN_MODELICA;
+            WakeConditionVariable(&h->cv);
+            while (h->turn != TURN_WORKER && !h->shutdown) {
+                SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+            }
         }
+        int shutdown = h->shutdown;
         int genuine = (interruptible && h->wake_had_input_change) || h->i2c_done_wake || (h->sim_time + PYRUNTIME_EPS >= wake_at);
         LeaveCriticalSection(&h->cs);
         PyEval_RestoreThread(saved);
 
+        if (shutdown) {
+            PyErr_SetNone(PyExc_SystemExit);
+            return -1;
+        }
         if (run_due_callbacks(h) != 0) {
             return -1;
         }

@@ -65,6 +65,7 @@ Onglet *Execution time*.
 | Paramètre | Défaut | Rôle |
 |---|---|---|
 | `gpioOpTime` | `5e-6` s | Durée d'un accès à une broche (`value()`, `on()`, `off()`, `pin(x)`), l'ordre de grandeur de MicroPython sur RP2040. Deux écritures successives sans `sleep` produisent donc une vraie impulsion de 5 µs, ce qui permet le *bit-banging* (driver HX711). `0` rend les accès instantanés |
+| `hangWarningTime` | `10` s | Temps **réel** au bout duquel un avertissement signale, dans le journal, un programme qui ne laisse pas avancer la simulation : boucle sans `sleep()` ni accès à une broche, ou boucle d'accès aux broches avec `gpioOpTime = 0`. Répété à 20 s, 40 s… La simulation n'est pas interrompue (l'arrêter depuis OMEdit au besoin). `0` : jamais d'avertissement |
 
 Le calcul Python pur, la création d'une broche, l'ADC, le PWM et la lecture de l'horloge restent instantanés.
 
@@ -92,7 +93,7 @@ Onglet *File system*, groupe « Simulated flash ». Détail de ce que voit le pr
 |---|---|---|
 | `fsEnabled` | `false` | Active la flash simulée. Désactivée, `open()` et `os` lèvent `OSError` |
 | `fsSource` | `""` | Image initiale de la flash : un dossier (données, `boot.py`, `main.py`, `lib/`), désigné par n'importe lequel de ses fichiers, par son chemin ou par une URI `modelica://`. Vide : flash vierge |
-| `fsWorkspace` | `"."` | Dossier où chaque simulation crée sa copie de la flash, nommée `<instance>_<nom du FS>_<date>_<heure>`. Relatif au dossier de simulation |
+| `fsWorkspace` | `"."` | Dossier où chaque simulation crée sa copie de la flash, nommée `<instance>_<nom du FS>_<date>_<heure>` (`blank` pour une flash vierge). Relatif au dossier de simulation |
 | `fsOpenExplorer` | `true` | Ouvre l'Explorateur Windows sur la copie à la fin de la simulation |
 
 L'image source n'est jamais modifiée : chaque simulation repart d'une copie neuve, et le journal affiche son chemin. Pour enchaîner deux simulations, désigner comme `fsSource` la copie laissée par la précédente. Image fournie en exemple : `Resources/FileSystems/datalogger/` (exemples `FileSystem.Boot` et `FileSystem.Script`).

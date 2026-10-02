@@ -133,9 +133,13 @@ void* I2cDevice_new(const char* addresses, const char* scriptPath,
 }
 
 void I2cDevice_destroy(void* dev_) {
-    /* Meme choix delibere que PyRuntime_destroy et UartDevice_destroy : chaque
-       simulation tourne dans son propre process, l'OS recupere tout. */
-    (void) dev_;
+    /* Rend le script et CPython (cf. devscript_unload, et PyRuntime_destroy
+       pour l'arret propre d'ensemble). */
+    struct I2cDevice* dev = (struct I2cDevice*) dev_;
+    if (dev && dev->py_globals) {
+        PyObject** refs[] = { &dev->py_on_write, &dev->py_on_read, &dev->py_outputs, &dev->py_lines, &dev->py_globals };
+        devscript_unload(refs, 5);
+    }
 }
 
 static const char* i2cdev_modelica_string(const char* s) {

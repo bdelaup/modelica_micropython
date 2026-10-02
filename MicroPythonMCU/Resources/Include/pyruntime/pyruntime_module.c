@@ -108,7 +108,45 @@ struct WorkerInit {
     char* addScriptDir;          /* NULL : ne rien ajouter a sys.path */
     char* libraryDir;
     char* shimSrc;
+    char* shimPath;              /* nom de fichier des traces du shim */
 };
+
+/* Issue de run_source. */
+#define RUN_OK 0
+#define RUN_ERROR 1                  /* exception : trace deja imprimee sur stderr */
+#define RUN_EXIT 2                   /* SystemExit (sys.exit()) : effacee, sans trace */
+
+/* Execute un source Python dans __main__ du sous-interpreteur courant, compile
+   sous le nom de fichier path : les traces nomment ce fichier et citent la
+   ligne fautive (linecache relit le fichier), la ou PyRun_SimpleString
+   compilait sous "<string>". Meme mecanique que les scripts de peripherique
+   (devscript.c). PyErr_Print n'est JAMAIS appele sur SystemExit : il
+   terminerait le process par exit(), sans message et sans fin propre de la
+   simulation - ce que faisait PyRun_SimpleString sur un sys.exit() du script.
+   GIL tenu. */
+static int run_source(const char* src, const char* path) {
+    PyObject* main_module = PyImport_AddModule("__main__");   /* empruntee */
+    PyObject* code = NULL;
+    PyObject* result = NULL;
+    if (main_module) {
+        PyObject* globals = PyModule_GetDict(main_module);     /* empruntee */
+        code = Py_CompileString(src, path, Py_file_input);
+        if (code) {
+            result = PyEval_EvalCode(code, globals, globals);
+            Py_DECREF(code);
+        }
+    }
+    if (result) {
+        Py_DECREF(result);
+        return RUN_OK;
+    }
+    if (PyErr_ExceptionMatches(PyExc_SystemExit)) {
+        PyErr_Clear();
+        return RUN_EXIT;
+    }
+    PyErr_Print();
+    return RUN_ERROR;
+}
 
 /* Cree le sous-interpreteur du microcontroleur SUR LE THREAD WORKER - un etat
    de thread Python est lie au thread systeme qui le cree, et c'est ce thread
@@ -155,7 +193,7 @@ static int worker_init(struct PyRuntimeHandle* h, struct WorkerInit* wi) {
     if (!failure && wi->libraryDir && pyhost_append_path(wi->libraryDir) != 0) {
         failure = "failed to add libraryPath to sys.path";
     }
-    if (!failure && PyRun_SimpleString(wi->shimSrc) != 0) {
+    if (!failure && run_source(wi->shimSrc, wi->shimPath) != RUN_OK) {
         failure = "failed to initialise the machine/time shim or the file system - traceback above";
     }
     relay_flush_buf(&h->relay);
@@ -173,9 +211,17 @@ static int worker_init(struct PyRuntimeHandle* h, struct WorkerInit* wi) {
     return 1;
 }
 
+/* Issue de run_program_file. */
+#define PROGRAM_ABSENT 0             /* fichier introuvable, rien d'execute */
+#define PROGRAM_RAN 1                /* execute (jusqu'au bout ou jusqu'a une exception) */
+#define PROGRAM_EXIT 2               /* termine par sys.exit() : la sequence de demarrage s'arrete */
+
 /* Execute un fichier du programme (dir\name, ou name seul si dir est NULL)
-   dans __main__. Retourne 0 si le fichier n'existe pas (rien d'execute), 1
-   sinon ; une exception pose script_error et un message nommant le fichier. */
+   dans __main__, compile sous ce chemin : pour boot.py/main.py, celui du
+   fichier dans la copie de la flash, que l'eleve peut ouvrir. Une exception
+   pose script_error et un message nommant le fichier. sys.exit() termine le
+   programme sans erreur, comme sur la carte (pyexec du port rp2 : un
+   sys.exit() dans boot.py saute aussi main.py). */
 static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const char* name) {
     char* path;
     if (dir) {
@@ -186,22 +232,46 @@ static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const ch
         path = strdup(name);
     }
     char* buf = read_text_file(path);
-    free(path);
     if (!buf) {
-        return 0;
+        free(path);
+        return PROGRAM_ABSENT;
     }
-    int rc = PyRun_SimpleString(buf);
+    int rc = run_source(buf, path);
     free(buf);
+    free(path);
     relay_flush_buf(&h->relay);
     relay_flush_buf(&h->relay_err);
-    if (rc != 0) {
+    if (rc == RUN_ERROR) {
         char msg[128];
         snprintf(msg, sizeof(msg), "%s raised an unhandled exception - traceback above",
                  dir ? name : "the script");
         h->script_error = 1;
         h->error_message = strdup(msg);
     }
-    return 1;
+    return rc == RUN_EXIT ? PROGRAM_EXIT : PROGRAM_RAN;
+}
+
+/* Fin de vie du worker (cf. PyRuntime_destroy) : termine le sous-interpreteur
+   du microcontroleur - modules et objets liberes, fichiers encore ouverts
+   fermes et vides sur disque. ts est l'etat de thread du worker, courant, GIL
+   tenu ; au retour, plus d'etat de thread courant ni de GIL. Py_EndInterpreter
+   arreterait le process (Py_FatalError) si un autre thread Python vivait dans
+   le sous-interpreteur (_thread du programme) : on abandonne alors la
+   finalisation, comme avant que l'arret propre n'existe. */
+static void worker_end_interpreter(struct PyRuntimeHandle* h, PyThreadState* ts) {
+    relay_flush_buf(&h->relay);
+    relay_flush_buf(&h->relay_err);
+    if (PyInterpreterState_ThreadHead(PyThreadState_GetInterpreter(ts)) != ts
+        || PyThreadState_Next(ts) != NULL) {
+        ModelicaFormatWarning("PyRuntime (%s): other Python threads are still running in the microcontroller "
+                              "- Python is not finalized at the end of the simulation\n", h->instanceName);
+        pyhost_abandon();
+        PyEval_SaveThread();
+        return;
+    }
+    Py_EndInterpreter(ts);
+    relay_flush_buf(&h->relay);
+    relay_flush_buf(&h->relay_err);
 }
 
 /* Argument du thread worker : le handle et ce qu'il faut pour l'initialiser. */
@@ -220,6 +290,7 @@ static unsigned __stdcall worker_main(void* arg) {
     free(wa->init.addScriptDir);
     free(wa->init.libraryDir);
     free(wa->init.shimSrc);
+    free(wa->init.shimPath);
     free(wa);
 
     /* Resultat de l'initialisation, attendu par PyRuntime_new. */
@@ -247,21 +318,23 @@ static unsigned __stdcall worker_main(void* arg) {
        existe, puis le programme - le script (scriptPath) s'il est renseigne, a
        la place de main.py comme Thonny sur une carte deja demarree, sinon
        main.py de la flash s'il existe. Tous dans le meme espace de noms
-       (__main__). Une exception arrete la sequence. PyRuntime_new garantit
-       qu'il y a un script ou un systeme de fichiers. */
+       (__main__). Une exception ou un sys.exit() arrete la sequence.
+       PyRuntime_new garantit qu'il y a un script ou un systeme de fichiers. */
     int ran = 0;
+    int boot = PROGRAM_ABSENT;
     if (h->fs_root) {
-        ran |= run_program_file(h, h->fs_root, "boot.py");
+        boot = run_program_file(h, h->fs_root, "boot.py");
+        ran = boot != PROGRAM_ABSENT;
     }
-    if (!h->script_error) {
+    if (!h->script_error && boot != PROGRAM_EXIT) {
         if (h->scriptPath[0] != '\0') {
-            if (!run_program_file(h, NULL, h->scriptPath)) {
+            if (run_program_file(h, NULL, h->scriptPath) == PROGRAM_ABSENT) {
                 h->script_error = 1;
                 h->error_message = strdup("cannot open the script");
             }
             ran = 1;
         } else if (h->fs_root) {
-            ran |= run_program_file(h, h->fs_root, "main.py");
+            ran |= run_program_file(h, h->fs_root, "main.py") != PROGRAM_ABSENT;
         }
     }
     if (!ran) {
@@ -274,11 +347,21 @@ static unsigned __stdcall worker_main(void* arg) {
     WakeConditionVariable(&h->cv);
     LeaveCriticalSection(&h->cs);
 
-    /* Rend le GIL commun pour de bon. Le sous-interpreteur n'est pas finalise :
-       ses objets (callbacks, tampon de mem) restent valides jusqu'a la fin du
-       process, comme le reste (cf. PyRuntime_destroy). */
+    /* Programme fini (ou deroule par SystemExit en fin de simulation) : le
+       worker se gare, GIL rendu, jusqu'a la destruction. Le sous-interpreteur
+       reste vivant d'ici la : ses objets (tampon mem= d'I2CTarget, que la
+       synchro lit encore) restent valides. g_current est garde : un __del__
+       execute pendant la fin du sous-interpreteur peut encore appeler une
+       native (qui leve alors SystemExit, cf. yield_until). */
+    PyThreadState* ts = PyEval_SaveThread();
+    EnterCriticalSection(&h->cs);
+    while (!h->shutdown) {
+        SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+    }
+    LeaveCriticalSection(&h->cs);
+    PyEval_RestoreThread(ts);
+    worker_end_interpreter(h, ts);
     g_current = NULL;
-    PyEval_SaveThread();
     return 0;
 }
 
@@ -309,7 +392,8 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
                      const char* shimPath, int fsEnabled, const char* fsSource,
                      const char* fsWorkspace, int fsOpenExplorer,
-                     const char* instanceName, double gpioOpTime) {
+                     const char* instanceName, double gpioOpTime,
+                     double hangWarningTime) {
     char err[512];
 
     /* Sans script, le programme est main.py du systeme de fichiers : il en
@@ -337,6 +421,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     handle->fsOpenExplorer = fsOpenExplorer;
     handle->instanceName = strdup(instanceName);
     handle->gpio_op_time = gpioOpTime > 0 ? gpioOpTime : 0;
+    handle->hang_warning_time = hangWarningTime > 0 ? hangWarningTime : 0;
     InitializeCriticalSection(&handle->cs);
     InitializeConditionVariable(&handle->cv);
     handle->turn = TURN_MODELICA;
@@ -386,6 +471,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
         ModelicaFormatError("PyRuntime: cannot read the machine/time shim ('%s')", shimPath);
         return NULL;
     }
+    wa->init.shimPath = strdup(shimPath);
     /* Import de modules auxiliaires (cf. requirements.md, decision "Import de
        modules auxiliaires") : dossier du script (addScriptDirToPath) et/ou
        celui d'une bibliotheque partagee (libraryPath, desactive si chaine
@@ -432,21 +518,62 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
 }
 
 void PyRuntime_destroy(void* handle_) {
-    /* Chaque simulation tourne dans son propre process (simulate() genere
-       un executable independant a chaque run - verifie en session), qui se
-       termine juste apres cet appel. On ne tente donc pas de reveiller/joindre
-       proprement le thread worker (probablement bloque en plein sleep()) ni
-       de finaliser CPython : l'OS recupere tout a la sortie du process. Choix
-       delibere pour eviter les pieges d'un arret propre multi-thread pour un
-       gain nul - a revisiter si ce choix s'avere un jour gener (cf.
-       principe de revisabilite, requirements.md). Les references Python
-       accumulees par les callbacks IRQ/Timer (pin_irq_handler/timer_callback
-       etc.) suivent le meme principe : jamais decref explicitement, le
-       process recupere tout. Seule action : signaler la copie du systeme de
-       fichiers (journal, Explorateur), cf. fs_at_exit. */
-    if (handle_) {
-        fs_at_exit((struct PyRuntimeHandle*) handle_);
+    /* Arret propre en fin de simulation. Le programme est presque toujours
+       gare dans un sleep() : shutdown le fait derouler par SystemExit (cf.
+       yield_until) - ses blocs finally/with s'executent, comme ceux d'un
+       programme interrompu sur la carte -, puis le worker termine son
+       sous-interpreteur (fichiers ouverts fermes et vides sur disque) et
+       s'arrete. Un programme qui ne se deroule pas dans le delai (boucle qui
+       avale SystemExit par un except: nu) est abandonne : plus aucune
+       finalisation, l'OS recupere tout a la fin du process, comme avant. Les
+       references Python des callbacks IRQ/Timer (pin_irq_handler,
+       timer_callback...) partent avec le sous-interpreteur. Le dernier
+       composant detruit finalise CPython (pyhost_release). Cf.
+       requirements.md, decision "Mecanisme d'execution du script Python". */
+    struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
+    if (!h) {
+        return;
     }
+    EnterCriticalSection(&h->cs);
+    h->shutdown = 1;
+    WakeAllConditionVariable(&h->cv);
+    LeaveCriticalSection(&h->cs);
+    if (WaitForSingleObject(h->thread, SHUTDOWN_WAIT_MS) != WAIT_OBJECT_0) {
+        ModelicaFormatWarning("PyRuntime (%s): the program did not stop at the end of the simulation "
+                              "(does it catch SystemExit, e.g. with a bare except:?) - Python is not finalized, "
+                              "files left open may be incomplete\n", h->instanceName);
+        pyhost_abandon();
+    }
+    fs_at_exit(h);
+    pyhost_release();
+}
+
+/* Script qui ne laisse pas avancer la simulation (timeout mou) : appele par la
+   boucle de drain de PyRuntime_sync, sur le thread Modelica, cs tenu. Deux cas,
+   distingues par le message : le worker n'a pas rendu la main depuis start
+   (boucle de calcul, attente sur ticks_ms()...), ou il la rend sans cesse au
+   meme instant simule (boucle d'acces aux broches avec gpioOpTime = 0). Un
+   avertissement seulement (cf. requirements.md) : la simulation continue
+   d'attendre, et un calcul long mais legitime finit normalement. Repete a
+   intervalle double (10, 20, 40 s...) pour ne pas inonder le journal. */
+static void hang_check(struct PyRuntimeHandle* h, double currentTime, ULONGLONG start,
+                       double* next_warn, int worker_running) {
+    double elapsed = (double) (GetTickCount64() - start) / 1000.0;
+    if (*next_warn <= 0 || elapsed < *next_warn) {
+        return;
+    }
+    if (worker_running) {
+        ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): the script has been running for more than %g s of real time "
+                              "without handing control back to the simulation (loop without sleep() nor pin access?) "
+                              "- the simulation keeps waiting, stop it from OMEdit if needed\n",
+                              currentTime, h->instanceName, *next_warn);
+    } else {
+        ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): the script has been acting for more than %g s of real time "
+                              "at the same simulated instant (loop with gpioOpTime = 0?) "
+                              "- the simulation keeps waiting, stop it from OMEdit if needed\n",
+                              currentTime, h->instanceName, *next_warn);
+    }
+    *next_warn *= 2;
 }
 
 void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
@@ -579,12 +706,23 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
            : le worker repose le MEME wake_requested_at (toujours > currentTime),
            donc cette boucle s'arrete normalement et rend la main a Modelica -
            les pitstops suivants se feront lors des appels ulterieurs de
-           PyRuntime_sync, a mesure que le temps simule avance. */
+           PyRuntime_sync, a mesure que le temps simule avance.
+           Attente par tranches quand hangWarningTime > 0, pour signaler un
+           script qui ne laisse pas avancer la simulation (cf. hang_check). */
+        ULONGLONG start = GetTickCount64();
+        double next_warn = h->hang_warning_time;
         for (;;) {
             h->turn = TURN_WORKER;
             WakeConditionVariable(&h->cv);
             while (h->turn != TURN_MODELICA) {
-                SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+                if (next_warn > 0) {
+                    SleepConditionVariableCS(&h->cv, &h->cs, HANG_CHECK_MS);
+                    if (h->turn != TURN_MODELICA) {
+                        hang_check(h, currentTime, start, &next_warn, 1);
+                    }
+                } else {
+                    SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+                }
             }
             if (h->script_done || h->script_error) {
                 break;
@@ -592,6 +730,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
             if (!h->wake_pending || h->wake_requested_at > currentTime + PYRUNTIME_EPS) {
                 break;
             }
+            hang_check(h, currentTime, start, &next_warn, 0);
         }
     }
 

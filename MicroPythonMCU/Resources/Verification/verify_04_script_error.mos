@@ -21,9 +21,12 @@ ret := system(".\\ScriptError.bat", "ScriptError_run.txt");
 log := readFile("ScriptError_run.txt");
 (nTrace, m1) := regex(log, "ZeroDivisionError", 1);
 (nRuntime, m2) := regex(log, "the script raised an unhandled exception", 1);
+// La trace nomme le vrai fichier et la ligne fautive (x = 1 / 0, ligne 7),
+// au lieu de File "<string>" quand le programme passait par PyRun_SimpleString.
+(nFile, m3) := regex(log, "File \"[^\"]*script_error[.]py\", line 7", 1);
 
-if ret == -1 and nTrace >= 1 and nRuntime >= 1 then
-  print("PASS: verify_04_script_error (simulation arretee proprement en erreur : code de sortie " + String(ret) + ", ZeroDivisionError et message du runtime dans le journal)\n");
+if ret == -1 and nTrace >= 1 and nRuntime >= 1 and nFile >= 1 then
+  print("PASS: verify_04_script_error (simulation arretee proprement en erreur : code de sortie " + String(ret) + ", ZeroDivisionError, message du runtime et vrai nom de fichier dans le journal)\n");
 else
-  print("FAIL: verify_04_script_error (code de sortie " + String(ret) + ", ZeroDivisionError trouve " + String(nTrace) + " fois, message du runtime " + String(nRuntime) + " fois)\n--- journal ---\n" + log);
+  print("FAIL: verify_04_script_error (code de sortie " + String(ret) + ", ZeroDivisionError trouve " + String(nTrace) + " fois, message du runtime " + String(nRuntime) + " fois, nom de fichier " + String(nFile) + " fois)\n--- journal ---\n" + log);
 end if;

@@ -20,6 +20,8 @@ model MCU "Simulated programmable microcontroller, driven by a MicroPython-compa
   parameter Modelica.Units.SI.Time tickPeriod = 0.1 "Period of the minimal sync point (output freshness if the script never sleeps)";
   parameter Modelica.Units.SI.Time gpioOpTime = 5e-6 "Execution time of a pin access (Pin.value(), on(), off()): two writes without sleep() give a pulse of this width (bit-banging) - order of magnitude of MicroPython on RP2040; 0 = instantaneous accesses" annotation(
     Dialog(tab = "Execution time"));
+  parameter Modelica.Units.SI.Time hangWarningTime = 10 "Real (wall-clock) time after which a warning is logged if the script does not let the simulation advance (loop without sleep() nor pin access, or with gpioOpTime = 0) - the simulation keeps waiting; 0 = no warning" annotation(
+    Dialog(tab = "Execution time"));
   parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Logic high voltage" annotation(
     Dialog(tab = "Electrical", group = "Logic levels"));
   parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Logic low voltage" annotation(
@@ -64,7 +66,7 @@ protected
   Modelica.Units.SI.Voltage pinNodeVoltage[9] "Actual voltage of each pin (index 9 = internal node of the on-board LED)";
   Boolean pinBoolIn[9](each start = false, each fixed = true) "Logic value read on each pin (voltage compared with the VIL/VIH thresholds), including index 9 (on-board LED), which thus reads back its own state like a normal pin";
   Boolean pinBoolOut[9] "Value driven on each pin (output of the last sync point); index 9 = on-board LED (real GP25)";
-  Boolean pinIsOutputD[9] "Direction of each pin (output of the last sync point)";
+  Boolean pinIsOutputD[9](each start = false, each fixed = true) "Direction of each pin (output of the last sync point)";
   Integer pinBoolInC[9] "pinBoolIn as passed to PyRuntime_sync (0/1): arrays of Boolean are not exchanged with the C code, see Internal.PyRuntime_sync";
   discrete Integer pinBoolOutC[9](each start = 0, each fixed = true) "pinBoolOut as returned by PyRuntime_sync (0/1)";
   discrete Integer pinIsOutputC[9](each start = 0, each fixed = true) "pinIsOutputD as returned by PyRuntime_sync (0/1)";
@@ -76,7 +78,7 @@ protected
   discrete Integer uartTxPin(start = 0, fixed = true) "Pin assigned to serial transmission (0 = none); once assigned it stays so, even between frames, because the idle line must be HIGH - see machine.UART";
   discrete Boolean uartTxLevel(start = true, fixed = true) "Logic level to hold on the transmit pin (idle = high), published by the C code: the next sync point falls on the next level CHANGE of the frame, so consecutive identical bits cost no event";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Next wake-up requested by the script (sleep), or +inf once finished";
-  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName(), gpioOpTime) "Embedded Python interpreter running the user script" annotation(
+  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName(), gpioOpTime, hangWarningTime) "Embedded Python interpreter running the user script" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Voltage source driven by the script (VOH/VOL) when the pin is an output; index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));

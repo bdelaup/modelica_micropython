@@ -12,6 +12,8 @@
 #define TURN_MODELICA 0
 #define TURN_WORKER 1
 #define PYRUNTIME_EPS 1e-9
+#define HANG_CHECK_MS 250   /* tranche d'attente du thread Modelica quand hangWarningTime > 0 */
+#define SHUTDOWN_WAIT_MS 2000  /* fin de simulation : delai laisse au programme pour se derouler, cf. PyRuntime_destroy */
 
 #define MAX_TIMERS 4                 /* pool fixe de machine.Timer, meme esprit que les 8 broches GPIO plutot que 29 */
 #define TIMER_MIN_PERIOD 0.001       /* plancher (1 ms) : evite une tempete d'evenements Modelica a duree simulee nulle si period<=0, cf. requirements.md */
@@ -137,6 +139,11 @@ struct PyRuntimeHandle {
        impulsion, visible electriquement (bit-banging). Cf. native_pin_write et
        requirements.md, decision "Cout temporel des acces GPIO". */
     double gpio_op_time;
+    /* Temps REEL (s) au-dela duquel PyRuntime_sync signale un script qui ne
+       laisse pas avancer la simulation (MCU.hangWarningTime), 0 = jamais. Cf.
+       hang_check et requirements.md, decision "Protection contre un script qui
+       ne rend jamais la main". */
+    double hang_warning_time;
     int irq_disabled;            /* machine.disable_irq() : callbacks IRQ/Timer differes (pas perdus) jusqu'a enable_irq() */
 
     int pin_is_output[NUM_PINS];
@@ -199,6 +206,10 @@ struct PyRuntimeHandle {
     int script_done;
     int script_error;
     char* error_message;
+    /* Fin de simulation (PyRuntime_destroy) : le programme en cours se deroule
+       par SystemExit (cf. yield_until), puis le worker termine son
+       sous-interpreteur et s'arrete. */
+    int shutdown;
 
     HANDLE thread;
     DWORD worker_thread_id;  /* thread autorise a appeler les natives du shim, cf. worker_context_ok */

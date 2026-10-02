@@ -1,0 +1,41 @@
+// Scénario de vérification n°43 : arrêt propre en fin de simulation.
+// omc verify_43_shutdown.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : à la fin de la simulation, le programme garé
+// dans un sleep() est déroulé par SystemExit (son bloc finally s'exécute), puis
+// son sous-interpréteur est terminé et CPython finalisé : le fichier que le
+// programme n'a jamais fermé est fermé et vidé sur disque. Script
+// Verification/shutdown.py : une ligne écrite toutes les 100 ms de t=0 à
+// t=0,9 s (10 lignes), stopTime = 0,95 s. Flash vierge, copie
+// créée dans Shutdown_ws (nettoyé ici et par run_tests.sh). Avant l'arrêt
+// propre : pas de « finally ran », log.txt vide. Modèle défini ici plutôt que
+// dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model Shutdown
+  extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/shutdown.py\"), fsEnabled = true, fsWorkspace = \"Shutdown_ws\", fsOpenExplorer = false));
+end Shutdown;"); getErrorString();
+
+system("if exist Shutdown_ws rmdir /s /q Shutdown_ws");
+buildModel(Shutdown, stopTime = 0.95, numberOfIntervals = 95, fileNamePrefix = "Shutdown");
+b := getErrorString();
+
+ret := system(".\Shutdown.bat", "Shutdown_run.txt");
+log := readFile("Shutdown_run.txt");
+(nFinally, m1) := regex(log, "finally ran after 10 lines", 1);
+(nEnd, m2) := regex(log, "The simulation finished successfully", 1);
+
+system("dir /b /ad Shutdown_ws > Shutdown_copies.txt");
+copies := OpenModelica.Scripting.strtok(readFile("Shutdown_copies.txt"), "\r\n");
+content := if size(copies, 1) >= 1 then readFile("Shutdown_ws/" + copies[1] + "/log.txt") else "";
+nLines := if content == "" then 0 else size(OpenModelica.Scripting.strtok(content, "\n"), 1);
+(nLast, m3) := regex(content, "line 10", 1);
+
+system("if exist Shutdown_ws rmdir /s /q Shutdown_ws");
+deleteFile("Shutdown_copies.txt");
+
+if ret == 0 and nFinally >= 1 and nEnd >= 1 and nLines == 10 and nLast >= 1 then
+  print("PASS: verify_43_shutdown (finally execute, log.txt ferme en fin de simulation avec ses 10 lignes)\n");
+else
+  print("FAIL: verify_43_shutdown (code de sortie " + String(ret) + ", finally " + String(nFinally) + ", fin " + String(nEnd) + ", lignes de log.txt " + String(nLines) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

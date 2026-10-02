@@ -14,11 +14,12 @@ class PyRuntime "External Object wrapping the CPython interpreter that runs the 
     input Boolean fsOpenExplorer "Open Windows Explorer on the copy at the end of the simulation";
     input String instanceName "Instance name (getInstanceName()), reused in the name of the copy";
     input Real gpioOpTime "Execution time (s) of a pin access (Pin.value()/on()/off()); 0 = instantaneous accesses";
+    input Real hangWarningTime "Real (wall-clock) time (s) after which a warning is logged if the script does not let the simulation advance; 0 = never";
     output PyRuntime handle;
     // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
     // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
-    external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime) annotation(
+    external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime, hangWarningTime) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
       Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");

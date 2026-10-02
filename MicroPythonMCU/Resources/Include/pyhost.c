@@ -23,6 +23,13 @@
    s'il la trouve dans le PATH) - cf. requirements.md, decision "Distribution
    Python embarquee".
 
+   FIN : chaque composant qui a obtenu CPython par pyhost_ensure() le rend par
+   pyhost_release() a sa destruction ; le dernier finalise l'interpreteur
+   (Py_FinalizeEx), une fois les sous-interpreteurs des microcontroleurs
+   termines par leurs workers. Si un worker n'a pas pu s'arreter
+   (pyhost_abandon), plus personne ne touche a Python : l'OS recupere tout a la
+   fin du process, comme avant que l'arret propre n'existe.
+
    Inclus TEXTUELLEMENT par un chapeau, jamais compile seul. Garde d'inclusion
    obligatoire : omc dedoublonne les annotations Include par leur texte, donc les
    deux chapeaux peuvent se retrouver dans la meme unite de compilation - et si
@@ -304,8 +311,16 @@ static int pyhost_install_relay(struct RelayBuf* out, struct RelayBuf* err) {
     return pyhost_register_module("pyruntime_stdio", relay);   /* consomme la reference */
 }
 
+/* Composants qui se servent de CPython (un par appel reussi de
+   pyhost_ensure), et drapeau d'abandon de la finalisation. selectany, comme la
+   table d'import : pyhost.c peut etre compile dans deux unites, le compte doit
+   rester unique pour le process. */
+__declspec(selectany) int g_pyhost_users = 0;
+__declspec(selectany) int g_pyhost_abandoned = 0;
+
 /* Demarre CPython s'il ne l'est pas deja. Retourne 0 si l'interpreteur est
-   pret (demarre ici ou avant), -1 sinon avec un message dans err.
+   pret (demarre ici ou avant), -1 sinon avec un message dans err. Un succes
+   compte un utilisateur, a rendre par pyhost_release.
    Au retour, le thread appelant NE TIENT PAS le GIL (cf. invariant en tete). */
 static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
     PyStatus status;
@@ -315,6 +330,7 @@ static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
         return -1;
     }
     if (Py_IsInitialized()) {
+        g_pyhost_users++;
         return 0;
     }
 
@@ -367,7 +383,29 @@ static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
     /* Rend le GIL : le thread Modelica ne le tient plus, conformement a
        l'invariant. Chaque composant le reprendra au besoin par PyGILState_Ensure. */
     PyEval_SaveThread();
+    g_pyhost_users++;
     return 0;
+}
+
+/* Un worker de microcontroleur n'a pas pu s'arreter (programme qui ne se
+   deroule pas, autre thread Python dans son sous-interpreteur) : finaliser
+   CPython sous lui ferait planter le process. Plus aucune finalisation. */
+static void pyhost_abandon(void) {
+    g_pyhost_abandoned = 1;
+}
+
+/* Rend CPython (destruction d'un composant qui l'a obtenu par pyhost_ensure).
+   Le dernier utilisateur finalise l'interpreteur principal : objets liberes,
+   fichiers encore ouverts fermes. Appele sur le thread Modelica, GIL non tenu ;
+   les microcontroleurs ont deja termine leurs sous-interpreteurs (cf.
+   PyRuntime_destroy). */
+static void pyhost_release(void) {
+    if (g_pyhost_users <= 0 || --g_pyhost_users > 0 || g_pyhost_abandoned || !Py_IsInitialized()) {
+        return;
+    }
+    PyGILState_Ensure();
+    Py_FinalizeEx();   /* GIL et etat de thread liberes avec l'interpreteur */
+    relay_emit_pending();
 }
 
 #endif /* PYHOST_C_INCLUDED */

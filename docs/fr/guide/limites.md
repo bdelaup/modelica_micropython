@@ -30,7 +30,10 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues).
     La simulation se termine sans erreur, mais les sorties ne bougent pas, et le bus I2C s'arrête sur `OSError: [Errno 110] ETIMEDOUT`. C'est un défaut des versions de la bibliothèque antérieures à sa correction : prendre la version la plus récente (voir [Installation](installation.md)).
 
 ??? question "La simulation s'arrête avec une erreur Python"
-    Une exception non rattrapée dans le programme arrête la simulation. Le journal de simulation affiche la trace Python : fichier, numéro de ligne, type d'erreur et message. Les résultats restent consultables jusqu'à l'instant de l'erreur.
+    Une exception non rattrapée dans le programme arrête la simulation. Le journal de simulation affiche la trace Python : chemin du fichier, numéro de ligne, ligne de code fautive, type d'erreur et message. Les résultats restent consultables jusqu'à l'instant de l'erreur.
+
+??? question "La simulation semble figée, avec l'avertissement « the script has been running for more than 10 s of real time »"
+    Le programme tourne dans une boucle qui ne rend jamais la main au circuit : ni `sleep()`, ni accès à une broche (attente sur `time.ticks_ms()`, calcul sans fin). Le temps simulé ne peut plus avancer. Ajouter un `time.sleep_ms()` dans la boucle, puis arrêter la simulation depuis OMEdit. La variante « acting for more than ... at the same simulated instant » désigne une boucle d'accès aux broches avec `gpioOpTime = 0`. Le délai se règle par `hangWarningTime` ([Le bloc MCU](mcu.md#temps-dexecution)) ; un calcul long mais légitime se termine normalement malgré l'avertissement.
 
 ??? question "Mes `print()` n'apparaissent pas"
     Ils s'affichent dans la fenêtre de sortie de la simulation d'OMEdit (et dans son journal), pas dans une console Python, précédés du temps simulé (`[t=0.250000 s] ...`). Un `print()` d'appareil série ou I2C porte en plus le nom du composant.
@@ -60,7 +63,7 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues).
     Le système de fichiers n'est pas activé : cocher `fsEnabled` dans l'onglet *File system* du `MCU` ([Le bloc MCU](mcu.md#systeme-de-fichiers)).
 
 ??? question "Où sont les fichiers écrits par mon programme ?"
-    Dans la copie de la flash créée à chaque simulation, dans le dossier `fsWorkspace` (par défaut le dossier de simulation). Son chemin s'affiche dans le journal au début et à la fin de la simulation, et l'Explorateur Windows s'ouvre dessus en fin de simulation (`fsOpenExplorer`).
+    Dans la copie de la flash créée à chaque simulation, dans le dossier `fsWorkspace` (par défaut le dossier de simulation). Son chemin s'affiche dans le journal au début et à la fin de la simulation, et l'Explorateur Windows s'ouvre dessus en fin de simulation (`fsOpenExplorer`). Un fichier que le programme n'a pas fermé l'est en fin de simulation, son contenu complet écrit sur disque.
 
 ??? question "Deux lectures successives d'une broche donnent une valeur périmée"
     Seulement avec `gpioOpTime = 0` : relire une broche juste après avoir écrit sur une autre peut renvoyer l'état d'avant l'écriture. Laisser `gpioOpTime` à sa valeur par défaut, ou intercaler un `time.sleep_us(1)`.

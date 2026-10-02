@@ -52,6 +52,23 @@ static void devscript_fail(const char* component, const char* path, PyGILState_S
     ModelicaFormatError("%s (%s): %s - traceback above", component, path, what);
 }
 
+/* Destruction d'un peripherique a script : rend ses references (espace de
+   noms, gestionnaires), puis CPython (pyhost_release, qui finalise s'il etait
+   le dernier utilisateur). refs : tableau de n pointeurs vers les champs
+   PyObject* du peripherique, remis a NULL. Rien n'est touche si la
+   finalisation a ete abandonnee (worker de microcontroleur encore en vie). */
+static void devscript_unload(PyObject** refs[], int n) {
+    if (!g_pyhost_abandoned) {
+        PyGILState_STATE gstate = PyGILState_Ensure();
+        for (int i = 0; i < n; i++) {
+            Py_CLEAR(*refs[i]);
+        }
+        relay_emit_pending();
+        PyGILState_Release(gstate);
+    }
+    pyhost_release();
+}
+
 /* Reference forte sur une fonction du script, ou NULL si absente. GIL tenu. */
 static PyObject* devscript_handler(PyObject* globals, const char* name) {
     PyObject* f = PyDict_GetItemString(globals, name);   /* empruntee */

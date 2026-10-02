@@ -208,10 +208,14 @@ void* UartDevice_new(double baudrate, const char* commandTable, const char* term
 }
 
 void UartDevice_destroy(void* dev_) {
-    /* Chaque simulation tourne dans son propre process, qui se termine juste
-       apres cet appel : l'OS recupere tout. Meme choix delibere que
-       PyRuntime_destroy - cf. requirements.md. */
-    (void) dev_;
+    /* Mode Script : rend le script et CPython (cf. devscript_unload, et
+       PyRuntime_destroy pour l'arret propre d'ensemble). Mode Table : rien a
+       faire, ni Python ni thread. */
+    struct UartDevice* dev = (struct UartDevice*) dev_;
+    if (dev && dev->mode == UARTDEV_MODE_SCRIPT && dev->py_globals) {
+        PyObject** refs[] = { &dev->py_on_receive, &dev->py_on_tick, &dev->py_outputs, &dev->py_globals };
+        devscript_unload(refs, 4);
+    }
 }
 
 void UartDevice_sync(void* dev_, double currentTime, int rxLevel, const double* valueIn,
