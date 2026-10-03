@@ -21,6 +21,8 @@ Les tirages sont portés par les périphériques : paramètre `usePullUp` (désa
 
 Chaque broche de périphérique porte aussi une capacité d'entrée `CIn` (10 pF). **Elle n'est pas cosmétique** : elle fait de SDA et SCL des états dynamiques, ce qui rompt la dépendance entre le `when` du microcontrôleur et ceux des esclaves (même rôle que `CIn` des périphériques série, cf. [peripheriques-uart-externes.md](uart-peripheriques.md)). Elle fixe aussi le temps de montée : 4,7 kΩ × 10 pF = 47 ns, très en dessous du quart de période à 400 kHz (625 ns). Augmenter `CIn` ou `RPullUp` dégrade les fronts, comme sur un vrai bus trop chargé.
 
+`CIn` est reliée à la broche à travers une résistance de plot `RIn` (10 Ω), et le transistor de SDA comme les capteurs de tension sont branchés sur ce nœud interne. Sans elle, les capacités de plusieurs périphériques d'un même bus seraient en parallèle : une seule variable pour omc après fusion des alias, portant plusieurs `start` fixés (avertissement « alias variables with redundant start »). Le nœud lu par le `when` reste un état dynamique, la rupture de boucle est inchangée ; `RIn` × `CIn` = 100 ps.
+
 Pas de composant `Ideal.*` commutant côté périphérique (piège documenté de la LED embarquée, cf. `requirements.md`) : la sortie est une `VariableConductor`.
 
 ## 2. Le maître : une séquence cadencée par échéances

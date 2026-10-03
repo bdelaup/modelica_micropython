@@ -91,6 +91,7 @@ The `I2c.GroveLcd` example drives this display with an **off-the-shelf MicroPyth
 | `ROut` | 100 Ω | Resistance of the transistor pulling SDA low |
 | `GOff` | 1 nS | Leakage of the blocked transistor (line released) |
 | `CIn` | 10 pF | Input capacitance of each pin. With `RPullUp`, it sets the rise time of the edges (4.7 kΩ × 10 pF = 47 ns): increasing it shows the degraded edges of an overloaded bus |
+| `RIn` | 10 Ω | Series resistance of each pin, between the bus wire and the input capacitance. No visible effect (100 ps, about ten mV on the low level): it keeps apart the capacitances of several devices on the same bus |
 
 ## Writing a device script
 

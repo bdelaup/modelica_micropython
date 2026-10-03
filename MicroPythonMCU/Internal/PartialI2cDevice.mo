@@ -38,6 +38,13 @@ partial model PartialI2cDevice "Base of the I2C slave peripherals: open-drain el
   // (625 ns). Increasing CIn or RPullUp degrades the edges as on a real bus.
   parameter Modelica.Units.SI.Capacitance CIn = 10e-12 "Input capacitance of each pin (SDA, SCL)" annotation(
     Dialog(tab = "Electrical", group = "Impedances"));
+  // RIn separates the input capacitance of each peripheral from the bus wire:
+  // without it, the CIn of several peripherals on the same bus would be in
+  // parallel, i.e. one single alias variable carrying several fixed start values
+  // (OpenModelica warning "alias variables with redundant start"). RIn x CIn =
+  // 100 ps and the SDA low level rises by about 10 mV: no observable effect.
+  parameter Modelica.Units.SI.Resistance RIn = 10 "Series resistance of each pin (pad), between the bus wire and the input capacitance" annotation(
+    Dialog(tab = "Electrical", group = "Impedances"));
   Modelica.Electrical.Analog.Interfaces.PositivePin SDA "I2C bus data - to be connected to the SDA pin of the microcontroller and of the other peripherals" annotation(
     Placement(transformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin SCL "I2C bus clock - to be connected to the SCL pin of the microcontroller and of the other peripherals" annotation(
@@ -78,6 +85,10 @@ protected
     Placement(visible = false, transformation(extent = {{-10, -90}, {30, -50}})));
   Modelica.Electrical.Analog.Basic.Capacitor cScl(C = CIn, v(start = 0, fixed = true)) "Input capacitance of SCL" annotation(
     Placement(visible = false, transformation(extent = {{50, -90}, {90, -50}})));
+  Modelica.Electrical.Analog.Basic.Resistor rInSda(R = RIn) "Pad resistance of SDA: the output transistor and the input sense the inner node, behind it" annotation(
+    Placement(visible = false, transformation(extent = {{-10, -130}, {30, -90}})));
+  Modelica.Electrical.Analog.Basic.Resistor rInScl(R = RIn) "Pad resistance of SCL" annotation(
+    Placement(visible = false, transformation(extent = {{-70, -130}, {-30, -90}})));
   Modelica.Electrical.Analog.Sources.ConstantVoltage pullSrc(V = VOH) if usePullUp "Rail of the pull-ups" annotation(
     Placement(visible = false, transformation(extent = {{110, -90}, {150, -50}})));
   Modelica.Electrical.Analog.Basic.Resistor rPullSda(R = RPullUp) if usePullUp "Pull-up of SDA to VOH" annotation(
@@ -98,15 +109,17 @@ equation
   for k in 1:nOut loop
     valueOut[k] = vOut[k];
   end for;
-  connect(sdaOut.p, SDA);
+  connect(rInSda.p, SDA);
+  connect(rInScl.p, SCL);
+  connect(sdaOut.p, rInSda.n);
   connect(sdaOut.n, GND);
-  connect(sdaSns.p, SDA);
+  connect(sdaSns.p, rInSda.n);
   connect(sdaSns.n, GND);
-  connect(sclSns.p, SCL);
+  connect(sclSns.p, rInScl.n);
   connect(sclSns.n, GND);
-  connect(cSda.p, SDA);
+  connect(cSda.p, rInSda.n);
   connect(cSda.n, GND);
-  connect(cScl.p, SCL);
+  connect(cScl.p, rInScl.n);
   connect(cScl.n, GND);
   connect(pullSrc.n, GND);
   connect(pullSrc.p, rPullSda.p);

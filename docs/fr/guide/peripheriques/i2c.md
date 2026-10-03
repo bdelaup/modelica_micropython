@@ -93,6 +93,7 @@ L'exemple `I2c.GroveLcd` pilote cet écran avec un **driver MicroPython du comme
 | `ROut` | 100 Ω | Résistance du transistor qui tire SDA à la masse |
 | `GOff` | 1 nS | Fuite du transistor bloqué (ligne relâchée) |
 | `CIn` | 10 pF | Capacité d'entrée de chaque broche. Avec `RPullUp`, elle fixe le temps de montée des fronts (4,7 kΩ × 10 pF = 47 ns) : l'augmenter montre les fronts dégradés d'un bus trop chargé |
+| `RIn` | 10 Ω | Résistance série de chaque broche, entre le fil du bus et la capacité d'entrée. Sans effet visible (100 ps, une dizaine de mV sur le niveau bas) : elle sépare les capacités de plusieurs périphériques branchés sur le même bus |
 
 ## Écrire le script d'un périphérique
 
