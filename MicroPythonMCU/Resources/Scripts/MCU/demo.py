@@ -23,13 +23,15 @@
 from machine import Pin
 import time
 
-led = Pin(0, Pin.OUT)
-builtin = Pin(Pin.LED, Pin.OUT)
 
-while True:
-    led.on()
-    builtin.on()
-    time.sleep(1)
-    led.off()
-    builtin.off()
-    time.sleep(1)
+if __name__=="__main__":
+    led = Pin(0, Pin.OUT)
+    builtin = Pin(Pin.LED, Pin.OUT)
+
+    while True:
+        led.on()
+        builtin.on()
+        time.sleep(1)
+        led.off()
+        builtin.off()
+        time.sleep(1)
