@@ -2,3 +2,7 @@
 # core.autocrlf=true, et un clone neuf extrairait les .sh en CRLF, que bash
 # refuse ($'\r': command not found).
 *.sh text eol=lf
+
+# Lanceurs Windows toujours en CRLF : cmd.exe lit mal les étiquettes (goto,
+# call :label) d'un fichier en LF.
+*.cmd text eol=crlf

@@ -4,19 +4,14 @@ Cette page documente comment relancer, de façon reproductible, les scripts qui 
 
 ## Prérequis
 
-- `omc` (OpenModelica Compiler) et le toolchain MinGW d'une installation OpenModelica sur le `PATH` — voir `CLAUDE.md`.
-- `OPENMODELICAHOME` positionné sur la racine de l'installation (ex. `D:/Programmes/OpenModelica1.27.1-64bit`).
-
-**Piège rencontré en session** : sur un poste où OpenModelica est installé mais où `omc` n'a pas été ajouté au `PATH` d'un shell fraîchement ouvert (`omc: command not found`), le chemin d'installation réel peut se retrouver dans un artefact de build laissé par une session précédente (ex. un `*.makefile` généré par une simulation, qui référence l'installation via `CPPFLAGS`/`LDFLAGS`) — plus rapide que de chercher sur tout le disque. Une fois le chemin connu, préfixer la commande :
-```
-export PATH="/d/Programmes/OpenModelica1.27.1-64bit/bin:$PATH"   # adapter le chemin à l'installation réelle
-```
+- Git for Windows (Git Bash), qui exécute `run_tests.sh`.
+- `OPENMODELICAHOME` positionné sur la racine de l'installation (ex. `D:\Programmes\OpenModelica1.27.1-64bit`). `run_tests.sh` en déduit le `PATH` vers `omc` et le toolchain MinGW. Le réglage une fois pour toutes (`setx`, puis relance de VS Code) est décrit dans [Lancer les scripts sous Windows](outils-windows.md).
 
 ## Lancer la suite
 
 ### Toute la suite, en parallèle (recommandé)
 
-Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, ou le msys fourni avec OpenModelica) :
+Depuis PowerShell, à la racine du dépôt, le lanceur `run_tests.cmd` accepte les mêmes options (`.\run_tests.cmd --copy`, `.\run_tests.cmd verify_08_pwm.mos`… ; cf. [Lancer les scripts sous Windows](outils-windows.md)). Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, ou le msys fourni avec OpenModelica) :
 ```
 ./run_tests.sh                        # toute la suite, 4 exécutions simultanées
 ./run_tests.sh -j 2                   # autre degré de parallélisme

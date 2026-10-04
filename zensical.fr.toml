@@ -53,6 +53,7 @@ nav = [
     { "Chaîne de pesée" = "interne/pesee.md" },
     { "Analyse des trames" = "interne/analyse-trames.md" },
     { "Liaison radio" = "interne/radio.md" },
+    { "Lancer les scripts sous Windows" = "interne/outils-windows.md" },
     { "Suite de vérification" = "interne/tests.md" },
     { "Documentation et livraisons" = "interne/publication.md" },
   ] },

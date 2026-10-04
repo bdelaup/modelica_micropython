@@ -47,6 +47,8 @@ modelica_micropython3/
 ├── docs/                           -- ce site : fr/ (guide utilisateur + référence interne), en/ (guide utilisateur traduit, mêmes chemins), figures/make_figures.py (courbes de simulation), ILLUSTRATIONS.md (images attendues, non publié)
 ├── zensical.fr.toml, zensical.en.toml -- configuration du site, une par langue
 ├── make_docs.sh                    -- construit les deux langues dans public/ (appelé par .gitlab-ci.yml)
+├── gitbash.cmd                     -- lance un script bash avec Git Bash depuis PowerShell, cmd ou l'Explorateur (voir outils-windows.md)
+├── run_tests.cmd, make_docs.cmd, make_pyimports.cmd, make_debugpy.cmd -- un lanceur par script bash, qui appelle gitbash.cmd
 └── MicroPythonMCU/                 -- la bibliothèque OpenModelica elle-même
     ├── package.mo, package.order   -- déclaration du package racine
     ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique OU PWM, au choix du script), pont électrique avec tirages internes (gPullUp/gPullDown, commandés par pinPull), LED embarquée GP25 (même pont, interne, pas de connecteur), port Display0 (connecteur logique causal vers un périphérique d'affichage pédagogique), import de modules auxiliaires (addScriptDirToPath/libraryPath), durée d'un accès à une broche (gpioOpTime, 5 µs par défaut : bit-banging), orchestration de la synchro

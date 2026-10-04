@@ -55,7 +55,7 @@ if ! command -v omc >/dev/null 2>&1 && [ -n "$OPENMODELICAHOME" ]; then
   export PATH="$OMH/bin:$OMH/tools/msys/ucrt64/bin:$PATH"
 fi
 if ! command -v omc >/dev/null 2>&1; then
-  echo "omc introuvable : l'ajouter au PATH ou positionner OPENMODELICAHOME (cf. docs/fr/interne/tests.md)" >&2
+  echo "omc introuvable : l'ajouter au PATH ou positionner OPENMODELICAHOME (cf. docs/fr/interne/outils-windows.md)" >&2
   exit 2
 fi
 

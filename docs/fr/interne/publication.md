@@ -37,7 +37,7 @@ pip install zensical
 ./make_docs.sh serve fr      # ou en
 ```
 
-puis <http://localhost:8000>. La page se recharge à chaque enregistrement. `./make_docs.sh` seul fait la construction complète et stricte, comme la CI.
+puis <http://localhost:8000>. La page se recharge à chaque enregistrement. `./make_docs.sh` seul fait la construction complète et stricte, comme la CI. Depuis PowerShell : `.\make_docs.cmd serve fr` et `.\make_docs.cmd` (cf. [Lancer les scripts sous Windows](outils-windows.md)).
 
 ## Livrer une version
 
@@ -67,7 +67,7 @@ Dans Git Bash, à la racine du dépôt :
     MicroPythonMCU/Resources/Verification/run_tests.sh --copy
     ```
 
-    Toutes les lignes doivent être `PASS`.
+    Depuis PowerShell, l'équivalent est `.\run_tests.cmd --copy`, avec `OPENMODELICAHOME` déjà réglé (cf. [Lancer les scripts sous Windows](outils-windows.md)). Toutes les lignes doivent être `PASS`.
 3. Poser et pousser le tag :
 
     ```
@@ -81,4 +81,4 @@ Les notes de version, si on en veut, se rédigent dans le message du tag ou dans
 
 ## Mettre à jour un composant vendoré
 
-- **Débogueur `debugpy`** (`Resources/Debugpy/`, utilisé par `MCU.debugEnabled`) : changer `VERSION` dans `make_debugpy.sh`, puis lancer `./make_debugpy.sh` à la racine (pip télécharge la roue `cp312` `win_amd64`, le script l'allège et remplace le dossier). Rejouer `verify_60` à `verify_63` et faire un essai dans VS Code avant de livrer : la bibliothèque s'appuie sur quelques rouages internes de pydevd (`_WaitForConnectionThread`, lecteur `reader.sock`, `FilesFiltering._get_default_library_roots`), cf. `cycle-de-vie.md`, section 5.
+- **Débogueur `debugpy`** (`Resources/Debugpy/`, utilisé par `MCU.debugEnabled`) : changer `VERSION` dans `make_debugpy.sh`, puis lancer `./make_debugpy.sh` à la racine, ou `.\make_debugpy.cmd` depuis PowerShell (pip télécharge la roue `cp312` `win_amd64`, le script l'allège et remplace le dossier). Rejouer `verify_60` à `verify_63` et faire un essai dans VS Code avant de livrer : la bibliothèque s'appuie sur quelques rouages internes de pydevd (`_WaitForConnectionThread`, lecteur `reader.sock`, `FilesFiltering._get_default_library_roots`), cf. `cycle-de-vie.md`, section 5.
