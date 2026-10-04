@@ -10,4 +10,5 @@ Uart
 I2c
 Weighing
 MultiMcu
+Radio
 Analyzer

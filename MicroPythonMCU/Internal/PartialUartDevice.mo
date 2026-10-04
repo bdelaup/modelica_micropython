@@ -1,6 +1,7 @@
 within MicroPythonMCU.Internal;
 
 partial model PartialUartDevice "Base of the external serial devices: electrical link, decoding, two transmission modes, quantities exchanged with the model"
+  extends PartialUartPins;
   parameter Interfaces.UartBehaviour behaviour = Interfaces.UartBehaviour.Table "Origin of the behaviour: command table or Python script" annotation(
     Dialog(group = "Behaviour"));
   parameter String scriptPath = "" "Script .py describing the behaviour of the device (Script mode)" annotation(
@@ -45,27 +46,6 @@ partial model PartialUartDevice "Base of the external serial devices: electrical
   parameter Real valueOutStart = 0 "Value of valueOut before any capture" annotation(
     Dialog(tab = "Inputs / outputs", group = "Outputs ({oN}, captured from received frames)"));
 
-  parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Logic high voltage" annotation(
-    Dialog(tab = "Electrical", group = "Levels"));
-  parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Logic low voltage" annotation(
-    Dialog(tab = "Electrical", group = "Levels"));
-  parameter Modelica.Units.SI.Voltage VIH = Interfaces.VIH "Threshold above which an input reads high" annotation(
-    Dialog(tab = "Electrical", group = "Levels"));
-  parameter Modelica.Units.SI.Voltage VIL = Interfaces.VIL "Threshold below which an input reads low" annotation(
-    Dialog(tab = "Electrical", group = "Levels"));
-  parameter Modelica.Units.SI.Resistance ROut = Interfaces.ROut "Output series resistance" annotation(
-    Dialog(tab = "Electrical", group = "Impedances"));
-  // RPullUp: a disconnected input thus reads an idle level, and the RX node
-  // is never undetermined when nothing is connected to it.
-  parameter Modelica.Units.SI.Resistance RPullUp = 1e6 "Pull-up of the RX input to VOH" annotation(
-    Dialog(tab = "Electrical", group = "Impedances"));
-
-  Modelica.Electrical.Analog.Interfaces.PositivePin TX "Transmission of the device - to be connected to the receive pin of the microcontroller" annotation(
-    Placement(transformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.PositivePin RX "Reception of the device - to be connected to the transmit pin of the microcontroller" annotation(
-    Placement(transformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin GND "Common reference (ground), to be connected to the microcontroller's one" annotation(
-    Placement(transformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}})));
   Modelica.Blocks.Interfaces.RealInput valueIn[nIn] if useValueInput "Quantities supplied by the model, inserted into the transmitted frames by {v1}..{vN}" annotation(
     Placement(transformation(origin = {124, 34}, extent = {{10, -10}, {-10, 10}}), iconTransformation(origin = {124, 34}, extent = {{10, -10}, {-10, 10}})));
   Modelica.Blocks.Interfaces.RealOutput valueOut[nOut] "Quantities extracted from the received frames by {o1}..{oN} - the device then becomes an actuator" annotation(
@@ -80,45 +60,13 @@ partial model PartialUartDevice "Base of the external serial devices: electrical
   String lastTx "Last payload transmitted";
 protected
   constant Integer NV = Interfaces.UART_DEV_MAX_VALUES "Fixed size expected by the external C interface";
-  // CIn is not cosmetic: it gives the receive node a real dynamic state,
-  // which breaks the mutual dependency between the when of this device and
-  // that of the microcontroller when both directions are connected — without it, the
-  // combined model does not build. Protected, hence absent from the parameter
-  // dialog: facing a 100 Ω push-pull output, the time constant
-  // (0.1 µs) has no visible effect on the frame, and changing it would teach
-  // the user nothing (unlike the CIn of the I2C peripherals, which sets the
-  // rise time against the pull-ups and stays a parameter). Details in
-  // docs/fr/interne/uart-peripheriques.md.
-  parameter Modelica.Units.SI.Capacitance CIn = 1e-9 "Input capacitance of the RX pin (pin + cable) - internal, breaks the cycle between the when clauses of this device and of the microcontroller";
-
   Modelica.Blocks.Interfaces.RealInput valueIn_internal[nIn] "Internal connector: a conditional connector cannot be read directly in an equation (MSL idiom)";
 
   discrete Real vOut[NV](each start = 0, each fixed = true) "Captured quantities, as published by the C code";
   Real vIn[NV] "Quantities passed to the C code, padded with fixedValue beyond nIn";
 
-  discrete Boolean txLevel(start = true, fixed = true) "Logic level to hold on TX (idle = high), published by the C code: the next sync point falls on the next level CHANGE of the frame, so consecutive identical bits cost no event";
   discrete Integer eventSeq(start = 0, fixed = true) "Incremented at each received line and each transmitted payload";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Next deadline requested by the engine";
-
-  Modelica.Units.SI.Voltage rxVoltage "Actual voltage on the receive pin";
-  Boolean rxBoolIn(start = false, fixed = true) "Logic value read on RX (voltage compared with the VIL/VIH thresholds)";
-
-  // Electrical bridge deliberately simpler than the microcontroller's: the
-  // directions are fixed (TX always an output, RX always an input), hence
-  // no IdealOpeningSwitch — requirements.md documents that switching
-  // Ideal.* components break sleep compression over long simulations.
-  Modelica.Electrical.Analog.Sources.SignalVoltage src "Voltage source driven by the frame pattern (VOH/VOL)" annotation(
-    Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));
-  Modelica.Electrical.Analog.Basic.Resistor rOut(R = ROut) "Output series resistance" annotation(
-    Placement(visible = false, transformation(extent = {{-130, -90}, {-90, -50}})));
-  Modelica.Electrical.Analog.Sensors.VoltageSensor sns "Measures the voltage actually present on RX" annotation(
-    Placement(visible = false, transformation(extent = {{-70, -90}, {-30, -50}})));
-  Modelica.Electrical.Analog.Sources.ConstantVoltage pullSrc(V = VOH) "Rail of the RX pull-up" annotation(
-    Placement(visible = false, transformation(extent = {{-10, -90}, {30, -50}})));
-  Modelica.Electrical.Analog.Basic.Resistor rPull(R = RPullUp) "Pull-up of RX to VOH" annotation(
-    Placement(visible = false, transformation(extent = {{50, -90}, {90, -50}})));
-  Modelica.Electrical.Analog.Basic.Capacitor cIn(C = CIn, v(start = 0, fixed = true)) "Input capacitance of RX - gives the node a real dynamic state, see CIn" annotation(
-    Placement(visible = false, transformation(extent = {{110, -90}, {150, -50}})));
 
   // Integer(parity) - 2: None/Even/Odd (1/2/3) -> the machine.UART convention (-1/0/1) expected by the C code.
   Internal.UartDevice dev = Internal.UartDevice(baudrate, dataBits, Integer(parity) - 2, stopBits, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, Integer(behaviour), scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), getInstanceName()) "Engine of the device: TX/RX queues, decoding, command table, deadlines" annotation(
@@ -135,21 +83,6 @@ equation
   for k in 1:nOut loop
     valueOut[k] = vOut[k];
   end for;
-
-  connect(src.n, GND);
-  connect(src.p, rOut.p);
-  connect(rOut.n, TX);
-  connect(sns.p, RX);
-  connect(sns.n, GND);
-  connect(pullSrc.n, GND);
-  connect(pullSrc.p, rPull.p);
-  connect(rPull.n, RX);
-  connect(cIn.p, RX);
-  connect(cIn.n, GND);
-
-  rxVoltage = sns.v;
-  rxBoolIn = rxVoltage > (VIL + VIH)/2 "logic threshold halfway, same approximation as the microcontroller";
-  src.v = if txLevel then VOH else VOL "the line is actively held HIGH when idle between frames, like a real push-pull output";
 
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(rxBoolIn)} then
     (vOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) = Internal.UartDevice_sync(dev, time, rxBoolIn, vIn);

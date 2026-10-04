@@ -50,7 +50,7 @@ modelica_micropython3/
 └── MicroPythonMCU/                 -- la bibliothèque OpenModelica elle-même
     ├── package.mo, package.order   -- déclaration du package racine
     ├── MCU.mo                      -- LE modèle : icône, 8 broches GP0-GP7 + GND (chacune numérique, analogique OU PWM, au choix du script), pont électrique avec tirages internes (gPullUp/gPullDown, commandés par pinPull), LED embarquée GP25 (même pont, interne, pas de connecteur), port Display0 (connecteur logique causal vers un périphérique d'affichage pédagogique), import de modules auxiliaires (addScriptDirToPath/libraryPath), durée d'un accès à une broche (gpioOpTime, 5 µs par défaut : bit-banging), orchestration de la synchro
-    ├── Interfaces/                 -- constantes électriques (VOH, VOL, VIH, VIL, ROut, RPull, GOff) — approximation RP2040 ; énumérations UartParity, ChannelKind, BitOrder, ClockEdge ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique)
+    ├── Interfaces/                 -- constantes électriques (VOH, VOL, VIH, VIL, ROut, RPull, GOff) — approximation RP2040 ; énumérations UartParity, ChannelKind, BitOrder, ClockEdge, Modulation ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique) ; connecteur acausal Antenna (fil d'antenne des modules radio, voir radio.md)
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
     │   ├── PyRuntime_sync.mo       -- impure function : le point de synchro appelé depuis le `when` de MCU
@@ -58,11 +58,14 @@ modelica_micropython3/
     │   ├── UartDevice.mo           -- ExternalObject d'un périphérique série externe : files TX/RX, décodage, table de commandes, échéances. AUCUNE dépendance à Python en mode Table (python312.dll n'est pas chargée)
     │   ├── UartDevice_sync.mo      -- impure function : le point de synchro appelé depuis le `when` de Internal.PartialUartDevice
     │   ├── TwoLineTextIcon.mo      -- partial model purement graphique : les 40 cellules de texte d'un afficheur 20x2, partagées par Display et UartLcd20x2
-    │   ├── PartialUartDevice.mo    -- partial model : TOUTE la mécanique des appareils série externes (pont électrique, décodage, deux modes d'émission, ports réels). Non instanciable : Peripherals ne contient que des composants posables
+    │   ├── PartialUartPins.mo      -- partial model : pont électrique TX/RX/GND (source + ROut, RIn + tirage + CIn + capteur), partagé par les appareils série et les modules radio
+    │   ├── PartialUartDevice.mo    -- partial model : TOUTE la mécanique des appareils série externes (décodage, deux modes d'émission, ports réels ; pont électrique hérité de PartialUartPins). Non instanciable : Peripherals ne contient que des composants posables
     │   ├── I2cDevice.mo            -- ExternalObject d'un périphérique I2C esclave : décodeur du bus piloté par les fronts, script Python (on_write / on_read / outputs / lines)
     │   ├── I2cDevice_sync.mo       -- impure function : le point de synchro appelé à chaque front de SCL ou de SDA depuis le `when` de Internal.PartialI2cDevice
     │   ├── PartialI2cDevice.mo     -- partial model : TOUTE la mécanique des périphériques I2C (pont en drain ouvert sur SDA, capacités d'entrée, tirages conditionnels usePullUp, décodage). Non instanciable
     │   ├── LogicAnalyzerCapture.mo -- ExternalObject de la sonde Peripherals.Analyzers.LogicAnalyzer (configuration des 8 voies en tableaux, fichiers VCD et texte) ; LogicAnalyzer_record.mo / LogicAnalyzer_finish.mo : ses fonctions, appelées à chaque changement de niveau et au when terminal()
+    │   ├── RadioModem.mo           -- ExternalObject d'un module radio (deux moteurs uartcore, deux files horodatées), sans Python ; RadioModem_sync.mo : son point de synchro
+    │   ├── PartialRadioModem.mo    -- partial model : TOUTE la mécanique des modules radio (fil d'antenne, signal tracé, appel du moteur). Non instanciable
     │   └── Lcd16x2RgbIcon.mo       -- partial model purement graphique : 32 cellules de texte d'un écran 16x2 et fond à la couleur du rétroéclairage RGB (généré mécaniquement)
     ├── Peripherals/                -- composants connectables à MCU
     │   ├── LED.mo                  -- diode + icône réactive au courant (DynamicSelect colorOff→colorOn), utilisée par MCU et par les exemples
@@ -77,6 +80,9 @@ modelica_micropython3/
     │   ├── I2cGroveLcdRgb.mo       -- écran Grove - LCD RGB Backlight : JHD1313 à 0x3E + PCA9633 à 0x62, tirages activés (hérite aussi de Internal.Lcd16x2RgbIcon)
     │   ├── Analyzers/              -- instruments de mesure (voir analyse-trames.md)
     │   │   └── LogicAnalyzer.mo    -- sonde d'analyseur logique à 8 voies (1 GΩ), un onglet par voie (Off, Logic, Uart, I2cSda, SyncData) : fichier texte décodé (hexa + ASCII, chronogramme ASCII) et fichier VCD pour PulseView
+    │   ├── Radio/                  -- liaison radio (voir radio.md)
+    │   │   ├── RadioModem.mo       -- module radio transparent, tous les réglages modifiables
+    │   │   └── Apc220.mo           -- module réglé comme un APC220 : réglages de la fiche seulement, le reste en final
     │   └── Weighing/               -- chaîne de pesée, en pur Modelica (voir peripheriques-pesee.md)
     │       ├── Hx711.mo            -- convertisseur 24 bits pour pont de jauges : excitation E+, conversion ratiométrique, liaison PD_SCK/DOUT, gain 128/64, veille
     │       ├── WheatstoneBridge.mo -- pont complet de quatre jauges de déformation (VariableResistor), sortie E·K·eps
@@ -135,11 +141,15 @@ modelica_micropython3/
     │   │   ├── UartErrors.mo       -- verify_50 : hérite de UartLink, appareil en parité impaire (octets marqués en erreur)
     │   │   ├── I2cBus.mo           -- verify_48 : hérite de I2c.Echo, SCL en Logic, SDA en I2cSda, GP7 en Logic
     │   │   └── Hx711Serial.mo      -- verify_49 : hérite de Weighing.Hx711Read, DOUT en SyncData (24 bits signés, front descendant)
+    │   ├── Radio/                  -- liaison radio (voir radio.md)
+    │   │   ├── Link.mo             -- verify_51 : PING/PONG de MultiMcu.Uart à travers deux Apc220, un seul fil d'antenne
+    │   │   ├── Overflow.mo         -- verify_52 : 40 octets à 9600 bauds, réémis à 1200 bit/s avec 16 octets de tampon
+    │   │   └── Modulations.mo      -- verify_53 : le caractère U en OOK, ASK, FSK et BPSK (sortie toutes les 10 µs)
     │   └── Weighing/               -- pesée (voir peripheriques-pesee.md)
     │       ├── Hx711Read.mo        -- HX711 lu par le driver de robert-hh : codes exacts à gain 128 et 64, veille et réveil
     │       └── KitchenScale.mo     -- balance de cuisine : écran I2C, MCU, HX711, pont, corps d'épreuve, poids, bouton TARE
     └── Resources/
-        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), AnalyzerImpl.c + .h (chapeau de la sonde d'analyseur logique, sans Python), StringToCharCodes.c, uartcore.h/.c, i2ctarget.h/.c, devscript.c, launch.c
+        ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), AnalyzerImpl.c + .h (chapeau de la sonde d'analyseur logique, sans Python), RadioModemImpl.c + .h (chapeau des modules radio, sans Python), StringToCharCodes.c, uartcore.h/.c, i2ctarget.h/.c, devscript.c, launch.c
         │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
         │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de python312.dll par son chemin absolu dans PythonRuntime/ (table d'import pyimports.h, générée par make_pyimports.sh), démarrage unique de l'interpréteur principal (le premier composant construit le démarre ; chaque MCU crée ensuite son sous-interpréteur), relais stdout/stderr avec un tampon par interpréteur, lecture de fichier
         │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame au format choisi, niveau de la ligne d'émission, décodage de la réception à partir des fronts, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
@@ -148,6 +158,7 @@ modelica_micropython3/
         │   ├── i2ctarget.h/.c      -- moteur I2C CIBLE générique PARTAGÉ par les périphériques I2C et machine.I2CTarget du MCU : décodage START/STOP/bits/ACK piloté par les fronts, pilotage de SDA, crochets vers l'hôte. Ni Python ni thread, garde d'inclusion
         │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _i2ctarget.c (machine.I2CTarget : mémoire, files, IRQ au même instant), _timer.c, _fs.c (système de fichiers : liaison shim <-> handle), _trace.c (capture des broches pour un analyseur logique, PWM recalculé), _module.c (module natif, création du sous-interpréteur sur le worker, API exportée)
         │   ├── uartdevice/         -- idem côté périphériques : uartdevice_core.h (struct UartDevice), _format.c ({vN} et {oN}), _match.c (table de commandes), _script.c (mode Script : chargement du .py dans un espace de noms propre, appel des gestionnaires), _engine.c (construction, ordonnancement, synchro)
+        │   ├── radiomodem/         -- parties du chapeau RadioModemImpl.c : radiomodem_core.h (struct RadioModem, files horodatées), radiomodem_engine.c (construction, ordonnancement, synchro, bilan de fin)
         │   ├── i2cdevice/          -- idem côté I2C : i2cdevice_core.h (struct I2cDevice), _script.c (contrat on_write / on_read / outputs / lines), _engine.c (crochets du moteur cible i2ctarget.c, construction, synchro)
         │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
         ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md

@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 45 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 48 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -125,6 +125,16 @@ Several `MCU` blocks in the same model, each with its own program (see [Several 
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
 | `Weighing.Hx711Read` | Reading an HX711 with robert-hh's driver: gain 128, gain 64, power-down and wake-up | `hx.code`, `hx.PD_SCK.v`, `hx.DOUT.v`, display | `hx711_read.py` |
+
+## Radio link (`Examples.Radio`)
+
+Transparent radio modules between the UARTs of two microcontrollers, joined by a single antenna wire ([Radio link](peripheriques/radio.md)).
+
+| Example | What it shows | What to watch | Program |
+|---|---|---|---|
+| `Radio.Link` | The PING/PONG programs of `MultiMcu.Uart`, unchanged, through two `Apc220` | `mcuA.GP0.v`, `radioA.carrierOn`, `mcuB.GP1.v`, summary of each module in the log | `uart_ping.py`, `uart_pong.py` |
+| `Radio.Overflow` | 40 bytes at 9600 baud, transmitted again at 1200 bit/s with a 16-byte buffer: the end of the message is lost | `radioA.txFill`, `radioA.nDropped`, what B prints | `radio_burst.py`, `radio_listen.py` |
+| `Radio.Modulations` | The character `U` in OOK, ASK, FSK and BPSK | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx` between 25 and 35 ms | `radio_beacon.py` |
 | `Weighing.KitchenScale` | Complete kitchen scale, TARE button | display icon | `kitchen_scale.py` |
 
 ## Logic analyser (`Examples.Analyzer`)

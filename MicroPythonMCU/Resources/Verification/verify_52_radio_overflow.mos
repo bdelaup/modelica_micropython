@@ -1,0 +1,32 @@
+// Scénario de vérification n°52 : tampon d'émission plein (Examples.Radio.Overflow).
+// omc verify_52_radio_overflow.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : 40 octets écrits d'un coup à 9600 bauds (un
+// toutes les 1,04 ms) vers un modem qui n'émet qu'à 1200 bit/s (une trame
+// toutes les 8,33 ms), avec un tampon de 16 octets et un délai de 5 ms. Calcul
+// à la main : les 18 premiers octets entrent (deux trames sont parties entre
+// temps), puis le tampon est plein ; seuls les octets qui arrivent juste après
+// le départ d'une trame trouvent une place (3 de plus : L, T, b). Succès :
+// B reçoit exactement « 0123456789ABCDEFGHLTb » (21 octets), le bilan de A
+// compte 19 octets perdus, les avertissements sont plafonnés, et le tampon a
+// bien été plein (txFill = 16 à t = 45 ms).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Radio.Overflow, stopTime = 0.5, numberOfIntervals = 5000, fileNamePrefix = "RadioOverflow");
+b := getErrorString();
+ret := system(".\\RadioOverflow.bat", "RadioOverflow_run.txt");
+log := readFile("RadioOverflow_run.txt");
+
+(nRx, m1) := regex(log, "mcuB\\] received 21 bytes: b.0123456789ABCDEFGHLTb.", 1);
+(nSumA, m2) := regex(log, "\\[Overflow.radioA\\] 40 byte\\(s\\) from the UART, 21 sent on air, 0 received on air, 0 to the UART - lost: 19 \\(transmit buffer full\\)", 1);
+(nWarn, m3) := regex(log, "warning.*\\[Overflow.radioA\\] transmit buffer full: byte from the UART lost", 1);
+(nCap, m4) := regex(log, "\\[Overflow.radioA\\] further losses not reported", 1);
+fill := val(radioA.txFill, 0.045, "RadioOverflow_res.mat");
+dropped := val(radioA.nDropped, 0.49, "RadioOverflow_res.mat");
+
+if ret == 0 and nRx == 1 and nSumA == 1 and nWarn == 1 and nCap == 1 and fill > 15.5 and fill < 16.5 and dropped > 18.5 and dropped < 19.5 then
+  print("PASS: verify_52_radio_overflow (tampon de 16 plein, 19 octets perdus, B recoit 0123456789ABCDEFGHLTb)\n");
+else
+  print("FAIL: verify_52_radio_overflow (code " + String(ret) + ", reception " + String(nRx) + ", bilan " + String(nSumA) + ", avert. " + String(nWarn) + "/" + String(nCap) + ", txFill=" + String(fill) + ", nDropped=" + String(dropped) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

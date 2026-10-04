@@ -2,6 +2,7 @@ PyRuntime
 PyRuntime_sync
 UartDevice
 UartDevice_sync
+PartialUartPins
 StringToCharCodes
 ResolvePath
 TwoLineTextIcon
@@ -16,3 +17,6 @@ TextIcon8x32
 LogicAnalyzerCapture
 LogicAnalyzer_record
 LogicAnalyzer_finish
+RadioModem
+RadioModem_sync
+PartialRadioModem

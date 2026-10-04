@@ -1,0 +1,78 @@
+// Scénario de vérification n°54 : règles du canal radio (accord, débit dans
+// l'air, diffusion, collision) - cf. requirements.md, décision « Liaison radio
+// modulée ».
+// omc verify_54_radio_channel.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie, sur des modèles déclarés ici :
+//  1. Examples.Radio.Link avec radioB sur 440 MHz au lieu de 434 : B n'entend
+//     rien, aucun PONG (bilan de radioB : 0 reçu dans l'air).
+//  2. Link avec radioB à 4800 bit/s dans l'air au lieu de 9600 : les trames de
+//     A arrivent fausses et la plupart sont jetées (trames corrompues
+//     comptées) ; les rares qui passent le contrôle donnent des octets faux,
+//     comme sur un vrai module : aucun PING reconnu, aucun PONG.
+//  3. Un émetteur, deux récepteurs sur le même fil d'antenne : les deux
+//     reçoivent l'octet (diffusion).
+//  4. Deux émetteurs qui partent au même instant vers un récepteur : collision,
+//     la trame est perdue (0 reçu, au moins une trame corrompue).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("
+model RadioDetuned
+  extends MicroPythonMCU.Examples.Radio.Link(radioB(frequency = 440000));
+end RadioDetuned;
+model RadioAirMismatch
+  extends MicroPythonMCU.Examples.Radio.Link(radioB(rfDataRate = 4800));
+end RadioAirMismatch;
+model RadioShared
+  MicroPythonMCU.MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/radio_beacon.py\"));
+  MicroPythonMCU.Peripherals.Radio.RadioModem txB(airBaudrate = 1200);
+  MicroPythonMCU.Peripherals.Radio.RadioModem rxB1(airBaudrate = 1200);
+  MicroPythonMCU.Peripherals.Radio.RadioModem rxB2(airBaudrate = 1200);
+  MicroPythonMCU.Peripherals.Radio.RadioModem txC1(airBaudrate = 1200);
+  MicroPythonMCU.Peripherals.Radio.RadioModem txC2(airBaudrate = 1200);
+  MicroPythonMCU.Peripherals.Radio.RadioModem rxC(airBaudrate = 1200);
+  Modelica.Electrical.Analog.Basic.Ground ground;
+equation
+  connect(mcu.GND, ground.p);
+  connect(txB.GND, ground.p); connect(rxB1.GND, ground.p); connect(rxB2.GND, ground.p);
+  connect(txC1.GND, ground.p); connect(txC2.GND, ground.p); connect(rxC.GND, ground.p);
+  connect(mcu.GP0, txB.RX); connect(mcu.GP0, txC1.RX); connect(mcu.GP0, txC2.RX);
+  connect(txB.antenna, rxB1.antenna); connect(txB.antenna, rxB2.antenna);
+  connect(txC1.antenna, rxC.antenna); connect(txC2.antenna, rxC.antenna);
+end RadioShared;
+"); getErrorString();
+
+buildModel(RadioDetuned, stopTime = 0.25, numberOfIntervals = 250, fileNamePrefix = "RadioChannel1");
+b1 := getErrorString();
+ret1 := system(".\\RadioChannel1.bat", "RadioChannel1_run.txt");
+log1 := readFile("RadioChannel1_run.txt");
+(nPong1, m1) := regex(log1, "received b.PONG", 1);
+(nDeaf1, m2) := regex(log1, "\\[RadioDetuned.radioB\\] 0 byte\\(s\\) from the UART, 0 sent on air, 0 received on air", 1);
+ok1 := ret1 == 0 and nPong1 == 0 and nDeaf1 == 1;
+
+buildModel(RadioAirMismatch, stopTime = 0.25, numberOfIntervals = 250, fileNamePrefix = "RadioChannel2");
+b2 := getErrorString();
+ret2 := system(".\\RadioChannel2.bat", "RadioChannel2_run.txt");
+log2 := readFile("RadioChannel2_run.txt");
+(nPong2, m3) := regex(log2, "received b.PONG", 1);
+(nWarn2, m4) := regex(log2, "\\[RadioAirMismatch.radioB\\] corrupted radio frame dropped", 1);
+corrupted2 := val(radioB.nCorrupted, 0.24, "RadioChannel2_res.mat");
+ok2 := ret2 == 0 and nPong2 == 0 and nWarn2 == 1 and corrupted2 > 0.5;
+
+buildModel(RadioShared, stopTime = 0.05, numberOfIntervals = 500, fileNamePrefix = "RadioChannel3");
+b3 := getErrorString();
+ret3 := system(".\\RadioChannel3.bat", "RadioChannel3_run.txt");
+log3 := readFile("RadioChannel3_run.txt");
+f3 := "RadioChannel3_res.mat";
+rxB1 := val(rxB1.nReceived, 0.049, f3);
+rxB2 := val(rxB2.nReceived, 0.049, f3);
+rxC := val(rxC.nReceived, 0.049, f3);
+lostC := val(rxC.nCorrupted, 0.049, f3);
+(nColl, m5) := regex(log3, "\\[RadioShared.rxC\\] radio frame lost: two transmitters at the same time", 1);
+ok3 := ret3 == 0 and rxB1 > 0.5 and rxB1 < 1.5 and rxB2 > 0.5 and rxB2 < 1.5 and rxC < 0.5 and lostC > 0.5 and nColl == 1;
+
+if ok1 and ok2 and ok3 then
+  print("PASS: verify_54_radio_channel (desaccord de frequence : rien entendu ; debit air different : " + String(corrupted2) + " trame(s) jetee(s) ; diffusion : 2 recepteurs servis ; collision : trame perdue)\n");
+else
+  print("FAIL: verify_54_radio_channel (frequence " + String(ok1) + " [" + String(ret1) + ", " + String(nPong1) + ", " + String(nDeaf1) + "], debit " + String(ok2) + " [" + String(ret2) + ", " + String(nPong2) + ", " + String(nWarn2) + ", " + String(corrupted2) + "], partage " + String(ok3) + " [" + String(ret3) + ", " + String(rxB1) + ", " + String(rxB2) + ", " + String(rxC) + ", " + String(lostC) + ", " + String(nColl) + "])\n" + b1 + b2 + b3 + "\n--- journaux ---\n" + log1 + log2 + log3);
+end if;

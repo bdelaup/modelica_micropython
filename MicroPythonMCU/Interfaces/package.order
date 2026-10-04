@@ -15,5 +15,7 @@ UartParity
 ChannelKind
 BitOrder
 ClockEdge
+Modulation
 DisplayLinkOutput
 DisplayLinkInput
+Antenna

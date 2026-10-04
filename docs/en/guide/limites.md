@@ -19,7 +19,7 @@
 
 Function-by-function details: [API, limitations](api.md#known-limitations).
 
-**Peripherals**: see the end of each page ([serial devices](peripheriques/uart.md), [I2C](peripheriques/i2c.md), [weighing](peripheriques/pesee.md#limits)).
+**Peripherals**: see the end of each page ([serial devices](peripheriques/uart.md), [I2C](peripheriques/i2c.md), [weighing](peripheriques/pesee.md#limits), [radio](peripheriques/radio.md#limits)).
 
 ## Troubleshooting
 

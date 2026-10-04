@@ -1,0 +1,76 @@
+// Scénario de vérification n°53 : signal tracé des quatre modulations
+// (Examples.Radio.Modulations).
+// omc verify_53_radio_modulations.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : le caractère U part sur quatre liaisons à
+// 1200 bit/s (porteuse tracée 4800 Hz, sortie toutes les 10 us). On repère le
+// début de la trame radio (carrierOn), puis on examine sTx sur le bit de start
+// (0) et sur le premier bit de données (U = 0x55, LSB = 1), loin des fronts :
+//   OOK  : |s| nul sur le 0, amplitude 1 sur le 1 ;
+//   ASK  : amplitude 0,3 sur le 0, 1 sur le 1 ;
+//   FSK  : 3 périodes par bit sur le 0 (3600 Hz), 5 sur le 1 (6000 Hz) ;
+//   BPSK : corrélation avec sin(2 pi 4800 t) négative sur le 0, positive sur le 1.
+// Et chacun des quatre récepteurs a reçu l'octet (synchro masquée).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Radio.Modulations, stopTime = 0.04, numberOfIntervals = 4000, fileNamePrefix = "RadioModulations");
+b := getErrorString();
+ret := system(".\\RadioModulations.bat", "RadioModulations_run.txt");
+log := readFile("RadioModulations_run.txt");
+f := "RadioModulations_res.mat";
+Tb := 1/1200;
+w := 2*3.141592653589793*4800;
+// Une seule lecture du fichier de résultats (val() le relit à chaque appel).
+d := readSimulationResult(f, {time, txOOK.carrierOn, txOOK.sTx, txASK.sTx, txFSK.sTx, txBPSK.sTx});
+n := size(d, 2);
+
+// début de la trame radio (instant exact : les événements sont enregistrés)
+j0 := 1;
+while j0 < n and d[2, j0] < 0.5 loop
+  j0 := j0 + 1;
+end while;
+t0 := d[1, j0];
+
+// Bit de start (0) puis premier bit de données (1) : amplitudes et
+// corrélation BPSK de 10 % à 90 % du bit, changements de signe FSK sur le bit
+// entier (2 pas de sortie exclus de chaque côté). Boucle limitée aux deux
+// bits : une boucle de script omc est lente.
+ookMax0 := 0; ookMax1 := 0; askMax0 := 0; askMax1 := 0;
+bpsk0 := 0; bpsk1 := 0; nb0 := 0; nb1 := 0; fsk0 := 0; fsk1 := 0;
+for j in j0 + 1:min(n, j0 + 400) loop
+  x := (d[1, j] - t0)/Tb;
+  if x > 0.1 and x < 0.9 then
+    ookMax0 := max(ookMax0, abs(d[3, j]));
+    askMax0 := max(askMax0, abs(d[4, j]));
+    bpsk0 := bpsk0 + d[6, j]*sin(w*d[1, j]);
+    nb0 := nb0 + 1;
+  elseif x > 1.1 and x < 1.9 then
+    ookMax1 := max(ookMax1, abs(d[3, j]));
+    askMax1 := max(askMax1, abs(d[4, j]));
+    bpsk1 := bpsk1 + d[6, j]*sin(w*d[1, j]);
+    nb1 := nb1 + 1;
+  end if;
+  if d[5, j - 1]*d[5, j] < 0 then
+    if x > 0.024 and x < 0.976 then
+      fsk0 := fsk0 + 1;
+    elseif x > 1.024 and x < 1.976 then
+      fsk1 := fsk1 + 1;
+    end if;
+  end if;
+end for;
+bpsk0 := bpsk0/max(nb0, 1);
+bpsk1 := bpsk1/max(nb1, 1);
+
+rx := val(rxOOK.nReceived, 0.039, f) + val(rxASK.nReceived, 0.039, f) + val(rxFSK.nReceived, 0.039, f) + val(rxBPSK.nReceived, 0.039, f);
+
+okOOK := ookMax0 < 0.01 and ookMax1 > 0.95;
+okASK := askMax0 > 0.25 and askMax0 < 0.31 and askMax1 > 0.95;
+okFSK := fsk0 >= 5 and fsk0 <= 6 and fsk1 >= 9 and fsk1 <= 10;
+okBPSK := bpsk0 < -0.4 and bpsk1 > 0.4;
+detail := "t0=" + String(t0) + ", OOK " + String(ookMax0) + "/" + String(ookMax1) + ", ASK " + String(askMax0) + "/" + String(askMax1) + ", FSK " + String(fsk0) + "/" + String(fsk1) + " changements de signe, BPSK " + String(bpsk0) + "/" + String(bpsk1) + ", recus " + String(rx);
+if ret == 0 and t0 > 0.02 and okOOK and okASK and okFSK and okBPSK and rx > 3.5 and rx < 4.5 then
+  print("PASS: verify_53_radio_modulations (" + detail + ")\n");
+else
+  print("FAIL: verify_53_radio_modulations (code " + String(ret) + ", " + detail + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

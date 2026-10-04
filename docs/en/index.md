@@ -42,7 +42,7 @@ A `time.sleep(1)` costs no real time: the solver jumps straight to the deadline.
 
 ## Supplied peripherals
 
-LED, teaching display, serial devices (echo, temperature sensor, GPS, 20x2 display, generic device), I2C devices (Grove LCD RGB display, echo, generic device) and a complete weighing chain (load cell, strain-gauge bridge, HX711 converter). The 38 [examples](guide/exemples.md) use all of them, up to a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
+LED, teaching display, serial devices (echo, temperature sensor, GPS, 20x2 display, generic device), I2C devices (Grove LCD RGB display, echo, generic device) a complete weighing chain (load cell, strain-gauge bridge, HX711 converter), a logic analyser probe and radio modules (APC220) whose modulated signal is drawn. The 48 [examples](guide/exemples.md) use all of them, up to a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
 
 ## Current limits
 

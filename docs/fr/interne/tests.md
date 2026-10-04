@@ -107,6 +107,10 @@ omc verify_47_logic_analyzer.mos
 omc verify_48_analyzer_i2c.mos
 omc verify_49_analyzer_sync.mos
 omc verify_50_analyzer_options.mos
+omc verify_51_radio_link.mos
+omc verify_52_radio_overflow.mos
+omc verify_53_radio_modulations.mos
+omc verify_54_radio_channel.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -164,6 +168,10 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_48_analyzer_i2c.mos` | `Examples.Analyzer.I2cBus` | Analyseur logique, bus I2C | Trois transactions en hexa + ASCII (`43*` en fin de lecture, `S [42 W] 5A Sr [42 R] 5A* P`), bilan de la voie logique `GP7`, trois trames, bits de l'adresse et `A`, pas de bit fantôme avant le STOP ; sonde transparente |
 | `verify_49_analyzer_sync.mos` | `Examples.Analyzer.Hx711Serial` (`stopTime` = 0,65 s) | Analyseur logique, série synchrone | Trois mots `068DB9 = 429497` + 1 impulsion à 400/500/600 ms, valeur affichée aussi par le programme, trois trames, silences comprimés |
 | `verify_50_analyzer_options.mos` | `Examples.Analyzer.UartErrors`, deux exécutions (`-override`) | Erreurs de parité, options du fichier texte | Sans chronogramme ni VCD : section hexa seule, pas de VCD, 15 octets `RX` marqués `!` ; puis sans bits ni en-têtes, colonne de 1 ms : `!P` sous l'octet renvoyé |
+| `verify_51_radio_link.mos` | `Examples.Radio.Link` | Liaison radio entre deux MCU, deux `Apc220` | Trois PONG, `GP7` de A allumée, première porteuse entre 25,9 et 26,1 ms, bilans de fin sans perte (21 octets dans chaque sens) |
+| `verify_52_radio_overflow.mos` | `Examples.Radio.Overflow` | Tampon d'émission plein | B reçoit `0123456789ABCDEFGHLTb` (21 octets), 19 perdus au bilan de A, `txFill` = 16 à 45 ms, avertissements plafonnés |
+| `verify_53_radio_modulations.mos` | `Examples.Radio.Modulations` | Signal tracé des quatre modulations | Sur le bit de start puis le premier bit de données : OOK 0 puis 1, ASK 0,3 puis 1, FSK 3 puis 5 périodes par bit, BPSK corrélation négative puis positive ; quatre octets reçus |
+| `verify_54_radio_channel.mos` | `Radio.Link` modifié (fréquence, débit radio) et un modèle à six modules, déclarés par `loadString` | Règles du canal radio | 440 MHz : rien d'entendu ; 4800 bit/s : trames jetées, aucun PONG ; diffusion : deux récepteurs servis ; deux émetteurs simultanés : collision comptée, rien reçu |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

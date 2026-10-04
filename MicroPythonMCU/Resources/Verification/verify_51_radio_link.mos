@@ -1,0 +1,34 @@
+// Scénario de vérification n°51 : liaison radio entre deux microcontrôleurs
+// (Examples.Radio.Link, cf. requirements.md, décision « Liaison radio modulée »).
+// omc verify_51_radio_link.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : deux MCU reliés chacun à un Apc220 (réglages
+// d'usine), les deux modules joints par un seul fil d'antenne. Les programmes
+// sont ceux de la liaison filaire (uart_ping.py / uart_pong.py) : les modules
+// sont transparents. Succès : trois PONG reçus par A, GP7 de A allumée, la
+// première trame radio de A part 5 ms (txDelay) après la fin du premier octet
+// série, et le bilan de fin de chaque module ne compte aucune perte
+// (21 octets dans chaque sens : 3 x « PING n\n » et 3 x « PONG n\n »).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Radio.Link, stopTime = 0.25, numberOfIntervals = 2500, fileNamePrefix = "RadioLink");
+b := getErrorString();
+ret := system(".\\RadioLink.bat", "RadioLink_run.txt");
+log := readFile("RadioLink_run.txt");
+f := "RadioLink_res.mat";
+
+(nReplies, m1) := regex(log, "mcuA] replies: 3 / 3", 1);
+(nSumA, m2) := regex(log, "\\[Link.radioA\\] 21 byte\\(s\\) from the UART, 21 sent on air, 21 received on air, 21 to the UART - lost: 0 \\(transmit buffer full\\), 0 \\(receive buffer full\\), 0 \\(corrupted radio frames\\)", 1);
+(nSumB, m3) := regex(log, "\\[Link.radioB\\] 21 byte\\(s\\) from the UART, 21 sent on air, 21 received on air, 21 to the UART - lost: 0 \\(transmit buffer full\\), 0 \\(receive buffer full\\), 0 \\(corrupted radio frames\\)", 1);
+ok := val(mcuA.GP7.v, 0.24, f);
+// Premier octet 'P' écrit à t = 20 ms : fin de sa trame série 9,5 bits plus
+// tard (milieu du stop, 20,989583 ms), porteuse 5 ms après (25,989583 ms).
+before := val(radioA.carrierOn, 0.0259, f);
+after := val(radioA.carrierOn, 0.0261, f);
+
+if ret == 0 and nReplies >= 1 and nSumA == 1 and nSumB == 1 and ok > 2.0 and before < 0.5 and after > 0.5 then
+  print("PASS: verify_51_radio_link (3 PONG par radio, GP7(A)=" + String(ok) + "V, porteuse a 26 ms, 21 octets dans chaque sens sans perte)\n");
+else
+  print("FAIL: verify_51_radio_link (code " + String(ret) + ", PONG " + String(nReplies) + ", bilans " + String(nSumA) + "/" + String(nSumB) + ", GP7(A)=" + String(ok) + ", porteuse " + String(before) + "/" + String(after) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

@@ -273,9 +273,55 @@ def fig_scale(work):
     save(fig, "kitchen-scale")
 
 
+def fig_radio(work):
+    names = ["OOK", "ASK", "FSK", "BPSK"]
+    c = simulate("Radio.Modulations", ["tx%s.sTx" % m for m in names] + ["txOOK.carrierOn"],
+                 0.04, 16000, work)
+    start = next(x for x, on in zip(c["time"], c["txOOK.carrierOn"]) if on > 0.5)
+    bit = 1 / 1200
+    t, ys = window(c["time"], [c["tx%s.sTx" % m] for m in names], start - bit, start + 11 * bit)
+    t_ms = [x * 1e3 for x in t]
+    fig, axes = plt.subplots(4, 1, figsize=(8, 6.2), sharex=True)
+    labels = ["start"] + ["b%d" % i for i in range(8)] + ["stop"]
+    values = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]   # 'U' = 0x55, bits de poids faible en tête
+    for ax, m, y, col in zip(axes, names, ys, [BLUE, GREEN, ORANGE, "#8e5bb5"]):
+        ax.plot(t_ms, y, color=col, linewidth=0.8)
+        for k in range(11):
+            ax.axvline((start + k * bit) * 1e3, color=GREY, linewidth=0.5, linestyle=":")
+        ax.set_ylim(-1.25, 1.25)
+        style(ax, "", "%s : sTx" % m)
+    for k, (lab, v) in enumerate(zip(labels, values)):
+        axes[0].text((start + (k + 0.5) * bit) * 1e3, 1.4, "%s\n%d" % (lab, v), ha="center",
+                     fontsize=7, color=GREY)
+    axes[-1].set_xlabel("temps (ms)")
+    axes[0].set_title("Radio.Modulations : le caractère 'U' à 1200 bit/s, porteuse tracée à 4800 Hz\n",
+                      loc="left", fontsize=10)
+    save(fig, "radio-modulations")
+
+
+def fig_radio_buffer(work):
+    c = simulate("Radio.Overflow", ["radioA.txFill", "radioA.nDropped", "radioA.carrierOn"],
+                 0.25, 25000, work)
+    t_ms = [x * 1e3 for x in c["time"]]
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(8, 3.8), sharex=True)
+    a1.plot(t_ms, c["radioA.txFill"], color=ORANGE, drawstyle="steps-post", label="txFill")
+    a1.axhline(16, color=GREY, linewidth=0.6, linestyle="--")
+    a1.text(150, 16.6, "txBufferSize = 16", fontsize=8, color=GREY)
+    a1.plot(t_ms, c["radioA.nDropped"], color="#c0392b", drawstyle="steps-post", label="nDropped")
+    a1.legend(loc="center right", fontsize=8, frameon=False)
+    a2.plot(t_ms, c["radioA.carrierOn"], color=BLUE, drawstyle="steps-post")
+    style(a1, "", "octets")
+    style(a2, "temps (ms)", "carrierOn")
+    a1.set_ylim(0, 21)
+    a1.set_title("Radio.Overflow : 40 octets à 9600 bauds, émis à 1200 bit/s, tampon de 16 octets",
+                 loc="left", fontsize=10)
+    save(fig, "radio-overflow")
+
+
 FIGURES = {"blink": fig_blink, "uart": fig_uart, "i2c": fig_i2c, "pwm": fig_pwm,
            "hx711": fig_hx711, "regulation": fig_regulation, "fade": fig_fade,
-           "reactivity": fig_reactivity, "timing": fig_timing, "scale": fig_scale}
+           "reactivity": fig_reactivity, "timing": fig_timing, "scale": fig_scale,
+           "radio": fig_radio, "radio-buffer": fig_radio_buffer}
 
 if __name__ == "__main__":
     wanted = sys.argv[1:] or list(FIGURES)

@@ -46,6 +46,7 @@ Les images « oui » ont été faites le 2026-10-02 (voir ci-dessous) ; celles q
 | `uart-schema.png`, `i2c-schema.png`, `pesee-schema.png` | `guide/peripheriques/uart.md`, `i2c.md`, `pesee.md` (FR et EN), vignettes de `guide/exemples.md` | Captures MCP des vues *Diagramme* de `Uart.Sensor`, `I2c.MultiDevice`, `Weighing.KitchenScale` |
 | `analyseur-schema.png` | `guide/peripheriques/analyseurs.md` (FR et EN) | Capture MCP de la vue *Diagramme* de `Analyzer.UartLink` — à refaire : l'icône de la sonde porte désormais « TXT  VCD » |
 | `pulseview-uart.png`, `pulseview-i2c.png` | `guide/peripheriques/analyseurs.md` (FR et EN) | Captures d'écran de PulseView (copie portable) ouvert sur les VCD d'`Analyzer.UartLink` (`stopTime` = 0,17 s) et d'`Analyzer.I2cBus` (`stopTime` = 3,4 ms), décodeurs chargés depuis la session `.pvs` ; fenêtre maximisée capturée par PowerShell (`System.Drawing`), recadrée sur la règle et les voies, réduite à 1500 px |
+| `radio-schema.png` | `guide/peripheriques/radio.md` (FR et EN) | Capture MCP de la vue *Diagramme* de `Radio.Link` |
 | `uart-icones.png` | `guide/peripheriques/uart.md` (FR et EN) | Cinq captures MCP d'icônes, `--no-name --row --max-width 1400` |
 | `exemple-basicblink.png`, `exemple-ledchaser.png`, `exemple-ledfade.png`, `exemple-grovelcd.png` | vignettes de `guide/exemples.md` (FR et EN), `interne/architecture.md` (BasicBlink) | Captures MCP des vues *Diagramme* (remplacent `exemple-basicblink.svg`, supprimé) |
 | `logo.svg`, `logo.png` | en-tête et onglet du site, `interne/architecture.md` | Miroir de l'icône de `package.mo`, resynchronisé à la main |
@@ -75,6 +76,8 @@ python docs/figures/make_figures.py uart hx711     # certaines
 | `input-reactivity.svg` | `Gpio.InputReactivity` | `mcu.GP1.v`, `mcu.GP0.v` | exemples |
 | `gpio-timing.svg` | `Gpio.Timing` | `mcu.GP0.v` à la µs : impulsion `on(); off()` et rafale de 10 impulsions | API |
 | `kitchen-scale.svg` | `Weighing.KitchenScale` | `totalMass.y`, `hx.code`, appui TARE | chaîne de pesée |
+| `radio-modulations.svg` | `Radio.Modulations` (pas de 2,5 µs) | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx`, grille des bits de `U` | liaison radio |
+| `radio-overflow.svg` | `Radio.Overflow` | `radioA.txFill`, `radioA.nDropped`, `radioA.carrierOn` | liaison radio |
 
 À relancer quand un exemple ou un composant tracé change. Prérequis : `omc` (via `OPENMODELICAHOME` ou le `PATH`) et `matplotlib`. Compter quelques minutes : chaque figure compile son exemple.
 
