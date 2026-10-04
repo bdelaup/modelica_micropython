@@ -16,6 +16,7 @@
 - `Timer`: 4 timers at most, minimum period 1 ms.
 - Interrupt callbacks (`Pin.irq()`, `Timer`) run at the next synchronisation point, never as an instant pre-emption of the program.
 - Several `MCU` in a model: each has its own program, modules and flash. Two boards that would answer each other without ever letting time pass (`gpioOpTime = 0` and two crossed copies) freeze the simulation at that instant.
+- Debugging ([with VS Code](debogage.md)): one debugged `MCU` per model; only the microcontroller program can be debugged, not the scripts of serial or I2C devices.
 
 Function-by-function details: [API, limitations](api.md#known-limitations).
 
@@ -34,6 +35,15 @@ Function-by-function details: [API, limitations](api.md#known-limitations).
 
 ??? question "The simulation looks frozen, with the warning « the script has been running for more than 10 s of real time »"
     The program runs a loop that never hands control back to the circuit: no `sleep()`, no pin access (waiting on `time.ticks_ms()`, endless computation). Simulated time can no longer advance. Add a `time.sleep_ms()` in the loop, then stop the simulation from OMEdit. The variant « acting for more than ... at the same simulated instant » points to a loop of pin accesses with `gpioOpTime = 0`. The delay is set by `hangWarningTime` ([The MCU block](mcu.md#execution-time)); a long but legitimate computation ends normally despite the warning.
+
+??? question "The simulation stays at t = 0, the log shows “waiting for VS Code”"
+    Debugging is enabled (`debugEnabled`, *Debugging* tab of the `MCU`): the microcontroller waits until VS Code attaches. Attach from VS Code ([Debugging with VS Code](debogage.md)), or untick `debugEnabled` to simulate without the debugger.
+
+??? question "VS Code cannot attach to the `MCU`"
+    Check that the simulation is running and that the log shows `waiting for VS Code on port ...`, then that the port in `launch.json` is the one in `debugPort`. If the simulation stops at start-up with `failed to start the debugger`, the port is already taken (another simulation running, for instance): pick another one in `debugPort` and in `launch.json`.
+
+??? question "My breakpoints are never hit"
+    The file annotated in VS Code must be the one the `MCU` runs: `scriptPath`, or for the flash the files of the `fsSource` image. Breakpoints set in `machine` and `time` (the library's shim) are ignored.
 
 ??? question "My `print()` calls do not show up"
     They go to OMEdit's simulation output window (and its log), not to a Python console, preceded by the simulated time (`[t=0.250000 s] ...`). A `print()` from a serial or I2C device also carries the component name.

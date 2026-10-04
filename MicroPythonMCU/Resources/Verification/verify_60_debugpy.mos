@@ -1,0 +1,55 @@
+// Scénario de vérification n°60 : débogage du programme par debugpy (VS Code).
+// omc verify_60_debugpy.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : avec debugEnabled, le MCU attend un débogueur à
+// t = 0, puis le programme s'arrête sur un point d'arrêt et se pilote pas à
+// pas, sans que la pause ne fausse le temps simulé, et la simulation se
+// termine proprement (Python finalisé). VS Code est remplacé par
+// dap_client.py, un client DAP minimal lancé en arrière-plan avec le Python
+// embarqué : il pose un point d'arrêt ligne 10 de debug_target.py (count += 1),
+// lit count (0), fait un pas par-dessus (ligne 11, count = 1), un pas entrant
+// sur led.toggle() qui doit rester dans le programme (ligne 12 : le shim est
+// exclu du pas à pas), évalue led.value() comme le panneau Espion (1 : la
+// LED vient d'être allumée ; l'accès à la broche fait un vrai tour de synchro
+// sans rien bloquer), laisse le programme 2 s en pause, reprend jusqu'au
+// passage suivant (count = 1), puis retire le point d'arrêt et se détache.
+// Modèle défini ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model DebugProgram
+  extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/debug_target.py\"), debugEnabled = true, debugPort = 5860));
+end DebugProgram;"); getErrorString();
+
+buildModel(DebugProgram, stopTime = 0.8, numberOfIntervals = 80, fileNamePrefix = "DebugProgram");
+b := getErrorString();
+
+// Client DAP en arrière-plan : il retente la connexion jusqu'à ce que le MCU
+// écoute, et écrit son compte rendu avant de se détacher.
+deleteFile("DebugProgram_dap.json");
+system("start \"\" /b ..\\PythonRuntime\\python.exe dap_client.py 5860 \"" + cd() + "/debug_target.py\" 10 count DebugProgram_dap.json steps");
+ret := system(".\DebugProgram.bat", "DebugProgram_run.txt");
+log := readFile("DebugProgram_run.txt");
+dap := if regularFileExists("DebugProgram_dap.json") then readFile("DebugProgram_dap.json") else "(pas de compte rendu)";
+
+(nWait, m1) := regex(log, "Debugger: waiting for VS Code on port 5860", 1);
+(nCount2, m2) := regex(log, "\\[t=0\\.1000[0-9]+ s\\] count 2", 1);
+(nDone, m3) := regex(log, "\\] done", 1);
+(nEnd, m4) := regex(log, "The simulation finished successfully", 1);
+(nThreads, m5) := regex(log, "other Python threads|did not stop at the end", 1);
+(nStop, m6) := regex(dap, "\"stop_line\": 10,", 1);
+(nCount0, m7) := regex(dap, "\"value_at_break\": \"0\"", 1);
+(nNext, m8) := regex(dap, "\"line_after_next\": 11,", 1);
+(nStepIn, m9) := regex(dap, "\"line_after_step_in\": 12,", 1);
+(nStepFile, m10) := regex(dap, "\"file_after_step_in\": \"[^\"]*debug_target\\.py\"", 1);
+(nSecond, m11) := regex(dap, "\"value_second_break\": \"1\"", 1);
+(nDetached, m12) := regex(dap, "\"detached\": true", 1);
+(nEval, m13) := regex(dap, "\"evaluate_led\": \"1\"", 1);
+v := val(mcu.GP0.v, 0.7, "DebugProgram_res.mat");
+
+if ret == 0 and nWait >= 1 and nCount2 >= 1 and nDone >= 1 and nEnd >= 1 and nThreads == 0
+   and nStop >= 1 and nCount0 >= 1 and nNext >= 1 and nStepIn >= 1 and nStepFile >= 1 and nSecond >= 1 and nDetached >= 1 and nEval >= 1
+   and v > 2 then
+  print("PASS: verify_60_debugpy (arret ligne 10, count lu, pas a pas sans entrer dans le shim, pause sans effet sur le temps simule, fin propre, GP0=" + String(v) + "V)\n");
+else
+  print("FAIL: verify_60_debugpy (code de sortie " + String(ret) + ", attente " + String(nWait) + ", count 2 a t=0,1 s " + String(nCount2) + ", done " + String(nDone) + ", fin " + String(nEnd) + ", threads restants " + String(nThreads) + ", GP0=" + String(v) + "V)\n" + b + "\n--- client DAP ---\n" + dap + "\n--- journal ---\n" + log);
+end if;

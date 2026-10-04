@@ -12,7 +12,7 @@ In OMEdit, *File → Open Model/Library File(s)…*, then select `MicroPythonMCU
 |---|---|
 | `MCU` | The microcontroller, to drop into your diagrams |
 | `Peripherals` | Components to wire to its pins: LED, displays, serial devices, I2C devices, weighing chain |
-| `Examples` | 45 ready-to-simulate models (see [Examples](exemples.md)) |
+| `Examples` | 49 ready-to-simulate models (see [Examples](exemples.md)) |
 | `Interfaces`, `Internal` | Connectors and internal machinery: no need to touch them |
 
 ## 2. Simulate `BasicBlink`

@@ -51,3 +51,5 @@ Windows only, no SPI. A model can hold several microcontrollers, which talk thro
 ## Background
 
 Library designed by Benoit Delaup, an engineering science teacher, so that students can test their control code on the digital system before deploying it to a real prototype; it also fits an industrial embedded-software digital twin. Source code and issues: [GitLab repository](https://gitlab.com/bdelaup/modelica_micropython3). Architecture choices and their alternatives are recorded (in French) in [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+
+The library (code, tests and documentation) was developed with the help of an AI, under the direction of the author, who set its choices and reviewed the result.

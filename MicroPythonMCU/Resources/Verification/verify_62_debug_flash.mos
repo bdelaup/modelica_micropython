@@ -1,0 +1,48 @@
+// Scénario de vérification n°62 : point d'arrêt dans un programme de la flash.
+// omc verify_62_debug_flash.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : main.py de la flash s'exécute depuis la copie
+// horodatée, mais l'élève ouvre et annote l'IMAGE (fsSource) dans VS Code ;
+// la correspondance des chemins posée par debug_host.py fait qu'un point
+// d'arrêt de l'image vaut pour la copie, et que l'arrêt est rapporté sur le
+// fichier de l'image. Le cloisonnement du système de fichiers est intact sous
+// débogueur : l'auto-contrôle de main.py allume GP1. Base :
+// Examples.FileSystem.Boot (image datalogger), point d'arrêt ligne 21 de
+// main.py (voltage = adc.read_u16()...), variable i lue au premier passage.
+// Copie créée dans DebugFlash_ws (nettoyé ici et par run_tests.sh). Modèle
+// défini ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model DebugFlash
+  extends MicroPythonMCU.Examples.FileSystem.Boot(mcu(fsWorkspace = \"DebugFlash_ws\", fsOpenExplorer = false, debugEnabled = true, debugPort = 5862));
+end DebugFlash;"); getErrorString();
+
+system("if exist DebugFlash_ws rmdir /s /q DebugFlash_ws");
+buildModel(DebugFlash, stopTime = 1.2, numberOfIntervals = 120, fileNamePrefix = "DebugFlash");
+b := getErrorString();
+
+image := cd() + "/../FileSystems/datalogger/main.py";
+deleteFile("DebugFlash_dap.json");
+system("start \"\" /b ..\\PythonRuntime\\python.exe dap_client.py 5862 \"" + image + "\" 21 i DebugFlash_dap.json stay");
+ret := system(".\DebugFlash.bat", "DebugFlash_run.txt");
+log := readFile("DebugFlash_run.txt");
+dap := if regularFileExists("DebugFlash_dap.json") then readFile("DebugFlash_dap.json") else "(pas de compte rendu)";
+
+(nVerified, m1) := regex(dap, "\"breakpoint_verified\": true", 1);
+(nStop, m2) := regex(dap, "\"stop_line\": 21,", 1);
+(nFile, m3) := regex(dap, "\"stop_file\": \"[^\"]*FileSystems[\\\\/]+datalogger[\\\\/]+main\\.py\"", 1);
+(nI, m4) := regex(dap, "\"value_at_break\": \"0\"", 1);
+(nResumed, m5) := regex(dap, "\"resumed\": true", 1);
+(nCheck, m6) := regex(log, "self-check OK", 1);
+(nEnd, m7) := regex(log, "The simulation finished successfully", 1);
+(nThreads, m8) := regex(log, "other Python threads|did not stop at the end", 1);
+v := val(mcu.GP1.v, 1.1, "DebugFlash_res.mat");
+
+system("if exist DebugFlash_ws rmdir /s /q DebugFlash_ws");
+
+if ret == 0 and nVerified >= 1 and nStop >= 1 and nFile >= 1 and nI >= 1 and nResumed >= 1
+   and nCheck >= 1 and nEnd >= 1 and nThreads == 0 and v > 2 then
+  print("PASS: verify_62_debug_flash (point d'arret de l'image atteint dans la copie, rapporte sur l'image, auto-controle OK, GP1=" + String(v) + "V)\n");
+else
+  print("FAIL: verify_62_debug_flash (code de sortie " + String(ret) + ", auto-controle " + String(nCheck) + ", fin " + String(nEnd) + ", threads restants " + String(nThreads) + ", GP1=" + String(v) + "V)\n" + b + "\n--- client DAP ---\n" + dap + "\n--- journal ---\n" + log);
+end if;

@@ -8,6 +8,8 @@ __pycache__/
 *.a
 # ... sauf l'import lib de Python, régénérée pour le MinGW d'OpenModelica : indispensable pour lier tout modèle
 !/MicroPythonMCU/Resources/Library/win64/libpython312.a
+# ... et l'interpréteur de la distribution embarquée : il lance le client DAP du scénario de débogage
+!/MicroPythonMCU/Resources/PythonRuntime/python.exe
 *.bat
 *.log
 *.libs

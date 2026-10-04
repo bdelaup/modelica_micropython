@@ -1,6 +1,6 @@
 # Exemples
 
-Le paquetage `MicroPythonMCU.Examples` contient 48 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
+Le paquetage `MicroPythonMCU.Examples` contient 49 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -60,6 +60,7 @@ Le paquetage `MicroPythonMCU.Examples` contient 48 modèles prêts à simuler : 
 | `Program.SleepCompression` | Deux `sleep(3600)` simulés en une fraction de seconde de calcul | durée de la simulation | `sleep_long.py` *(V)* |
 | `Program.Error` | Une exception non rattrapée arrête la simulation, trace Python dans le journal | journal | `script_error.py` *(V)* |
 | `Program.Imports` | Import d'un module posé à côté du programme et d'une bibliothèque d'un autre dossier (`libraryPath`) | LED de `GP0` et `GP1` | `import_demo.py` |
+| `Program.Debug` | Débogage pas à pas avec VS Code : la simulation attend que VS Code s'attache, temps simulé figé pendant les pauses (voir [Déboguer avec VS Code](debogage.md)) | VS Code, LED de `GP0` et `GP1`, journal | `debug_demo.py` |
 
 ## Système de fichiers (`Examples.FileSystem`)
 

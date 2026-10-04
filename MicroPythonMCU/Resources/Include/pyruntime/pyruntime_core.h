@@ -144,6 +144,12 @@ struct PyRuntimeHandle {
        hang_check et requirements.md, decision "Protection contre un script qui
        ne rend jamais la main". */
     double hang_warning_time;
+    /* Debogage par debugpy + VS Code (MCU.debugEnabled/debugPort) : le worker
+       attend VS Code pendant la construction, et le timeout mou est coupe (une
+       pause sur un point d'arret est legitime). Cf. debug_host.py et
+       requirements.md, decision "Debogage du programme (debugpy + VS Code)". */
+    int debug_enabled;
+    int debug_port;
     int irq_disabled;            /* machine.disable_irq() : callbacks IRQ/Timer differes (pas perdus) jusqu'a enable_irq() */
 
     int pin_is_output[NUM_PINS];
@@ -248,3 +254,7 @@ static __thread struct PyRuntimeHandle* g_current = NULL;
    programmes impriment. */
 static int g_mcu_count = 0;
 static int g_mcu_prefix_on = 0;
+
+/* Nombre de microcontroleurs construits avec debugEnabled : un seul par
+   process (un seul MCU debogue par modele, cf. requirements.md). */
+static int g_debug_count = 0;

@@ -112,6 +112,7 @@ graph TD
 - **`g_current`**, le pointeur par lequel une native retrouve son microcontrôleur, est **local au thread** (`static __thread`) : un worker, un MCU.
 - **Journal** : chaque interpréteur a son relais `pyruntime_stdio` et son tampon de ligne (`struct RelayBuf`, retrouvé par l'état du module) ; à partir de deux MCU, chaque ligne est préfixée par le nom d'instance.
 - **Scripts de périphérique** : ils restent dans l'interpréteur principal, sur le thread Modelica. Un `import machine` y obtient un module dont chaque attribut lève une erreur explicite, le shim n'existant que dans les sous-interpréteurs.
+- **Débogage** (`debugEnabled`) : le sous-interpréteur est créé avec `MCU_INTERP_CONFIG_DEBUG`, qui permet les threads démons dont pydevd a besoin. `debugpy` (vendoré dans `Resources/Debugpy/`) y est importé par `debug_host.py` **avant** le shim, tant que `time` est encore le vrai module, et son dossier s'ajoute aux préfixes jamais cloisonnés du shim (`_fs_stdlib`). Séquences détaillées (initialisation, pause, fin) dans `cycle-de-vie.md`, section 5.
 
 ## Portabilité : Windows uniquement
 

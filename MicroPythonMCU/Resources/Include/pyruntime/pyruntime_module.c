@@ -103,12 +103,28 @@ static const PyInterpreterConfig MCU_INTERP_CONFIG = {
     .gil = PyInterpreterConfig_SHARED_GIL,
 };
 
+/* Meme configuration, threads demons permis : pydevd (debugpy) en cree pour
+   dialoguer avec VS Code. Seulement quand MCU.debugEnabled est vrai. */
+static const PyInterpreterConfig MCU_INTERP_CONFIG_DEBUG = {
+    .use_main_obmalloc = 1,
+    .allow_fork = 0,
+    .allow_exec = 0,
+    .allow_threads = 1,
+    .allow_daemon_threads = 1,
+    .check_multi_interp_extensions = 0,
+    .gil = PyInterpreterConfig_SHARED_GIL,
+};
+
 /* Arguments de construction transmis au worker (chemins), liberes par lui. */
 struct WorkerInit {
     char* addScriptDir;          /* NULL : ne rien ajouter a sys.path */
     char* libraryDir;
     char* shimSrc;
     char* shimPath;              /* nom de fichier des traces du shim */
+    char* debugHostSrc;          /* NULL : debogage coupe (MCU.debugEnabled) */
+    char* debugHostPath;
+    char* debugpyDir;            /* Resources/Debugpy, ajoute a sys.path par debug_host.py */
+    char* shimDir;               /* exclu du pas a pas (PYDEVD_FILTERS) */
 };
 
 /* Issue de run_source. */
@@ -148,6 +164,78 @@ static int run_source(const char* src, const char* path) {
     return RUN_ERROR;
 }
 
+/* --- Debogage (debugpy + VS Code) ---
+   debug_host.py s'execute dans un module propre, _mcu_debug, et non dans
+   __main__ : les globales du programme, que VS Code affiche, n'en sont pas
+   encombrees. Cf. requirements.md, decision "Debogage du programme". GIL tenu. */
+static int debug_host_load(const char* src, const char* path) {
+    PyObject* module = PyImport_AddModule("_mcu_debug");       /* empruntee */
+    if (!module) {
+        return -1;
+    }
+    PyObject* dict = PyModule_GetDict(module);                  /* empruntee */
+    PyObject* file = PyUnicode_FromString(path);
+    if (!file || PyDict_SetItemString(dict, "__file__", file) != 0) {
+        Py_XDECREF(file);
+        return -1;
+    }
+    Py_DECREF(file);
+    PyObject* code = Py_CompileString(src, path, Py_file_input);
+    if (!code) {
+        return -1;
+    }
+    PyObject* result = PyEval_EvalCode(code, dict, dict);
+    Py_DECREF(code);
+    if (!result) {
+        return -1;
+    }
+    Py_DECREF(result);
+    return 0;
+}
+
+/* Appelle _mcu_debug.<name>(*args) ; args (tuple) est consomme. 0 si l'appel
+   a reussi, -1 sinon (exception posee). GIL tenu. */
+static int debug_host_call(const char* name, PyObject* args) {
+    if (!args) {
+        return -1;
+    }
+    PyObject* module = PyImport_AddModule("_mcu_debug");       /* empruntee */
+    PyObject* fn = module ? PyDict_GetItemString(PyModule_GetDict(module), name) : NULL;
+    if (!fn) {
+        Py_DECREF(args);
+        if (!PyErr_Occurred()) {
+            PyErr_Format(PyExc_RuntimeError, "debug_host.py has no %s()", name);
+        }
+        return -1;
+    }
+    PyObject* result = PyObject_CallObject(fn, args);
+    Py_DECREF(args);
+    if (!result) {
+        return -1;
+    }
+    Py_DECREF(result);
+    return 0;
+}
+
+/* Fin de simulation, avant Py_EndInterpreter : arrete pydevd et attend (au
+   plus ~1 s) que ses threads aient disparu du sous-interpreteur - sinon
+   worker_end_interpreter renoncerait a le terminer. ts : etat de thread du
+   worker, courant, GIL tenu. */
+static void debug_host_stop(PyThreadState* ts) {
+    if (debug_host_call("stop", PyTuple_New(0)) != 0) {
+        PyErr_Clear();
+    }
+    PyInterpreterState* interp = PyThreadState_GetInterpreter(ts);
+    for (int i = 0; i < 100; i++) {
+        if (PyInterpreterState_ThreadHead(interp) == ts && PyThreadState_Next(ts) == NULL) {
+            return;
+        }
+        Py_BEGIN_ALLOW_THREADS
+        Sleep(10);
+        Py_END_ALLOW_THREADS
+    }
+}
+
 /* Cree le sous-interpreteur du microcontroleur SUR LE THREAD WORKER - un etat
    de thread Python est lie au thread systeme qui le cree, et c'est ce thread
    qui executera tout le Python du MCU - puis y installe relais stdout, module
@@ -162,7 +250,7 @@ static int worker_init(struct PyRuntimeHandle* h, struct WorkerInit* wi) {
        l'interpreteur principal, pris le temps de la creation puis rendu. */
     PyGILState_STATE gstate = PyGILState_Ensure();
     PyThreadState* main_ts = PyThreadState_Get();
-    PyStatus status = Py_NewInterpreterFromConfig(&sub, &MCU_INTERP_CONFIG);
+    PyStatus status = Py_NewInterpreterFromConfig(&sub, wi->debugHostSrc ? &MCU_INTERP_CONFIG_DEBUG : &MCU_INTERP_CONFIG);
     if (PyStatus_Exception(status) || !sub) {
         PyThreadState_Swap(main_ts);
         PyGILState_Release(gstate);
@@ -192,6 +280,14 @@ static int worker_init(struct PyRuntimeHandle* h, struct WorkerInit* wi) {
     }
     if (!failure && wi->libraryDir && pyhost_append_path(wi->libraryDir) != 0) {
         failure = "failed to add libraryPath to sys.path";
+    }
+    /* Debogage : debugpy est importe AVANT le shim, tant que time est le vrai
+       module (pydevd refuse un time sans mktime, et ses attentes en pause
+       doivent rester de vraies attentes, pas des sleep() simules). */
+    if (!failure && wi->debugHostSrc
+        && (debug_host_load(wi->debugHostSrc, wi->debugHostPath) != 0
+            || debug_host_call("start", Py_BuildValue("(iss)", h->debug_port, wi->debugpyDir, wi->shimDir)) != 0)) {
+        failure = "failed to start the debugger (debugpy) - traceback above";
     }
     if (!failure && run_source(wi->shimSrc, wi->shimPath) != RUN_OK) {
         failure = "failed to initialise the machine/time shim or the file system - traceback above";
@@ -291,6 +387,10 @@ static unsigned __stdcall worker_main(void* arg) {
     free(wa->init.libraryDir);
     free(wa->init.shimSrc);
     free(wa->init.shimPath);
+    free(wa->init.debugHostSrc);
+    free(wa->init.debugHostPath);
+    free(wa->init.debugpyDir);
+    free(wa->init.shimDir);
     free(wa);
 
     /* Resultat de l'initialisation, attendu par PyRuntime_new. */
@@ -314,6 +414,21 @@ static unsigned __stdcall worker_main(void* arg) {
     LeaveCriticalSection(&h->cs);
     Py_END_ALLOW_THREADS
 
+    /* Debogage : attente de VS Code a ce premier tour (t=0), et non dans le
+       constructeur - tous les composants du modele sont alors construits, donc
+       un second MCU debogue a deja ete refuse. Le thread Modelica attend dans
+       PyRuntime_sync (timeout mou coupe). La copie de la flash existe :
+       wait() pose aussi la correspondance des chemins image -> copie. */
+    if (h->debug_enabled
+        && debug_host_call("wait", Py_BuildValue("(iss)", h->debug_port, h->fsSource,
+                                                 h->fs_root ? h->fs_root : "")) != 0) {
+        PyErr_Print();
+        h->script_error = 1;
+        h->error_message = strdup("failed while waiting for the debugger - traceback above");
+    }
+    relay_flush_buf(&h->relay);
+    relay_flush_buf(&h->relay_err);
+
     /* Sequence de demarrage, comme sur la carte : boot.py de la flash s'il
        existe, puis le programme - le script (scriptPath) s'il est renseigne, a
        la place de main.py comme Thonny sur une carte deja demarree, sinon
@@ -322,7 +437,7 @@ static unsigned __stdcall worker_main(void* arg) {
        PyRuntime_new garantit qu'il y a un script ou un systeme de fichiers. */
     int ran = 0;
     int boot = PROGRAM_ABSENT;
-    if (h->fs_root) {
+    if (h->fs_root && !h->script_error) {
         boot = run_program_file(h, h->fs_root, "boot.py");
         ran = boot != PROGRAM_ABSENT;
     }
@@ -337,7 +452,7 @@ static unsigned __stdcall worker_main(void* arg) {
             ran |= run_program_file(h, h->fs_root, "main.py") != PROGRAM_ABSENT;
         }
     }
-    if (!ran) {
+    if (!ran && !h->script_error) {
         ModelicaFormatMessage("PyRuntime: neither boot.py nor main.py at the root of the file system - microcontroller idle\n");
     }
 
@@ -360,6 +475,9 @@ static unsigned __stdcall worker_main(void* arg) {
     }
     LeaveCriticalSection(&h->cs);
     PyEval_RestoreThread(ts);
+    if (h->debug_enabled) {
+        debug_host_stop(ts);
+    }
     worker_end_interpreter(h, ts);
     g_current = NULL;
     return 0;
@@ -393,7 +511,8 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      const char* shimPath, int fsEnabled, const char* fsSource,
                      const char* fsWorkspace, int fsOpenExplorer,
                      const char* instanceName, double gpioOpTime,
-                     double hangWarningTime) {
+                     double hangWarningTime,
+                     int debugEnabled, int debugPort) {
     char err[512];
 
     /* Sans script, le programme est main.py du systeme de fichiers : il en
@@ -401,6 +520,18 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     if (scriptPath[0] == '\0' && !fsEnabled) {
         ModelicaFormatError("PyRuntime: scriptPath is empty and the file system is disabled - "
                             "give a script, or enable a file system containing main.py");
+        return NULL;
+    }
+    /* Un seul MCU debogue par modele (cf. requirements.md, decision "Debogage
+       du programme") : VS Code ne s'attache qu'a un port a la fois, et deux
+       pydevd dans deux sous-interpreteurs n'ont pas ete valides. */
+    if (debugEnabled && ++g_debug_count > 1) {
+        ModelicaFormatError("PyRuntime (%s): debugEnabled is set on more than one MCU - "
+                            "only one microcontroller can be debugged per model", instanceName);
+        return NULL;
+    }
+    if (debugEnabled && (debugPort < 1 || debugPort > 65535)) {
+        ModelicaFormatError("PyRuntime (%s): debugPort must be between 1 and 65535 (got %d)", instanceName, debugPort);
         return NULL;
     }
 
@@ -422,6 +553,8 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     handle->instanceName = strdup(instanceName);
     handle->gpio_op_time = gpioOpTime > 0 ? gpioOpTime : 0;
     handle->hang_warning_time = hangWarningTime > 0 ? hangWarningTime : 0;
+    handle->debug_enabled = debugEnabled;
+    handle->debug_port = debugPort;
     InitializeCriticalSection(&handle->cs);
     InitializeConditionVariable(&handle->cv);
     handle->turn = TURN_MODELICA;
@@ -490,6 +623,27 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
             wa->init.libraryDir = dir;
         } else {
             free(dir);
+        }
+    }
+    /* Debogage : debug_host.py est voisin du shim (Resources/Scripts/_shim/),
+       debugpy est vendore a cote de la distribution Python (Resources/Debugpy).
+       Lu ici, comme le shim, pour signaler un fichier manquant sans demarrer
+       de thread. */
+    if (debugEnabled) {
+        char* shimDir = dirname_of(shimPath);
+        char* resources = dirname_of(pythonHome);
+        size_t len = strlen(shimDir) + 32;
+        wa->init.debugHostPath = (char*) malloc(len);
+        snprintf(wa->init.debugHostPath, len, "%s\\debug_host.py", shimDir);
+        len = strlen(resources) + 32;
+        wa->init.debugpyDir = (char*) malloc(len);
+        snprintf(wa->init.debugpyDir, len, "%s\\Debugpy", resources);
+        free(resources);
+        wa->init.shimDir = shimDir;
+        wa->init.debugHostSrc = read_text_file(wa->init.debugHostPath);
+        if (!wa->init.debugHostSrc) {
+            ModelicaFormatError("PyRuntime: cannot read the debugger host ('%s')", wa->init.debugHostPath);
+            return NULL;
         }
     }
 
@@ -711,7 +865,9 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
            Attente par tranches quand hangWarningTime > 0, pour signaler un
            script qui ne laisse pas avancer la simulation (cf. hang_check). */
         ULONGLONG start = GetTickCount64();
-        double next_warn = h->hang_warning_time;
+        /* Debogage : une pause sur un point d'arret est legitime, pas de
+           timeout mou. */
+        double next_warn = h->debug_enabled ? 0 : h->hang_warning_time;
         for (;;) {
             h->turn = TURN_WORKER;
             WakeConditionVariable(&h->cv);

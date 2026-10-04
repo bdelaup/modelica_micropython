@@ -78,3 +78,7 @@ Dans Git Bash, à la racine du dépôt :
 4. Vérifier : télécharger le zip du tag depuis la [page des tags](https://gitlab.com/bdelaup/modelica_micropython3/-/tags) et suivre [Installation](../guide/installation.md).
 
 Les notes de version, si on en veut, se rédigent dans le message du tag ou dans une *Release* GitLab créée sur ce tag, sans fichier joint.
+
+## Mettre à jour un composant vendoré
+
+- **Débogueur `debugpy`** (`Resources/Debugpy/`, utilisé par `MCU.debugEnabled`) : changer `VERSION` dans `make_debugpy.sh`, puis lancer `./make_debugpy.sh` à la racine (pip télécharge la roue `cp312` `win_amd64`, le script l'allège et remplace le dossier). Rejouer `verify_60` à `verify_63` et faire un essai dans VS Code avant de livrer : la bibliothèque s'appuie sur quelques rouages internes de pydevd (`_WaitForConnectionThread`, lecteur `reader.sock`, `FilesFiltering._get_default_library_roots`), cf. `cycle-de-vie.md`, section 5.

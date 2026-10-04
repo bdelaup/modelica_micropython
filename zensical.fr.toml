@@ -39,6 +39,7 @@ nav = [
       { "Liaison radio" = "guide/peripheriques/radio.md" },
     ] },
     { "Exemples" = "guide/exemples.md" },
+    { "Déboguer avec VS Code" = "guide/debogage.md" },
     { "Limites et dépannage" = "guide/limites.md" },
   ] },
   { "Référence interne" = [

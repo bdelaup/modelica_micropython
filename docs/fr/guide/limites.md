@@ -16,6 +16,7 @@
 - `Timer` : 4 minuteurs au plus, période minimale 1 ms.
 - Les callbacks d'interruption (`Pin.irq()`, `Timer`) s'exécutent au prochain point de synchronisation, jamais en préemption instantanée du programme.
 - Plusieurs `MCU` dans un modèle : chacun a son programme, ses modules et sa flash. Deux cartes qui se répondraient sans jamais laisser passer de temps (`gpioOpTime = 0` et deux recopies croisées) bloquent la simulation au même instant.
+- Débogage ([avec VS Code](debogage.md)) : un seul `MCU` débogué par modèle ; seul le programme du microcontrôleur se débogue, pas les scripts des appareils série ou I2C.
 
 Détail fonction par fonction : [API, limitations](api.md#limitations-connues).
 
@@ -34,6 +35,15 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues).
 
 ??? question "La simulation semble figée, avec l'avertissement « the script has been running for more than 10 s of real time »"
     Le programme tourne dans une boucle qui ne rend jamais la main au circuit : ni `sleep()`, ni accès à une broche (attente sur `time.ticks_ms()`, calcul sans fin). Le temps simulé ne peut plus avancer. Ajouter un `time.sleep_ms()` dans la boucle, puis arrêter la simulation depuis OMEdit. La variante « acting for more than ... at the same simulated instant » désigne une boucle d'accès aux broches avec `gpioOpTime = 0`. Le délai se règle par `hangWarningTime` ([Le bloc MCU](mcu.md#temps-dexecution)) ; un calcul long mais légitime se termine normalement malgré l'avertissement.
+
+??? question "La simulation reste à t = 0, le journal affiche « waiting for VS Code »"
+    Le débogage est activé (`debugEnabled`, onglet *Debugging* du `MCU`) : le microcontrôleur attend que VS Code s'attache. S'attacher depuis VS Code ([Déboguer avec VS Code](debogage.md)), ou décocher `debugEnabled` pour simuler sans débogueur.
+
+??? question "VS Code n'arrive pas à s'attacher au `MCU`"
+    Vérifier que la simulation est lancée et que le journal affiche `waiting for VS Code on port ...`, puis que le port de `launch.json` est celui de `debugPort`. Si la simulation s'arrête au départ sur `failed to start the debugger`, le port est déjà pris (une autre simulation en cours, par exemple) : en choisir un autre dans `debugPort` et dans `launch.json`.
+
+??? question "Mes points d'arrêt ne sont jamais atteints"
+    Le fichier annoté dans VS Code doit être celui que le `MCU` exécute : `scriptPath`, ou pour la flash les fichiers de l'image `fsSource`. Les points d'arrêt posés dans `machine` et `time` (le shim de la bibliothèque) sont ignorés.
 
 ??? question "Mes `print()` n'apparaissent pas"
     Ils s'affichent dans la fenêtre de sortie de la simulation d'OMEdit (et dans son journal), pas dans une console Python, précédés du temps simulé (`[t=0.250000 s] ...`). Un `print()` d'appareil série ou I2C porte en plus le nom du composant.

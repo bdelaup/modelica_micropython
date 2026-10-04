@@ -25,7 +25,7 @@ Priorité : **1** = la page en a vraiment besoin ; **2** = utile ; **3** = confo
 |---|---|---|---|---|---|
 | `premiers-pas-omedit` | `guide/premiers-pas.md` | Fenêtre d'OMEdit : bibliothèque dépliée dans l'explorateur, `BasicBlink` ouvert en vue *Diagramme* | PNG | 1 | non |
 | `premiers-pas-parametres` | `guide/premiers-pas.md` | Boîte de paramètres du `MCU`, onglet *General*, champ *scriptPath* avec son bouton *…* | PNG | 1 | non |
-| `mcu-parametres` | `guide/mcu.md` | Les quatre onglets de la boîte de paramètres du `MCU` (*General*, *Execution time*, *Electrical*, *File system*), en une image composée ou en quatre (`mcu-parametres-1.png`…) | PNG | 2 | non |
+| `mcu-parametres` | `guide/mcu.md` | Les cinq onglets de la boîte de paramètres du `MCU` (*General*, *Execution time*, *Electrical*, *File system*, *Debugging*), en une image composée ou en cinq (`mcu-parametres-1.png`…) | PNG | 2 | non |
 | `grove-lcd` | `guide/peripheriques/i2c.md` | Icône de `I2cGroveLcdRgb` en fin de simulation de `I2c.GroveLcd` : « hello World » sur fond coloré | PNG (capture de la relecture) | 2 | non |
 | `display-icone` | `guide/peripheriques/led-afficheur.md` | Icône de `Peripherals.Display` en fin de simulation de `Display.Demo` : deux messages | PNG | 2 | non |
 | `hx711-icone` | `guide/peripheriques/pesee.md` | Icône de `Weighing.Hx711` pendant `Hx711Read` : gain, code, voyant cyan | PNG | 3 | non |
@@ -35,6 +35,7 @@ Priorité : **1** = la page en a vraiment besoin ; **2** = utile ; **3** = confo
 | `ledchaser-gif` | `guide/exemples.md` | Animation du chenillard `Gpio.LedChaser` | GIF | 3 | non |
 | `analyseur-bloc-notes` | `guide/peripheriques/analyseurs.md` | Fichier texte de `UartLink` dans un éditeur à interligne serré (le Bloc-notes de Windows 11 espace les lignes du chronogramme et souligne les mots) | PNG | 3 | non |
 | `analyseur-onglets` | `guide/peripheriques/analyseurs.md` | Boîte de paramètres de `LogicAnalyzer` : onglet `CH1` d'`Analyzer.I2cBus` (type `I2cSda`, horloge `CH0`), groupes UART et série synchrone grisés | PNG | 2 | non |
+| `debogage-vscode` | `guide/debogage.md` | VS Code arrêté sur un point d'arrêt de `debug_demo.py` (`Program.Debug`) : ligne surlignée, panneau *Variables* (`count`, `presses`), barre de débogage ; à côté ou en médaillon, le journal d'OMEdit avec « waiting for VS Code » puis « VS Code attached » | PNG | 1 | non |
 
 Les images « oui » ont été faites le 2026-10-02 (voir ci-dessous) ; celles qui restent demandent une capture interactive. **Captures MCP** : le serveur rend une vue en PNG 1024 × 1024 (`iconDiagram` pour une icône, `classDiagram` pour une vue *Diagramme*), sur fond quadrillé ; `python docs/figures/crop_mcp.py capture.png sortie.png` remplace fond et quadrillage par du blanc et recadre, `--no-name` efface le texte `%name` d'une icône, `--row ... -o sortie.png` assemble plusieurs captures côte à côte, `--max-width` réduit. Pièges : recharger la bibliothèque dans OMEdit avant de capturer (sinon l'ancienne version est rendue) ; une vue *Diagramme* jamais ouverte peut sortir vide, un `listComponents` sur la classe avant la capture suffit ; les icônes très lourdes (`TextIcon8x32`) peuvent faire expirer l'appel. Rendu matriciel : un schéma très large (`KitchenScale`) y perd en finesse.
 

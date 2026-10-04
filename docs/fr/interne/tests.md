@@ -111,6 +111,10 @@ omc verify_51_radio_link.mos
 omc verify_52_radio_overflow.mos
 omc verify_53_radio_modulations.mos
 omc verify_54_radio_channel.mos
+omc verify_60_debugpy.mos
+omc verify_61_debug_two_mcu.mos
+omc verify_62_debug_flash.mos
+omc verify_63_debug_error.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -172,6 +176,10 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_52_radio_overflow.mos` | `Examples.Radio.Overflow` | Tampon d'émission plein | B reçoit `0123456789ABCDEFGHLTb` (21 octets), 19 perdus au bilan de A, `txFill` = 16 à 45 ms, avertissements plafonnés |
 | `verify_53_radio_modulations.mos` | `Examples.Radio.Modulations` | Signal tracé des quatre modulations | Sur le bit de start puis le premier bit de données : OOK 0 puis 1, ASK 0,3 puis 1, FSK 3 puis 5 périodes par bit, BPSK corrélation négative puis positive ; quatre octets reçus |
 | `verify_54_radio_channel.mos` | `Radio.Link` modifié (fréquence, débit radio) et un modèle à six modules, déclarés par `loadString` | Règles du canal radio | 440 MHz : rien d'entendu ; 4800 bit/s : trames jetées, aucun PONG ; diffusion : deux récepteurs servis ; deux émetteurs simultanés : collision comptée, rien reçu |
+| `verify_60_debugpy.mos` | `DebugProgram`, défini dans le script (`Examples.BasicBlink` avec `Verification/debug_target.py`, `debugEnabled`, port 5860) | Débogage par debugpy, client DAP `Verification/dap_client.py` (mode `steps`) à la place de VS Code, avec le `pathMappings` du modèle *Remote Attach* (`Resources` → `"."`, résolu vers le dossier de la simulation) | Attente à t = 0 puis attachement ; arrêt ligne 10 (`count` = 0), pas par-dessus (ligne 11, `count` = 1), pas entrant sur `led.toggle()` resté dans le programme (ligne 12, le shim est exclu), `led.value()` évalué pendant la pause (1), second passage (`count` = 1) ; horodatages inchangés par une pause de 2 s (`count 2` à t = 0,1 s) ; fin propre (Python finalisé), `GP0` allumée |
+| `verify_61_debug_two_mcu.mos` | `DebugTwoMcu`, défini dans le script (`Examples.MultiMcu.Independent`, `debugEnabled` sur les deux MCU) | Un seul MCU débogué par modèle | Arrêt à la construction, message `debugEnabled is set on more than one MCU`, sans attente du débogueur |
+| `verify_62_debug_flash.mos` | `DebugFlash`, défini dans le script (`Examples.FileSystem.Boot`, copie dans `DebugFlash_ws`, port 5862) | Point d'arrêt posé dans l'**image** de la flash, client en mode `stay` (reprend sans se détacher) et qui envoie, comme tous les scénarios de débogage, le `pathMappings` du modèle *Remote Attach* de VS Code (dossier `Resources` → `"."`), à ignorer | Arrêt ligne 21 de `main.py`, rapporté sur le fichier de l'image (`i` = 0) alors que la copie s'exécute ; auto-contrôle de `main.py` passé (cloisonnement intact sous débogueur) ; fin propre client toujours attaché, qui reçoit `terminated` |
+| `verify_63_debug_error.mos` | `DebugError`, défini dans le script (`Examples.BasicBlink` avec `Verification/script_error.py`, port 5863) | Exception du programme sous débogueur | Trace au vrai nom de fichier et arrêt en erreur comme sans débogueur ; fin propre alors que le client attend encore un arrêt (lecteur de pydevd débloqué par `shutdown`) |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 
@@ -203,6 +211,8 @@ end if;
 **Scénario d'échec attendu** : le résultat de `simulate()` n'est pas lisible depuis un `.mos` (`r.resultFile` introuvable), et `getErrorString()` peut être vide alors que la simulation a échoué. Relancer l'exécutable par son `.bat` avec `system(".\\MonScenario.bat", "MonScenario_run.txt")` (code de sortie non nul), lire le journal par `readFile`, et y chercher un texte précis avec `regex(texte, motif, 1)`, qui rend le nombre de correspondances (cf. `verify_04_script_error.mos`). `Modelica.Utilities.Strings.find`/`System.stringFind` restent indisponibles.
 
 **Piège rencontré en session** : `getErrorString()` n'est **pas** un critère, ni de succès ni d'échec. Il a longtemps contenu l'avertissement « The initial conditions are not fully specified », présent dans *tous* les scénarios, y compris ceux qui réussissent parfaitement : ce texte a fait échouer à tort un critère `b == ""`, et réussir à tort l'ancien critère `b <> ""` de `verify_04`. Cet avertissement a disparu (valeurs de départ explicites, cf. `requirements.md`), mais n'importe quel autre avertissement peut prendre sa place. Un `if b == "" and ... then PASS`, comme tenté une première fois pour `verify_09_import.mos`, échoue donc à tort. Se fier uniquement aux valeurs numériques attendues (`val(...)`) pour le critère de succès ; `b` reste utile seulement pour le diagnostic affiché dans le message `FAIL`.
+
+**Scénario de débogage** (`verify_60` à `verify_63`) : VS Code est remplacé par `Verification/dap_client.py`, un client DAP minimal (stdlib seule) lancé **avant** la simulation et en arrière-plan, avec le Python embarqué : `system("start \"\" /b ..\\PythonRuntime\\python.exe dap_client.py <port> <programme> <ligne> <variable> <compte_rendu.json> [steps|stay]")`. C'est pourquoi `.gitignore` laisse passer `Resources/PythonRuntime/python.exe`. Le client retente la connexion jusqu'à ce que le `MCU` écoute, et écrit son compte rendu JSON (écrit puis renommé) **avant** de se détacher, la simulation se terminant aussitôt après. Chaque scénario a son port (5860 à 5863) : la suite tourne en parallèle. Pour suivre les messages DAP, positionner `MCU_DEBUGPY_LOG` sur un dossier (journaux de debugpy).
 
 ## Nettoyage
 

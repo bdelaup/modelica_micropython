@@ -22,6 +22,11 @@ model MCU "Simulated programmable microcontroller, driven by a MicroPython-compa
     Dialog(tab = "Execution time"));
   parameter Modelica.Units.SI.Time hangWarningTime = 10 "Real (wall-clock) time after which a warning is logged if the script does not let the simulation advance (loop without sleep() nor pin access, or with gpioOpTime = 0) - the simulation keeps waiting; 0 = no warning" annotation(
     Dialog(tab = "Execution time"));
+  parameter Boolean debugEnabled = false "Debug the program with VS Code: at the start of the simulation, the microcontroller waits until VS Code attaches (debugpy, Run and Debug > attach to localhost:debugPort); simulated time stays frozen while the program is paused - one microcontroller per model" annotation(
+    Dialog(tab = "Debugging"),
+    choices(checkBox = true));
+  parameter Integer debugPort = 5678 "Local TCP port on which the debugger (debugpy) listens - the port of the VS Code attach configuration" annotation(
+    Dialog(tab = "Debugging", enable = debugEnabled));
   parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Logic high voltage" annotation(
     Dialog(tab = "Electrical", group = "Logic levels"));
   parameter Modelica.Units.SI.Voltage VOL = Interfaces.VOL "Logic low voltage" annotation(
@@ -78,7 +83,7 @@ protected
   discrete Integer uartTxPin(start = 0, fixed = true) "Pin assigned to serial transmission (0 = none); once assigned it stays so, even between frames, because the idle line must be HIGH - see machine.UART";
   discrete Boolean uartTxLevel(start = true, fixed = true) "Logic level to hold on the transmit pin (idle = high), published by the C code: the next sync point falls on the next level CHANGE of the frame, so consecutive identical bits cost no event";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Next wake-up requested by the script (sleep), or +inf once finished";
-  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName(), gpioOpTime, hangWarningTime) "Embedded Python interpreter running the user script" annotation(
+  Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, getInstanceName(), gpioOpTime, hangWarningTime, debugEnabled, debugPort) "Embedded Python interpreter running the user script" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage src[9] "Voltage source driven by the script (VOH/VOL) when the pin is an output; index 9 = on-board LED" annotation(
     Placement(visible = false, transformation(extent = {{-190, -90}, {-150, -50}})));

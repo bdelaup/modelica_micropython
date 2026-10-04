@@ -51,3 +51,5 @@ Windows uniquement, pas de SPI. Un modèle peut contenir plusieurs microcontrôl
 ## Contexte
 
 Bibliothèque conçue par Benoit Delaup, professeur de sciences de l'ingénieur, pour que des élèves testent leur code de pilotage sur le système numérique avant de le déployer sur un prototype réel, et utilisable pour un jumeau numérique de logiciel embarqué dans un cadre industriel. Code source et suivi : [dépôt GitLab](https://gitlab.com/bdelaup/modelica_micropython3). Les choix d'architecture et leurs alternatives sont consignés dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+
+Le développement de la bibliothèque (code, tests et documentation) a été réalisé avec l'aide d'une IA, sous la direction de l'auteur, qui en a fixé les choix et relu le résultat.

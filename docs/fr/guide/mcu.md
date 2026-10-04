@@ -36,7 +36,7 @@ Exemple : [`Gpio.Pull`](exemples.md#broches-numeriques-examplesgpio), deux bouto
 
 Double-cliquer sur le `MCU` ouvre sa boîte de paramètres. Les valeurs par défaut conviennent à la plupart des usages : seul le chemin du script est à régler.
 
-<!-- ILLUSTRATION mcu-parametres : les quatre onglets de la boîte de paramètres du MCU (General, Execution time, Electrical, File system) (cf. docs/ILLUSTRATIONS.md) -->
+<!-- ILLUSTRATION mcu-parametres : les cinq onglets de la boîte de paramètres du MCU (General, Execution time, Electrical, File system, Debugging) (cf. docs/ILLUSTRATIONS.md) -->
 
 ### Script Python
 
@@ -97,6 +97,15 @@ Onglet *File system*, groupe « Simulated flash ». Détail de ce que voit le pr
 | `fsOpenExplorer` | `true` | Ouvre l'Explorateur Windows sur la copie à la fin de la simulation |
 
 L'image source n'est jamais modifiée : chaque simulation repart d'une copie neuve, et le journal affiche son chemin. Pour enchaîner deux simulations, désigner comme `fsSource` la copie laissée par la précédente. Image fournie en exemple : `Resources/FileSystems/datalogger/` (exemples `FileSystem.Boot` et `FileSystem.Script`).
+
+### Débogage
+
+Onglet *Debugging*. Détails et déroulé dans [Déboguer avec VS Code](debogage.md).
+
+| Paramètre | Défaut | Rôle |
+|---|---|---|
+| `debugEnabled` | `false` | Débogage pas à pas avec VS Code : au démarrage, le microcontrôleur attend que VS Code s'attache (la simulation reste à t = 0), puis le programme peut être mis en pause, avancé ligne par ligne et inspecté. Pendant une pause, le temps simulé est figé. Un seul `MCU` par modèle |
+| `debugPort` | `5678` | Port local sur lequel le débogueur (`debugpy`) écoute : celui de la configuration *attach* de VS Code |
 
 ## Grandeurs à tracer
 

@@ -95,6 +95,15 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 
 The source image is never modified: each simulation starts from a fresh copy, whose path is shown in the log. To chain two simulations, use the copy left by the previous one as `fsSource`. Example image supplied: `Resources/FileSystems/datalogger/` (examples `FileSystem.Boot` and `FileSystem.Script`).
 
+### Debugging
+
+*Debugging* tab. Details and walkthrough in [Debugging with VS Code](debogage.md).
+
+| Parameter | Default | Role |
+|---|---|---|
+| `debugEnabled` | `false` | Step-by-step debugging with VS Code: at start-up, the microcontroller waits until VS Code attaches (the simulation stays at t = 0), then the program can be paused, stepped line by line and inspected. During a pause, simulated time is frozen. One `MCU` per model |
+| `debugPort` | `5678` | Local port the debugger (`debugpy`) listens on: the one in the VS Code *attach* configuration |
+
 ## Variables to plot
 
 | Variable | Contents |

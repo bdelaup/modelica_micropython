@@ -1,0 +1,38 @@
+// Scénario de vérification n°63 : le programme lève une exception pendant le
+// débogage. omc verify_63_debug_error.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : débogueur attaché, une exception non gérée du
+// programme arrête la simulation comme sans débogueur (trace au vrai nom de
+// fichier, message d'erreur), et la fin reste propre alors que le client DAP
+// est encore connecté, en attente d'un arrêt qui ne viendra plus. Avant
+// correction, le thread lecteur de pydevd restait bloqué dans recv() sur la
+// connexion (Windows ne le réveille pas) : Python n'était pas finalisé
+// (« did not stop at the end of the simulation »). Script
+// Verification/script_error.py (division par zéro ligne 7, à t = 1 s) ; le
+// client pose un point d'arrêt ligne 8, jamais atteinte. Modèle défini ici
+// plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model DebugError
+  extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/script_error.py\"), debugEnabled = true, debugPort = 5863));
+end DebugError;"); getErrorString();
+
+buildModel(DebugError, stopTime = 2, numberOfIntervals = 100, fileNamePrefix = "DebugError");
+b := getErrorString();
+
+deleteFile("DebugError_dap.json");
+system("start \"\" /b ..\\PythonRuntime\\python.exe dap_client.py 5863 \"" + cd() + "/script_error.py\" 8 x DebugError_dap.json");
+ret := system(".\DebugError.bat", "DebugError_run.txt");
+log := readFile("DebugError_run.txt");
+
+(nAttached, m1) := regex(log, "Debugger: VS Code attached", 1);
+(nTrace, m2) := regex(log, "script_error\\.py\", line 7", 1);
+(nZero, m3) := regex(log, "ZeroDivisionError", 1);
+(nError, m4) := regex(log, "unhandled exception", 1);
+(nThreads, m5) := regex(log, "other Python threads|did not stop at the end", 1);
+
+if ret <> 0 and nAttached >= 1 and nTrace >= 1 and nZero >= 1 and nError >= 1 and nThreads == 0 then
+  print("PASS: verify_63_debug_error (exception sous debogueur : trace et arret comme sans debogueur, fin propre client connecte)\n");
+else
+  print("FAIL: verify_63_debug_error (code de sortie " + String(ret) + ", attache " + String(nAttached) + ", trace " + String(nTrace) + ", ZeroDivisionError " + String(nZero) + ", erreur " + String(nError) + ", threads restants " + String(nThreads) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

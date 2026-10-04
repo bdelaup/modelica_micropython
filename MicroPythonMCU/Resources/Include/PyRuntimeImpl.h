@@ -28,7 +28,8 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      const char* shimPath, int fsEnabled, const char* fsSource,
                      const char* fsWorkspace, int fsOpenExplorer,
                      const char* instanceName, double gpioOpTime,
-                     double hangWarningTime);
+                     double hangWarningTime,
+                     int debugEnabled, int debugPort);
 void PyRuntime_destroy(void* handle);
 
 /* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,

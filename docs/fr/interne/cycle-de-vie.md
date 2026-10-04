@@ -314,6 +314,116 @@ Chaque `simulate()` d'OpenModelica exécute l'exécutable généré comme un **p
 
 **Fichiers non fermés : la fermeture est explicite.** Constaté en écrivant `verify_43` : sans `_fs_close_files`, un fichier ouvert dans `__main__` et jamais fermé restait vide après `Py_EndInterpreter`, alors que le même code dans un sous-interpréteur créé par `_xxsubinterpreters` (même CPython 3.12.4, modes isolé et non isolé, depuis un thread secondaire) écrit bien son contenu. L'objet fichier n'est jamais libéré : un `close()` surchargé n'est pas appelé, alors qu'au moment des `atexit` le fichier est encore ouvert et son `flush()` fonctionne. Une simple référence faible sur le module `__main__` (`sys._k = weakref.ref(sys.modules['__main__'])`) suffit à rétablir l'écriture : l'espace de noms `__main__`, que le programme partage avec le shim (exécuté lui aussi dans `__main__`), survit à la finalisation des modules dans notre configuration. Cause exacte non élucidée ; plutôt que de dépendre de l'ordre de finalisation, le shim ferme explicitement ce qu'il a ouvert.
 
+## 5. Débogage (debugpy + VS Code)
+
+Avec `MCU.debugEnabled`, le programme se débogue depuis VS Code (lot 4, décision « Débogage du programme (debugpy + VS Code) » de `requirements.md` ; guide utilisateur : *Déboguer avec VS Code*). Le débogueur est `debugpy` 1.8.20, vendoré dans `Resources/Debugpy/` (`make_debugpy.sh`). Il tourne **dans le sous-interpréteur du MCU**, en mode « adaptateur dans le process » (`listen(..., in_process_debug_adapter=True)`) : pydevd parle DAP directement à VS Code sur `127.0.0.1:debugPort`, sans process adaptateur (il le lancerait sinon avec `sys.executable`, ici l'exécutable de simulation). Ce qui le pilote est dans `Resources/Scripts/_shim/debug_host.py`, exécuté par le worker dans un module propre, `_mcu_debug` : pas dans `__main__`, dont VS Code affiche les variables.
+
+Il n'y a rien à coder pour la pause : un programme arrêté sur un point d'arrêt garde son tour (`turn == TURN_WORKER`), et `PyRuntime_sync` l'attend comme il attend n'importe quel calcul. **Le temps simulé est donc figé pendant la pause**, et les résultats sont ceux d'une simulation sans débogueur. `verify_60` contrôle les horodatages après une pause de 2 s.
+
+### Initialisation en mode débogage
+
+```mermaid
+sequenceDiagram
+    participant MCU as MCU (équations Modelica)
+    participant Ctor as PyRuntime_new (C)
+    participant Worker as Thread worker
+    participant Host as debug_host.py<br/>(module _mcu_debug)
+    participant Pydevd as pydevd<br/>(threads démons)
+    participant VS as VS Code
+
+    MCU->>Ctor: PyRuntime(..., debugEnabled, debugPort)
+    Ctor->>Ctor: 2e MCU avec debugEnabled ? ModelicaFormatError<br/>(g_debug_count, verify_61)
+    Ctor->>Ctor: lit debug_host.py (voisin du shim),<br/>chemin de Resources/Debugpy
+    Ctor->>Worker: _beginthreadex(worker_main)
+    Worker->>Worker: Py_NewInterpreterFromConfig(MCU_INTERP_CONFIG_DEBUG)<br/>= threads démons permis
+    Worker->>Worker: relais stdout, _pyruntime_native, sys.path
+    Worker->>Host: debug_host_load + start(port, debugpy_dir, shim_dir)
+    Host->>Host: import debugpy AVANT le shim<br/>(time encore le vrai module)
+    Host->>Host: LIBRARY_ROOTS += dossier du shim<br/>(justMyCode n'y entre pas)
+    Host->>Pydevd: listen(127.0.0.1:port, in_process_debug_adapter=True)
+    Pydevd->>Pydevd: _WaitForConnectionThread : accept()
+    Worker->>Worker: run_source(machine_time_shim.py)<br/>(_fs_stdlib += dossier de debugpy)
+    Worker-->>Ctor: init_state = INIT_OK
+    Ctor-->>MCU: handle
+    Note over MCU: tous les composants construits,<br/>puis premier PyRuntime_sync (t = 0)
+    MCU->>Worker: turn = TURN_WORKER
+    Worker->>Host: wait(port, fsSource, fs_root)
+    Host->>Host: setup_client_server_paths(image -> copie),<br/>pathMappings du client ignorés
+    Host-->>MCU: journal : « waiting for VS Code on port N »
+    Note over MCU: PyRuntime_sync attend (timeout mou coupé)
+    VS->>Pydevd: connexion, initialize, attach
+    VS->>Pydevd: setBreakpoints, configurationDone
+    Pydevd-->>Host: wait_for_client() rend la main
+    Host-->>MCU: journal : « VS Code attached »
+    Worker->>Worker: boot.py, puis le programme (tracé par sys.monitoring)
+```
+
+L'attente de VS Code a lieu au **premier tour** du worker (`worker_main`), et non dans le constructeur. À ce moment, tous les composants du modèle sont construits : un second `MCU` débogué a donc déjà été refusé. Dans le constructeur, le premier `MCU` aurait bloqué la construction du second, et l'erreur ne serait jamais venue. La copie de la flash existe aussi, ce qui permet de poser la correspondance des chemins.
+
+### Pendant la simulation : point d'arrêt, pas à pas, reprise
+
+```mermaid
+sequenceDiagram
+    participant Modelica as Solveur Modelica (when)
+    participant Sync as PyRuntime_sync (C)
+    participant Worker as Thread worker (programme)
+    participant Pydevd as pydevd (threads démons)
+    participant VS as VS Code
+
+    Modelica->>Sync: PyRuntime_sync(t = 0,8 s)
+    Sync->>Worker: turn = TURN_WORKER
+    Worker->>Worker: count += 1 → point d'arrêt (sys.monitoring)
+    Worker->>Pydevd: suspension : do_wait_suspend<br/>(vraies attentes de time, GIL rendu)
+    Pydevd-->>VS: event stopped (reason = breakpoint)
+    Note over Sync,Worker: Sync attend turn == TURN_MODELICA :<br/>temps simulé figé, aussi longtemps qu'il faut
+    VS->>Pydevd: stackTrace, scopes, variables
+    VS->>Pydevd: next / stepIn
+    Pydevd->>Worker: une ligne, puis nouvelle suspension
+    Pydevd-->>VS: event stopped (reason = step)
+    VS->>Pydevd: continue
+    Pydevd->>Worker: reprise
+    Worker->>Worker: led.toggle() → yield_until(t + gpioOpTime)
+    Worker->>Sync: wake_requested_at, turn = TURN_MODELICA
+    Sync-->>Modelica: sorties publiées, prochaine échéance
+```
+
+Les callbacks `Pin.irq()`/`Timer`, exécutés par `run_due_callbacks` sur le même worker, s'arrêtent sur leurs points d'arrêt de la même façon. Une **évaluation** demandée par VS Code s'exécute sur le thread suspendu : si elle appelle une native (`led.value()`), celle-ci fait un vrai tour de synchro et consomme `gpioOpTime`.
+
+### Fin de simulation
+
+```mermaid
+sequenceDiagram
+    participant Destroy as PyRuntime_destroy (C)
+    participant Worker as Thread worker
+    participant Host as debug_host.stop()
+    participant Pydevd as pydevd
+    participant VS as VS Code
+
+    Destroy->>Worker: shutdown = 1 (attente ≤ SHUTDOWN_WAIT_MS)
+    Worker->>Worker: SystemExit déroule le programme,<br/>puis le worker se gare
+    Worker->>Host: debug_host_stop(ts)
+    Host->>Pydevd: _WaitForConnectionThread : _kill_received,<br/>connexion locale factice pour sortir d'accept()
+    Host->>Pydevd: stoptrace()
+    Pydevd-->>VS: event terminated (VS Code ferme sa session)
+    Pydevd->>Pydevd: arrêt des threads Writer, CheckAlive, Command
+    Host->>Pydevd: lecteur encore vivant ? socket.shutdown(SHUT_RDWR)
+    Worker->>Worker: attend (≤ 1 s) qu'il ne reste que son état de thread
+    Worker->>Worker: worker_end_interpreter → Py_EndInterpreter
+```
+
+Sans cet arrêt explicite, `worker_end_interpreter` trouverait d'autres threads dans le sous-interpréteur et renoncerait à le terminer (avertissement « other Python threads are still running », Python non finalisé).
+
+### Pièges rencontrés, et ce qu'ils ont imposé
+
+- **`time` du shim** : pydevd vérifie que `time` a `mktime` (`_pydev_saved_modules.py`) et s'en sert pour ses attentes en pause. Importé après le shim, il recevrait le `time` simulé : refus au démarrage, ou pauses qui feraient avancer la simulation. D'où `start()` **avant** le shim.
+- **Cloisonnement de la flash** : `_fs_user` prend pour du code de l'élève tout ce qui n'est pas sous la stdlib. Une évaluation de pydevd sur le worker aurait reçu le faux `os` et un `open()` cloisonné. D'où le dossier de debugpy dans `_fs_stdlib`.
+- **Filtres de pas à pas** : à l'attachement, `PYDEVD_FILTERS` est remplacé par les `rules` du client (vides par défaut), et le pas entrant sur `led.toggle()` entrait dans le shim (défaut trouvé par `verify_60`). Les racines de bibliothèque (`LIBRARY_ROOTS`), elles, sont conservées : le dossier du shim y est ajouté, et `justMyCode` n'y entre pas.
+- **Threads bloqués sous Windows** : fermer une socket depuis un autre thread ne réveille ni `accept()` ni `recv()`. Le premier bloque `_WaitForConnectionThread`, qui attend une nouvelle connexion même après un détachement ; une connexion locale factice le débloque. Le second bloque le lecteur de pydevd quand VS Code ne ferme pas la connexion à temps (programme en erreur, `verify_63`) ; un `shutdown(SHUT_RDWR)` le débloque.
+- **`pathMappings` du client** : envoyés à l'attachement, ils remplacent ceux que pose le serveur. Le modèle *Remote Attach* de VS Code en contient un, `${workspaceFolder}` → `"."`, que pydevd résout vers le **dossier courant de la simulation** (`C:\temp\OpenModelica\OMEdit\...` sous OMEdit) : plus aucun point d'arrêt n'était atteint (constaté avec le vrai VS Code). VS Code et la simulation étant sur le même poste, ces correspondances n'ont jamais lieu d'être : `debug_host.py` remplace `setup_client_server_paths` par une version qui les ignore et ne garde que la correspondance image → copie de la flash. Le client de test envoie ce même `pathMappings`, avec un dossier de travail distinct du dossier de la simulation (`verify_60` reproduit le défaut, `verify_62` vérifie que la flash n'en souffre pas).
+- **Avertissement « frozen modules »** de pydevd au démarrage : sans objet (modules gelés de la stdlib), coupé par `PYDEVD_DISABLE_FILE_VALIDATION`.
+
+Diagnostic : la variable d'environnement `MCU_DEBUGPY_LOG` (un dossier) fait écrire à debugpy ses journaux (`debugpy.log_to`), utiles pour suivre les messages DAP échangés.
+
 ## Six pièges rencontrés (et pourquoi le mécanisme est ce qu'il est)
 
 Ces six bugs, trouvés pendant l'implémentation, ont directement façonné le protocole ci-dessus — les documenter évite de les réintroduire par inadvertance lors d'une future extension.

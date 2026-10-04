@@ -38,6 +38,7 @@ nav = [
       { "Radio link" = "guide/peripheriques/radio.md" },
     ] },
     { "Examples" = "guide/exemples.md" },
+    { "Debugging with VS Code" = "guide/debogage.md" },
     { "Limits and troubleshooting" = "guide/limites.md" },
   ] },
   { "Maintainer reference (FR)" = "https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/architecture/" },

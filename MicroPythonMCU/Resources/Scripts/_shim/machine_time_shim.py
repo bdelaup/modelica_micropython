@@ -415,6 +415,11 @@ def _fs_mount():
     global _fs_root, _fs_stdlib
     enabled, source, workspace, instance, home = _native.fs_config()
     _fs_stdlib = (_host_os.path.normcase(_host_os.path.abspath(home)) + _host_os.sep, '<frozen ')
+    # Debogage (MCU.debugEnabled) : le code de debugpy, qui evalue des
+    # expressions sur ce thread, n'est pas celui du microcontroleur non plus.
+    _debug = sys.modules.get('_mcu_debug')
+    if _debug is not None and _debug.DEBUGPY_DIR:
+        _fs_stdlib += (_host_os.path.normcase(_host_os.path.abspath(_debug.DEBUGPY_DIR)) + _host_os.sep,)
     if not enabled:
         return
     ws = _fs_host_dir(workspace or '.')

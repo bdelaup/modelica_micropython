@@ -14,7 +14,8 @@ Use case: test control code on the digital twin before deploying it to a real pr
 
 - **Microcontroller**: GPIO (`Pin`, `Pin.irq` interrupts, bit-banging), `ADC`, `PWM`, `Timer`, `UART` serial link, `I2C` master bus, flash-like file system (`open()`, `os`, `boot.py`/`main.py` startup), module imports, onboard LED. `sleep()` calls cost no real waiting time.
 - **Peripherals to wire in**: serial devices (echo, temperature sensor, GPS, 20x2 display, generic), I2C devices (Grove LCD RGB display, echo, generic), HX711 weighing chain (converter, strain-gauge bridge, load cell), LED, pedagogical display.
-- **31 examples** (`MicroPythonMCU.Examples`), including a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
+- **Debugging**: step-by-step debugging of the program with VS Code (breakpoints, variables); simulated time stays frozen during a pause.
+- **49 examples** (`MicroPythonMCU.Examples`), including a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
 - **Current limits**: Windows only, a single microcontroller per model, no SPI. Full list: [Limits and troubleshooting](https://bdelaup.gitlab.io/modelica_micropython3/en/guide/limites/).
 
 ## Installation
@@ -49,7 +50,20 @@ The [user guide](https://bdelaup.gitlab.io/modelica_micropython3/en/) covers ins
 
 ## License
 
-[MIT](LICENSE) — attribution required (copyright + license text) in any copy or republication, whole or partial. The vendored Python distribution (`MicroPythonMCU/Resources/PythonRuntime/`) keeps its own license (Python Software Foundation).
+[MIT](LICENSE) — attribution required (copyright + license text) in any copy or republication, whole or partial.
+
+### Third-party software
+
+The repository ships the following third-party components, each under its own license:
+
+| Component | Location | License |
+|---|---|---|
+| CPython 3.12, official "embeddable" distribution, and its C headers | `MicroPythonMCU/Resources/PythonRuntime/`, `MicroPythonMCU/Resources/Include/cpython312/` | Python Software Foundation License (`PythonRuntime/LICENSE.txt`) |
+| [debugpy](https://github.com/microsoft/debugpy) 1.8.20 (Microsoft), debugger used by `MCU.debugEnabled` | `MicroPythonMCU/Resources/Debugpy/` | MIT (`Debugpy/LICENSE`); it embeds PyDev.Debugger (EPL-1.0) and other components listed in `debugpy/ThirdPartyNotices.txt` |
+| `hx711_gpio.py` HX711 driver by [robert-hh](https://github.com/robert-hh/hx711), unmodified | `MicroPythonMCU/Resources/Scripts/MCU/` | MIT (header of the file) |
+| `driver_grove_lcd_rgb.py` Grove LCD RGB driver, © 2019 Christophe Gueneau, unmodified | `MicroPythonMCU/Resources/Scripts/MCU/` | not stated by its author |
+
+Used but not shipped: OpenModelica and the Modelica Standard Library (to be installed), PulseView (optional, for the logic analyzer), Zensical (documentation site).
 
 The `Peripherals.LED` component (current-reactive icon) is inspired by `Arduino.Components.LED` from the [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) library (CATIA-Systems).
 
@@ -77,7 +91,8 @@ Usage : tester un code de pilotage sur le jumeau numérique avant de le déploye
 
 - **Microcontrôleur** : GPIO (`Pin`, interruptions `Pin.irq`, bit-banging), `ADC`, `PWM`, `Timer`, liaison série `UART`, bus `I2C` maître, système de fichiers façon flash (`open()`, `os`, démarrage `boot.py`/`main.py`), import de modules, LED embarquée. Les `sleep()` ne coûtent aucune attente réelle.
 - **Périphériques à brancher** : appareils série (écho, capteur de température, GPS, afficheur 20x2, générique), appareils I2C (écran Grove LCD RGB, écho, générique), chaîne de pesée HX711 (convertisseur, pont de jauges, corps d'épreuve), LED, afficheur pédagogique.
-- **31 exemples** (`MicroPythonMCU.Examples`), dont une balance de cuisine qui exécute tels quels des drivers MicroPython du commerce.
+- **Débogage** : le programme se débogue pas à pas avec VS Code (points d'arrêt, variables) ; le temps simulé reste figé pendant une pause.
+- **49 exemples** (`MicroPythonMCU.Examples`), dont une balance de cuisine qui exécute tels quels des drivers MicroPython du commerce.
 - **Limites actuelles** : Windows uniquement, un seul microcontrôleur par modèle, pas de SPI. Liste complète : [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive).
 
 ## Installation
@@ -112,7 +127,20 @@ Le [site de documentation](https://bdelaup.gitlab.io/modelica_micropython3/fr/) 
 
 ## Licence
 
-[MIT](LICENSE) — attribution obligatoire (copyright + texte de licence) dans toute copie ou republication, totale ou partielle. La distribution Python vendorée (`MicroPythonMCU/Resources/PythonRuntime/`) garde sa propre licence (Python Software Foundation).
+[MIT](LICENSE) — attribution obligatoire (copyright + texte de licence) dans toute copie ou republication, totale ou partielle.
+
+### Logiciels tiers
+
+Le dépôt embarque les composants tiers suivants, chacun sous sa propre licence :
+
+| Composant | Emplacement | Licence |
+|---|---|---|
+| CPython 3.12, distribution « embeddable » officielle, et ses en-têtes C | `MicroPythonMCU/Resources/PythonRuntime/`, `MicroPythonMCU/Resources/Include/cpython312/` | Python Software Foundation License (`PythonRuntime/LICENSE.txt`) |
+| [debugpy](https://github.com/microsoft/debugpy) 1.8.20 (Microsoft), débogueur utilisé par `MCU.debugEnabled` | `MicroPythonMCU/Resources/Debugpy/` | MIT (`Debugpy/LICENSE`) ; il intègre PyDev.Debugger (EPL-1.0) et d'autres composants listés dans `debugpy/ThirdPartyNotices.txt` |
+| Driver HX711 `hx711_gpio.py` de [robert-hh](https://github.com/robert-hh/hx711), sans modification | `MicroPythonMCU/Resources/Scripts/MCU/` | MIT (en-tête du fichier) |
+| Driver Grove LCD RGB `driver_grove_lcd_rgb.py`, © 2019 Christophe Gueneau, sans modification | `MicroPythonMCU/Resources/Scripts/MCU/` | non précisée par son auteur |
+
+Utilisés mais non fournis : OpenModelica et la Modelica Standard Library (à installer), PulseView (facultatif, pour l'analyseur logique), Zensical (site de documentation).
 
 Le composant `Peripherals.LED` (icône réactive au courant) s'inspire de `Arduino.Components.LED` de la bibliothèque [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) (CATIA-Systems).
 

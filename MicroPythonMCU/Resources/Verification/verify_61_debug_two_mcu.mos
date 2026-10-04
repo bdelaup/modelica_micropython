@@ -1,0 +1,28 @@
+// Scénario de vérification n°61 : un seul microcontrôleur débogué par modèle.
+// omc verify_61_debug_two_mcu.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : debugEnabled sur deux MCU d'un même modèle
+// arrête la simulation dès la construction, avec un message clair (au lieu
+// d'attendre indéfiniment un second débogueur). Seul le second MCU construit
+// est refusé ; le premier n'a pas encore atteint l'attente de VS Code, qui ne
+// commence qu'une fois son sous-interpréteur prêt, mais l'erreur arrête tout.
+// Modèle défini ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model DebugTwoMcu
+  extends MicroPythonMCU.Examples.MultiMcu.Independent(mcu1(debugEnabled = true, debugPort = 5861), mcu2(debugEnabled = true, debugPort = 5871));
+end DebugTwoMcu;"); getErrorString();
+
+buildModel(DebugTwoMcu, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "DebugTwoMcu");
+b := getErrorString();
+
+ret := system(".\DebugTwoMcu.bat", "DebugTwoMcu_run.txt");
+log := readFile("DebugTwoMcu_run.txt");
+(nMsg, m1) := regex(log, "debugEnabled is set on more than one MCU", 1);
+(nEnd, m2) := regex(log, "The simulation finished successfully", 1);
+
+if ret <> 0 and nMsg >= 1 and nEnd == 0 then
+  print("PASS: verify_61_debug_two_mcu (debugEnabled sur deux MCU refuse a la construction, message clair)\n");
+else
+  print("FAIL: verify_61_debug_two_mcu (code de sortie " + String(ret) + ", message " + String(nMsg) + ", fin " + String(nEnd) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

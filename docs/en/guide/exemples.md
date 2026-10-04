@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 48 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 49 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -66,6 +66,7 @@ The `MicroPythonMCU.Examples` package holds 48 ready-to-simulate models: open th
 | `Program.SleepCompression` | Two `sleep(3600)` simulated in a fraction of a second of computation | simulation duration | `sleep_long.py` *(V)* |
 | `Program.Error` | An uncaught exception stops the simulation, Python traceback in the log | log | `script_error.py` *(V)* |
 | `Program.Imports` | Import of a module placed next to the program and of a library from another folder (`libraryPath`) | LEDs on `GP0` and `GP1` | `import_demo.py` |
+| `Program.Debug` | Step-by-step debugging with VS Code: the simulation waits until VS Code attaches, simulated time frozen during pauses (see [Debugging with VS Code](debogage.md)) | VS Code, LEDs on `GP0` and `GP1`, log | `debug_demo.py` |
 
 ## File system (`Examples.FileSystem`)
 
