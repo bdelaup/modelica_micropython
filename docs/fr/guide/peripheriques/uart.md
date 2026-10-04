@@ -58,6 +58,16 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 | `valueIn[nIn]` | Grandeurs du modèle que l'appareil insère dans ses trames (`{v1}`…) : une température, une position… Utilisé si `useValueInput = true` |
 | `valueOut[nOut]` | Grandeurs extraites des trames reçues (`{o1}`…) : l'appareil devient alors un **actionneur**. Peut rester non connecté |
 
+## Format de trame
+
+L'appareil utilise **son propre** format, réglé par `dataBits`, `parity` et `stopBits` (8N1 par défaut) et affiché sur son icône (`1200,N,8,1`, `1200,E,8,2`…). Il doit être celui que le programme passe à `UART(...)` :
+
+```python
+uart = UART(0, baudrate=1200, bits=8, parity=0, stop=2, tx=Pin(5), rx=Pin(4))   # appareil : parity = Even, stopBits = 2
+```
+
+En cas de désaccord, l'appareil et le microcontrôleur gardent les octets reçus en erreur mais le signalent au journal (`parity error`, `framing error` ; les dix premiers, puis un total en fin de simulation). Un désaccord de parité laisse passer des octets justes, simplement signalés ; un désaccord de débit ou de nombre de bits donne des octets faux. Les exemples `Uart.Format` et `Uart.FormatMismatch` montrent les deux situations.
+
 ## Paramètres
 
 ### Comportement et liaison (onglet *General*)
@@ -67,6 +77,9 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 | `behaviour` | `Table` | Origine du comportement : `Table` (table de commandes, ci-dessous) ou `Script` (fichier Python) |
 | `scriptPath` | script de l'appareil | Fichier `.py` décrivant le comportement, en mode `Script`. Chaque appareil fourni a le sien dans `Resources/Scripts/Device/` (`generic.py`, `echo.py`, `temperature_sensor.py`, `gps.py`), équivalent à sa table |
 | `baudrate` | 1200 | Débit de l'appareil, en bauds. **Il doit être le même que celui du microcontrôleur**, sinon les octets reçus sont faux, comme sur un vrai montage |
+| `dataBits` | 8 | Nombre de bits de données d'une trame, de 5 à 8 (`bits=` de `machine.UART`) |
+| `parity` | `None` | Parité : `None`, `Even` (paire, `parity=0` côté programme) ou `Odd` (impaire, `parity=1`) |
+| `stopBits` | 1 | Nombre de bits de stop, 1 ou 2 (`stop=` de `machine.UART`) |
 | `terminator` | `"\n"` | Caractère qui termine une commande reçue (seul le premier caractère compte) |
 | `tickPeriod` | 0,1 s | Période du point de synchronisation minimal ; filet de sécurité, la valeur par défaut convient |
 

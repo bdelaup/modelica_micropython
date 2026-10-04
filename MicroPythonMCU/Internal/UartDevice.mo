@@ -5,6 +5,9 @@ class UartDevice "External Object wrapping the state of an external serial devic
 
   function constructor
     input Real baudrate "Link speed (baud) - clamped to [50, 115200] on the C side, a safeguard against a storm of Modelica events";
+    input Integer dataBits "Number of data bits (5 to 8)";
+    input Integer parity "Parity, machine.UART convention: -1 = none, 0 = even, 1 = odd";
+    input Integer stopBits "Number of stop bits (1 or 2)";
     input String commandTable "Compact table \"CMD=>REPLY|CMD=>REPLY\"; \"|\" and \"=>\" are reserved. {vN} substitutes valueIn[N] in a reply, {oN} captures a number of the command into valueOut[N]";
     input String terminator "End-of-command character; only the first character is kept, so that it can be written \"\\n\" rather than as a numeric code";
     input Real responseDelay "Delay between the recognition of a command and the start of the reply (s)";
@@ -22,7 +25,7 @@ class UartDevice "External Object wrapping the state of an external serial devic
     // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
     // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
-    external "C" dev = UartDevice_new(baudrate, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, mode, scriptPath, pythonHome, instanceName) annotation(
+    external "C" dev = UartDevice_new(baudrate, dataBits, parity, stopBits, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, mode, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
       Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");

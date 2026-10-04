@@ -13,6 +13,7 @@ package Interfaces "Reference logic voltage levels (RP2040 approximation, 3.3 V)
   constant Integer TEXT_DISPLAY_COLS = 32 "Number of columns of the large text screens Peripherals.Display4x32 and Display8x32 - longer messages are truncated on the icon only (the full text remains available in the simulation log); the generated icons (make_text_icons.py) assume this value";
   constant Integer UART_DEV_MAX_VALUES = 4 "Number of real quantities an external serial device can exchange with the rest of the model ({v1}..{v4} substituted in a transmitted frame, {o1}..{o4} captured from a received frame) - must stay aligned with UARTDEV_MAX_VALUES on the C side (Resources/Include/uartdevice/uartdevice_core.h)";
   constant Integer I2C_DEV_MAX_VALUES = 4 "Number of real quantities an external I2C peripheral can exchange with the rest of the model (argument v of its Python handlers, return value of outputs()) - must stay aligned with I2CDEV_MAX_VALUES on the C side (Resources/Include/i2cdevice/i2cdevice_core.h)";
+  constant String PULSEVIEW_PATH = "C:/Program Files/sigrok/PulseView/pulseview.exe" "Default path of PulseView (sigrok logic analyser software, free), where its Windows installer puts it - used to open the VCD recording of Peripherals.Analyzers.LogicAnalyzer at the end of the simulation";
 
   annotation(
     Documentation(info = "<html>

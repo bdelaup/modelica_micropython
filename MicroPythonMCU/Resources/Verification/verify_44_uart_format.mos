@@ -1,0 +1,37 @@
+// Scénario de vérification n°44 : format de trame 8E2 (Examples.Uart.Format).
+// omc verify_44_uart_format.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : le microcontrôleur (UART(..., bits=8, parity=0,
+// stop=2)) et un UartEchoDevice réglé en 8E2 dialoguent ; la trame de 'H'
+// (0x48) émise sur GP5 a bien 12 bits : start, données poids faible en tête,
+// bit de parité à 0 (deux bits à 1 dans 0x48, parité paire), deux stops ; la
+// trame suivante démarre 10 ms après la première (12 x 833 us) ; l'écho relu
+// est identique (GP7 allumée) et aucun avertissement d'erreur n'est écrit.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Uart.Format, stopTime = 0.4, numberOfIntervals = 80000, fileNamePrefix = "UartFormat");
+b := getErrorString();
+ret := system(".\UartFormat.bat", "UartFormat_run.txt");
+log := readFile("UartFormat_run.txt");
+f := "UartFormat_res.mat";
+
+// Sondes au milieu de chaque bit : 5 ms + (k + 0,5) x 833,33 us
+vStart := val(echo.RX.v, 0.0054167, f);   // start : bas
+vB3    := val(echo.RX.v, 0.00875, f);     // bit 3 de 0x48 : haut
+vB6    := val(echo.RX.v, 0.01125, f);     // bit 6 : haut
+vB7    := val(echo.RX.v, 0.0120833, f);   // bit 7 : bas
+vPar   := val(echo.RX.v, 0.0129167, f);   // parité paire de 0x48 : bas (en 8N1 ce serait le stop, haut)
+vStop1 := val(echo.RX.v, 0.01375, f);     // 1er stop : haut
+vStop2 := val(echo.RX.v, 0.0145833, f);   // 2e stop : haut (en 8N1 la trame suivante aurait déjà commencé)
+vNext  := val(echo.RX.v, 0.0154167, f);   // start de 'e', 10 ms après le premier : bas
+vTemoin := val(mcu.GP7.v, 0.39, f);
+(nRepr, m1) := regex(log, "UART\\(0, baudrate=1200, bits=8, parity=0, stop=2", 1);
+(nErr, m2) := regex(log, "error on a received byte", 1);
+(nEnd, m3) := regex(log, "The simulation finished successfully", 1);
+
+if ret == 0 and vStart < 0.5 and vB3 > 2 and vB6 > 2 and vB7 < 0.5 and vPar < 0.5 and vStop1 > 2 and vStop2 > 2 and vNext < 0.5 and vTemoin > 2 and nRepr == 1 and nErr == 0 and nEnd >= 1 then
+  print("PASS: verify_44_uart_format (trame 8E2 de 'H' : start/b3/b6/b7/parite/stop1/stop2 = " + String(vStart) + "/" + String(vB3) + "/" + String(vB6) + "/" + String(vB7) + "/" + String(vPar) + "/" + String(vStop1) + "/" + String(vStop2) + " V, trame suivante a 10 ms, echo relu identique, aucune erreur)\n");
+else
+  print("FAIL: verify_44_uart_format (code " + String(ret) + ", start=" + String(vStart) + " b3=" + String(vB3) + " b6=" + String(vB6) + " b7=" + String(vB7) + " par=" + String(vPar) + " stop1=" + String(vStop1) + " stop2=" + String(vStop2) + " next=" + String(vNext) + " temoin=" + String(vTemoin) + " repr=" + String(nRepr) + " erreurs=" + String(nErr) + " fin=" + String(nEnd) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

@@ -1,0 +1,43 @@
+// Scénario de vérification n°50 : erreurs de trame et options du fichier
+// texte de la sonde d'analyseur logique (Examples.Analyzer.UartErrors).
+// omc verify_50_analyzer_options.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie, sur la liaison désaccordée de UartErrors (écho
+// en parité impaire, sonde en parité paire) :
+// - 1re simulation, sans chronogramme ni VCD (textWaveform = false,
+//   writeVcd = false) : le fichier texte n'a que la section hexa, aucun VCD
+//   n'est écrit ; TX est correct, chaque octet de RX est marqué « ! »
+//   (15 erreurs) ;
+// - 2e simulation, chronogramme sans bits un par un, trames non séparées et
+//   colonne de 1 ms (textBitLabels = false, textSplitFrames = false,
+//   textResolution = 0.001) : l'octet renvoyé porte « !P » sous sa trame,
+//   aucun en-tête de trame ni ligne de bits, l'échelle annoncée est 1 ms.
+// Les options sont passées par -override : un seul exécutable.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Analyzer.UartErrors, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartErrors");
+b := getErrorString();
+ret1 := system(".\UartErrors.bat -override=analyzer.openText=false,analyzer.textWaveform=false,analyzer.writeVcd=false", "UartErrors_run1.txt");
+log1 := readFile("UartErrors_run1.txt");
+txt1 := readFile("UartErrors.analyzer.txt");
+vcd1 := regularFileExists("UartErrors.analyzer.vcd");
+(nTx, t1) := regex(txt1, "5.000 ms  48 65 6C 6C 6F 2C 20 70  61 72 69 74 79 21 0A +\\|Hello, parity!\\.\\|", 1);
+(nRx, t2) := regex(txt1, "RX  burst 1  13.750 ms .. 163.750 ms  15 bytes, 15 with error \\(!P parity, !F stop bit low\\)\n +13.750 ms  48!65!6C!6C!6F!2C!20!70! 61!72!69!74!79!21!0A!", 1);
+(nWave1, t3) := regex(txt1, "Timing diagram", 1);
+
+ret2 := system(".\UartErrors.bat -override=analyzer.openText=false,analyzer.textBitLabels=false,analyzer.textSplitFrames=false,analyzer.textResolution=0.001", "UartErrors_run2.txt");
+log2 := readFile("UartErrors_run2.txt");
+txt2 := readFile("UartErrors.analyzer.txt");
+(nScale, t4) := regex(txt2, "Timing diagram    1 column = 1.000 ms", 1);
+(nMark, t5) := regex(txt2, "48 H !P", 1);
+(nHead, t6) := regex(txt2, "=== frame", 1);
+(nBits, t7) := regex(txt2, " S [01] [01] [01]", 1);
+(nEnd1, m1) := regex(log1, "The simulation finished successfully", 1);
+(nEnd2, m2) := regex(log2, "The simulation finished successfully", 1);
+
+if ret1 == 0 and ret2 == 0 and not vcd1 and nTx == 1 and nRx == 1 and nWave1 == 0 and nScale == 1 and nMark == 1 and nHead == 0 and nBits == 0 and nEnd1 >= 1 and nEnd2 >= 1 then
+  print("PASS: verify_50_analyzer_options (octets renvoyes marques en erreur de parite, section hexa seule et pas de VCD sur demande, chronogramme sans bits ni en-tetes a l'echelle imposee)\n");
+else
+  print("FAIL: verify_50_analyzer_options (codes " + String(ret1) + "/" + String(ret2) + ", vcd " + String(vcd1) + ", hexa TX/RX " + String(nTx) + "/" + String(nRx) + ", chronogramme 1 " + String(nWave1) + ", echelle " + String(nScale) + ", marque " + String(nMark) + ", en-tetes " + String(nHead) + ", bits " + String(nBits) + ", fins " + String(nEnd1) + "/" + String(nEnd2) + ")\n" + b + "\n--- texte 1 ---\n" + txt1 + "\n--- texte 2 ---\n" + txt2 + "\n--- journal 2 ---\n" + log2);
+end if;

@@ -5,7 +5,7 @@
 
 Cette page documente la liaison série `machine.UART` (cf. `requirements.md`, décision « UART électrique réel sur les broches GPIO »). Contrairement au périphérique d'affichage pédagogique ([peripherique-display.md](display.md)), qui porte un message logique livré d'un bloc, l'UART produit un **vrai signal électrique** sur deux broches `GPx` : un élève peut tracer `mcu.GP0.v` dans OMEdit et y lire une trame comme à l'oscilloscope.
 
-**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, trame 8N1 figée, 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.Uart.Loopback`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Examples/Uart/Loopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](../guide/api.md) § `machine.UART`.
+**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, format de trame comme le port `rp2` (5-8 bits, parité, 1-2 stops ; lot 3), 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.Uart.Loopback`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Examples/Uart/Loopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](../guide/api.md) § `machine.UART`.
 
 ## 1. Pourquoi électrique ici, logique pour `Display`
 
@@ -24,13 +24,13 @@ Cette page documente la liaison série `machine.UART` (cf. `requirements.md`, d�
 
 ## 2. Configuration : `native_uart_init`
 
-`machine.UART(0, baudrate=1200, tx=Pin(0), rx=Pin(1))` appelle `_native.uart_init`, qui valide le débit (`UART_MIN_BAUD` = 50, `UART_MAX_BAUD` = 115200 — garde-fou contre une tempête d'événements, un événement Modelica étant généré par front, même esprit que `TIMER_MIN_PERIOD`), passe les deux broches en sortie/entrée et vide les deux files.
+`machine.UART(0, baudrate=1200, tx=Pin(0), rx=Pin(1))` appelle `_native.uart_init(id, tx, rx, baudrate, bits, parity, stop)` — le shim a déjà refusé un format invalide par `ValueError` (mêmes messages que `rp2`), la native revalide —, qui valide le débit (`UART_MIN_BAUD` = 50, `UART_MAX_BAUD` = 115200 — garde-fou contre une tempête d'événements, un événement Modelica étant généré par front, même esprit que `TIMER_MIN_PERIOD`), passe les deux broches en sortie/entrée et vide les deux files.
 
 Un point mérite d'être connu, car il n'est pas une optimisation mais une **condition de fonctionnement** : la broche de réception est marquée `uart_rx_claimed[rx] = 1`, ce qui l'exclut du calcul d'`input_changed` dans `PyRuntime_sync`. Sans ça, chaque front reçu réveillerait le worker et **ferait retourner en avance le `sleep()` en cours** — comportement voulu pour un bouton (la « réactivité en entrée », scénario 3), désastreux pour une broche série : à 1200 bauds, chaque octet reçu casserait une dizaine de `sleep()`. L'exclusion emporte aussi l'armement des IRQ GPIO sur cette broche, ce qui est fidèle au matériel réel : une broche prise par le périphérique UART ne génère plus d'interruption GPIO. `PyRuntime_sync` continue d'être appelée à ces instants (la condition du `when` vit côté Modelica et ignore cette réservation), donc le décodage se fait — c'est seulement le worker qui n'est plus réveillé pour rien.
 
 ## 3. Émission : le C sérialise et publie le niveau, Modelica le tient
 
-**Côté C** (moteur partagé `uartcore.c`, appelé par `pyruntime/pyruntime_uart.c`) : `uartcore_tx_begin_frame` est le **seul endroit qui connaît le format de trame** — start à 0, 8 bits de données poids faible en tête, stop à 1, le reste du tableau à l'état de repos. Passer un jour à un format paramétrable (parité, 7/9 bits, 2 stop) ne demandera de toucher ni Modelica ni le shim Python ; `UART_MAX_FRAME_BITS = 13` est déjà dimensionné pour ça.
+**Côté C** (moteur partagé `uartcore.c`, appelé par `pyruntime/pyruntime_uart.c`) : `uartcore_tx_begin_frame` est le **seul endroit qui connaît le format de trame à l'émission** — start à 0, `data_bits` bits de données poids faible en tête (l'octet est masqué : avec moins de 8 bits, les bits de poids fort sont perdus), bit de parité éventuel (`uartcore_parity_bit` : paire = nombre total de 1, données et parité, pair), 1 ou 2 stops à 1, le reste du tableau (`UART_MAX_FRAME_BITS = 13`, 12 bits au plus utilisés) à l'état de repos. Le format (`data_bits`, `parity` −1/0/1, `stop_bits`) est posé par `uartcore_configure` et partagé avec les périphériques série ; Modelica n'en sait rien, il ne voit que le niveau de la ligne.
 
 `write()` est non bloquant : les octets s'empilent dans une file circulaire de 256 octets (`UART_TX_BUF_LEN`) et `uartcore_tx_advance`, appelée à chaque point de synchro, démarre la trame suivante **pile à la fin de la précédente** — les trames s'enchaînent sans trou. File pleine : l'octet est perdu silencieusement, comme un FIFO matériel qui déborde.
 
@@ -77,9 +77,9 @@ Le résultat est **exactement** celui d'un échantillonnage au milieu de chaque 
 ```mermaid
 stateDiagram-v2
     [*] --> Repos
-    Repos --> Reception : front DESCENDANT (start)<br/>next_sample = now + 1.5 x bitDur<br/>stop_sample = now + 9.5 x bitDur (réveil)
+    Repos --> Reception : front DESCENDANT (start)<br/>next_sample = now + 1.5 x bitDur<br/>stop_sample = now + (1 + bits + parité + 0.5) x bitDur (réveil)
     Reception --> Reception : appel sur un front<br/>chaque milieu de bit passé : shift |= niveau tenu << index (LSB first)
-    Reception --> Repos : appel au milieu du stop<br/>si stop HAUT : octet poussé dans le FIFO RX<br/>sinon : trame ignorée
+    Reception --> Repos : appel au milieu du (premier) stop<br/>octet poussé dans le FIFO RX<br/>parité fausse ou stop bas : erreur rendue à l'appelant
 ```
 
 Rappelée plusieurs fois au même instant (itérations d'événement de Modelica), la fonction ne refait rien : les bits déjà résolus ne le sont plus, et le niveau n'a pas changé.
@@ -87,7 +87,9 @@ Rappelée plusieurs fois au même instant (itérations d'événement de Modelica
 Deux corrections sans lesquelles le décodeur est faux, et qui méritent d'être comprises avant de toucher à ce code :
 
 - **Le bit de start se détecte sur un FRONT descendant, jamais sur un niveau bas** (`uart_rx_last_level`). Bug réel, resté masqué longtemps : au tout premier point de synchro, `PyRuntime_sync` reçoit l'état électrique d'**avant** que le script n'ait configuré l'UART — la broche TX n'est pas encore pilotée et la ligne est à 0 V. Un test sur le niveau y voyait un bit de start et fabriquait un octet fantôme qui polluait la file de réception. Le défaut était invisible tant que le script émettait dès `t=0` (le faux start coïncidait avec le vrai) ; il est apparu dès qu'un délai a précédé le premier `write()`. Exiger le front impose d'avoir vu la ligne au repos au moins une fois avant d'écouter — ce que fait aussi un vrai récepteur.
-- **Le décodeur attend le bit de stop** avant de repasser au repos, au lieu de s'arrêter au 8ᵉ bit de données : sinon un dernier bit de données à 0 (ligne basse) serait aussitôt relu comme un nouveau bit de start. Une trame dont le stop n'est pas haut est ignorée, sans remontée d'erreur de framing (simplification assumée).
+- **Le décodeur attend le bit de stop** avant de repasser au repos, au lieu de s'arrêter au dernier bit de données : sinon un dernier bit de données à 0 (ligne basse) serait aussitôt relu comme un nouveau bit de start.
+
+**Format et erreurs (lot 3).** L'index de bit parcourt les `data_bits` bits de données, puis le bit de parité éventuel (comparé à `uartcore_parity_bit` du mot reçu), puis le **premier** stop seulement, comme le matériel ; le réveil unique tombe donc au milieu de ce stop, `(1 + data_bits + parité + 0,5) × bitDur` après le front de start. Une parité fausse ou un stop bas n'écartent plus l'octet : il est poussé dans la file comme les autres (le FIFO du RP2040 le stocke avec un drapeau d'erreur), et `uartcore_rx_step` **rend un masque** `UART_ERR_PARITY | UART_ERR_FRAMING` des octets clos pendant l'appel, avec des compteurs cumulés dans le moteur. Le moteur ne journalise rien (il ne dépend pas de Modelica) : c'est `uart_rx_step` (`pyruntime_uart.c`) qui écrit l'avertissement horodaté, au plus `UART_ERR_REPORT_MAX` = 10 fois, puis « further reception errors not reported », puis le bilan dans `PyRuntime_destroy` (`uart_report_errors`). Les périphériques série font de même (`uartdev_warn_errors`, bilan au destructeur).
 
 La réception **ne réveille pas le script** : les octets s'accumulent dans un FIFO de 256 octets (`UART_RX_BUF_LEN`, débordement silencieux) que le script consulte à son rythme par `any()`/`read()`/`readline()`.
 
@@ -120,15 +122,15 @@ Le témoin `GP3` sert aussi de **détecteur d'octet fantôme** : un faux bit de 
 ## 7. Restrictions
 
 - Un seul périphérique (`UART(0)`), deux broches distinctes obligatoires parmi `GP0`-`GP7`.
-- **Format de trame 8N1 figé** : `bits`/`parity`/`stop` sont acceptés pour compatibilité d'API mais **sans effet**, comme `pull=` sur `Pin`.
+- Format de trame : 5 à 8 bits, parité, 1 ou 2 stops (pas de 9 bits, absent du port `rp2`) ; seul le premier stop est contrôlé ; pas de détection de *break* distincte.
 - Débit borné à 50-115200 bauds.
-- Files de 256 octets à débordement silencieux ; trame dont le stop n'est pas haut ignorée sans erreur de framing.
+- Files de 256 octets à débordement silencieux ; octet en erreur (parité, stop) gardé et signalé au journal seulement, le script ne peut pas le savoir.
 - Pas de `uart.irq()` (la réception ne réveille pas le script), pas de contrôle de flux RTS/CTS.
 - Une broche affectée à la réception ne génère plus d'IRQ GPIO et ne réveille plus un `sleep()` — fidèle au matériel, et indispensable au fonctionnement (§2).
 
 ## 8. Notes pour plus tard
 
-- **Format de trame paramétrable** : le coût est concentré sur le décodeur RX, l'émission est déjà prête (le format vit entièrement dans `uart_tx_begin_frame`). Intérêt pédagogique réel — montrer qu'un désaccord de configuration entre émetteur et récepteur produit des octets faux, l'erreur n°1 en TP série.
+- **Format de trame paramétrable** : fait au lot 3 (`Examples.Uart.Format`/`FormatMismatch`, `verify_44` à `verify_46`). Drapeaux d'erreur lisibles par le script : possibles avec `uart.irq()`, absent.
 - **`uart.irq()`** (réception pilotée par interruption) reste possible en réutilisant le mécanisme de `Pin.irq` déjà en place.
 - **Un interlocuteur au bout du fil existe désormais** : voir [peripheriques-uart-externes.md](uart-peripheriques.md). Le bouclage `loopR`/`loopC` décrit ici reste utile pour observer la forme d'onde d'un `MCU` seul, mais un vrai dialogue passe maintenant par un un appareil `Peripherals.Uart*`.
 - **Multi-instances** : deux `MCU` distincts dialoguent désormais par cette liaison, croisée par deux simples fils (`Examples.MultiMcu.Uart`, `verify_35` ; `requirements.md`, décision « Multi-instances »).

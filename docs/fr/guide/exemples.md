@@ -1,6 +1,6 @@
 # Exemples
 
-Le paquetage `MicroPythonMCU.Examples` contient 39 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
+Le paquetage `MicroPythonMCU.Examples` contient 45 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -87,6 +87,8 @@ Le paquetage `MicroPythonMCU.Examples` contient 39 modèles prêts à simuler : 
 | `Uart.GpsPy` | Un module GPS émet ses trames sans être interrogé | journal | `uart_gps.py` |
 | `Uart.StateMachinePy` | Appareil dont la réponse dépend de son historique (machine d'état Python) | journal | `uart_state_machine.py` |
 | `Uart.Lcd` | Deux lignes écrites sur un afficheur série 20x2 | icône de l'afficheur | `uart_lcd.py` |
+| `Uart.Format` | Liaison en 8E2 (parité paire, 2 bits de stop) avec un appareil d'écho réglé de même | `mcu.GP5.v`, `mcu.GP7.v` | `uart_format.py` |
+| `Uart.FormatMismatch` | Même montage, appareil en parité impaire : octets gardés, erreurs de parité au journal | journal | `uart_format.py` |
 
 ![Trame série](../images/sim/uart-trame.svg)
 
@@ -118,5 +120,16 @@ Plusieurs blocs `MCU` dans un même modèle, chacun avec son programme (voir [Pl
 |---|---|---|---|
 | `Weighing.Hx711Read` | Lecture d'un HX711 par le driver de robert-hh : gain 128, gain 64, veille et réveil | `hx.code`, `hx.PD_SCK.v`, `hx.DOUT.v`, afficheur | `hx711_read.py` |
 | `Weighing.KitchenScale` | Balance de cuisine complète, bouton TARE | icône de l'écran | `kitchen_scale.py` |
+
+## Analyseur logique (`Examples.Analyzer`)
+
+La sonde `LogicAnalyzer` décode les fils d'un montage dans un fichier texte, ouvert dans le Bloc-notes en fin de simulation, et les enregistre dans un VCD pour PulseView ([Analyseur logique](peripheriques/analyseurs.md)).
+
+| Exemple | Ce qu'il montre | À observer | Programme |
+|---|---|---|---|
+| `Analyzer.UartLink` | Sonde sur les deux fils de la liaison 8E2 de `Uart.Format`, voies de type `Uart` | `UartLink.analyzer.txt` : « Hello, parity! » en hexa + ASCII, bits et octets sous le chronogramme ; l'écho chevauche l'envoi | `uart_format.py` |
+| `Analyzer.UartErrors` | Même sonde, appareil en parité impaire (`Uart.FormatMismatch`) | octets renvoyés marqués `!` et `!P` | `uart_format.py` |
+| `Analyzer.I2cBus` | Sonde sur le bus de `I2c.Echo` : SCL en `Logic`, SDA en `I2cSda` | une ligne par transaction, NACK de fin de lecture, START répété | `i2c_echo.py` |
+| `Analyzer.Hx711Serial` | Sonde sur la liaison PD_SCK/DOUT de `Weighing.Hx711Read`, DOUT en `SyncData` (24 bits, poids fort en tête) | un mot par conversion, impulsions de gain, silences comprimés | `hx711_read.py` |
 
 <!-- ILLUSTRATION kitchen-scale-gif : animation GIF de la balance (écran Grove qui affiche 0 g, 350 g, Tare..., 250 g) (cf. docs/ILLUSTRATIONS.md) -->

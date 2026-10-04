@@ -1,0 +1,66 @@
+// Scénario de vérification n°47 : sonde d'analyseur logique sur une liaison
+// série (Examples.Analyzer.UartLink).
+// omc verify_47_logic_analyzer.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : Peripherals.Analyzers.LogicAnalyzer, voies CH0
+// et CH1 de type Uart (1200 bauds 8E2) sur les deux fils de la liaison de
+// Uart.Format, les six autres Off, écrit dans le dossier de simulation :
+// - UartLink.analyzer.vcd : en-tête en nanosecondes, deux voies seulement
+//   (TX, RX) ; trame de 'H' (0x48) sur TX avec le start à 5 ms, la montée du
+//   bit 3 à 8,333 ms et la remontée du stop à 13,333 ms seulement (le bit de
+//   parité, bas, est passé avant ; en 8N1 elle aurait lieu à 12,5 ms) ;
+//   premier start de l'écho sur RX à 13,75 ms ; horodatage de fin à 0,4 s
+//   (when terminal()). Les fronts sont électriques : une centaine de
+//   nanosecondes après la commande, d'où les motifs à la microseconde près ;
+// - UartLink.analyzer.txt : description des voies, une salve de 15 octets
+//   « Hello, parity! » sur chaque fil en hexa + ASCII, sans erreur, et un
+//   chronogramme dont la trame 1 commence à 5 ms, avec sous TX les bits de
+//   'H' (S, données poids faible en tête, P, deux stops) et l'octet entre
+//   crochets ;
+// - UartLink.analyzer.pvs : session PulseView (chargée par PulseView avec le
+//   VCD), deux décodeurs uart sur probe.TX et probe.RX, 1200 bauds (0x4B0 en
+//   entier 64 bits petit-boutiste), parité « even », 2 stops (2.0 en double).
+// Sonde transparente : l'écho relu reste identique (GP7). Ni PulseView ni le
+// Bloc-notes ne sont lancés (override).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Analyzer.UartLink, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartLink");
+b := getErrorString();
+ret := system(".\UartLink.bat -override=analyzer.openPulseView=false,analyzer.openText=false", "UartLink_run.txt");
+log := readFile("UartLink_run.txt");
+vcd := readFile("UartLink.analyzer.vcd");
+txt := readFile("UartLink.analyzer.txt");
+
+(nTs, m1) := regex(vcd, "\\$timescale 1 ns \\$end", 1);
+(nTx, m2) := regex(vcd, "\\$var wire 1 A TX \\$end", 1);
+(nRx, m3) := regex(vcd, "\\$var wire 1 B RX \\$end", 1);
+(nOff, m3b) := regex(vcd, "\\$var wire 1 C ", 1);
+(nStart, m4) := regex(vcd, "\n#50000[0-9][0-9]\n0A\n", 1);
+(nBit3, m5) := regex(vcd, "\n#83333[0-9][0-9]\n1A\n", 1);
+(nStop, m6) := regex(vcd, "\n#133333[0-9][0-9]\n1A\n", 1);
+(nEcho, m7) := regex(vcd, "\n#137500[0-9][0-9]\n0B\n", 1);
+(nEndStamp, m8) := regex(vcd, "\n#400000000\n$", 1);
+(nChan, t1) := regex(txt, "CH0  TX +UART 1200 baud, 8E2, LSB first", 1);
+(nHex, t2) := regex(txt, "TX  burst 1  5.000 ms .. 155.000 ms  15 bytes\n +5.000 ms  48 65 6C 6C 6F 2C 20 70  61 72 69 74 79 21 0A +\\|Hello, parity!\\.\\|", 1);
+(nHexRx, t3) := regex(txt, "RX  burst 1  13.750 ms .. 163.750 ms  15 bytes\n", 1);
+(nErr, t4) := regex(txt, "with error", 1);
+(nFrame, t5) := regex(txt, "=== frame 1   5.000 ms", 1);
+(nBits, t6) := regex(txt, "  S 0 0 0 1 0 0 1 0 P s s S 1 0 1 0 0 1 1 0 P s s", 1);
+(nByte, t7) := regex(txt, "\\[       48 H       \\]    \\[       65 e       \\]", 1);
+pvs := readFile("UartLink.analyzer.pvs");
+(nPvsN, p1) := regex(pvs, "\\[General\\]\ndecode_signals=2\n", 1);
+(nPvsTx, p2) := regex(pvs, "\\[decode_signal0\\]\nname=UART TX\n.*decoder0\\\\id=uart\n.*channel0\\\\name=RX\n.*channel0\\\\assigned_signal_name=probe\\.TX\n.*\\[decode_signal1\\]", 1);
+(nPvsBaud, p3) := regex(pvs, "option0\\\\name=baudrate\ndecoder0\\\\option0\\\\type=x\ndecoder0\\\\option0\\\\value=@ByteArray\\(\\\\xb0\\\\x4\\\\x0", 1);
+(nPvsPar, p4) := regex(pvs, "@ByteArray\\(\\\\x65\\\\x76\\\\x65\\\\x6e\\\\x0\\)", 1);
+(nPvsRx, p5) := regex(pvs, "assigned_signal_name=probe\\.RX\n", 1);
+(nMsg, m9) := regex(log, "Logic analyser UartLink.analyzer: end of simulation, recording in .*UartLink.analyzer.vcd", 1);
+(nMsgTxt, m9b) := regex(log, "Logic analyser UartLink.analyzer: decoded frames in .*UartLink.analyzer.txt", 1);
+(nEnd, m10) := regex(log, "The simulation finished successfully", 1);
+vTemoin := val(mcu.GP7.v, 0.39, "UartLink_res.mat");
+
+if ret == 0 and nTs == 1 and nTx == 1 and nRx == 1 and nOff == 0 and nStart == 1 and nBit3 == 1 and nStop == 1 and nEcho == 1 and nEndStamp == 1 and nChan == 1 and nHex == 1 and nHexRx == 1 and nErr == 0 and nFrame == 1 and nBits == 1 and nByte == 1 and nPvsN == 1 and nPvsTx == 1 and nPvsBaud == 1 and nPvsPar == 1 and nPvsRx == 1 and nMsg == 1 and nMsgTxt == 1 and nEnd >= 1 and vTemoin > 2 then
+  print("PASS: verify_47_logic_analyzer (VCD : voies TX/RX seules, trame 8E2 de 'H' a 5 / 8,333 / 13,333 ms, echo a 13,75 ms, fin a 0,4 s ; texte : salves hexa + ASCII, bits et octets sous le chronogramme ; session PulseView a deux decodeurs UART regles ; sonde transparente)\n");
+else
+  print("FAIL: verify_47_logic_analyzer (code " + String(ret) + ", timescale " + String(nTs) + ", voies " + String(nTx) + "/" + String(nRx) + "/off " + String(nOff) + ", fronts start/b3/stop/echo " + String(nStart) + "/" + String(nBit3) + "/" + String(nStop) + "/" + String(nEcho) + ", fin " + String(nEndStamp) + ", texte voies/hexa TX/RX/erreurs/trame/bits/octets " + String(nChan) + "/" + String(nHex) + "/" + String(nHexRx) + "/" + String(nErr) + "/" + String(nFrame) + "/" + String(nBits) + "/" + String(nByte) + ", session " + String(nPvsN) + "/" + String(nPvsTx) + "/" + String(nPvsBaud) + "/" + String(nPvsPar) + "/" + String(nPvsRx) + ", messages " + String(nMsg) + "/" + String(nMsgTxt) + ", fin simu " + String(nEnd) + ", temoin=" + String(vTemoin) + ")\n" + b + "\n--- journal ---\n" + log + "\n--- texte ---\n" + txt);
+end if;

@@ -153,7 +153,7 @@ if uart.any():
     print(uart.read())
 ```
 
-Liaison série **électriquement réelle**, sur deux vraies broches `GPx` — contrairement à `machine.Display`, qui est une liaison logique. La broche TX porte une vraie trame 8N1 (bit de start à 0, 8 bits de données poids faible en tête, bit de stop à 1, repos au niveau haut), chaque bit durant `1/baudrate` : la tracer dans OMEdit revient à la regarder à l'oscilloscope.
+Liaison série **électriquement réelle**, sur deux vraies broches `GPx` — contrairement à `machine.Display`, qui est une liaison logique. La broche TX porte une vraie trame (bit de start à 0, bits de données poids faible en tête, bit de parité éventuel, bits de stop à 1, repos au niveau haut ; 8N1 par défaut), chaque bit durant `1/baudrate` : la tracer dans OMEdit revient à la regarder à l'oscilloscope.
 
 La forme d'onde est produite par le C, qui publie le niveau de la ligne et ne demande un point de synchro qu'à ses **changements**, sans que le thread Python pilote chaque front — comme le vrai périphérique UART du RP2040, qui tourne indépendamment du CPU une fois programmé. La réception est décodée côté C à partir des fronts de la ligne, avec la même lecture au milieu de chaque bit qu'un vrai récepteur. Cf. `requirements.md`, décision « UART électrique réel ».
 
@@ -163,7 +163,13 @@ Câblage et appareils à brancher au bout de la liaison : [Appareils série](per
 
 ### Constructeur
 
-`UART(id=0, baudrate=1200, tx=None, rx=None, **kwargs)` — `id` : seul `0` est supporté. `tx`/`rx` : obligatoires, un objet `Pin` ou un numéro de broche, deux broches distinctes parmi `0`-`7`. `baudrate` : 50 à 115200 (`ValueError` hors bornes). `**kwargs` absorbe `bits`/`parity`/`stop`, acceptés pour compatibilité d'API mais **sans effet** (seul 8N1 est émis). Synchronise.
+`UART(id=0, baudrate=1200, bits=8, parity=None, stop=1, tx=None, rx=None, **kwargs)` — `id` : seul `0` est supporté. `tx`/`rx` : obligatoires, un objet `Pin` ou un numéro de broche, deux broches distinctes parmi `0`-`7`. `baudrate` : 50 à 115200. Format de trame, comme sur le port `rp2` : `bits` de 5 à 8 (avec moins de 8 bits, les bits de poids fort de l'octet sont perdus), `parity` `None`, `0` (paire) ou `1` (impaire), `stop` 1 ou 2 ; toute autre valeur lève `ValueError`. Les autres arguments du port (`timeout`, `txbuf`, `rxbuf`, `flow`…) sont acceptés sans effet. `.init(...)` prend les mêmes arguments et reconfigure la liaison. Synchronise.
+
+```python
+uart = UART(0, baudrate=1200, bits=8, parity=0, stop=2, tx=Pin(5), rx=Pin(4))   # 8E2
+```
+
+**Octet reçu en erreur.** Un octet dont le bit de parité est faux, ou dont le bit de stop est bas (débit ou format différents de ceux de l'émetteur), est **gardé** dans la file de réception, comme sur le RP2040 ; le journal de simulation affiche un avertissement horodaté (`parity error`, `framing error`) pour les dix premiers, puis le total en fin de simulation. Le récepteur ne contrôle que le premier bit de stop.
 
 ### Méthodes
 
@@ -340,7 +346,7 @@ Détails et justifications dans `requirements.md` (section Restrictions actuelle
 - Système de fichiers : une copie neuve de l'image à chaque simulation (pas de persistance d'un run à l'autre ; pour enchaîner, pointer `fsSource` sur une copie précédente). Cloisonnement pédagogique limité à `open()` et `os` — `io.open` ou `pathlib` n'y sont pas soumis. Hôte insensible à la casse (Windows), pas d'`os.urandom`, ni `mount`/`VfsLfs2`/`dupterm`.
 - `machine.I2C` : un seul bus maître, pas de clock stretching (SCL tenue basse = `ETIMEDOUT`) ni d'arbitrage multi-maître, 256 octets au plus par transaction, tirages internes de 50 kΩ trop faibles pour un vrai bus (il faut `usePullUp` sur un périphérique).
 - `machine.I2CTarget` : une seule cible par microcontrôleur, adresse sur 7 bits ; gestionnaires tous servis à l'instant de l'événement (`hard=` sans effet) ; plus aucun gestionnaire une fois le programme terminé (seul le mode `mem=` continue de répondre).
-- `machine.UART` : un seul périphérique (`UART(0)`), **trame 8N1 figée** (`bits`/`parity`/`stop` acceptés mais sans effet), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 256 octets, débordement silencieux ; une trame dont le bit de stop n'est pas haut est ignorée sans erreur de framing. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
+- `machine.UART` : un seul périphérique (`UART(0)`), débit borné à 50-115200 bauds (garde-fou : un événement Modelica par front de bit). Files de 256 octets, débordement silencieux ; un octet reçu en erreur (parité, stop) est gardé, signalé seulement au journal — le programme ne peut pas le savoir. Pas de `uart.irq()` (la réception ne réveille pas le script : l'interroger avec `any()`/`read()`), pas de contrôle de flux RTS/CTS.
 - `machine.Display` : une seule liaison logique, **écriture seule** (pas de réception), livraison instantanée du message entier (pas de bauds simulés) ; liaison modélisée comme un connecteur logique causal, pas électrique — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
 - `Pin.irq()` : tout callback tourne « soft » (déféré au prochain point de réveil du worker) ; `hard=` accepté mais sans effet — aucune notion de contexte d'interruption matérielle possible dans ce modèle mono-thread. Une exception levée dans un callback arrête toute la simulation (même politique que le script principal), pas d'isolation « le callback plante mais le reste continue ».
 - `machine.Timer` : pool fixe de 4 minuteurs partagé par tous les `Timer()` (au-delà, `Timer()` lève `RuntimeError`) ; période minimale 1 ms (`ValueError` en dessous, garde-fou contre une tempête d'événements à durée simulée nulle).

@@ -12,7 +12,7 @@ Dans OMEdit, *File → Open Model/Library File(s)…*, puis sélectionner `Micro
 |---|---|
 | `MCU` | Le microcontrôleur, à poser dans vos schémas |
 | `Peripherals` | Les composants à brancher sur ses broches : LED, afficheurs, appareils série, périphériques I2C, chaîne de pesée |
-| `Examples` | 37 modèles prêts à simuler (voir [Exemples](exemples.md)) |
+| `Examples` | 45 modèles prêts à simuler (voir [Exemples](exemples.md)) |
 | `Interfaces`, `Internal` | Connecteurs et mécanique interne : pas besoin d'y toucher |
 
 <!-- ILLUSTRATION premiers-pas-omedit : capture d'OMEdit, bibliothèque dépliée et BasicBlink ouvert en vue Diagramme (cf. docs/ILLUSTRATIONS.md) -->

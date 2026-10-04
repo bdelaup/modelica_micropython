@@ -121,9 +121,29 @@ static double uartdev_deadline(struct UartDevice* dev) {
     return best;
 }
 
+/* Signale un octet recu avec une erreur (parite fausse, stop bas), livre
+   quand meme comme sur un vrai recepteur ; plafonne, bilan au destructeur.
+   Meme politique que machine.UART cote microcontroleur (pyruntime_uart.c). */
+static void uartdev_warn_errors(struct UartDevice* dev, double now, int errors) {
+    if (!errors || dev->err_reported > UARTDEV_ERR_REPORT_MAX) {
+        return;
+    }
+    dev->err_reported++;
+    if (dev->err_reported > UARTDEV_ERR_REPORT_MAX) {
+        ModelicaFormatWarning("[t=%.6f s] [%s] further reception errors not reported (total at the end of the simulation)\n",
+                              now, dev->name);
+        return;
+    }
+    ModelicaFormatWarning("[t=%.6f s] [%s] %s%s%s error on a received byte (kept) - do baudrate, dataBits, parity and stopBits match the transmitter?\n",
+                          now, dev->name,
+                          (errors & UART_ERR_PARITY) ? "parity" : "",
+                          (errors & UART_ERR_PARITY) && (errors & UART_ERR_FRAMING) ? " and " : "",
+                          (errors & UART_ERR_FRAMING) ? "framing" : "");
+}
+
 /* ===================== API exportee ===================== */
 
-void* UartDevice_new(double baudrate, const char* commandTable, const char* terminator,
+void* UartDevice_new(double baudrate, int dataBits, int parity, int stopBits, const char* commandTable, const char* terminator,
                       double responseDelay, int respondEnabled, int echoEnabled,
                       int periodicEnabled, double period, const char* periodicTemplate,
                       double valueOutStart, int mode, const char* scriptPath,
@@ -134,6 +154,18 @@ void* UartDevice_new(double baudrate, const char* commandTable, const char* term
     if (baudrate < UART_MIN_BAUD || baudrate > UART_MAX_BAUD) {
         ModelicaFormatError("UartDevice: baudrate %g out of range (%d-%d) - safeguard against a storm of Modelica events",
                             baudrate, UART_MIN_BAUD, UART_MAX_BAUD);
+        return NULL;
+    }
+    if (dataBits < UART_MIN_DATA_BITS || dataBits > UART_MAX_DATA_BITS) {
+        ModelicaFormatError("UartDevice: dataBits %d out of range (%d-%d)", dataBits, UART_MIN_DATA_BITS, UART_MAX_DATA_BITS);
+        return NULL;
+    }
+    if (parity != UART_PARITY_NONE && parity != UART_PARITY_EVEN && parity != UART_PARITY_ODD) {
+        ModelicaFormatError("UartDevice: unknown parity (%d)", parity);
+        return NULL;
+    }
+    if (stopBits != 1 && stopBits != 2) {
+        ModelicaFormatError("UartDevice: stopBits %d invalid (1 or 2)", stopBits);
         return NULL;
     }
     if (responseDelay < 0) {
@@ -168,7 +200,8 @@ void* UartDevice_new(double baudrate, const char* commandTable, const char* term
        l'interrupteur ouvert du pont GPIO - le noeud est a ~0,3 V, donc bas. Vu
        depuis un etat initial a 1, cela ressemble a un front descendant.
        Meme piege que celui deja trouve et corrige cote microcontroleur. */
-    uartcore_configure(&dev->io, 1.0 / baudrate);
+    uartcore_configure(&dev->io, 1.0 / baudrate, dataBits, parity, stopBits);
+    uartdev_copy_bounded(dev->name, UARTDEV_LINE_MAX, instanceName ? instanceName : "UartDevice");
 
     dev->respond_enabled = respondEnabled ? 1 : 0;
     dev->echo_enabled = echoEnabled ? 1 : 0;
@@ -212,6 +245,10 @@ void UartDevice_destroy(void* dev_) {
        PyRuntime_destroy pour l'arret propre d'ensemble). Mode Table : rien a
        faire, ni Python ni thread. */
     struct UartDevice* dev = (struct UartDevice*) dev_;
+    if (dev && dev->err_reported > UARTDEV_ERR_REPORT_MAX) {
+        ModelicaFormatWarning("[%s] %ld parity and %ld framing errors in total\n",
+                              dev->name, dev->io.rx_parity_errors, dev->io.rx_framing_errors);
+    }
     if (dev && dev->mode == UARTDEV_MODE_SCRIPT && dev->py_globals) {
         PyObject** refs[] = { &dev->py_on_receive, &dev->py_on_tick, &dev->py_outputs, &dev->py_globals };
         devscript_unload(refs, 4);
@@ -239,7 +276,7 @@ void UartDevice_sync(void* dev_, double currentTime, int rxLevel, const double* 
     uartcore_tx_advance(&dev->io, currentTime);
 
     /* 3. reception : front de start, puis bits resolus aux fronts suivants */
-    uartcore_rx_step(&dev->io, currentTime, rxLevel);
+    uartdev_warn_errors(dev, currentTime, uartcore_rx_step(&dev->io, currentTime, rxLevel));
 
     /* 4. drainer les octets recus vers l'accumulateur de ligne */
     while (uartcore_rx_pop(&dev->io, &byte)) {

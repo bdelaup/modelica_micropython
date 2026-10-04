@@ -49,27 +49,14 @@ static PyObject* native_on_worker(PyObject* self, PyObject* args) {
 
 /* Fin de simulation (appele par PyRuntime_destroy) : redit ou est la copie -
    le message de debut de simulation est souvent loin en haut du journal - et,
-   si fsOpenExplorer, ouvre l'Explorateur Windows dessus. explorer.exe lance par
-   CreateProcess plutot que ShellExecute : pas de bibliotheque shell32 a lier.
-   Sans attente : la simulation se termine sans dependre de la fenetre. */
+   si fsOpenExplorer, ouvre l'Explorateur Windows dessus, sans l'attendre
+   (lanceur commun, launch.c). */
 static void fs_at_exit(struct PyRuntimeHandle* h) {
     if (!h->fs_root) {
         return;
     }
     ModelicaFormatMessage("File system: end of simulation, files in %s\n", h->fs_root);
-    if (!h->fsOpenExplorer) {
-        return;
+    if (h->fsOpenExplorer) {
+        launch_detached("Windows Explorer", "explorer.exe", NULL, h->fs_root);
     }
-    size_t len = strlen(h->fs_root) + 32;
-    char* cmd = (char*) malloc(len);
-    snprintf(cmd, len, "explorer.exe \"%s\"", h->fs_root);
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-    memset(&si, 0, sizeof(si));
-    si.cb = sizeof(si);
-    if (CreateProcessA(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        CloseHandle(pi.hThread);
-        CloseHandle(pi.hProcess);
-    }
-    free(cmd);
 }

@@ -11,7 +11,7 @@
 - 8 broches (`GP0`-`GP7`) et la LED embarquée, au lieu des 29 broches du Pico ; toutes peuvent servir d'entrée analogique.
 - Pas de mode drain ouvert (`Pin.OPEN_DRAIN`) : seul le bus I2C pilote ses lignes ainsi. Les tirages internes (`Pin.PULL_UP`, `Pin.PULL_DOWN`) sont, eux, réellement modélisés.
 - Pas de `SPI`.
-- `UART` : une seule liaison, trame 8N1 uniquement, 50 à 115 200 bauds, pas d'interruption en réception.
+- `UART` : une seule liaison, 50 à 115 200 bauds, pas d'interruption en réception ; un octet reçu en erreur (parité, stop) est signalé au journal, pas au programme.
 - `I2C` : un seul bus maître, 1 kHz à 1 MHz ; `I2CTarget` : une seule cible, adresse sur 7 bits, plus de gestionnaire une fois le programme terminé.
 - `Timer` : 4 minuteurs au plus, période minimale 1 ms.
 - Les callbacks d'interruption (`Pin.irq()`, `Timer`) s'exécutent au prochain point de synchronisation, jamais en préemption instantanée du programme.
@@ -44,8 +44,8 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues).
 ??? question "`OSError: [Errno 5] EIO` sur le bus I2C"
     Aucun périphérique ne répond à l'adresse demandée. Vérifier le paramètre `addresses` du périphérique et lancer `i2c.scan()`.
 
-??? question "Les octets reçus sur la liaison série sont faux"
-    Le `baudrate` de l'appareil diffère de celui passé à `UART(...)` dans le programme. Les deux doivent être identiques, comme sur un vrai montage.
+??? question "Les octets reçus sur la liaison série sont faux, ou le journal signale `parity error` / `framing error`"
+    Le débit ou le format de trame de l'appareil (`baudrate`, `dataBits`, `parity`, `stopBits`) diffère de ce qui est passé à `UART(...)` dans le programme. Les deux doivent être identiques, comme sur un vrai montage ([Format de trame](peripheriques/uart.md#format-de-trame)).
 
 ??? question "Le programme ne voit pas les données reçues par la liaison série"
     La réception ne réveille pas le programme : il doit interroger la liaison (`uart.any()`, `uart.read()`, `uart.readline()`) et laisser le temps à la réponse d'arriver, par exemple avec un `time.sleep_ms()`.

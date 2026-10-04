@@ -15,10 +15,12 @@
 /* Constructeur de l'External Object. mode : 1 = table de commandes parametree,
    2 = script Python (gestionnaires on_receive/on_tick/outputs). terminator :
    CHAINE dont seul le premier caractere est retenu, pour que le parametre Modelica
-   s'ecrive "\n" plutot qu'un code numerique. Les validations (baudrate borne,
-   periode au-dessus du plancher, terminateur non vide) echouent par
+   s'ecrive "\n" plutot qu'un code numerique. dataBits/parity/stopBits :
+   format de trame, conventions de machine.UART (5-8 bits ; parity -1 = aucune,
+   0 = paire, 1 = impaire ; 1 ou 2 stops). Les validations (baudrate borne,
+   format, periode au-dessus du plancher, terminateur non vide) echouent par
    ModelicaFormatError plutot que de laisser un peripherique silencieusement inerte. */
-void* UartDevice_new(double baudrate, const char* commandTable, const char* terminator,
+void* UartDevice_new(double baudrate, int dataBits, int parity, int stopBits, const char* commandTable, const char* terminator,
                       double responseDelay, int respondEnabled, int echoEnabled,
                       int periodicEnabled, double period, const char* periodicTemplate,
                       double valueOutStart, int mode, const char* scriptPath,

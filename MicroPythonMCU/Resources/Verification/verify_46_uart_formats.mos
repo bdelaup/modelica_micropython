@@ -1,0 +1,30 @@
+// Scénario de vérification n°46 : les 24 formats de trame du port rp2.
+// omc verify_46_uart_formats.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : en bouclage TX -> RX (Examples.Uart.Loopback,
+// GP0 -> GP1), le script Verification/uart_formats.py balaie bits 5-8 x parité
+// aucune/paire/impaire x 1-2 stops par uart.init(), émet 16 octets et les relit
+// (octet & masque avec moins de 8 bits) ; il vérifie aussi que bits=9,
+// parity=2 et stop=3 lèvent ValueError. GP3 s'allume si tout passe. Aucun
+// avertissement d'erreur de réception ne doit apparaître. Modèle défini ici
+// plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model UartFormats
+  extends MicroPythonMCU.Examples.Uart.Loopback(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/uart_formats.py\")));
+end UartFormats;"); getErrorString();
+
+buildModel(UartFormats, stopTime = 0.8, numberOfIntervals = 800, fileNamePrefix = "UartFormats");
+b := getErrorString();
+ret := system(".\UartFormats.bat", "UartFormats_run.txt");
+log := readFile("UartFormats_run.txt");
+(nOk, m1) := regex(log, "formats ok: 24 / 24, invalid refused: 3 / 3", 1);
+(nErr, m2) := regex(log, "error on a received byte", 1);
+(nEnd, m3) := regex(log, "The simulation finished successfully", 1);
+v := val(mcu.GP3.v, 0.79, "UartFormats_res.mat");
+
+if ret == 0 and nOk == 1 and nErr == 0 and nEnd >= 1 and v > 1 then
+  print("PASS: verify_46_uart_formats (24 formats relus a l'identique, 3 formats invalides refuses, GP3=" + String(v) + "V)\n");
+else
+  print("FAIL: verify_46_uart_formats (code " + String(ret) + ", ok " + String(nOk) + ", erreurs " + String(nErr) + ", fin " + String(nEnd) + ", GP3=" + String(v) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

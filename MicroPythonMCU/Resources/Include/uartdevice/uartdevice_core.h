@@ -20,11 +20,15 @@
 #define UARTDEV_PATH_MAX 511
 #define UARTDEV_MIN_PERIOD 0.001     /* plancher d'emission periodique : evite une tempete d'evenements Modelica a duree simulee nulle, meme esprit que TIMER_MIN_PERIOD */
 
+#define UARTDEV_ERR_REPORT_MAX 10    /* avertissements d'erreur de reception au journal, ensuite bilan en fin de simulation */
+
 #define UARTDEV_MODE_TABLE 1         /* aligne sur Peripherals.UartDevice.Comportement */
 #define UARTDEV_MODE_SCRIPT 2
 
 struct UartDevice {
-    struct UartEngine io;            /* files TX/RX, trame 8N1, decodage : cf. uartcore.h, partage avec le microcontroleur */
+    struct UartEngine io;            /* files TX/RX, trame au format choisi, decodage : cf. uartcore.h, partage avec le microcontroleur */
+    char name[UARTDEV_LINE_MAX + 1]; /* nom d'instance, pour prefixer les avertissements */
+    int err_reported;                /* erreurs de reception deja signalees (plafond UARTDEV_ERR_REPORT_MAX) */
 
     /* --- requete/reponse --- */
     int respond_enabled;

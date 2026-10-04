@@ -544,6 +544,7 @@ void PyRuntime_destroy(void* handle_) {
                               "files left open may be incomplete\n", h->instanceName);
         pyhost_abandon();
     }
+    uart_report_errors(h);
     fs_at_exit(h);
     pyhost_release();
 }

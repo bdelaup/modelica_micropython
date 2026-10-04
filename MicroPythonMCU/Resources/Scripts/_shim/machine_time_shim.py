@@ -121,24 +121,38 @@ class Display:
         _native.display_write(self.id, text if isinstance(text, str) else str(text))
 
 class UART:
-    # bits/parity/stop sont absorbes par **kwargs : acceptes pour compatibilite
-    # d'API mais sans effet, seul le format 8N1 est emis (meme approche
-    # que pull= sur Pin). Le format de trame vit entierement cote C.
-    def __init__(self, id=0, baudrate=1200, tx=None, rx=None, **kwargs):
+    # Format de trame comme le port rp2 : bits 5-8, parity None/0 (paire)/1
+    # (impaire), stop 1 ou 2 - la trame elle-meme vit entierement cote C
+    # (uartcore.c). Les autres arguments du port (timeout, txbuf, rxbuf,
+    # flow...) sont absorbes par **kwargs, sans effet.
+    def __init__(self, id=0, baudrate=1200, bits=8, parity=None, stop=1, tx=None, rx=None, **kwargs):
         self.id = id
-        self.init(baudrate, tx=tx, rx=rx, **kwargs)
+        self.init(baudrate, bits, parity, stop, tx=tx, rx=rx, **kwargs)
 
-    def init(self, baudrate=1200, tx=None, rx=None, **kwargs):
+    def init(self, baudrate=1200, bits=8, parity=None, stop=1, tx=None, rx=None, **kwargs):
         if tx is None or rx is None:
             raise ValueError('tx and rx must be given (e.g. UART(0, tx=Pin(0), rx=Pin(1)))')
         if isinstance(tx, Pin):
             tx = tx.id
         if isinstance(rx, Pin):
             rx = rx.id
+        if bits not in (5, 6, 7, 8):
+            raise ValueError('invalid bits')
+        if parity not in (None, 0, 1):
+            raise ValueError('invalid parity')
+        if stop not in (1, 2):
+            raise ValueError('invalid stop')
         self._baudrate = baudrate
+        self._bits = bits
+        self._parity = parity
+        self._stop = stop
         self.tx = tx
         self.rx = rx
-        _native.uart_init(self.id, tx, rx, float(baudrate))
+        _native.uart_init(self.id, tx, rx, float(baudrate), bits, -1 if parity is None else parity, stop)
+
+    def __repr__(self):
+        return 'UART(%d, baudrate=%d, bits=%d, parity=%s, stop=%d, tx=%d, rx=%d)' % (
+            self.id, self._baudrate, self._bits, self._parity, self._stop, self.tx, self.rx)
 
     def write(self, data):
         if isinstance(data, str):

@@ -3,7 +3,7 @@
 !!! info "Référence interne"
     Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Appareils série](../guide/peripheriques/uart.md).
 
-Cette page explique le **fonctionnement interne** des appareils qui se branchent à l'autre bout de la liaison série. Pour la liaison elle-même (trame 8N1, génération de la forme d'onde, décodage), voir [peripherique-uart.md](uart.md), dont celle-ci est la suite directe. Pour le *pourquoi* des choix, voir la décision « Périphériques UART externes connectables » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+Cette page explique le **fonctionnement interne** des appareils qui se branchent à l'autre bout de la liaison série. Pour la liaison elle-même (format de trame, génération de la forme d'onde, décodage), voir [peripherique-uart.md](uart.md), dont celle-ci est la suite directe. Pour le *pourquoi* des choix, voir la décision « Périphériques UART externes connectables » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
 
 ## 1. Ce que ça remplace
 
@@ -21,7 +21,7 @@ Un appareil série externe est un véritable interlocuteur : deux composants dis
 
 ## 2. Le moteur est partagé, pas dupliqué
 
-Le travail bit/octet vit dans **`Resources/Include/uartcore.h` + `uartcore.c`**, à la racine d'`Include/` : files circulaires, sérialisation 8N1, niveau de la ligne d'émission, décodage de la réception à partir des fronts, calcul d'échéance (fonctionnement détaillé dans [peripherique-uart.md](uart.md) §§ 3-4). Ce code ne connaît ni Python, ni les threads, ni les broches — il n'a donc rien coûté à extraire de `pyruntime_uart.c`, où il vivait déjà sous cette forme.
+Le travail bit/octet vit dans **`Resources/Include/uartcore.h` + `uartcore.c`**, à la racine d'`Include/` : files circulaires, sérialisation de la trame, niveau de la ligne d'émission, décodage de la réception à partir des fronts, calcul d'échéance (fonctionnement détaillé dans [peripherique-uart.md](uart.md) §§ 3-4). Ce code ne connaît ni Python, ni les threads, ni les broches — il n'a donc rien coûté à extraire de `pyruntime_uart.c`, où il vivait déjà sous cette forme.
 
 | | Microcontrôleur | Périphérique |
 |---|---|---|

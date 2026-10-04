@@ -11,7 +11,7 @@
 - 8 pins (`GP0`-`GP7`) and the on-board LED, instead of the Pico's 29 pins; all of them can be analog inputs.
 - No open-drain mode (`Pin.OPEN_DRAIN`): only the I2C bus drives its lines that way. The internal pull resistors (`Pin.PULL_UP`, `Pin.PULL_DOWN`), on the other hand, are really modelled.
 - No `SPI`.
-- `UART`: a single link, 8N1 frames only, 50 to 115,200 baud, no receive interrupt.
+- `UART`: a single link, 50 to 115,200 baud, no receive interrupt; a byte received with an error (parity, stop) is reported in the log, not to the program.
 - `I2C`: a single controller bus, 1 kHz to 1 MHz; `I2CTarget`: one target, 7-bit address, no handler any more once the program has ended.
 - `Timer`: 4 timers at most, minimum period 1 ms.
 - Interrupt callbacks (`Pin.irq()`, `Timer`) run at the next synchronisation point, never as an instant pre-emption of the program.
@@ -44,8 +44,8 @@ Function-by-function details: [API, limitations](api.md#known-limitations).
 ??? question "`OSError: [Errno 5] EIO` on the I2C bus"
     No device answers the requested address. Check the device's `addresses` parameter and run `i2c.scan()`.
 
-??? question "Bytes received on the serial link are wrong"
-    The device's `baudrate` differs from the one passed to `UART(...)` in the program. Both must be identical, as on a real board.
+??? question "Bytes received on the serial link are wrong, or the log reports `parity error` / `framing error`"
+    The device's baud rate or frame format (`baudrate`, `dataBits`, `parity`, `stopBits`) differs from what is passed to `UART(...)` in the program. Both must be identical, as on a real board ([Frame format](peripheriques/uart.md#frame-format)).
 
 ??? question "The program does not see data received on the serial link"
     Reception does not wake the program up: it must poll the link (`uart.any()`, `uart.read()`, `uart.readline()`) and give the reply time to arrive, for instance with `time.sleep_ms()`.

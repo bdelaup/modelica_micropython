@@ -58,6 +58,16 @@ They all share the same connectors and parameters; they only differ by their def
 | `valueIn[nIn]` | Model quantities the device inserts into its frames (`{v1}`…): a temperature, a position… Used if `useValueInput = true` |
 | `valueOut[nOut]` | Quantities extracted from received frames (`{o1}`…): the device then becomes an **actuator**. May stay unconnected |
 
+## Frame format
+
+The device uses **its own** format, set by `dataBits`, `parity` and `stopBits` (8N1 by default) and shown on its icon (`1200,N,8,1`, `1200,E,8,2`…). It must be the one the program passes to `UART(...)`:
+
+```python
+uart = UART(0, baudrate=1200, bits=8, parity=0, stop=2, tx=Pin(5), rx=Pin(4))   # device: parity = Even, stopBits = 2
+```
+
+On a mismatch, the device and the microcontroller keep the bytes received with an error but report them in the log (`parity error`, `framing error`; the first ten, then a total at the end of the simulation). A parity mismatch lets correct bytes through, merely reported; a baud rate or data-bit mismatch gives wrong bytes. The `Uart.Format` and `Uart.FormatMismatch` examples show both situations.
+
 ## Parameters
 
 ### Behaviour and link (*General* tab)
@@ -67,6 +77,9 @@ They all share the same connectors and parameters; they only differ by their def
 | `behaviour` | `Table` | Where the behaviour comes from: `Table` (command table, below) or `Script` (Python file) |
 | `scriptPath` | the device's script | `.py` file describing the behaviour, in `Script` mode. Each supplied device has its own in `Resources/Scripts/Device/` (`generic.py`, `echo.py`, `temperature_sensor.py`, `gps.py`), equivalent to its table |
 | `baudrate` | 1200 | Device baud rate. **It must match the microcontroller's**, otherwise received bytes are wrong, as on a real board |
+| `dataBits` | 8 | Number of data bits of a frame, from 5 to 8 (`bits=` of `machine.UART`) |
+| `parity` | `None` | Parity: `None`, `Even` (`parity=0` in the program) or `Odd` (`parity=1`) |
+| `stopBits` | 1 | Number of stop bits, 1 or 2 (`stop=` of `machine.UART`) |
 | `terminator` | `"\n"` | Character ending a received command (only the first character counts) |
 | `tickPeriod` | 0.1 s | Period of the minimal synchronisation point; a safety net, the default is fine |
 

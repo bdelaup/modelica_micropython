@@ -9,6 +9,11 @@ DISPLAY_COLS
 TEXT_DISPLAY_COLS
 UART_DEV_MAX_VALUES
 I2C_DEV_MAX_VALUES
+PULSEVIEW_PATH
 UartBehaviour
+UartParity
+ChannelKind
+BitOrder
+ClockEdge
 DisplayLinkOutput
 DisplayLinkInput

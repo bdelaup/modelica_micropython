@@ -189,7 +189,8 @@ struct PyRuntimeHandle {
     int uart_rx_pin;
     int uart_rx_claimed[NUM_PINS]; /* broche affectee a la reception UART : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO (fidele au materiel reel), cf. PyRuntime_sync */
 
-    struct UartEngine uart;      /* files TX/RX, trame 8N1, decodage : cf. uartcore.h (partage avec Peripherals.UartDevice) */
+    struct UartEngine uart;      /* files TX/RX, trame au format choisi, decodage : cf. uartcore.h (partage avec Peripherals.UartDevice) */
+    int uart_err_reported;       /* erreurs de reception deja signalees au journal (plafond UART_ERR_REPORT_MAX) */
 
     /* machine.I2C : sequence cadencee par echeances (nextWakeTime), comme la
        reception UART. Le script est bloque dans i2c_xfer jusqu'a la fin de la

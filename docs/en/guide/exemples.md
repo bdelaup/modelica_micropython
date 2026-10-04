@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 39 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 45 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -93,6 +93,8 @@ The `MicroPythonMCU.Examples` package holds 39 ready-to-simulate models: open th
 | `Uart.GpsPy` | A GPS module sends its frames without being asked | log | `uart_gps.py` |
 | `Uart.StateMachinePy` | Device whose reply depends on its history (Python state machine) | log | `uart_state_machine.py` |
 | `Uart.Lcd` | Two lines written to a 20x2 serial display | display icon | `uart_lcd.py` |
+| `Uart.Format` | 8E2 link (even parity, 2 stop bits) with an echo device set the same way | `mcu.GP5.v`, `mcu.GP7.v` | `uart_format.py` |
+| `Uart.FormatMismatch` | Same circuit, device in odd parity: bytes kept, parity errors in the log | log | `uart_format.py` |
 
 ![Serial frame](../images/sim/uart-trame.svg)
 
@@ -124,3 +126,14 @@ Several `MCU` blocks in the same model, each with its own program (see [Several 
 |---|---|---|---|
 | `Weighing.Hx711Read` | Reading an HX711 with robert-hh's driver: gain 128, gain 64, power-down and wake-up | `hx.code`, `hx.PD_SCK.v`, `hx.DOUT.v`, display | `hx711_read.py` |
 | `Weighing.KitchenScale` | Complete kitchen scale, TARE button | display icon | `kitchen_scale.py` |
+
+## Logic analyser (`Examples.Analyzer`)
+
+The `LogicAnalyzer` probe decodes the wires of a circuit into a text file, opened in Notepad at the end of the simulation, and records them in a VCD file for PulseView ([Logic analyser](peripheriques/analyseurs.md)).
+
+| Example | What it shows | What to watch | Program |
+|---|---|---|---|
+| `Analyzer.UartLink` | Probe on both wires of the 8E2 link of `Uart.Format`, channels of kind `Uart` | `UartLink.analyzer.txt`: "Hello, parity!" in hex + ASCII, bits and bytes under the timing diagram; the echo overlaps the message | `uart_format.py` |
+| `Analyzer.UartErrors` | Same probe, device in odd parity (`Uart.FormatMismatch`) | bytes sent back marked `!` and `!P` | `uart_format.py` |
+| `Analyzer.I2cBus` | Probe on the bus of `I2c.Echo`: SCL as `Logic`, SDA as `I2cSda` | one line per transaction, NACK ending a read, repeated START | `i2c_echo.py` |
+| `Analyzer.Hx711Serial` | Probe on the PD_SCK/DOUT link of `Weighing.Hx711Read`, DOUT as `SyncData` (24 bits, MSB first) | one word per conversion, gain pulses, compressed silences | `hx711_read.py` |

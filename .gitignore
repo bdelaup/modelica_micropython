@@ -49,6 +49,12 @@ __pycache__/
 *_18spd.c
 /MicroPythonMCU/MCU.c
 /MicroPythonMCU/Resources/Verification/*.c
+# Fichiers de l'analyseur logique écrits par les simulations (VCD, texte décodé des scénarios)
+*.vcd
+/MicroPythonMCU/Resources/Verification/*.analyzer.txt
+/MicroPythonMCU/Resources/Verification/*.analyzer.pvs
+# Copie portable de PulseView (dossier d'installation recopie, ~50 Mo, GPLv3) : hors depot pour l'instant
+/PulseView/
 /dist/
 
 # Site de documentation construit par Zensical (zensical build / serve) et son cache

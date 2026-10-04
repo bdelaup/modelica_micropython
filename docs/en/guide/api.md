@@ -155,7 +155,7 @@ if uart.any():
     print(uart.read())
 ```
 
-**Electrically real** serial link, on two real `GPx` pins — unlike `machine.Display`, which is a logical link. The TX pin carries a real 8N1 frame (start bit at 0, 8 data bits least significant first, stop bit at 1, idle high), each bit lasting `1/baudrate`: plotting it in OMEdit is like looking at it on an oscilloscope.
+**Electrically real** serial link, on two real `GPx` pins — unlike `machine.Display`, which is a logical link. The TX pin carries a real frame (start bit at 0, data bits least significant first, optional parity bit, stop bits at 1, idle high; 8N1 by default), each bit lasting `1/baudrate`: plotting it in OMEdit is like looking at it on an oscilloscope.
 
 The waveform is produced by the runtime, without the Python program driving each edge — like the RP2040 hardware UART, which runs on its own once programmed. Reception is decoded from the line's edges, reading each bit in its middle as a real receiver does.
 
@@ -165,7 +165,13 @@ Wiring and devices to connect at the other end: [Serial devices](peripheriques/u
 
 ### Constructor
 
-`UART(id=0, baudrate=1200, tx=None, rx=None, **kwargs)` — `id`: only `0` is supported. `tx`/`rx`: required, a `Pin` object or a pin number, two distinct pins among `0`-`7`. `baudrate`: 50 to 115200 (`ValueError` outside). `**kwargs` absorbs `bits`/`parity`/`stop`, accepted for API compatibility but **with no effect** (only 8N1 is sent). Synchronises.
+`UART(id=0, baudrate=1200, bits=8, parity=None, stop=1, tx=None, rx=None, **kwargs)` — `id`: only `0` is supported. `tx`/`rx`: required, a `Pin` object or a pin number, two distinct pins among `0`-`7`. `baudrate`: 50 to 115200. Frame format, as on the `rp2` port: `bits` from 5 to 8 (with fewer than 8 bits, the most significant bits of the byte are lost), `parity` `None`, `0` (even) or `1` (odd), `stop` 1 or 2; any other value raises `ValueError`. The other arguments of the port (`timeout`, `txbuf`, `rxbuf`, `flow`…) are accepted with no effect. `.init(...)` takes the same arguments and reconfigures the link. Synchronises.
+
+```python
+uart = UART(0, baudrate=1200, bits=8, parity=0, stop=2, tx=Pin(5), rx=Pin(4))   # 8E2
+```
+
+**Byte received with an error.** A byte whose parity bit is wrong, or whose stop bit is low (baud rate or format different from the transmitter's), is **kept** in the receive queue, as on the RP2040; the simulation log shows a timestamped warning (`parity error`, `framing error`) for the first ten, then the total at the end of the simulation. The receiver only checks the first stop bit.
 
 ### Methods
 
@@ -340,7 +346,7 @@ time.sleep(1)
 - File system: a fresh copy of the image at each simulation (no persistence from one run to the next; to chain runs, point `fsSource` to a previous copy). Sandboxing is limited to `open()` and `os` — `io.open` or `pathlib` are not subject to it. Case-insensitive host (Windows), no `os.urandom`, nor `mount`/`VfsLfs2`/`dupterm`.
 - `machine.I2C`: a single controller bus, no clock stretching (SCL held low = `ETIMEDOUT`) nor multi-master arbitration, at most 256 bytes per transaction, 50 kΩ internal pull-ups too weak for a real bus (`usePullUp` is needed on a peripheral).
 - `machine.I2CTarget`: one target per microcontroller, 7-bit address; every handler runs at the instant of the event (`hard=` has no effect); no handler any more once the program has ended (only the `mem=` mode keeps answering).
-- `machine.UART`: a single peripheral (`UART(0)`), **fixed 8N1 frame** (`bits`/`parity`/`stop` accepted but with no effect), baud rate limited to 50-115200. 256-byte queues, silent overflow; a frame whose stop bit is not high is ignored with no framing error. No `uart.irq()` (reception does not wake the script: poll it with `any()`/`read()`), no RTS/CTS flow control.
+- `machine.UART`: a single peripheral (`UART(0)`), baud rate limited to 50-115200. 256-byte queues, silent overflow; a byte received with an error (parity, stop) is kept and only reported in the log — the program cannot know. No `uart.irq()` (reception does not wake the script: poll it with `any()`/`read()`), no RTS/CTS flow control.
 - `machine.Display`: a single logical link, **write-only**, instant delivery of the whole message (no simulated baud rate).
 - `Pin.irq()`: every callback runs "soft" (deferred to the program's next wake-up point); `hard=` accepted but with no effect. An exception raised in a callback stops the whole simulation (same policy as the main script).
 - `machine.Timer`: fixed pool of 4 timers shared by all `Timer()`s (beyond that, `Timer()` raises `RuntimeError`); minimum period 1 ms (`ValueError` below).

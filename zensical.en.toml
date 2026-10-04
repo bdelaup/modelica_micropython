@@ -34,6 +34,7 @@ nav = [
       { "Serial devices (UART)" = "guide/peripheriques/uart.md" },
       { "I2C devices" = "guide/peripheriques/i2c.md" },
       { "Weighing chain (HX711)" = "guide/peripheriques/pesee.md" },
+      { "Logic analyser" = "guide/peripheriques/analyseurs.md" },
     ] },
     { "Examples" = "guide/exemples.md" },
     { "Limits and troubleshooting" = "guide/limites.md" },

@@ -1,0 +1,48 @@
+// Scénario de vérification n°49 : décodage d'une liaison série synchrone par
+// la sonde d'analyseur logique (Examples.Analyzer.Hx711Serial).
+// omc verify_49_analyzer_sync.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : sur la liaison PD_SCK/DOUT de l'HX711 lue par
+// le pilote robert-hh, la sonde avec CH0 = PD_SCK (Logic) et CH1 = DOUT
+// (SyncData : lue au front descendant de CH0, mots de 24 bits, poids fort en
+// tête, signés) écrit Hx711Serial.analyzer.txt :
+// - une ligne par conversion, à 400, 500 et 600 ms : « 068DB9 = 429497 »
+//   suivi d'une impulsion de plus (la 25e, qui choisit le gain 128) - la
+//   valeur même que le programme lit et affiche (« gain 128: 429497 ») ;
+// - un chronogramme où chaque rafale d'impulsions est une trame et les
+//   ~100 ms entre deux conversions une seule ligne de silence, la valeur du
+//   mot entre crochets ;
+// - Hx711Serial.analyzer.pvs : la voie SyncData devient un décodeur spi,
+//   CLK = probe.PD_SCK, MISO = probe.DOUT, cpol = 0 (horloge au repos basse),
+//   cpha = 1 (lecture au front descendant), mots de 24 bits.
+// Le Bloc-notes n'est pas lancé (override).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Analyzer.Hx711Serial, stopTime = 0.65, numberOfIntervals = 650, fileNamePrefix = "Hx711Serial");
+b := getErrorString();
+ret := system(".\Hx711Serial.bat -override=analyzer.openText=false", "Hx711Serial_run.txt");
+log := readFile("Hx711Serial_run.txt");
+txt := readFile("Hx711Serial.analyzer.txt");
+
+(nChan, t1) := regex(txt, "CH1  DOUT +synchronous data, read on the falling edge of CH0 \\(PD_SCK\\), 24-bit words, MSB first, signed", 1);
+(nCount, t2) := regex(txt, "DOUT  synchronous data, clock PD_SCK  3 words of 24 bits", 1);
+(nW1, t3) := regex(txt, "400.005 ms  068DB9 = 429497   \\+ 1 extra clock pulse\n", 1);
+(nW3, t4) := regex(txt, "600.005 ms  068DB9 = 429497   \\+ 1 extra clock pulse\n", 1);
+(nFrame3, t5) := regex(txt, "=== frame 3   599.9", 1);
+(nFrame4, t6) := regex(txt, "=== frame 4", 1);
+(nSilence, t7) := regex(txt, "~~~~~~~~ 99\\.[0-9]+ ms of silence ~~~~~~~~", 1);
+(nSpan, t8) := regex(txt, "\\[ +068DB9 = 429497", 1);
+pvs := readFile("Hx711Serial.analyzer.pvs");
+(nPvsId, p1) := regex(pvs, "decoder0\\\\id=spi\n", 1);
+(nPvsCpha, p2) := regex(pvs, "option1\\\\name=cpha\ndecoder0\\\\option1\\\\type=x\ndecoder0\\\\option1\\\\value=@ByteArray\\(\\\\x1\\\\x0", 1);
+(nPvsWord, p3) := regex(pvs, "option3\\\\name=wordsize\ndecoder0\\\\option3\\\\type=x\ndecoder0\\\\option3\\\\value=@ByteArray\\(\\\\x18\\\\x0", 1);
+(nPvsCh, p4) := regex(pvs, "channel0\\\\name=CLK\n.*assigned_signal_name=probe\\.PD_SCK\n.*channel1\\\\name=MISO\n.*assigned_signal_name=probe\\.DOUT\n", 1);
+(nProg, m1) := regex(log, "gain 128: 429497", 1);
+(nEnd, m2) := regex(log, "The simulation finished successfully", 1);
+
+if ret == 0 and nChan == 1 and nCount == 1 and nW1 == 1 and nW3 == 1 and nFrame3 == 1 and nFrame4 == 0 and nSilence == 1 and nSpan == 1 and nPvsId == 1 and nPvsCpha == 1 and nPvsWord == 1 and nPvsCh == 1 and nProg == 1 and nEnd >= 1 then
+  print("PASS: verify_49_analyzer_sync (trois mots de 24 bits a 400/500/600 ms, 068DB9 = 429497 + impulsion de gain, valeur lue par le programme, une trame par rafale, silences comprimes, session PulseView en SPI mode 1 sur 24 bits)\n");
+else
+  print("FAIL: verify_49_analyzer_sync (code " + String(ret) + ", voie/compte " + String(nChan) + "/" + String(nCount) + ", mots 1/3 " + String(nW1) + "/" + String(nW3) + ", trames 3/4 " + String(nFrame3) + "/" + String(nFrame4) + ", silence " + String(nSilence) + ", valeur " + String(nSpan) + ", session " + String(nPvsId) + "/" + String(nPvsCpha) + "/" + String(nPvsWord) + "/" + String(nPvsCh) + ", programme " + String(nProg) + ", fin " + String(nEnd) + ")\n" + b + "\n--- journal ---\n" + log + "\n--- texte ---\n" + txt);
+end if;

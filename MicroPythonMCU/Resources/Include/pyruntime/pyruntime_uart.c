@@ -8,7 +8,7 @@
    requirements.md, decision "Structure du package et interface C du runtime
    Python". Ce fichier n'est jamais compile seul.
 
-   La mecanique bit/octet (files circulaires, serialisation 8N1, decodage par
+   La mecanique bit/octet (files circulaires, serialisation de la trame, decodage par
    echantillonnage, echeances) a ete extraite dans uartcore.c, a la racine
    d'Include/, pour etre partagee avec les peripheriques serie externes
    (Peripherals.UartDevice) qui n'ont ni Python ni thread. Ne reste ici que ce
@@ -34,11 +34,43 @@ static void uart_tx_advance(struct PyRuntimeHandle* h, double now) {
     uartcore_tx_advance(&h->uart, now);
 }
 
+/* Signale au journal un octet recu avec une erreur (parite fausse, stop bas),
+   livre quand meme au script comme sur le RP2040. Plafonne : un desaccord de
+   debit ou de format produirait sinon un avertissement par octet ; le bilan
+   complet est donne en fin de simulation (uart_report_errors). */
+#define UART_ERR_REPORT_MAX 10
+
+static void uart_warn_errors(struct PyRuntimeHandle* h, double now, int errors) {
+    if (!errors || h->uart_err_reported > UART_ERR_REPORT_MAX) {
+        return;
+    }
+    h->uart_err_reported++;
+    if (h->uart_err_reported > UART_ERR_REPORT_MAX) {
+        ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): UART(0): further reception errors not reported "
+                              "(total at the end of the simulation)\n", now, h->instanceName);
+        return;
+    }
+    ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): UART(0): %s%s%s error on a received byte "
+                          "(kept in the receive queue) - do baud rate, bits, parity and stop match the transmitter?\n",
+                          now, h->instanceName,
+                          (errors & UART_ERR_PARITY) ? "parity" : "",
+                          (errors & UART_ERR_PARITY) && (errors & UART_ERR_FRAMING) ? " and " : "",
+                          (errors & UART_ERR_FRAMING) ? "framing" : "");
+}
+
+/* Bilan de fin de simulation, seulement si le plafond a ete atteint. */
+static void uart_report_errors(struct PyRuntimeHandle* h) {
+    if (h->uart_err_reported > UART_ERR_REPORT_MAX) {
+        ModelicaFormatWarning("PyRuntime (%s): UART(0): %ld parity and %ld framing errors in total\n",
+                              h->instanceName, h->uart.rx_parity_errors, h->uart.rx_framing_errors);
+    }
+}
+
 static void uart_rx_step(struct PyRuntimeHandle* h, double now, const int* pinBoolIn) {
     if (!h->uart_configured || h->uart_rx_pin < 0) {
         return;
     }
-    uartcore_rx_step(&h->uart, now, pinBoolIn[h->uart_rx_pin]);
+    uart_warn_errors(h, now, uartcore_rx_step(&h->uart, now, pinBoolIn[h->uart_rx_pin]));
 }
 
 /* Un seul id supporte - meme esprit que resolve_display_index. */
@@ -49,9 +81,11 @@ static int resolve_uart_index(int id) {
 
 static PyObject* native_uart_init(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
-    int id, tx_id, rx_id;
+    int id, tx_id, rx_id, bits, parity, stop;
     double baudrate;
-    if (!PyArg_ParseTuple(args, "iiid", &id, &tx_id, &rx_id, &baudrate)) return NULL;
+    /* Format deja verifie par le shim (memes messages que le port rp2) ; on
+       revalide ici, la native pouvant etre appelee directement. */
+    if (!PyArg_ParseTuple(args, "iiidiii", &id, &tx_id, &rx_id, &baudrate, &bits, &parity, &stop)) return NULL;
     if (resolve_uart_index(id) < 0) {
         PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
         return NULL;
@@ -77,6 +111,18 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "baud rate %s out of range (%d-%d)", baud_str, UART_MIN_BAUD, UART_MAX_BAUD);
         return NULL;
     }
+    if (bits < UART_MIN_DATA_BITS || bits > UART_MAX_DATA_BITS) {
+        PyErr_Format(PyExc_ValueError, "invalid bits %d (%d-%d expected)", bits, UART_MIN_DATA_BITS, UART_MAX_DATA_BITS);
+        return NULL;
+    }
+    if (parity != UART_PARITY_NONE && parity != UART_PARITY_EVEN && parity != UART_PARITY_ODD) {
+        PyErr_Format(PyExc_ValueError, "invalid parity %d (None, 0 or 1 expected)", parity);
+        return NULL;
+    }
+    if (stop != 1 && stop != 2) {
+        PyErr_Format(PyExc_ValueError, "invalid stop %d (1 or 2 expected)", stop);
+        return NULL;
+    }
     EnterCriticalSection(&g_current->cs);
     g_current->uart_configured = 1;
     g_current->uart_tx_pin = tx;
@@ -84,7 +130,7 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
     g_current->pin_is_output[tx] = 1;   /* la broche TX est prise par le peripherique, comme sur le vrai RP2040 */
     g_current->pin_is_output[rx] = 0;
     g_current->uart_rx_claimed[rx] = 1; /* ses fronts ne reveillent plus le script (cf. PyRuntime_sync) */
-    uartcore_configure(&g_current->uart, 1.0 / baudrate);
+    uartcore_configure(&g_current->uart, 1.0 / baudrate, bits, parity, stop);
     LeaveCriticalSection(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;

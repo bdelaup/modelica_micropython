@@ -1,0 +1,31 @@
+// Scénario de vérification n°45 : désaccord de parité (Examples.Uart.FormatMismatch).
+// omc verify_45_uart_format_mismatch.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : le microcontrôleur parle en 8E2, l'appareil
+// d'écho en 8O2. Les bits de données étant les mêmes, chaque octet est décodé
+// juste et GARDÉ (comme le FIFO du RP2040), donc l'écho relu est identique
+// (GP7 allumée) ; mais chaque côté signale ses erreurs de parité au journal :
+// avertissements plafonnés à 10, puis « further reception errors not
+// reported », puis un bilan en fin de simulation (15 octets de part et d'autre).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Uart.FormatMismatch, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartFormatMismatch");
+b := getErrorString();
+ret := system(".\UartFormatMismatch.bat", "UartFormatMismatch_run.txt");
+log := readFile("UartFormatMismatch_run.txt");
+
+(nMcuErr, m1) := regex(log, "warning.*PyRuntime \\(FormatMismatch.mcu\\): UART\\(0\\): parity error on a received byte", 1);
+(nDevErr, m2) := regex(log, "warning.*\\[FormatMismatch.echo\\] parity error on a received byte", 1);
+(nMcuCap, m3) := regex(log, "PyRuntime \\(FormatMismatch.mcu\\): UART\\(0\\): further reception errors not reported", 1);
+(nDevCap, m4) := regex(log, "\\[FormatMismatch.echo\\] further reception errors not reported", 1);
+(nMcuTot, m5) := regex(log, "PyRuntime \\(FormatMismatch.mcu\\): UART\\(0\\): 15 parity and 0 framing errors in total", 1);
+(nDevTot, m6) := regex(log, "\\[FormatMismatch.echo\\] 15 parity and 0 framing errors in total", 1);
+(nEnd, m7) := regex(log, "The simulation finished successfully", 1);
+vTemoin := val(mcu.GP7.v, 0.39, "UartFormatMismatch_res.mat");
+
+if ret == 0 and nMcuErr == 1 and nDevErr == 1 and nMcuCap == 1 and nDevCap == 1 and nMcuTot == 1 and nDevTot == 1 and nEnd >= 1 and vTemoin > 2 then
+  print("PASS: verify_45_uart_format_mismatch (erreurs de parite signalees des deux cotes, plafond puis bilan de 15, octets gardes : echo relu identique)\n");
+else
+  print("FAIL: verify_45_uart_format_mismatch (code " + String(ret) + ", erreurs mcu/echo " + String(nMcuErr) + "/" + String(nDevErr) + ", plafond " + String(nMcuCap) + "/" + String(nDevCap) + ", bilan " + String(nMcuTot) + "/" + String(nDevTot) + ", fin " + String(nEnd) + ", temoin=" + String(vTemoin) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

@@ -24,7 +24,7 @@ Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, o
 ./run_tests.sh -k                     # garder artefacts et journaux (débogage)
 ./run_tests.sh --copy                # avant un tag : sur une copie des fichiers suivis (voir ci-dessous)
 ```
-Le script affiche un récapitulatif `PASS`/`FAIL`/`ERREUR` avec la durée de chaque `.mos`, puis la fin du journal de chaque script en échec ; il se termine avec le code 1 si un script n'a pas passé. Si `omc` n'est pas sur le `PATH` mais que `OPENMODELICAHOME` est positionné, il complète le `PATH` lui-même. Sauf `-k`, il supprime ensuite tous les artefacts générés, qui portent tous le nom du `fileNamePrefix` de leur script.
+Pendant l'exécution, une barre de progression suit les scripts terminés : redessinée sur une seule ligne dans un terminal (nombre fait, échecs, temps écoulé, dernier script), une ligne par script terminé quand la sortie est redirigée vers un fichier (`[#####-----] 12/50  PASS  14.1 s  verify_...`), ce qui permet de la suivre de loin (`tail -f`). À la fin, le script affiche un récapitulatif `PASS`/`FAIL`/`ERREUR` avec la durée de chaque `.mos`, puis la fin du journal de chaque script en échec ; il se termine avec le code 1 si un script n'a pas passé. Si `omc` n'est pas sur le `PATH` mais que `OPENMODELICAHOME` est positionné, il complète le `PATH` lui-même. Sauf `-k`, il supprime ensuite tous les artefacts générés, qui portent tous le nom du `fileNamePrefix` de leur script.
 
 Les scripts qui partagent des fichiers sont exécutés **à la suite l'un de l'autre**, jamais en même temps : même `fileNamePrefix` (`verify_01`/`verify_05`, tous deux `BasicBlink`), ou manipulation des copies de système de fichiers (`verify_25`/`verify_27`, qui effacent tous les `mcu_datalogger_*` et écrivent `fs_copies.txt`). `verify_36` nomme ses copies `mcu1_`/`mcu2_datalogger_*` et ses fichiers d'après son `fileNamePrefix` : il n'entre en conflit avec personne. Ce regroupement est automatique : un nouveau script en conflit est pris en compte sans modifier `run_tests.sh`.
 
@@ -100,6 +100,13 @@ omc verify_40_display_large.mos
 omc verify_41_sys_exit.mos
 omc verify_42_hang_warning.mos
 omc verify_43_shutdown.mos
+omc verify_44_uart_format.mos
+omc verify_45_uart_format_mismatch.mos
+omc verify_46_uart_formats.mos
+omc verify_47_logic_analyzer.mos
+omc verify_48_analyzer_i2c.mos
+omc verify_49_analyzer_sync.mos
+omc verify_50_analyzer_options.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -150,6 +157,13 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_41_sys_exit.mos` | `SysExit`, défini dans le script (`Examples.BasicBlink` avec `Verification/sys_exit.py`) | `sys.exit()` dans le programme | Programme terminé sans erreur à t=0,1 s (« before exit » au journal, pas « after exit »), simulation menée à son terme (code 0, « The simulation finished successfully »), `GP0` toujours allumée à t=0,4 s |
 | `verify_42_hang_warning.mos` | `HangWarning`, défini dans le script (`Examples.BasicBlink` avec `Verification/hang_warning.py`, `hangWarningTime = 1`) | Programme qui ne rend pas la main (timeout mou, avertissement seul) | Boucle de calcul de ~2,5 s réelles sans appel au shim : avertissements « more than 1 s » puis « more than 2 s », pas « more than 4 s » ; le programme et la simulation vont à leur terme |
 | `verify_43_shutdown.mos` | `Shutdown`, défini dans le script (`Examples.BasicBlink` avec `Verification/shutdown.py`, flash vierge dans `Shutdown_ws`) | Arrêt propre en fin de simulation | Bloc `finally` exécuté (« finally ran after 10 lines »), `log.txt` jamais fermé par le programme mais complet sur disque (10 lignes), code de sortie 0 |
+| `verify_44_uart_format.mos` | `Examples.Uart.Format` | Format de trame 8E2 | Trame de `'H'` relevée aux milieux des bits : start bas, données, bit de parité bas (parité paire), deux stops hauts, trame suivante 10 ms plus tard ; écho relu identique (`GP7`), `repr(uart)` au journal, aucun avertissement d'erreur |
+| `verify_45_uart_format_mismatch.mos` | `Examples.Uart.FormatMismatch` | Désaccord de parité | Écho relu identique (octets gardés) ; avertissements « parity error » du MCU et de l'appareil, puis « further reception errors not reported », puis bilan de 15 erreurs de chaque côté |
+| `verify_46_uart_formats.mos` | `UartFormats`, défini dans le script (`Examples.Uart.Loopback` avec `Verification/uart_formats.py`) | Les 24 formats du port `rp2` | Bits 5-8 × parité × stops relus à l'identique (octet & masque), formats invalides refusés par `ValueError`, `GP3` allumée, aucun avertissement d'erreur |
+| `verify_47_logic_analyzer.mos` | `Examples.Analyzer.UartLink` (`analyzer.openPulseView=false`, `analyzer.openText=false` par `-override`) | Analyseur logique, voies UART | `UartLink.analyzer.vcd` : en-tête en ns, voies `TX`/`RX` seules, trame 8E2 de `'H'` (start 5 ms, bit 3 à 8,333 ms, stop à 13,333 ms), écho à 13,75 ms, fin à 0,4 s ; `UartLink.analyzer.txt` : salves hexa + ASCII sans erreur, trame 1 à 5 ms, bits et octets sous `TX` ; sonde transparente |
+| `verify_48_analyzer_i2c.mos` | `Examples.Analyzer.I2cBus` | Analyseur logique, bus I2C | Trois transactions en hexa + ASCII (`43*` en fin de lecture, `S [42 W] 5A Sr [42 R] 5A* P`), bilan de la voie logique `GP7`, trois trames, bits de l'adresse et `A`, pas de bit fantôme avant le STOP ; sonde transparente |
+| `verify_49_analyzer_sync.mos` | `Examples.Analyzer.Hx711Serial` (`stopTime` = 0,65 s) | Analyseur logique, série synchrone | Trois mots `068DB9 = 429497` + 1 impulsion à 400/500/600 ms, valeur affichée aussi par le programme, trois trames, silences comprimés |
+| `verify_50_analyzer_options.mos` | `Examples.Analyzer.UartErrors`, deux exécutions (`-override`) | Erreurs de parité, options du fichier texte | Sans chronogramme ni VCD : section hexa seule, pas de VCD, 15 octets `RX` marqués `!` ; puis sans bits ni en-têtes, colonne de 1 ms : `!P` sous l'octet renvoyé |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

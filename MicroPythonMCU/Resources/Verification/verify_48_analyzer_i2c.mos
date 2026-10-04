@@ -1,0 +1,49 @@
+// Scénario de vérification n°48 : décodage I2C par la sonde d'analyseur
+// logique (Examples.Analyzer.I2cBus).
+// omc verify_48_analyzer_i2c.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : sur le bus de I2c.Echo (écriture de
+// « Hello I2C » à 0x42, relecture, lecture de registre derrière un START
+// répété), la sonde avec CH0 = SCL (Logic), CH1 = SDA (I2cSda, horloge CH0) et
+// CH2 = GP7 (Logic) écrit I2cBus.analyzer.txt :
+// - une ligne hexa + ASCII par transaction : écriture acquittée octet par
+//   octet, lecture dont le dernier octet n'est pas acquitté par le maître
+//   (« 43* »), lecture de registre « S [42 W] 5A Sr [42 R] 5A* P » ;
+// - le bilan de la voie logique GP7 (un front montant à 3,215 ms) ;
+// - trois trames dans le chronogramme (une par transaction), les bits de
+//   l'adresse lus aux fronts montants de SCL puis l'acquittement « A », et
+//   aucun bit fantôme avant le STOP (« N    P ») : le front montant de SCL qui
+//   précède un STOP ou un START répété ne porte pas de bit ;
+// - I2cBus.analyzer.pvs : un décodeur i2c, SCL = probe.SCL, SDA = probe.SDA
+//   (la voie logique GP7 n'a pas de décodeur).
+// La sonde est transparente (GP7 allumée par le programme). Le Bloc-notes
+// n'est pas lancé (override).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Analyzer.I2cBus, stopTime = 0.01, numberOfIntervals = 100, fileNamePrefix = "I2cBus");
+b := getErrorString();
+ret := system(".\I2cBus.bat -override=analyzer.openText=false", "I2cBus_run.txt");
+log := readFile("I2cBus_run.txt");
+txt := readFile("I2cBus.analyzer.txt");
+
+(nChan, t1) := regex(txt, "CH1  SDA +I2C data, clock on CH0 \\(SCL\\)", 1);
+(nCount, t2) := regex(txt, "SDA  I2C, clock SCL  3 transactions", 1);
+(nWrite, t3) := regex(txt, "1.003 ms  S \\[42 W\\] 48 65 6C 6C 6F 20 49 32 43 P   \\|Hello I2C\\|", 1);
+(nRead, t4) := regex(txt, "S \\[42 R\\] 48 65 6C 6C 6F 20 49 32 43\\* P   \\|Hello I2C\\|", 1);
+(nReg, t5) := regex(txt, "S \\[42 W\\] 5A Sr \\[42 R\\] 5A\\* P   \\|ZZ\\|", 1);
+(nLed, t6) := regex(txt, "LED7  logic, 1 edge \\(1 rising\\), first at 3.215 ms", 1);
+(nFrame3, t7) := regex(txt, "=== frame 3   2.833 ms", 1);
+(nFrame4, t8) := regex(txt, "=== frame 4", 1);
+(nBits, t9) := regex(txt, "S  1   0   0   0   0   1   0   0   A", 1);
+(nStop, t10) := regex(txt, "N    P\n", 1);
+pvs := readFile("I2cBus.analyzer.pvs");
+(nPvs, p1) := regex(pvs, "decode_signals=1\n.*decoder0\\\\id=i2c\n.*channel0\\\\name=SCL\n.*assigned_signal_name=probe\\.SCL\n.*channel1\\\\name=SDA\n.*assigned_signal_name=probe\\.SDA\n", 1);
+(nEnd, m1) := regex(log, "The simulation finished successfully", 1);
+vTemoin := val(mcu.GP7.v, 0.009, "I2cBus_res.mat");
+
+if ret == 0 and nChan == 1 and nCount == 1 and nWrite == 1 and nRead == 1 and nReg == 1 and nLed == 1 and nFrame3 == 1 and nFrame4 == 0 and nBits == 1 and nStop == 1 and nPvs == 1 and nEnd >= 1 and vTemoin > 2 then
+  print("PASS: verify_48_analyzer_i2c (trois transactions en hexa + ASCII, NACK de fin de lecture et START repete, bilan de la voie logique, une trame par transaction, bits aux fronts de SCL, session PulseView avec decodeur i2c, sonde transparente)\n");
+else
+  print("FAIL: verify_48_analyzer_i2c (code " + String(ret) + ", voie/compte " + String(nChan) + "/" + String(nCount) + ", ecriture/lecture/registre " + String(nWrite) + "/" + String(nRead) + "/" + String(nReg) + ", led " + String(nLed) + ", trames 3/4 " + String(nFrame3) + "/" + String(nFrame4) + ", bits/stop " + String(nBits) + "/" + String(nStop) + ", session " + String(nPvs) + ", fin " + String(nEnd) + ", temoin=" + String(vTemoin) + ")\n" + b + "\n--- journal ---\n" + log + "\n--- texte ---\n" + txt);
+end if;

@@ -61,15 +61,30 @@ static int uartcore_rx_pop(struct UartEngine* e, unsigned char* out) {
 
 /* --- Configuration --- */
 
-/* Arme le moteur pour une nouvelle liaison : duree de bit et files vides.
-   Ne touche volontairement pas a rx_last_level / rx_bit_index / rx_shift /
-   tx_bits, qui n'ont de sens qu'en cours de trame. */
-static void uartcore_configure(struct UartEngine* e, double bit_dur) {
+/* Arme le moteur pour une nouvelle liaison : duree de bit, format de trame
+   (deja valide par l'appelant) et files vides. Ne touche volontairement pas a
+   rx_last_level / rx_bit_index / rx_shift / tx_bits, qui n'ont de sens qu'en
+   cours de trame. */
+static void uartcore_configure(struct UartEngine* e, double bit_dur, int data_bits, int parity, int stop_bits) {
     e->bit_dur = bit_dur;
+    e->data_bits = data_bits;
+    e->parity = parity;
+    e->stop_bits = stop_bits;
     e->rx_state = UART_RX_IDLE;
     e->tx_active = 0;
     e->tx_head = e->tx_tail = 0;
     e->rx_head = e->rx_tail = 0;
+}
+
+/* Bit de parite d'un mot de donnees : paire = nombre total de 1 (donnees +
+   parite) pair, impaire = impair. */
+static int uartcore_parity_bit(int parity, unsigned int data) {
+    int ones = 0;
+    while (data) {
+        ones += data & 1u;
+        data >>= 1;
+    }
+    return (ones & 1) ^ (parity == UART_PARITY_ODD);
 }
 
 /* Interrompt emission et reception en cours, sans vider les files. */
@@ -80,23 +95,30 @@ static void uartcore_stop(struct UartEngine* e) {
 
 /* --- Emission --- */
 
-/* Serialise un octet en motif de bits 8N1 (start=0, 8 data LSB first, stop=1) et
-   demarre la trame a l'instant 'now'. C'est LE seul endroit qui connait le format
-   de trame : passer a un format parametrable (parite, 7/9 bits, 2 stop) ne demande
-   de toucher ni Modelica ni le shim Python. */
+/* Serialise un octet en motif de bits (start=0, data_bits bits LSB first,
+   parite eventuelle, 1 ou 2 stops=1) et demarre la trame a l'instant 'now'.
+   C'est LE seul endroit qui connait le format de trame cote emission. Avec
+   moins de 8 bits, les bits de poids fort de l'octet sont perdus, comme sur le
+   materiel. */
 static void uartcore_tx_begin_frame(struct UartEngine* e, unsigned char byte, double now) {
-    int i;
-    e->tx_bits[0] = 0.0;                      /* start */
-    for (i = 0; i < 8; i++) {
-        e->tx_bits[1 + i] = ((byte >> i) & 1) ? 1.0 : 0.0;   /* data, LSB first */
+    int i, k = 0;
+    unsigned int data = byte & ((1u << e->data_bits) - 1u);
+    e->tx_bits[k++] = 0.0;                    /* start */
+    for (i = 0; i < e->data_bits; i++) {
+        e->tx_bits[k++] = ((data >> i) & 1u) ? 1.0 : 0.0;   /* data, LSB first */
     }
-    e->tx_bits[9] = 1.0;                      /* stop */
-    for (i = 10; i < UART_MAX_FRAME_BITS; i++) {
-        e->tx_bits[i] = 1.0;                  /* inutilise en 8N1 : niveau de repos */
+    if (e->parity != UART_PARITY_NONE) {
+        e->tx_bits[k++] = uartcore_parity_bit(e->parity, data) ? 1.0 : 0.0;
     }
-    e->tx_num_bits = 10;
+    for (i = 0; i < e->stop_bits; i++) {
+        e->tx_bits[k++] = 1.0;                /* stop */
+    }
+    e->tx_num_bits = k;
+    for (i = k; i < UART_MAX_FRAME_BITS; i++) {
+        e->tx_bits[i] = 1.0;                  /* inutilise : niveau de repos */
+    }
     e->tx_start_time = now;
-    e->tx_end_time = now + 10 * e->bit_dur;
+    e->tx_end_time = now + k * e->bit_dur;
     e->tx_active = 1;
 }
 
@@ -183,31 +205,52 @@ static double uartcore_tx_next_edge(struct UartEngine* e, double now) {
    appel (rx_last_level). Un bit dont le milieu est deja passe se lit sans s'y
    etre reveille : c'est ce niveau tenu - ou le niveau courant si ce milieu
    tombe pile sur l'appel. Le resultat est exactement celui d'un echantillonnage
-   au milieu de chaque bit (y compris avec un debit mal accorde, qui donne les
-   memes octets faux qu'avant), mais un seul reveil est programme par octet :
-   au milieu du bit de stop, pour livrer l'octet sans attendre le front suivant.
-   Rappeler la fonction au MEME instant ne refait rien (prev == level, et les
-   bits deja resolus ne le sont plus). */
-static void uartcore_rx_step(struct UartEngine* e, double now, int level) {
+   au milieu de chaque bit (y compris avec un debit ou un format mal accordes,
+   qui donnent les memes octets faux qu'un vrai recepteur), mais un seul reveil
+   est programme par octet : au milieu du (premier) bit de stop, pour livrer
+   l'octet sans attendre le front suivant. Rappeler la fonction au MEME instant
+   ne refait rien (prev == level, et les bits deja resolus ne le sont plus).
+
+   Rend le masque des erreurs (UART_ERR_*) des octets clos pendant cet appel ;
+   l'octet est livre quand meme, comme le FIFO du RP2040 qui le stocke avec un
+   drapeau d'erreur. Signaler l'erreur est l'affaire de l'appelant. */
+static int uartcore_rx_step(struct UartEngine* e, double now, int level) {
     int prev = e->rx_last_level;
+    int errors = 0;
+    int has_parity = (e->parity != UART_PARITY_NONE);
     e->rx_last_level = level;
 
     while (e->rx_state == UART_RX_RECEIVING && now + UARTCORE_EPS >= e->rx_next_sample) {
         int bit = (e->rx_next_sample < now - UARTCORE_EPS) ? prev : level;
-        if (e->rx_bit_index < 8) {
+        if (e->rx_bit_index < e->data_bits) {
             if (bit) {
                 e->rx_shift |= (1u << e->rx_bit_index);   /* LSB first */
             }
             e->rx_bit_index++;
             e->rx_next_sample += e->bit_dur;
-        } else {
-            /* Bit de stop : la ligne doit etre revenue au niveau haut. Attendre
-               ce bit avant de repasser au repos est indispensable - sinon un
-               dernier bit de donnees a 0 serait relu comme un nouveau bit de
-               start. Trame invalide (stop bas) = octet ignore, simplification assumee. */
-            if (bit) {
-                uartcore_rx_push(e, (unsigned char) (e->rx_shift & 0xFF));
+        } else if (has_parity && e->rx_bit_index == e->data_bits) {
+            if (bit != uartcore_parity_bit(e->parity, e->rx_shift)) {
+                e->rx_frame_err |= UART_ERR_PARITY;
             }
+            e->rx_bit_index++;
+            e->rx_next_sample += e->bit_dur;
+        } else {
+            /* Bit de stop (le premier seulement, comme le materiel) : la ligne
+               doit etre revenue au niveau haut. Attendre ce bit avant de
+               repasser au repos est indispensable - sinon un dernier bit a 0
+               serait relu comme un nouveau bit de start. Stop bas = erreur de
+               trame, octet livre quand meme. */
+            if (!bit) {
+                e->rx_frame_err |= UART_ERR_FRAMING;
+            }
+            if (e->rx_frame_err & UART_ERR_PARITY) {
+                e->rx_parity_errors++;
+            }
+            if (e->rx_frame_err & UART_ERR_FRAMING) {
+                e->rx_framing_errors++;
+            }
+            errors |= e->rx_frame_err;
+            uartcore_rx_push(e, (unsigned char) (e->rx_shift & 0xFF));
             e->rx_state = UART_RX_IDLE;
         }
     }
@@ -221,13 +264,16 @@ static void uartcore_rx_step(struct UartEngine* e, double now, int level) {
        trame vient de s'y clore, ce front peut deja etre le start de la suivante. */
     if (e->rx_state == UART_RX_IDLE && prev && !level) {
         /* Milieu du premier bit de donnees : 1.5 duree de bit plus tard (moitie
-           du start + moitie du bit 0) ; milieu du stop : 9.5 durees plus tard. */
+           du start + moitie du bit 0) ; milieu du stop : apres le start, les
+           donnees et la parite eventuelle, plus un demi-bit. */
         e->rx_state = UART_RX_RECEIVING;
         e->rx_bit_index = 0;
         e->rx_shift = 0;
+        e->rx_frame_err = 0;
         e->rx_next_sample = now + 1.5 * e->bit_dur;
-        e->rx_stop_sample = now + 9.5 * e->bit_dur;
+        e->rx_stop_sample = now + (1 + e->data_bits + has_parity + 0.5) * e->bit_dur;
     }
+    return errors;
 }
 
 /* --- Echeances --- */

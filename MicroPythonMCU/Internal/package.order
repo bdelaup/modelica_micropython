@@ -13,3 +13,6 @@ Lcd16x2RgbIcon
 PartialTextDisplay
 TextIcon4x32
 TextIcon8x32
+LogicAnalyzerCapture
+LogicAnalyzer_record
+LogicAnalyzer_finish
