@@ -42,7 +42,7 @@ Un `time.sleep(1)` ne coûte aucun temps réel : le solveur avance directement �
 
 ## Périphériques fournis
 
-LED, afficheur pédagogique, appareils série (écho, capteur de température, GPS, afficheur 20x2, appareil générique), périphériques I2C (écran Grove LCD RGB, écho, périphérique générique) une chaîne de pesée complète (corps d'épreuve, pont de jauges, convertisseur HX711), une sonde d'analyseur logique et des modules radio (APC220) dont le signal modulé est tracé. Les 48 [exemples](guide/exemples.md) les mettent tous en œuvre, jusqu'à une balance de cuisine qui exécute sans modification des drivers MicroPython du commerce.
+LED, afficheur pédagogique, appareils série (écho, capteur de température, GPS, afficheur 20x2, appareil générique), périphériques I2C (écran Grove LCD RGB, écho, périphérique générique) une chaîne de pesée complète (corps d'épreuve, pont de jauges, convertisseur HX711), une sonde d'analyseur logique et des modules radio (réglés par défaut comme un APC220) dont le signal modulé est tracé. Les 48 [exemples](guide/exemples.md) les mettent tous en œuvre, jusqu'à une balance de cuisine qui exécute sans modification des drivers MicroPython du commerce.
 
 ## Limites actuelles
 

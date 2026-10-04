@@ -133,7 +133,7 @@ Transparent radio modules between the UARTs of two microcontrollers, joined by a
 
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
-| `Radio.Link` | The PING/PONG programs of `MultiMcu.Uart`, unchanged, through two `Apc220` | `mcuA.GP0.v`, `radioA.carrierOn`, `mcuB.GP1.v`, summary of each module in the log | `uart_ping.py`, `uart_pong.py` |
+| `Radio.Link` | The PING/PONG programs of `MultiMcu.Uart`, unchanged, through two radio modules | `mcuA.GP0.v`, `radioA.carrierOn`, `mcuB.GP1.v`, summary of each module in the log | `uart_ping.py`, `uart_pong.py` |
 | `Radio.Overflow` | 40 bytes at 9600 baud, transmitted again at 1200 bit/s with a 16-byte buffer: the end of the message is lost | `radioA.txFill`, `radioA.nDropped`, what B prints | `radio_burst.py`, `radio_listen.py` |
 | `Radio.Modulations` | The character `U` in OOK, ASK, FSK and BPSK | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx` between 25 and 35 ms | `radio_beacon.py` |
 | `Weighing.KitchenScale` | Complete kitchen scale, TARE button | display icon | `kitchen_scale.py` |

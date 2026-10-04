@@ -83,8 +83,7 @@ modelica_micropython3/
     │   ├── Analyzers/              -- instruments de mesure (voir analyse-trames.md)
     │   │   └── LogicAnalyzer.mo    -- sonde d'analyseur logique à 8 voies (1 GΩ), un onglet par voie (Off, Logic, Uart, I2cSda, SyncData) : fichier texte décodé (hexa + ASCII, chronogramme ASCII) et fichier VCD pour PulseView
     │   ├── Radio/                  -- liaison radio (voir radio.md)
-    │   │   ├── RadioModem.mo       -- module radio transparent, tous les réglages modifiables
-    │   │   └── Apc220.mo           -- module réglé comme un APC220 : réglages de la fiche seulement, le reste en final
+    │   │   └── RadioModem.mo       -- module radio transparent, tous les réglages modifiables (défauts d'un APC220)
     │   └── Weighing/               -- chaîne de pesée, en pur Modelica (voir peripheriques-pesee.md)
     │       ├── Hx711.mo            -- convertisseur 24 bits pour pont de jauges : excitation E+, conversion ratiométrique, liaison PD_SCK/DOUT, gain 128/64, veille
     │       ├── WheatstoneBridge.mo -- pont complet de quatre jauges de déformation (VariableResistor), sortie E·K·eps
@@ -144,7 +143,7 @@ modelica_micropython3/
     │   │   ├── I2cBus.mo           -- verify_48 : hérite de I2c.Echo, SCL en Logic, SDA en I2cSda, GP7 en Logic
     │   │   └── Hx711Serial.mo      -- verify_49 : hérite de Weighing.Hx711Read, DOUT en SyncData (24 bits signés, front descendant)
     │   ├── Radio/                  -- liaison radio (voir radio.md)
-    │   │   ├── Link.mo             -- verify_51 : PING/PONG de MultiMcu.Uart à travers deux Apc220, un seul fil d'antenne
+    │   │   ├── Link.mo             -- verify_51 : PING/PONG de MultiMcu.Uart à travers deux RadioModem, un seul fil d'antenne
     │   │   ├── Overflow.mo         -- verify_52 : 40 octets à 9600 bauds, réémis à 1200 bit/s avec 16 octets de tampon
     │   │   └── Modulations.mo      -- verify_53 : le caractère U en OOK, ASK, FSK et BPSK (sortie toutes les 10 µs)
     │   └── Weighing/               -- pesée (voir peripheriques-pesee.md)

@@ -18,10 +18,10 @@ loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
 loadString("
 model RadioDetuned
-  extends MicroPythonMCU.Examples.Radio.Link(radioB(frequency = 440000));
+  extends MicroPythonMCU.Examples.Radio.Link(radioB(fCarrier = 440e6));
 end RadioDetuned;
 model RadioAirMismatch
-  extends MicroPythonMCU.Examples.Radio.Link(radioB(rfDataRate = 4800));
+  extends MicroPythonMCU.Examples.Radio.Link(radioB(airBaudrate = 4800));
 end RadioAirMismatch;
 model RadioShared
   MicroPythonMCU.MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/radio_beacon.py\"));

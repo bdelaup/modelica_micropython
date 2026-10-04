@@ -2,10 +2,10 @@
 // (Examples.Radio.Link, cf. requirements.md, décision « Liaison radio modulée »).
 // omc verify_51_radio_link.mos   (depuis ce dossier)
 //
-// Ce que ce scénario vérifie : deux MCU reliés chacun à un Apc220 (réglages
-// d'usine), les deux modules joints par un seul fil d'antenne. Les programmes
-// sont ceux de la liaison filaire (uart_ping.py / uart_pong.py) : les modules
-// sont transparents. Succès : trois PONG reçus par A, GP7 de A allumée, la
+// Ce que ce scénario vérifie : deux MCU reliés chacun à un RadioModem
+// (réglages par défaut, ceux d'un APC220), les deux modules joints par un seul
+// fil d'antenne. Les programmes sont ceux de la liaison filaire (uart_ping.py
+// / uart_pong.py) : les modules sont transparents. Succès : trois PONG reçus par A, GP7 de A allumée, la
 // première trame radio de A part 5 ms (txDelay) après la fin du premier octet
 // série, et le bilan de fin de chaque module ne compte aucune perte
 // (21 octets dans chaque sens : 3 x « PING n\n » et 3 x « PONG n\n »).

@@ -22,20 +22,17 @@ Le programme est celui d'une liaison filaire : le module est **transparent**, il
 ```python
 from machine import Pin, UART
 
-uart = UART(0, baudrate=9600, tx=Pin(0), rx=Pin(1))   # Apc220 : serialRate = 9600, 8N1
+uart = UART(0, baudrate=9600, tx=Pin(0), rx=Pin(1))   # même débit et même format que le module : 9600 bauds, 8N1
 uart.write(b'PING 0\n')
 ```
 
-![Deux MCU reliés par deux Apc220 et un seul fil d'antenne (Examples.Radio.Link)](../../images/radio-schema.png){ width="640" }
+![Deux MCU reliés par deux modules radio et un seul fil d'antenne (Examples.Radio.Link)](../../images/radio-schema.png){ width="640" }
 
 Plusieurs modules peuvent partager le même fil : un émetteur peut ainsi diffuser vers plusieurs récepteurs. Deux liaisons indépendantes demandent deux fils distincts.
 
-## Les deux modules
+## Le module
 
-| Composant | Pour quoi faire |
-|---|---|
-| `Apc220` | Un module réglé comme un **APC220** : sa boîte de paramètres ne montre que les réglages de sa fiche technique, avec les réglages d'usine par défaut. Un élève qui a la fiche du module sous les yeux le configure sans se poser de question. |
-| `RadioModem` | Le même module, avec **tous** les réglages modifiables : débit radio très différent du débit série, petits tampons, délais, duplex intégral… pour montrer ce que chacun change. Ses valeurs par défaut sont celles de l'APC220. |
+`RadioModem` est un module transparent dont tous les réglages sont modifiables : débit radio très différent du débit série, petits tampons, délais, duplex intégral… pour montrer ce que chacun change. Ses valeurs par défaut sont inspirées du module **APC220** : 434 MHz, 9600 bauds côté série et 9600 bit/s dans l'air, tampons de 256 octets, semi-duplex. Un vrai APC220 module en GFSK, proche de `FSK`, la modulation par défaut.
 
 Sur l'icône, à la relecture d'un résultat avec animation : le point ambre s'allume pendant une trame radio émise, le point cyan pendant une trame reçue, et les deux barres montrent le remplissage des tampons d'émission et de réception.
 
@@ -56,7 +53,7 @@ Un module n'entend que les émetteurs **accordés sur son canal** (même fréque
 
 Le récepteur **ne démodule pas** le signal tracé. Le fil d'antenne transporte aussi le bit émis, et c'est ce bit que le récepteur décode, comme le ferait un vrai récepteur série. C'est la **synchronisation masquée** : la démodulation est supposée parfaite, sans filtre ni bruit.
 
-Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fDisplay`, quatre fois le débit radio par défaut. Une vraie porteuse (434 MHz) aurait des centaines de millions de périodes par seconde et ne pourrait pas être tracée. La fréquence nominale `fCarrier` (ou `frequency` sur l'APC220) ne sert qu'à décider quels modules s'entendent.
+Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fDisplay`, quatre fois le débit radio par défaut. Une vraie porteuse (434 MHz) aurait des centaines de millions de périodes par seconde et ne pourrait pas être tracée. La fréquence nominale `fCarrier` ne sert qu'à décider quels modules s'entendent.
 
 | Modulation | Un 0 | Un 1 |
 |---|---|---|
@@ -68,23 +65,7 @@ Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fD
 !!! warning "Voir la porteuse : réduire l'intervalle de sortie"
     `sTx` n'est enregistré qu'aux points de sortie de la simulation. Pour voir la porteuse, l'intervalle de sortie doit être bien plus court que sa période : par exemple 10 µs pour 4800 Hz, comme dans `Radio.Modulations`. Avec l'intervalle par défaut, la courbe paraît fausse (repliement), alors que la liaison fonctionne. Le fichier de résultats grossit vite : simuler une durée courte.
 
-## Paramètres de `Apc220`
-
-Groupe *APC220 settings* : les réglages de la fiche du module, avec les réglages d'usine par défaut.
-
-| Paramètre | Défaut | Rôle |
-|---|---|---|
-| `frequency` | 434000 | Fréquence radio, en kHz, de 418000 à 455000. Deux modules ne s'entendent que réglés sur la même fréquence |
-| `rfDataRate` | 9600 | Débit radio, en bit/s : 2400, 4800, 9600 ou 19200. Le même sur les deux modules |
-| `power` | 9 | Puissance d'émission, de 0 à 9 (20 mW à 9). **Sans effet pour l'instant** : la distance et l'atténuation ne sont pas modélisées |
-| `serialRate` | 9600 | Débit de la liaison série avec le microcontrôleur, en bauds (1200 à 57600) : le donner aussi à `machine.UART` |
-| `serialParity` | `None` | Parité de la liaison série (`None` = *Disable*). Toujours 8 bits de données et 1 bit de stop |
-
-Groupe *Radio* : `modulation` (`FSK` par défaut). Un vrai APC220 module toujours en GFSK, proche de `FSK`. Ce réglage reste modifiable pour voir les mêmes trames en OOK, ASK ou BPSK ; deux modules doivent utiliser la même modulation pour s'entendre.
-
-Fixés, comme sur le module réel : tampons de 256 octets, semi-duplex, 8 bits et 1 stop côté série. Fixés par hypothèse, faute de données dans la fiche : délais de 5 ms (UART vers air) et 1 ms (air vers UART), largeur de canal de 200 kHz.
-
-## Paramètres de `RadioModem`
+## Paramètres
 
 ### Liaison série (onglet *General*, groupe *Serial link (microcontroller side)*)
 
@@ -116,8 +97,6 @@ Fixés, comme sur le module réel : tampons de 256 octets, semi-duplex, 8 bits e
 
 ### Signal tracé (onglet *Drawn signal*)
 
-Ces réglages existent aussi sur `Apc220`.
-
 | Paramètre | Défaut | Rôle |
 |---|---|---|
 | `fDisplay` | 4 × `airBaudrate` | Porteuse mise à l'échelle utilisée pour tracer `sTx` |
@@ -147,17 +126,17 @@ En fin de simulation, chaque module écrit au journal un **bilan d'une ligne** :
 
 | Exemple | Ce qu'il montre |
 |---|---|
-| `Radio.Link` | Les programmes PING/PONG de `MultiMcu.Uart`, inchangés, à travers deux `Apc220` |
+| `Radio.Link` | Les programmes PING/PONG de `MultiMcu.Uart`, inchangés, à travers deux modules radio |
 | `Radio.Overflow` | Un débit radio huit fois plus lent que la liaison série et un tampon de 16 octets : la fin du message est perdue |
 | `Radio.Modulations` | Le même caractère en OOK, ASK, FSK et BPSK |
 
-Essais à faire sur `Radio.Link` : régler `radioB.frequency` sur 440000 (B n'entend plus rien), ou `radioB.rfDataRate` sur 4800 (les trames arrivent fausses et sont jetées).
+Essais à faire sur `Radio.Link` : régler `radioB.fCarrier` sur 440 MHz (B n'entend plus rien), ou `radioB.airBaudrate` sur 4800 (les trames arrivent fausses et sont jetées).
 
 ## Limites
 
 - **Synchro masquée seulement** : le récepteur décode le bit porté par le fil, il ne démodule pas le signal tracé (pas de filtre).
-- **Pas de canal** : ni distance, ni atténuation, ni bruit, ni taux d'erreur ; `power` de l'`Apc220` est sans effet.
+- **Pas de canal** : ni distance, ni atténuation, ni bruit, ni taux d'erreur.
 - **Un émetteur à la fois sur un fil** : deux émissions simultanées se brouillent, même réglées sur des fréquences différentes. Deux liaisons indépendantes = deux fils.
 - La trame radio est une trame 8N1 par octet, sans préambule, paquet ni somme de contrôle : un octet faux qui passe le contrôle de trame est livré.
-- Délais (5 ms et 1 ms) et largeur de canal (200 kHz) de l'`Apc220` supposés, faute de données dans la fiche.
+- Délais par défaut (5 ms et 1 ms) et largeur de canal (200 kHz) supposés, faute de données dans la fiche de l'APC220.
 - 48 modules radio au plus dans un modèle.

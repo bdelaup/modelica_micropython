@@ -11,8 +11,7 @@ Un module radio est un **appareil série** côté microcontrôleur (mêmes broch
 |---|---|
 | `Internal.PartialUartPins` | Pont électrique `TX`/`RX`/`GND`, **partagé** avec `Internal.PartialUartDevice` : source `VOH`/`VOL` derrière `ROut` sur `TX` ; sur `RX`, résistance de plot `RIn` (10 Ω), puis tirage, capacité `CIn` et capteur sur le nœud interne. La classe dérivée affecte `txLevel` dans son `when` et réagit à `change(rxBoolIn)` |
 | `Internal.PartialRadioModem` | Toute la mécanique : paramètres, connecteur d'antenne, calcul du signal tracé, appel du moteur. Non instanciable |
-| `Peripherals.Radio.RadioModem` | `extends PartialRadioModem` sans rien fixer ; icône « RADIO » et `%airBaudrate` |
-| `Peripherals.Radio.Apc220` | `extends PartialRadioModem(final ...)` : les réglages de la fiche (`frequency` en kHz, `rfDataRate`, `power`, `serialRate`, `serialParity`) alimentent les paramètres génériques, tous les autres sont `final` donc absents du dialogue. Listes déroulantes par `choices`, valeurs refusées par `assert` en `initial equation`. L'icône affiche `%rfDataRate` : sur une instance, `%airBaudrate` afficherait l'expression du modificateur, pas sa valeur |
+| `Peripherals.Radio.RadioModem` | `extends PartialRadioModem` sans rien fixer, valeurs par défaut inspirées de l'APC220 ; icône « RADIO » et `%airBaudrate`. Un `Apc220` dérivé (réglages de la fiche seuls, le reste en `final`) a existé, puis a été retiré à la demande de l'utilisateur : la spécialisation n'apportait pas grand-chose |
 | `Interfaces.Antenna` | Connecteur acausal à six paires potentiel/flux (§ 3) |
 | `Interfaces.Modulation` | `OOK`, `ASK`, `FSK`, `BPSK` |
 | `Internal.RadioModem`, `Internal.RadioModem_sync` | External Object et point de synchro ; chapeau `RadioModemImpl.c` |
@@ -92,4 +91,4 @@ Démodulation filtrée (le récepteur lirait `antenna.s` au lieu de `antenna.bit
 
 ## 8. Vérification
 
-`verify_51` (liaison PING/PONG par deux `Apc220`, instant de la première porteuse, bilans sans perte), `verify_52` (tampon plein : octets reçus et perdus calculés à la main), `verify_53` (forme des quatre modulations sur deux bits, par une seule lecture du fichier de résultats), `verify_54` (désaccord de fréquence, de débit radio, diffusion vers deux récepteurs, collision ; modèles déclarés dans le script par `loadString`).
+`verify_51` (liaison PING/PONG par deux `RadioModem`, instant de la première porteuse, bilans sans perte), `verify_52` (tampon plein : octets reçus et perdus calculés à la main), `verify_53` (forme des quatre modulations sur deux bits, par une seule lecture du fichier de résultats), `verify_54` (désaccord de fréquence, de débit radio, diffusion vers deux récepteurs, collision ; modèles déclarés dans le script par `loadString`).

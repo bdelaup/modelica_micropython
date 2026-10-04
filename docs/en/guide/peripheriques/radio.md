@@ -22,20 +22,17 @@ The program is the one of a wired link: the module is **transparent**, there is 
 ```python
 from machine import Pin, UART
 
-uart = UART(0, baudrate=9600, tx=Pin(0), rx=Pin(1))   # Apc220: serialRate = 9600, 8N1
+uart = UART(0, baudrate=9600, tx=Pin(0), rx=Pin(1))   # same speed and format as the module: 9600 baud, 8N1
 uart.write(b'PING 0\n')
 ```
 
-![Two MCUs joined by two Apc220 modules and a single antenna wire (Examples.Radio.Link)](../../images/radio-schema.png){ width="640" }
+![Two MCUs joined by two radio modules and a single antenna wire (Examples.Radio.Link)](../../images/radio-schema.png){ width="640" }
 
 Several modules can share the same wire: a transmitter can thus broadcast to several receivers. Two independent links need two separate wires.
 
-## The two modules
+## The module
 
-| Component | What for |
-|---|---|
-| `Apc220` | A module set up like an **APC220**: its parameter dialog only shows the settings of its datasheet, with the factory settings by default. A student holding the module's datasheet configures it without having to wonder. |
-| `RadioModem` | The same module, with **every** setting adjustable: air data rate very different from the serial speed, small buffers, delays, full duplex… to show what each one changes. Its defaults are those of the APC220. |
+`RadioModem` is a transparent module with every setting adjustable: air data rate very different from the serial speed, small buffers, delays, full duplex… to show what each one changes. Its defaults are inspired by the **APC220** module: 434 MHz, 9600 baud on the serial side and 9600 bit/s on air, 256-byte buffers, half duplex. A real APC220 uses GFSK, close to `FSK`, the default modulation.
 
 On the icon, while replaying a result with animation: the amber dot lights up during a transmitted radio frame, the cyan dot during a received one, and the two bars show how full the transmit and receive buffers are.
 
@@ -56,7 +53,7 @@ A module only hears the transmitters **tuned to its channel** (same frequency, w
 
 The receiver **does not demodulate** the drawn signal. The antenna wire also carries the bit being transmitted, and the receiver decodes that bit, as a real serial receiver would. This is the **masked synchronisation**: demodulation is assumed perfect, with neither filter nor noise.
 
-The modulated signal `sTx` is drawn with a **scaled carrier**, `fDisplay`, four times the air data rate by default. A real carrier (434 MHz) would have hundreds of millions of periods per second and could not be drawn. The nominal frequency `fCarrier` (or `frequency` on the APC220) only decides which modules hear each other.
+The modulated signal `sTx` is drawn with a **scaled carrier**, `fDisplay`, four times the air data rate by default. A real carrier (434 MHz) would have hundreds of millions of periods per second and could not be drawn. The nominal frequency `fCarrier` only decides which modules hear each other.
 
 | Modulation | A 0 | A 1 |
 |---|---|---|
@@ -68,23 +65,7 @@ The modulated signal `sTx` is drawn with a **scaled carrier**, `fDisplay`, four 
 !!! warning "Seeing the carrier: reduce the output interval"
     `sTx` is only stored at the output points of the simulation. To see the carrier, the output interval must be much shorter than its period: for example 10 µs for 4800 Hz, as in `Radio.Modulations`. With the default interval, the curve looks wrong (aliasing) although the link works. The result file grows fast: simulate a short duration.
 
-## Parameters of `Apc220`
-
-*APC220 settings* group: the settings of the module's datasheet, with the factory settings by default.
-
-| Parameter | Default | Role |
-|---|---|---|
-| `frequency` | 434000 | RF frequency, in kHz, from 418000 to 455000. Two modules only hear each other when set to the same frequency |
-| `rfDataRate` | 9600 | Air data rate, in bit/s: 2400, 4800, 9600 or 19200. The same on both modules |
-| `power` | 9 | Output power, from 0 to 9 (20 mW at 9). **No effect yet**: distance and attenuation are not modelled |
-| `serialRate` | 9600 | Speed of the serial link with the microcontroller, in baud (1200 to 57600): give it to `machine.UART` too |
-| `serialParity` | `None` | Parity of the serial link (`None` = *Disable*). Always 8 data bits and 1 stop bit |
-
-*Radio* group: `modulation` (`FSK` by default). A real APC220 always uses GFSK, close to `FSK`. This setting remains changeable to see the same frames in OOK, ASK or BPSK; two modules must use the same modulation to hear each other.
-
-Fixed, as on the real module: 256-byte buffers, half duplex, 8 bits and 1 stop bit on the serial side. Fixed by assumption, for lack of data in the datasheet: delays of 5 ms (UART to air) and 1 ms (air to UART), channel width of 200 kHz.
-
-## Parameters of `RadioModem`
+## Parameters
 
 ### Serial link (*General* tab, *Serial link (microcontroller side)* group)
 
@@ -116,8 +97,6 @@ Fixed, as on the real module: 256-byte buffers, half duplex, 8 bits and 1 stop b
 
 ### Drawn signal (*Drawn signal* tab)
 
-These settings also exist on `Apc220`.
-
 | Parameter | Default | Role |
 |---|---|---|
 | `fDisplay` | 4 × `airBaudrate` | Scaled carrier used to draw `sTx` |
@@ -147,17 +126,17 @@ At the end of the simulation, each module writes a **one-line summary** in the l
 
 | Example | What it shows |
 |---|---|
-| `Radio.Link` | The PING/PONG programs of `MultiMcu.Uart`, unchanged, through two `Apc220` |
+| `Radio.Link` | The PING/PONG programs of `MultiMcu.Uart`, unchanged, through two radio modules |
 | `Radio.Overflow` | An air data rate eight times slower than the serial link and a 16-byte buffer: the end of the message is lost |
 | `Radio.Modulations` | The same character in OOK, ASK, FSK and BPSK |
 
-Things to try on `Radio.Link`: set `radioB.frequency` to 440000 (B no longer hears anything), or `radioB.rfDataRate` to 4800 (the frames arrive wrong and are dropped).
+Things to try on `Radio.Link`: set `radioB.fCarrier` to 440 MHz (B no longer hears anything), or `radioB.airBaudrate` to 4800 (the frames arrive wrong and are dropped).
 
 ## Limits
 
 - **Masked synchronisation only**: the receiver decodes the bit carried by the wire, it does not demodulate the drawn signal (no filter).
-- **No channel**: no distance, attenuation, noise or bit error rate; `power` of the `Apc220` has no effect.
+- **No channel**: no distance, attenuation, noise or bit error rate.
 - **One transmitter at a time on a wire**: two simultaneous transmissions jam each other, even when set to different frequencies. Two independent links = two wires.
 - The radio frame is one 8N1 frame per byte, with no preamble, packet or checksum: a wrong byte that passes the frame check is delivered.
-- Delays (5 ms and 1 ms) and channel width (200 kHz) of the `Apc220` assumed, for lack of data in the datasheet.
+- Default delays (5 ms and 1 ms) and channel width (200 kHz) assumed, for lack of data in the APC220 datasheet.
 - 48 radio modules at most in a model.
