@@ -1,6 +1,6 @@
 # The `MCU` block
 
-`MicroPythonMCU.MCU` is the microcontroller: a package with 8 input/output pins, a ground, a link to a teaching display and an on-board LED. Its behaviour is entirely described by the Python program given by `scriptPath`. Its reference is the Raspberry Pi Pico (RP2040), whose MicroPython API it reproduces; the icon deliberately reads "MCU".
+`MicroPythonMCU.MCU` is the microcontroller: a package with 8 input/output pins, a ground, a link to a teaching display and an on-board LED. Its behaviour is entirely described by the Python program given by `scriptPath`. Its reference is the Raspberry Pi Pico (RP2040), whose MicroPython API it reproduces; the icon deliberately reads "MCU". Inside, a programmable core (`core`, an `Internal.McuCore` component) — the same as in the [Raspberry Pi Pico board](pico.md) —, an ideal supply `VOH` and the on-board LED: the internal diagram (*Diagram* tab) shows them wired. For a board with its real supply pins and regulator, see [`RPi_Pico`](pico.md).
 
 ![Icon of the MCU block](../images/mcu-icone.png){ width="200" }
 
@@ -22,10 +22,10 @@ Each `GPx` pin is a small circuit made of standard electrical components, solved
 
 *Labels of the diagram, in French: "Intérieur du MCU : une broche" = inside the MCU, one pin (same circuit for GP0 to GP7); "Commandé par le programme" = controlled by the program; "0 V en entrée" = 0 V as an input; "fermé en sortie" = closed as an output; "ouvert" = open; "tirages" = pull resistors; "v brute" = raw voltage.*
 
-- **Output stage**: a voltage source `src` (`VOH` when high, `VOL` when low) behind a resistance `ROut`. The switch `sw` connects it to the pin when the pin is an output (`Pin.OUT`, `PWM`, `UART` transmission). The actual pin voltage depends on what is connected: ≈ 3.07 V with an LED and 330 Ω, for instance.
-- **As an input**, the switch is open: the pin is in **high impedance**. Only a 1 GΩ leakage remains (`GOff`): a floating pin ends up at 0 V, and the weakest external resistor is enough to set its level.
+- **Output stage**: as an output (`Pin.OUT`, `PWM`, `UART` transmission), the pin is connected through a resistance `ROut` either to the supply of the core (`VOH`: high level) or to `VOL` (low level). The current delivered by the pin is drawn from the supply — on the Pico, hence from the regulator, and from the battery. The actual pin voltage depends on what is connected: ≈ 3.07 V with an LED and 330 Ω, for instance.
+- **As an input**, the output stage is off: the pin is in **high impedance**. Only a 1 GΩ leakage remains (`GOff`): a floating pin ends up at 0 V, and the weakest external resistor is enough to set its level.
 - **Internal pull resistors**: two 50 kΩ resistors, one to `VOH` (`Pin.PULL_UP`), the other to ground (`Pin.PULL_DOWN`), switched on by `Pin(n, mode, pull)`. They act whatever the direction. `I2C()` and `I2CTarget()` switch on the pull-up of SCL and SDA, as on the Pico; `ADC(n)` switches off the pulls of its pin.
-- **Reading**: a voltage sensor measures the pin at all times, whatever its direction. The program reads 1 above **1.4 V**, 0 below: a single threshold, `(VIL + VIH)/2`, without hysteresis. The `ADC` reads the voltage as is, on 16 bits, with a 3.3 V reference.
+- **Reading**: a voltage sensor measures the pin at all times, whatever its direction. The program reads 1 above **1.4 V**, 0 below: a single threshold, `(VIL + VIH)/2`, without hysteresis. The `ADC` reads the voltage as is, on 16 bits, with `VOH` (3.3 V) as reference.
 
 The pull resistors are controlled conductances rather than switches: 1/50 kΩ when active, 1 pS otherwise. A pin that the program does not use can be left unconnected. At start-up, no pin has a pull resistor. No open-drain mode yet (`Pin.OPEN_DRAIN`): see the [limitations](limites.md).
 
@@ -72,7 +72,7 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 
 | Parameter | Default | Group | Role |
 |---|---|---|---|
-| `VOH` | 3.3 V | Logic levels | Output voltage in the high state |
+| `VOH` | 3.3 V | Logic levels | Ideal internal supply: output voltage in the high state, voltage of the pull-ups and reference of the `ADC` |
 | `VOL` | 0 V | Logic levels | Output voltage in the low state |
 | `VIH` | 2.0 V | Logic levels | With `VIL`, sets the single reading threshold `(VIL + VIH)/2` = 1.4 V: above it, an input reads 1 |
 | `VIL` | 0.8 V | Logic levels | See `VIH`: below the threshold, an input reads 0 |

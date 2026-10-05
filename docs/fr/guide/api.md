@@ -1,6 +1,6 @@
 # API `machine` / `time`
 
-Cette page liste ce qu'un programme exécuté par le [`MCU`](mcu.md) peut appeler : le sous-ensemble de l'API MicroPython `machine`/`time` du Raspberry Pi Pico réellement implémenté. Un programme écrit pour la carte fonctionne tel quel s'il s'en tient à ce sous-ensemble. Pour savoir *comment* ces modules sont construits, voir la référence interne : [Intégration de Python](../interne/integration-python.md) et [Cycle de vie](../interne/cycle-de-vie.md). L'implémentation exacte (source de vérité) est le fichier [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté tel quel par `PyRuntime_new` avant le script utilisateur.
+Cette page liste ce qu'un programme exécuté par le [`MCU`](mcu.md) peut appeler : le sous-ensemble de l'API MicroPython `machine`/`time` du Raspberry Pi Pico réellement implémenté. Un programme écrit pour la carte fonctionne tel quel s'il s'en tient à ce sous-ensemble. La même API vaut pour la [carte `RPi_Pico`](pico.md), avec les différences de la carte réelle signalées ci-dessous (« Sur la Pico »). Pour savoir *comment* ces modules sont construits, voir la référence interne : [Intégration de Python](../interne/integration-python.md) et [Cycle de vie](../interne/cycle-de-vie.md). L'implémentation exacte (source de vérité) est le fichier [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté tel quel par `PyRuntime_new` avant le script utilisateur.
 
 **Notion clé** : un appel qui *synchronise* rend la main à Modelica (le solveur peut avancer le temps simulé, éventuellement jusqu'à un `sleep` en cours) avant de continuer le script — c'est ce qui rend une transition d'entrée ou un `sleep` visibles/compressibles côté simulation. Un appel qui ne synchronise pas est une simple lecture immédiate de l'état déjà connu du script.
 
@@ -63,11 +63,13 @@ v = adc.read_u16()             # 0-65535
 
 `ADC(id)` — `id` : `0`-`7` (n'importe laquelle des broches `GP0`-`GP7`, utilisées en analogique plutôt qu'en numérique — **toutes** ADC-capables ici, contrairement au vrai Pico où seules `GP26`-`GP28` le sont) ou un objet `Pin` (son `.id` est utilisé). La LED embarquée (`25`/`Pin.LED`) n'est pas ADC-capable. Synchronise. Ne modifie ni la direction ni l'état piloté de la broche, mais **coupe son entrée numérique**, comme sur le RP2040 : les franchissements du seuil logique par la tension analogique ne réveillent plus un `sleep()` en cours et ne déclenchent plus d'IRQ (`Pin.irq()`). Un `Pin(id, mode)` ultérieur rend la broche au GPIO.
 
+**Sur la Pico** : comme le port `rp2`, `id` est un canal `0`-`4` — `ADC(0)`-`ADC(2)` = `GP26`-`GP28`, `ADC(3)` = `VSYS/3`, `ADC(4)` (`ADC.CORE_TEMP`) = capteur de température — ou une broche `GP26`-`GP29` ; ailleurs, `ValueError: Pin doesn't have ADC capabilities`.
+
 ### Méthodes
 
 | Méthode | Signature | Comportement | Synchronise ? |
 |---|---|---|---|
-| `.read_u16()` | `read_u16() -> int` | Lit la tension mesurée sur la broche et la restitue sur 16 bits (`round(v / 3.3 * 65535)`, bornée à `[0, 65535]`) | Oui |
+| `.read_u16()` | `read_u16() -> int` | Lit la tension mesurée sur la broche et la restitue sur 16 bits (`round(v / Vref * 65535)`, bornée à `[0, 65535]` ; `Vref` = `VOH` pour `MCU`, `ADC_VREF` pour la Pico) | Oui |
 
 ## `machine.PWM`
 
@@ -199,7 +201,7 @@ Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le 
 
 ### Constructeur
 
-`I2C(id=0, *, scl, sda, freq=400000)` — `id` facultatif (seul un bus existe : `0`, ou `1` accepté comme alias), ce qui rend compatibles la forme rp2 `I2C(0, scl=..., sda=...)` et celle de drivers écrits pour d'autres ports, `I2C(scl=..., sda=...)`. `scl`/`sda` : obligatoires, un objet `Pin` ou un numéro, deux broches distinctes parmi `0`-`7`. `freq` : 1 kHz à 1 MHz (`ValueError` hors bornes). `SoftI2C` est un alias de `I2C`. Synchronise.
+`I2C(id=0, *, scl, sda, freq=400000)` — `id` facultatif (seul un bus existe : `0`, ou `1` accepté comme alias), ce qui rend compatibles la forme rp2 `I2C(0, scl=..., sda=...)` et celle de drivers écrits pour d'autres ports, `I2C(scl=..., sda=...)`. `scl`/`sda` : obligatoires, un objet `Pin` ou un numéro, deux broches distinctes parmi `0`-`7`. `freq` : 1 kHz à 1 MHz (`ValueError` hors bornes). `SoftI2C(scl, sda, *, freq=400000)`, sans identifiant, utilise le même maître. Synchronise. **Sur la Pico** : les broches suivent le multiplexage du RP2040 (`I2C(0)` : SCL sur GP1, 5, 9…, SDA sur GP0, 4, 8… ; `I2C(1)` : SCL GP3, 7, 11…, SDA GP2, 6, 10…), avec les broches par défaut du port `rp2` si elles manquent (`I2C(0)` : SCL GP5/SDA GP4, `I2C(1)` : SCL GP7/SDA GP6) ; sans identifiant, celui des broches choisies ; `I2C(0)` et `I2C(1)`, un seul à la fois. `SoftI2C` accepte n'importe quelles broches. Même règle pour `UART(0)` (TX GP0, 12, 16, 28 ; défaut GP0/GP1) et `UART(1)` (TX GP4, 8, 20, 24 ; défaut GP4/GP5) : `tx`/`rx` deviennent facultatifs.
 
 ### Méthodes
 
@@ -350,7 +352,7 @@ Détails et justifications dans `requirements.md` (section Restrictions actuelle
 - `machine.Display` : une seule liaison logique, **écriture seule** (pas de réception), livraison instantanée du message entier (pas de bauds simulés) ; liaison modélisée comme un connecteur logique causal, pas électrique — cf. `requirements.md`, décision « Périphérique d'affichage pédagogique ».
 - `Pin.irq()` : tout callback tourne « soft » (déféré au prochain point de réveil du worker) ; `hard=` accepté mais sans effet — aucune notion de contexte d'interruption matérielle possible dans ce modèle mono-thread. Une exception levée dans un callback arrête toute la simulation (même politique que le script principal), pas d'isolation « le callback plante mais le reste continue ».
 - `machine.Timer` : pool fixe de 4 minuteurs partagé par tous les `Timer()` (au-delà, `Timer()` lève `RuntimeError`) ; période minimale 1 ms (`ValueError` en dessous, garde-fou contre une tempête d'événements à durée simulée nulle).
-- `ADC.read_u16()` : référence de conversion (3,3 V) codée en dur dans le shim, pas liée au paramètre `VOH` de `MCU` ; pas d'échantillonnage périodique ni d'événement de seuil (contrairement à une broche numérique en entrée, une variation sur l'ADC ne réveille jamais le script, même en traversant le seuil logique — il faut l'interroger explicitement ; cf. `verify_26`).
+- `ADC.read_u16()` : pas d'échantillonnage périodique ni d'événement de seuil (contrairement à une broche numérique en entrée, une variation sur l'ADC ne réveille jamais le script, même en traversant le seuil logique — il faut l'interroger explicitement ; cf. `verify_26`).
 - `PWM` : chaque broche a sa fréquence/rapport cyclique indépendants (le vrai RP2040 partage un canal de fréquence entre deux broches voisines, pas modélisé ici) ; `deinit()` repasse la broche en sortie numérique **basse**, pas en haute impédance.
 - Une exception non rattrapée arrête la simulation : la trace Python s'affiche dans le journal, et les résultats restent consultables jusqu'à l'instant de l'erreur.
 - `gpioOpTime` : une durée unique pour tout accès à une broche, lecture comme écriture, sans dispersion. Une attente active coûte un événement de simulation par accès (≈ 200 000 par seconde simulée à 5 µs) : préférer `sleep` ou `Pin.irq()` quand c'est possible.

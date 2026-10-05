@@ -90,16 +90,10 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
         return NULL;
     }
-    int tx = resolve_pin_index(tx_id);
-    int rx = resolve_pin_index(rx_id);
-    if (tx < 0 || tx >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "TX pin %d not supported (0-%d expected)", tx_id, LED_PIN_INDEX - 1);
-        return NULL;
-    }
-    if (rx < 0 || rx >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "RX pin %d not supported (0-%d expected)", rx_id, LED_PIN_INDEX - 1);
-        return NULL;
-    }
+    int tx = require_pin(tx_id, PIN_CAP_DIGITAL | PIN_CAP_EXTERNAL, "TX pin");
+    if (tx < 0) return NULL;
+    int rx = require_pin(rx_id, PIN_CAP_DIGITAL | PIN_CAP_EXTERNAL, "RX pin");
+    if (rx < 0) return NULL;
     if (tx == rx) {
         PyErr_SetString(PyExc_ValueError, "TX and RX must be two different pins");
         return NULL;

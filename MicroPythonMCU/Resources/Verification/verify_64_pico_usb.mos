@@ -1,0 +1,30 @@
+// Scénario de vérification n°64 : Raspberry Pi Pico alimentée par USB.
+// omc verify_64_pico_usb.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie (Examples.Pico.Blink) : sans rien câbler pour
+// l'alimentation (usbConnected), VSYS ≈ 4,7 V (5 V moins la diode Schottky), le
+// rail 3,3 V est établi, GP15 clignote (haut à 0,5 s, bas à 1,5 s) ; le
+// programme lit VSYS par ADC(3) (diviseur VSYS/3 de la carte) et la température
+// par ADC(4) ; le courant tiré de VSYS augmente quand les LED sont allumées
+// (le courant des broches est pris sur le rail 3,3 V, à travers le régulateur).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Pico.Blink, stopTime = 2.5, numberOfIntervals = 2500, fileNamePrefix = "PicoUsb");
+b := getErrorString();
+ret := system(".\\PicoUsb.bat", "PicoUsb_run.txt");
+log := readFile("PicoUsb_run.txt");
+(nVsys, m1) := regex(log, "VSYS = 4[.][67][0-9] V, temperature = 2[67][.][0-9] C", 1);
+
+vOn := val(pico.GP15.v, 0.5, "PicoUsb_res.mat");
+vOff := val(pico.GP15.v, 1.5, "PicoUsb_res.mat");
+vSys := val(pico.vSys, 0.5, "PicoUsb_res.mat");
+vRail := val(pico.vRail, 0.5, "PicoUsb_res.mat");
+iOn := val(pico.iSys, 0.5, "PicoUsb_res.mat");
+iOff := val(pico.iSys, 1.5, "PicoUsb_res.mat");
+
+if ret == 0 and nVsys >= 1 and vOn > 2.8 and vOff < 0.1 and vSys > 4.6 and vSys < 4.8 and vRail > 3.25 and vRail < 3.35 and iOff > 0.014 and iOff < 0.018 and iOn - iOff > 0.002 then
+  print("PASS: verify_64_pico_usb (VSYS=" + String(vSys) + "V, rail=" + String(vRail) + "V, GP15 " + String(vOn) + "/" + String(vOff) + "V, I(VSYS) " + String(iOff) + "/" + String(iOn) + "A)\n");
+else
+  print("FAIL: verify_64_pico_usb (code " + String(ret) + ", ligne VSYS " + String(nVsys) + ", VSYS=" + String(vSys) + "V, rail=" + String(vRail) + "V, GP15 " + String(vOn) + "/" + String(vOff) + "V, I(VSYS) " + String(iOff) + "/" + String(iOn) + "A)\n" + b + "\n--- journal ---\n" + log);
+end if;

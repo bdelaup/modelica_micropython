@@ -37,7 +37,7 @@ static int worker_context_ok(void) {
    a laisser remonter tel quel - cf. yield_to_modelica et les sites d'appel
    natifs). */
 static int run_due_callbacks(struct PyRuntimeHandle* h) {
-    struct { PyObject* callback; PyObject* arg; } due[NUM_PINS + MAX_TIMERS + 1];
+    struct { PyObject* callback; PyObject* arg; } due[MAX_PINS + MAX_TIMERS + 1];
     int due_count = 0;
     int i;
 
@@ -48,7 +48,7 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
         LeaveCriticalSection(&h->cs);
         return 0;
     }
-    for (i = 0; i < NUM_PINS; i++) {
+    for (i = 0; i < h->num_pins; i++) {
         if (h->pin_irq_pending[i]) {
             h->pin_irq_pending[i] = 0;
             due[due_count].callback = h->pin_irq_handler[i];
@@ -127,7 +127,9 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
    FIN DE SIMULATION (h->shutdown, pose par PyRuntime_destroy) : le worker
    n'attend plus et leve SystemExit, a chaque appel et des le premier - le
    programme se deroule (blocs finally/with, fichiers fermes), cf.
-   PyRuntime_destroy. */
+   PyRuntime_destroy. PERTE D'ALIMENTATION (h->halted, pose par
+   PyRuntime_sync) : meme deroulement, mais le sous-interpreteur reste en vie
+   jusqu'a la fin de la simulation. */
 static int yield_until(double wake_at, int interruptible) {
     struct PyRuntimeHandle* h = g_current;
     for (;;) {
@@ -139,16 +141,16 @@ static int yield_until(double wake_at, int interruptible) {
            donc pas d'inversion d'ordre de verrous possible. */
         PyThreadState* saved = PyEval_SaveThread();
         EnterCriticalSection(&h->cs);
-        if (!h->shutdown) {
+        if (!h->shutdown && !h->halted) {
             h->wake_requested_at = wake_at;
             h->wake_pending = 1;
             h->turn = TURN_MODELICA;
             WakeConditionVariable(&h->cv);
-            while (h->turn != TURN_WORKER && !h->shutdown) {
+            while (h->turn != TURN_WORKER && !h->shutdown && !h->halted) {
                 SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
             }
         }
-        int shutdown = h->shutdown;
+        int shutdown = h->shutdown || h->halted;
         int genuine = (interruptible && h->wake_had_input_change) || h->i2c_done_wake || (h->sim_time + PYRUNTIME_EPS >= wake_at);
         LeaveCriticalSection(&h->cs);
         PyEval_RestoreThread(saved);

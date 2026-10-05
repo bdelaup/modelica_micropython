@@ -29,6 +29,7 @@ nav = [
     { "Installation" = "guide/installation.md" },
     { "Premiers pas" = "guide/premiers-pas.md" },
     { "Le bloc MCU" = "guide/mcu.md" },
+    { "La carte Raspberry Pi Pico" = "guide/pico.md" },
     { "API machine / time" = "guide/api.md" },
     { "Périphériques" = [
       { "LED et afficheur" = "guide/peripheriques/led-afficheur.md" },
@@ -44,6 +45,7 @@ nav = [
   ] },
   { "Référence interne" = [
     { "Architecture" = "interne/architecture.md" },
+    { "Cœur, MCU et carte Pico" = "interne/cartes.md" },
     { "Intégration de Python" = "interne/integration-python.md" },
     { "Cycle de vie" = "interne/cycle-de-vie.md" },
     { "Afficheur pédagogique" = "interne/display.md" },

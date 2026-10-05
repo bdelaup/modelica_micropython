@@ -70,17 +70,22 @@ L'icône affiche le gain et le dernier code, un voyant cyan quand une donnée at
 | `E_plus`, `E_minus` | Excitation du pont ; `E_minus` est reliée à la masse du module |
 | `A_plus`, `A_minus` | Entrée différentielle du canal A, depuis la sortie du pont |
 | `GND` | Masse, à relier à celle du microcontrôleur |
+| `VCC` | Alimentation du module, **seulement si `useSupplyPin` est coché** (en bas à gauche de l'icône) |
 
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
 | `rate` | 10 Hz | Conversion | Cadence de conversion : 10 ou 80 mesures par seconde (broche RATE du circuit) |
-| `AVDD` | 4,3 V | Conversion | Tension d'excitation du pont (module alimenté en 5 V) |
+| `AVDD` | 4,3 V | Conversion | Tension d'excitation du pont (module alimenté en 5 V). Avec `VCC`, limitée à `VCC − VDropout` |
 | `noiseLsb` | 0 | Conversion | Bruit de conversion, écart-type en LSB. 0 : mesure parfaite et reproductible |
 | `seed` | 711 | Conversion | Graine du bruit : même graine, même suite de mesures |
 | `tPowerDown` | 60 µs | Timing | Durée à l'état haut de `PD_SCK` qui met le circuit en veille |
 | `tUpdate` | 10 µs | Timing | Durée pendant laquelle `DOUT` remonte avant chaque nouvelle donnée, quand la précédente n'a pas été lue |
 | `settlingConversions` | 4 | Timing | Conversions écartées après la mise sous tension ou la sortie de veille (400 ms à 10 mesures par seconde) |
-| `VOH`, `VOL` | 3,3 V, 0 V | Electrical | Niveaux de `DOUT` |
+| `useSupplyPin` | `false` | Electrical | Fait apparaître la broche `VCC` (le module du commerce n'en a qu'une, analogique et logique) : niveau haut de `DOUT` = `VCC`, excitation bornée par `VCC`, courant de repos `IQ` et courant du pont tirés de `VCC`. Décoché : alimentation idéale `VOH` |
+| `VOH` | 3,3 V | Electrical | Alimentation idéale interne (sans `VCC`) : niveau haut de `DOUT` |
+| `IQ` | 1,5 mA | Electrical | Courant de repos du circuit, tiré de `VCC` |
+| `VDropout` | 0,1 V | Electrical | Chute du régulateur analogique du module : avec `VCC`, `AVDD` ne dépasse pas `VCC − VDropout` |
+| `VOL` | 0 V | Electrical | Niveau bas de `DOUT` |
 | `VIH`, `VIL` | 2,0 V, 0,8 V | Electrical | Seuils de lecture de `PD_SCK` |
 | `ROut` | 100 Ω | Electrical | Résistance série de la sortie `DOUT` |
 

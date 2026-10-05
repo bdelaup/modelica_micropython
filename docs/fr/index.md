@@ -37,6 +37,7 @@
 | Bus I2C maître en drain ouvert | `I2C` | [Périphériques I2C](guide/peripheriques/i2c.md) |
 | Système de fichiers façon flash, `boot.py` / `main.py` | `open()`, `os` | [API](guide/api.md#systeme-de-fichiers-open-et-os) |
 | Import de modules, drivers du commerce | `import` | [Le bloc MCU](guide/mcu.md#script-python) |
+| Carte Raspberry Pi Pico : brochage réel, alimentation USB / pile, mise sous tension | `RPi_Pico` (bloc) | [La carte Raspberry Pi Pico](guide/pico.md) |
 
 Un `time.sleep(1)` ne coûte aucun temps réel : le solveur avance directement à l'échéance. Une heure simulée s'exécute en une fraction de seconde.
 

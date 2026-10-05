@@ -8,7 +8,8 @@
 
 **Microcontroller**
 
-- 8 pins (`GP0`-`GP7`) and the on-board LED, instead of the Pico's 29 pins; all of them can be analog inputs.
+- `MCU`: 8 pins (`GP0`-`GP7`) and the on-board LED, instead of the Pico's 29 pins; all of them can be analog inputs. The full board is [`RPi_Pico`](pico.md).
+- [`RPi_Pico`](pico.md): no restart — after a supply loss (rail below 1.6 V, `RUN` grounded), the program stays stopped even when the supply comes back; averaged regulator model (no ripple, no current limit); a single `UART` and a single `I2C` controller at a time (`UART(0)` or `UART(1)`); no PWM "slices" (two neighbouring pins do not share their frequency). Peripherals supplied through their `VCC` pin: only their electrical levels follow the supply, their behaviour goes on even at 0 V.
 - No open-drain mode (`Pin.OPEN_DRAIN`): only the I2C bus drives its lines that way. The internal pull resistors (`Pin.PULL_UP`, `Pin.PULL_DOWN`), on the other hand, are really modelled.
 - No `SPI`.
 - `UART`: a single link, 50 to 115,200 baud, no receive interrupt; a byte received with an error (parity, stop) is reported in the log, not to the program.

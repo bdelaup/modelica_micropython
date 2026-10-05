@@ -1,6 +1,6 @@
 # `machine` / `time` API
 
-This page lists what a program run by the [`MCU`](mcu.md) can call: the subset of the Raspberry Pi Pico's MicroPython `machine`/`time` API that is actually implemented. A program written for the board runs unchanged as long as it sticks to this subset. The exact implementation (source of truth) is the file [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), loaded and run as is before the user script. How these modules are built is described in the (French) maintainer reference: [Python integration](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/integration-python/) and [Life cycle](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/cycle-de-vie/).
+This page lists what a program run by the [`MCU`](mcu.md) can call: the subset of the Raspberry Pi Pico's MicroPython `machine`/`time` API that is actually implemented. The same API applies to the [`RPi_Pico` board](pico.md), with the differences of the real board noted below ("On the Pico"). A program written for the board runs unchanged as long as it sticks to this subset. The exact implementation (source of truth) is the file [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), loaded and run as is before the user script. How these modules are built is described in the (French) maintainer reference: [Python integration](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/integration-python/) and [Life cycle](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/cycle-de-vie/).
 
 **Key notion**: a call that *synchronises* hands control back to Modelica (the solver may advance simulated time, possibly up to a pending `sleep`) before the script continues — this is what makes an input transition or a `sleep` visible, and compressible, in the simulation. A call that does not synchronise is a plain immediate read of state the script already knows.
 
@@ -65,11 +65,13 @@ v = adc.read_u16()             # 0-65535
 
 `ADC(id)` — `id`: `0`-`7` (any of the `GP0`-`GP7` pins, used as analog rather than digital — **all** of them are ADC-capable here, unlike the real Pico where only `GP26`-`GP28` are) or a `Pin` object (its `.id` is used). The on-board LED is not ADC-capable. Synchronises. Changes neither the direction nor the driven state of the pin, but **disconnects its digital input**, as on the RP2040: logic-threshold crossings of the analog voltage no longer wake a pending `sleep()` nor trigger IRQs. A later `Pin(id, mode)` gives the pin back to the GPIO.
 
+**On the Pico**: as on the `rp2` port, `id` is a channel `0`-`4` — `ADC(0)`-`ADC(2)` = `GP26`-`GP28`, `ADC(3)` = `VSYS/3`, `ADC(4)` (`ADC.CORE_TEMP`) = temperature sensor — or a pin `GP26`-`GP29`; elsewhere, `ValueError: Pin doesn't have ADC capabilities`.
+
 ### Methods
 
 | Method | Signature | Behaviour | Synchronises? |
 |---|---|---|---|
-| `.read_u16()` | `read_u16() -> int` | Reads the voltage on the pin and returns it on 16 bits (`round(v / 3.3 * 65535)`, clamped to `[0, 65535]`) | Yes |
+| `.read_u16()` | `read_u16() -> int` | Reads the voltage on the pin and returns it on 16 bits (`round(v / Vref * 65535)`, clamped to `[0, 65535]`; `Vref` = `VOH` for `MCU`, `ADC_VREF` for the Pico) | Yes |
 
 ## `machine.PWM`
 
@@ -201,7 +203,7 @@ print(i2c.readfrom_mem(0x42, 0x10, 2))              # register 0x10, after a rep
 
 ### Constructor
 
-`I2C(id=0, *, scl, sda, freq=400000)` — `id` optional (a single bus exists: `0`, or `1` accepted as an alias), which makes both the rp2 form `I2C(0, scl=..., sda=...)` and the form of drivers written for other ports, `I2C(scl=..., sda=...)`, work. `scl`/`sda`: required, a `Pin` object or a number, two distinct pins among `0`-`7`. `freq`: 1 kHz to 1 MHz (`ValueError` outside). `SoftI2C` is an alias of `I2C`. Synchronises.
+`I2C(id=0, *, scl, sda, freq=400000)` — `id` optional (a single bus exists: `0`, or `1` accepted as an alias), which makes both the rp2 form `I2C(0, scl=..., sda=...)` and the form of drivers written for other ports, `I2C(scl=..., sda=...)`, work. `scl`/`sda`: required, a `Pin` object or a number, two distinct pins among `0`-`7`. `freq`: 1 kHz to 1 MHz (`ValueError` outside). `SoftI2C(scl, sda, *, freq=400000)`, without identifier, uses the same controller. Synchronises. **On the Pico**: the pins follow the RP2040 multiplexing (`I2C(0)`: SCL on GP1, 5, 9…, SDA on GP0, 4, 8…; `I2C(1)`: SCL GP3, 7, 11…, SDA GP2, 6, 10…), with the default pins of the `rp2` port when missing (`I2C(0)`: SCL GP5/SDA GP4, `I2C(1)`: SCL GP7/SDA GP6); without identifier, that of the chosen pins; `I2C(0)` and `I2C(1)`, one at a time. `SoftI2C` accepts any pins. Same rule for `UART(0)` (TX GP0, 12, 16, 28; default GP0/GP1) and `UART(1)` (TX GP4, 8, 20, 24; default GP4/GP5): `tx`/`rx` become optional.
 
 ### Methods
 
@@ -350,7 +352,7 @@ time.sleep(1)
 - `machine.Display`: a single logical link, **write-only**, instant delivery of the whole message (no simulated baud rate).
 - `Pin.irq()`: every callback runs "soft" (deferred to the program's next wake-up point); `hard=` accepted but with no effect. An exception raised in a callback stops the whole simulation (same policy as the main script).
 - `machine.Timer`: fixed pool of 4 timers shared by all `Timer()`s (beyond that, `Timer()` raises `RuntimeError`); minimum period 1 ms (`ValueError` below).
-- `ADC.read_u16()`: conversion reference (3.3 V) hard-coded, not tied to the `MCU`'s `VOH` parameter; no periodic sampling nor threshold event (unlike a digital input, a change on the ADC never wakes the script up, even when crossing the logic threshold — it must be polled explicitly).
+- `ADC.read_u16()`: no periodic sampling nor threshold event (unlike a digital input, a change on the ADC never wakes the script up, even when crossing the logic threshold — it must be polled explicitly).
 - `PWM`: each pin has its own frequency/duty cycle (the real RP2040 shares a frequency channel between two neighbouring pins, not modelled here); `deinit()` sets the pin back to a **low** digital output, not high impedance.
 - An uncaught exception stops the simulation: the Python traceback is shown in the log, and results remain available up to the time of the error.
 - `gpioOpTime`: a single duration for every pin access, read or write, with no spread. A busy-wait costs one simulation event per access (≈ 200,000 per simulated second at 5 µs): prefer `sleep` or `Pin.irq()` when possible.

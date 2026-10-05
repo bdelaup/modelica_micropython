@@ -269,16 +269,10 @@ static PyObject* native_i2c_init(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "I2C %d not supported (single bus, I2C(0))", id);
         return NULL;
     }
-    int scl = resolve_pin_index(scl_id);
-    int sda = resolve_pin_index(sda_id);
-    if (scl < 0 || scl >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "SCL pin %d not supported (0-%d expected)", scl_id, LED_PIN_INDEX - 1);
-        return NULL;
-    }
-    if (sda < 0 || sda >= LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "SDA pin %d not supported (0-%d expected)", sda_id, LED_PIN_INDEX - 1);
-        return NULL;
-    }
+    int scl = require_pin(scl_id, PIN_CAP_DIGITAL | PIN_CAP_EXTERNAL, "SCL pin");
+    if (scl < 0) return NULL;
+    int sda = require_pin(sda_id, PIN_CAP_DIGITAL | PIN_CAP_EXTERNAL, "SDA pin");
+    if (sda < 0) return NULL;
     if (scl == sda) {
         PyErr_SetString(PyExc_ValueError, "SCL and SDA must be two different pins");
         return NULL;

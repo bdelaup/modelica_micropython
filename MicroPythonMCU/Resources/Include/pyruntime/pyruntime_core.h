@@ -6,16 +6,23 @@
    requirements.md, decision "Structure du package et interface C du runtime
    Python". Ce fichier n'est jamais compile seul. */
 
-#define NUM_PINS 9          /* 0-7 = GP0-GP7 (broches externes) ; 8 = LED embarquee (interne, pas de connecteur electrique) */
-#define LED_PIN_INDEX 8
-#define LED_PIN_ID 25       /* numero reel de la broche sur le Raspberry Pi Pico, non expose par MCU */
+/* Broches : la table (numero GPIO et capacites de chaque index) est fournie
+   par le modele a la construction (PyRuntime_new) - 9 entrees pour MCU (GP0-GP7
+   + LED GP25), 31 pour Boards.RaspberryPiPico. Les tableaux du handle sont
+   dimensionnes au maximum. Cf. requirements.md, decision "Carte Raspberry Pi
+   Pico et alimentation". */
+#define MAX_PINS 32
+#define PIN_CAP_DIGITAL 1   /* Pin(), PWM : broche numerique */
+#define PIN_CAP_EXTERNAL 2  /* reliee a un connecteur : UART, I2C, I2CTarget possibles */
+#define PIN_CAP_ADC 4       /* lisible par machine.ADC */
+#define BOARD_PROFILE_MAX 32
 #define TURN_MODELICA 0
 #define TURN_WORKER 1
 #define PYRUNTIME_EPS 1e-9
 #define HANG_CHECK_MS 250   /* tranche d'attente du thread Modelica quand hangWarningTime > 0 */
 #define SHUTDOWN_WAIT_MS 2000  /* fin de simulation : delai laisse au programme pour se derouler, cf. PyRuntime_destroy */
 
-#define MAX_TIMERS 4                 /* pool fixe de machine.Timer, meme esprit que les 8 broches GPIO plutot que 29 */
+#define MAX_TIMERS 4                 /* pool fixe de machine.Timer, meme esprit que les 8 broches GPIO de MCU plutot que 29 */
 #define TIMER_MIN_PERIOD 0.001       /* plancher (1 ms) : evite une tempete d'evenements Modelica a duree simulee nulle si period<=0, cf. requirements.md */
 #define IRQ_TRIGGER_RISING 1
 #define IRQ_TRIGGER_FALLING 2
@@ -82,7 +89,7 @@ struct I2cMaster {
    pyruntime_i2ctarget.c. */
 struct I2cTargetSide {
     int configured;
-    int scl_pin;                     /* index interne 0-7, -1 si non affecte */
+    int scl_pin;                     /* index interne de la broche, -1 si non affecte */
     int sda_pin;
     struct I2cTarget eng;
 
@@ -152,20 +159,39 @@ struct PyRuntimeHandle {
     int debug_port;
     int irq_disabled;            /* machine.disable_irq() : callbacks IRQ/Timer differes (pas perdus) jusqu'a enable_irq() */
 
-    int pin_is_output[NUM_PINS];
-    int pin_driven_value[NUM_PINS];
-    int pin_sensed_value[NUM_PINS];
-    double pin_analog_value[NUM_PINS];
-    int adc_claimed[NUM_PINS];   /* broche passee en ADC : ses franchissements du seuil logique ne reveillent pas le script et ne declenchent pas d'IRQ GPIO, cf. native_adc_init */
-    double pwm_freq[NUM_PINS];   /* 0 = pas en mode PWM */
-    double pwm_duty[NUM_PINS];   /* 0-1, pertinent seulement si pwm_freq > 0 */
-    int pin_pull[NUM_PINS];      /* tirage interne : PIN_PULL_NONE/UP/DOWN, publie a Modelica (pinPull), cf. native_pin_init */
+    /* Table des broches (cf. MAX_PINS) et profil de carte lu par le shim
+       ("generic" pour MCU, "pico" pour Boards.RaspberryPiPico). */
+    int num_pins;
+    int pin_id[MAX_PINS];
+    int pin_caps[MAX_PINS];
+    char board_profile[BOARD_PROFILE_MAX];
+
+    /* Alimentation (entree powerGood de PyRuntime_sync) : le programme ne
+       demarre qu'a la premiere synchro alimentee (started, boot_time : origine
+       de ticks_ms/ticks_us, comme a la mise sous tension d'une carte). Une
+       perte d'alimentation ensuite arrete definitivement le programme (halted
+       le fait derouler par SystemExit, puis powered_off) : pas de redemarrage
+       simule. MCU est toujours alimente. */
+    int started;
+    double boot_time;
+    int halted;
+    int powered_off;
+    double adc_ref;              /* tension de reference de l'ADC (V), entree adcRef de PyRuntime_sync */
+
+    int pin_is_output[MAX_PINS];
+    int pin_driven_value[MAX_PINS];
+    int pin_sensed_value[MAX_PINS];
+    double pin_analog_value[MAX_PINS];
+    int adc_claimed[MAX_PINS];   /* broche passee en ADC : ses franchissements du seuil logique ne reveillent pas le script et ne declenchent pas d'IRQ GPIO, cf. native_adc_init */
+    double pwm_freq[MAX_PINS];   /* 0 = pas en mode PWM */
+    double pwm_duty[MAX_PINS];   /* 0-1, pertinent seulement si pwm_freq > 0 */
+    int pin_pull[MAX_PINS];      /* tirage interne : PIN_PULL_NONE/UP/DOWN, publie a Modelica (pinPull), cf. native_pin_init */
 
     /* machine.Pin.irq() : au plus un handler par broche */
-    PyObject* pin_irq_handler[NUM_PINS];  /* NULL = pas de callback enregistre */
-    PyObject* pin_irq_self[NUM_PINS];     /* l'instance Python Pin, passee en argument au handler comme sur le vrai MicroPython */
-    int pin_irq_trigger[NUM_PINS];        /* bitmask IRQ_TRIGGER_RISING/FALLING */
-    int pin_irq_pending[NUM_PINS];        /* pose par PyRuntime_sync sur un front correspondant, consomme par run_due_callbacks */
+    PyObject* pin_irq_handler[MAX_PINS];  /* NULL = pas de callback enregistre */
+    PyObject* pin_irq_self[MAX_PINS];     /* l'instance Python Pin, passee en argument au handler comme sur le vrai MicroPython */
+    int pin_irq_trigger[MAX_PINS];        /* bitmask IRQ_TRIGGER_RISING/FALLING */
+    int pin_irq_pending[MAX_PINS];        /* pose par PyRuntime_sync sur un front correspondant, consomme par run_due_callbacks */
 
     /* machine.Timer : pool fixe de MAX_TIMERS minuteurs logiciels */
     int timer_allocated[MAX_TIMERS];   /* slot occupe par un objet Timer() (initialise ou non) */
@@ -191,9 +217,9 @@ struct PyRuntimeHandle {
        uart.tx_bits/uart.tx_start_time (motif PWM), pas front par front depuis ici.
        Cf. requirements.md, decision "UART electrique reel". */
     int uart_configured;
-    int uart_tx_pin;             /* index interne 0-8, -1 si non affecte */
+    int uart_tx_pin;             /* index interne de la broche, -1 si non affecte */
     int uart_rx_pin;
-    int uart_rx_claimed[NUM_PINS]; /* broche affectee a la reception UART : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO (fidele au materiel reel), cf. PyRuntime_sync */
+    int uart_rx_claimed[MAX_PINS]; /* broche affectee a la reception UART : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO (fidele au materiel reel), cf. PyRuntime_sync */
 
     struct UartEngine uart;      /* files TX/RX, trame au format choisi, decodage : cf. uartcore.h (partage avec Peripherals.UartDevice) */
     int uart_err_reported;       /* erreurs de reception deja signalees au journal (plafond UART_ERR_REPORT_MAX) */
@@ -203,9 +229,9 @@ struct PyRuntimeHandle {
        transaction ; i2c_done_wake rend son reveil "authentique" (cf.
        yield_to_modelica), sans quoi il serait pris pour un simple pitstop. */
     int i2c_configured;
-    int i2c_scl_pin;             /* index interne 0-7, -1 si non affecte */
+    int i2c_scl_pin;             /* index interne de la broche, -1 si non affecte */
     int i2c_sda_pin;
-    int i2c_claimed[NUM_PINS];   /* broche prise par le bus : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO */
+    int i2c_claimed[MAX_PINS];   /* broche prise par le bus : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO */
     int i2c_done_wake;
     struct I2cMaster i2cm;
     struct I2cTargetSide i2ct;   /* machine.I2CTarget, cf. pyruntime_i2ctarget.c */

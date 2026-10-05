@@ -22,6 +22,47 @@ import atexit as _atexit, weakref as _weakref
 # que polluer le journal de simulation d'un driver du commerce.
 _warnings.filterwarnings('ignore', category=SyntaxWarning)
 
+# Profil de carte, donne par le modele (_native.board()) : 'generic' pour MCU,
+# qui accepte l'UART et l'I2C sur n'importe quelle broche et l'ADC sur GP0-GP7,
+# 'pico' pour RPi_Pico, fidele au RP2040 : ADC(0-3) = GP26-GP29,
+# ADC(4) = capteur de temperature, multiplexage des broches UART/I2C et broches
+# par defaut du port rp2. Cf. requirements.md, decision "Carte Raspberry Pi Pico
+# et alimentation".
+_PICO = _native.board() == 'pico'
+_PICO_ADC_TEMP = 30   # pseudo-broche du capteur de temperature, alignee sur RPi_Pico
+# Par peripherique : broches possibles (TX ou SCL), (RX ou SDA), broches par defaut
+_PICO_UART = {0: ((0, 12, 16, 28), (1, 13, 17, 29), (0, 1)),
+              1: ((4, 8, 20, 24), (5, 9, 21, 25), (4, 5))}
+_PICO_I2C = {0: ((1, 5, 9, 13, 17, 21, 25, 29), (0, 4, 8, 12, 16, 20, 24, 28), (5, 4)),
+             1: ((3, 7, 11, 15, 19, 23, 27), (2, 6, 10, 14, 18, 22, 26), (7, 6))}
+# Un seul moteur UART et un seul maitre I2C dans la simulation : sur la Pico,
+# UART(0) et UART(1) (I2C(0) et I2C(1)) y aboutissent tous deux, un a la fois.
+_pico_owner = {}
+
+def _pin_id(p):
+    return p.id if isinstance(p, Pin) else p
+
+def _pico_pins(table, kind, id, a, b, names):
+    # Broches du peripherique id du RP2040 : celles qui manquent sont celles du
+    # port rp2 par defaut, les autres doivent etre permises par le multiplexage.
+    if id not in table:
+        raise ValueError("%s(%d) doesn't exist" % (kind, id))
+    valid_a, valid_b, default = table[id]
+    a = default[0] if a is None else _pin_id(a)
+    b = default[1] if b is None else _pin_id(b)
+    if a not in valid_a:
+        raise ValueError('bad %s pin' % names[0])
+    if b not in valid_b:
+        raise ValueError('bad %s pin' % names[1])
+    owner = _pico_owner.get(kind)
+    if owner is not None and owner != id:
+        raise ValueError('%s(%d) is in use: the simulation has a single %s, deinit() it first' % (kind, owner, kind))
+    _pico_owner[kind] = id
+    return a, b
+
+def _pico_release(kind):
+    _pico_owner.pop(kind, None)
+
 class Pin:
     IN = 0
     OUT = 1
@@ -73,15 +114,25 @@ class Pin:
         _native.pin_irq_set(self.id, self, handler, trigger)
 
 class ADC:
+    CORE_TEMP = 4   # canal du capteur de temperature du RP2040 (Pico seulement)
+
     def __init__(self, id):
         if isinstance(id, Pin):
             id = id.id
+        if _PICO:
+            # Comme le port rp2 : un canal 0-4, ou une broche GP26-GP29
+            if 0 <= id <= 3:
+                id = 26 + id
+            elif id == ADC.CORE_TEMP:
+                id = _PICO_ADC_TEMP
+            elif not 26 <= id <= 29:
+                raise ValueError('Pin doesn\'t have ADC capabilities')
         self.id = id
         _native.adc_init(self.id)   # coupe l'entree numerique de la broche, comme sur le RP2040
 
     def read_u16(self):
-        v = _native.adc_read(self.id)
-        raw = round(v / 3.3 * 65535)
+        v = _native.adc_read(self.id)   # fraction de la tension de reference (VOH pour MCU, ADC_VREF pour la Pico)
+        raw = round(v * 65535)
         return 0 if raw < 0 else (65535 if raw > 65535 else raw)
 
 class PWM:
@@ -130,12 +181,15 @@ class UART:
         self.init(baudrate, bits, parity, stop, tx=tx, rx=rx, **kwargs)
 
     def init(self, baudrate=1200, bits=8, parity=None, stop=1, tx=None, rx=None, **kwargs):
-        if tx is None or rx is None:
-            raise ValueError('tx and rx must be given (e.g. UART(0, tx=Pin(0), rx=Pin(1)))')
-        if isinstance(tx, Pin):
-            tx = tx.id
-        if isinstance(rx, Pin):
-            rx = rx.id
+        if _PICO:
+            tx, rx = _pico_pins(_PICO_UART, 'UART', self.id, tx, rx, ('TX', 'RX'))
+            self._nid = 0   # le moteur UART unique de la simulation
+        else:
+            if tx is None or rx is None:
+                raise ValueError('tx and rx must be given (e.g. UART(0, tx=Pin(0), rx=Pin(1)))')
+            tx = _pin_id(tx)
+            rx = _pin_id(rx)
+            self._nid = self.id
         if bits not in (5, 6, 7, 8):
             raise ValueError('invalid bits')
         if parity not in (None, 0, 1):
@@ -148,7 +202,7 @@ class UART:
         self._stop = stop
         self.tx = tx
         self.rx = rx
-        _native.uart_init(self.id, tx, rx, float(baudrate), bits, -1 if parity is None else parity, stop)
+        _native.uart_init(self._nid, tx, rx, float(baudrate), bits, -1 if parity is None else parity, stop)
 
     def __repr__(self):
         return 'UART(%d, baudrate=%d, bits=%d, parity=%s, stop=%d, tx=%d, rx=%d)' % (
@@ -159,18 +213,18 @@ class UART:
             data = data.encode()
         elif not isinstance(data, (bytes, bytearray)):
             data = str(data).encode()
-        return _native.uart_write(self.id, bytes(data))
+        return _native.uart_write(self._nid, bytes(data))
 
     def any(self):
-        return _native.uart_any(self.id)
+        return _native.uart_any(self._nid)
 
     def read(self, n=None):
-        return _native.uart_read(self.id, -1 if n is None else int(n))
+        return _native.uart_read(self._nid, -1 if n is None else int(n))
 
     def readline(self):
         buf = b''
         while True:
-            chunk = _native.uart_read(self.id, 1)
+            chunk = _native.uart_read(self._nid, 1)
             if chunk is None:
                 return buf if buf else None
             buf += chunk
@@ -178,39 +232,51 @@ class UART:
                 return buf
 
     def deinit(self):
-        _native.uart_deinit(self.id)
+        _native.uart_deinit(self._nid)
+        if _PICO:
+            _pico_release('UART')
 
 class I2C:
     # Maitre I2C en drain ouvert (un seul bus). L'identifiant est
     # facultatif : I2C(0, scl=..., sda=...) (forme rp2) et I2C(scl=..., sda=...)
-    # (forme des drivers ecrits pour d'autres ports) sont acceptes tous les deux.
+    # (forme des drivers ecrits pour d'autres ports) sont acceptes tous les deux ;
+    # sur la Pico, sans identifiant, celui des broches choisies.
     # Chaque transaction est BLOQUANTE jusqu'a la fin de la sequence sur le bus,
     # en temps simule. Erreurs : OSError(EIO) si l'adresse n'est pas acquittee,
     # OSError(ETIMEDOUT) si une ligne reste basse (bus sans tirage).
-    def __init__(self, id=0, *, scl=None, sda=None, freq=400000, **kwargs):
+    _soft = False   # SoftI2C : n'importe quelles broches, meme sur la Pico
+
+    def __init__(self, id=None, *, scl=None, sda=None, freq=400000, **kwargs):
+        if id is None:
+            id = 1 if _PICO and not self._soft and _pin_id(scl) in _PICO_I2C[1][0] else 0
         self.id = id
         self.init(scl=scl, sda=sda, freq=freq, **kwargs)
 
     def init(self, scl=None, sda=None, freq=400000, **kwargs):
-        if scl is None or sda is None:
-            raise ValueError('scl and sda must be given (e.g. I2C(0, scl=Pin(4), sda=Pin(5)))')
-        if isinstance(scl, Pin):
-            scl = scl.id
-        if isinstance(sda, Pin):
-            sda = sda.id
+        if _PICO and not self._soft:
+            scl, sda = _pico_pins(_PICO_I2C, 'I2C', self.id, scl, sda, ('SCL', 'SDA'))
+            self._nid = 0   # le maitre I2C unique de la simulation
+        else:
+            if scl is None or sda is None:
+                raise ValueError('scl and sda must be given (e.g. I2C(0, scl=Pin(5), sda=Pin(4)))')
+            scl = _pin_id(scl)
+            sda = _pin_id(sda)
+            self._nid = 0 if self._soft else self.id
         self.scl = scl
         self.sda = sda
         self._freq = freq
-        _native.i2c_init(self.id, scl, sda, float(freq))
+        _native.i2c_init(self._nid, scl, sda, float(freq))
 
     def deinit(self):
-        _native.i2c_deinit(self.id)
+        _native.i2c_deinit(self._nid)
+        if _PICO and not self._soft:
+            _pico_release('I2C')
 
     def scan(self):
         trouves = []
         for addr in range(0x08, 0x78):
             try:
-                _native.i2c_xfer(self.id, addr, b'', 0, True)
+                _native.i2c_xfer(self._nid, addr, b'', 0, True)
                 trouves.append(addr)
             except OSError as e:
                 if e.errno == 110:   # ETIMEDOUT : bus bloque, inutile d'insister
@@ -218,14 +284,14 @@ class I2C:
         return trouves
 
     def writeto(self, addr, buf, stop=True):
-        acks, _ = _native.i2c_xfer(self.id, addr, bytes(buf), 0, bool(stop))
+        acks, _ = _native.i2c_xfer(self._nid, addr, bytes(buf), 0, bool(stop))
         return acks
 
     def writevto(self, addr, vector, stop=True):
         return self.writeto(addr, b''.join(bytes(b) for b in vector), stop)
 
     def readfrom(self, addr, nbytes, stop=True):
-        _, data = _native.i2c_xfer(self.id, addr, None, int(nbytes), bool(stop))
+        _, data = _native.i2c_xfer(self._nid, addr, None, int(nbytes), bool(stop))
         return data
 
     def readfrom_into(self, addr, buf, stop=True):
@@ -240,12 +306,21 @@ class I2C:
         self.writeto(addr, I2C._memaddr(memaddr, addrsize) + bytes(buf))
 
     def readfrom_mem(self, addr, memaddr, nbytes, *, addrsize=8):
-        _, data = _native.i2c_xfer(self.id, addr, I2C._memaddr(memaddr, addrsize), int(nbytes), True)
+        _, data = _native.i2c_xfer(self._nid, addr, I2C._memaddr(memaddr, addrsize), int(nbytes), True)
         return data
 
     def readfrom_mem_into(self, addr, memaddr, buf, *, addrsize=8):
         data = self.readfrom_mem(addr, memaddr, len(buf), addrsize=addrsize)
         buf[:len(data)] = data
+
+class SoftI2C(I2C):
+    # Bus logiciel du port rp2 : sans identifiant, sur n'importe quelles
+    # broches. En simulation, le meme maitre que I2C (logiciel ou materiel ne
+    # se distinguent pas).
+    _soft = True
+
+    def __init__(self, scl=None, sda=None, *, freq=400000, **kwargs):
+        I2C.__init__(self, 0, scl=scl, sda=sda, freq=freq, **kwargs)
 
 class _I2CTargetIRQ:
     # Objet rendu par I2CTarget.irq() : flags() donne les evenements en cours
@@ -275,16 +350,28 @@ class I2CTarget:
     def __init__(self, id=0, addr=None, *, addrsize=7, mem=None, mem_addrsize=8, scl=None, sda=None):
         if addr is None:
             raise TypeError('addr must be given (e.g. I2CTarget(0, 0x42, scl=Pin(5), sda=Pin(4)))')
-        if scl is None or sda is None:
-            raise ValueError('scl and sda must be given (e.g. I2CTarget(0, 0x42, scl=Pin(5), sda=Pin(4)))')
-        if isinstance(scl, Pin):
-            scl = scl.id
-        if isinstance(sda, Pin):
-            sda = sda.id
+        if _PICO:
+            # Multiplexage du RP2040 ; la cible n'occupe pas le maitre (_pico_owner)
+            if id not in _PICO_I2C:
+                raise ValueError("I2CTarget(%d) doesn't exist" % id)
+            valid_scl, valid_sda, default = _PICO_I2C[id]
+            scl = default[0] if scl is None else _pin_id(scl)
+            sda = default[1] if sda is None else _pin_id(sda)
+            if scl not in valid_scl:
+                raise ValueError('bad SCL pin')
+            if sda not in valid_sda:
+                raise ValueError('bad SDA pin')
+            nid = 0   # la cible unique de la simulation
+        else:
+            if scl is None or sda is None:
+                raise ValueError('scl and sda must be given (e.g. I2CTarget(0, 0x42, scl=Pin(5), sda=Pin(4)))')
+            scl = _pin_id(scl)
+            sda = _pin_id(sda)
+            nid = id
         self.id = id
         self._mem = mem          # garde le tampon en vie : le C ecrit dedans
         self._irq = _I2CTargetIRQ()
-        _native.i2ct_init(id, addr, addrsize, scl, sda, mem, mem_addrsize)
+        _native.i2ct_init(nid, addr, addrsize, scl, sda, mem, mem_addrsize)
 
     @property
     def memaddr(self):
@@ -326,7 +413,7 @@ _machine.PWM = PWM
 _machine.Display = Display
 _machine.UART = UART
 _machine.I2C = I2C
-_machine.SoftI2C = I2C   # meme maitre : en simulation, logiciel ou materiel ne se distinguent pas
+_machine.SoftI2C = SoftI2C
 _machine.I2CTarget = I2CTarget
 _machine.Timer = Timer
 _machine.idle = _native.idle

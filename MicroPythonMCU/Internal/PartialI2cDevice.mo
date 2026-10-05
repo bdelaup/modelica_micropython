@@ -1,6 +1,7 @@
 within MicroPythonMCU.Internal;
 
 partial model PartialI2cDevice "Base of the I2C slave peripherals: open-drain electrical link, bus decoding, behaviour described by a Python script"
+  extends PartialSupplyPin;
   parameter String addresses = "0x42" "7-bit address(es) the peripheral answers to, e.g. \"0x42\" or \"0x3E, 0x62\" (at most 4)" annotation(
     Dialog(group = "I2C bus"));
   parameter String scriptPath = "" "Script .py describing the behaviour (on_write / on_read / outputs / lines)" annotation(
@@ -9,7 +10,7 @@ partial model PartialI2cDevice "Base of the I2C slave peripherals: open-drain el
   // must show (lines staying low, OSError on the microcontroller side) - as
   // on a real circuit. Off-the-shelf modules (Grove...) often carry them:
   // their component then enables it, and several pairs end up in parallel.
-  parameter Boolean usePullUp = false "Carry the pull-up resistors of SDA and SCL to VOH (at least one component of the bus must do it)" annotation(
+  parameter Boolean usePullUp = false "Carry the pull-up resistors of SDA and SCL to the supply (at least one component of the bus must do it)" annotation(
     Dialog(group = "I2C bus"));
   parameter Modelica.Units.SI.Resistance RPullUp = 4700 "Pull-up resistance of each line" annotation(
     Dialog(group = "I2C bus", enable = usePullUp));
@@ -21,8 +22,6 @@ partial model PartialI2cDevice "Base of the I2C slave peripherals: open-drain el
     Dialog(tab = "Inputs / outputs", group = "Inputs (handler argument v)", enable = not useValueInput));
   parameter Integer nOut(min = 1, max = Interfaces.I2C_DEV_MAX_VALUES) = 1 "Number of quantities returned to the model by outputs() - leave the connector unconnected if unused" annotation(
     Dialog(tab = "Inputs / outputs", group = "Outputs (return value of outputs())"));
-  parameter Modelica.Units.SI.Voltage VOH = Interfaces.VOH "Supply voltage of the pull-ups" annotation(
-    Dialog(tab = "Electrical", group = "Levels"));
   parameter Modelica.Units.SI.Voltage VIH = Interfaces.VIH "Threshold above which an input reads high" annotation(
     Dialog(tab = "Electrical", group = "Levels"));
   parameter Modelica.Units.SI.Voltage VIL = Interfaces.VIL "Threshold below which an input reads low" annotation(
@@ -49,8 +48,6 @@ partial model PartialI2cDevice "Base of the I2C slave peripherals: open-drain el
     Placement(transformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin SCL "I2C bus clock - to be connected to the SCL pin of the microcontroller and of the other peripherals" annotation(
     Placement(transformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin GND "Common reference (ground), to be connected to the microcontroller's one" annotation(
-    Placement(transformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}})));
   Modelica.Blocks.Interfaces.RealInput valueIn[nIn] if useValueInput "Quantities supplied by the model, passed to the script's handlers (argument v)" annotation(
     Placement(transformation(origin = {124, 34}, extent = {{10, -10}, {-10, 10}}), iconTransformation(origin = {124, 34}, extent = {{10, -10}, {-10, 10}})));
   Modelica.Blocks.Interfaces.RealOutput valueOut[nOut] "Quantities returned by outputs() - the peripheral then becomes an actuator" annotation(
@@ -89,11 +86,9 @@ protected
     Placement(visible = false, transformation(extent = {{-10, -130}, {30, -90}})));
   Modelica.Electrical.Analog.Basic.Resistor rInScl(R = RIn) "Pad resistance of SCL" annotation(
     Placement(visible = false, transformation(extent = {{-70, -130}, {-30, -90}})));
-  Modelica.Electrical.Analog.Sources.ConstantVoltage pullSrc(V = VOH) if usePullUp "Rail of the pull-ups" annotation(
-    Placement(visible = false, transformation(extent = {{110, -90}, {150, -50}})));
-  Modelica.Electrical.Analog.Basic.Resistor rPullSda(R = RPullUp) if usePullUp "Pull-up of SDA to VOH" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor rPullSda(R = RPullUp) if usePullUp "Pull-up of SDA to the supply rail" annotation(
     Placement(visible = false, transformation(extent = {{110, -130}, {150, -90}})));
-  Modelica.Electrical.Analog.Basic.Resistor rPullScl(R = RPullUp) if usePullUp "Pull-up of SCL to VOH" annotation(
+  Modelica.Electrical.Analog.Basic.Resistor rPullScl(R = RPullUp) if usePullUp "Pull-up of SCL to the supply rail" annotation(
     Placement(visible = false, transformation(extent = {{50, -130}, {90, -90}})));
   Internal.I2cDevice dev = Internal.I2cDevice(addresses, scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), getInstanceName()) "Engine of the peripheral: bus decoding, Python script" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
@@ -121,10 +116,9 @@ equation
   connect(cSda.n, GND);
   connect(cScl.p, rInScl.n);
   connect(cScl.n, GND);
-  connect(pullSrc.n, GND);
-  connect(pullSrc.p, rPullSda.p);
+  connect(rail, rPullSda.p);
   connect(rPullSda.n, SDA);
-  connect(pullSrc.p, rPullScl.p);
+  connect(rail, rPullScl.p);
   connect(rPullScl.n, SCL);
   sdaOut.G = if sdaDriveLow then 1/ROut else GOff;
   sclBool = sclSns.v > (VIL + VIH)/2 "logic threshold halfway, same approximation as the microcontroller";

@@ -17,11 +17,14 @@ class PyRuntime "External Object wrapping the CPython interpreter that runs the 
     input Real hangWarningTime "Real (wall-clock) time (s) after which a warning is logged if the script does not let the simulation advance; 0 = never";
     input Boolean debugEnabled "Waits for VS Code (debugpy) at the start of the simulation, to debug the program";
     input Integer debugPort "Local TCP port on which debugpy listens";
+    input Integer pinIds[:] "GPIO number of each pin index (e.g. {0, ..., 7, 25} for MCU)";
+    input Integer pinCaps[size(pinIds, 1)] "Capabilities of each pin index, sum of 1 = digital, 2 = wired to a connector (UART, I2C), 4 = ADC input";
+    input String boardProfile "Board profile read by the machine shim: \"generic\" (MCU) or \"pico\" (RPi_Pico)";
     output PyRuntime handle;
     // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
     // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
-    external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime, hangWarningTime, debugEnabled, debugPort) annotation(
+    external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime, hangWarningTime, debugEnabled, debugPort, pinIds, size(pinIds, 1), pinCaps, size(pinCaps, 1), boardProfile) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
       Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");

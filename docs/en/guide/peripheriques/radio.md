@@ -104,7 +104,7 @@ The modulated signal `sTx` is drawn with a **scaled carrier**, `fDisplay`, four 
 | `askLowAmplitude` | 0.3 | ASK: amplitude drawn for a 0 |
 | `tickPeriod` | 0.1 s | Period of the minimal sync point; a safety net |
 
-The *Electrical* tab is the one of the [serial devices](uart.md#electrical-electrical-tab).
+The *Electrical* tab is the one of the [serial devices](uart.md#electrical-electrical-tab), optional `VCC` pin included (`useSupplyPin`): for the budget of a supply, set `IQ` to the consumption of the module (an APC220 draws about 25 to 35 mA).
 
 ## Quantities to plot
 

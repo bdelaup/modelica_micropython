@@ -22,50 +22,62 @@
    hangWarningTime : temps REEL (s) au-dela duquel PyRuntime_sync signale un
    script qui ne laisse pas avancer la simulation, 0 = jamais - cf.
    requirements.md, decision "Protection contre un script qui ne rend jamais
-   la main". */
+   la main". pinIds/pinCaps (nPinIds/nPinCaps elements, au plus MAX_PINS) :
+   table des broches de la carte, numero GPIO et capacites (PIN_CAP_*) de
+   chaque index des tableaux de PyRuntime_sync ; boardProfile : "generic"
+   (MCU) ou "pico" (Boards.RaspberryPiPico), lu par le shim - cf.
+   requirements.md, decision "Carte Raspberry Pi Pico et alimentation". */
 void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      int addScriptDirToPath, const char* libraryPath,
                      const char* shimPath, int fsEnabled, const char* fsSource,
                      const char* fsWorkspace, int fsOpenExplorer,
                      const char* instanceName, double gpioOpTime,
                      double hangWarningTime,
-                     int debugEnabled, int debugPort);
+                     int debugEnabled, int debugPort,
+                     const int* pinIds, size_t nPinIds,
+                     const int* pinCaps, size_t nPinCaps,
+                     const char* boardProfile);
 void PyRuntime_destroy(void* handle);
 
-/* pinBoolIn: [9] en entree (etat resolu des broches : 0-7 = GP0-GP7 externes,
-   8 = LED embarquee interne, cf. PyRuntimeImpl.c). pinAnalogIn: [9] en entree,
-   tension brute (V) alignee sur pinBoolIn, lue par machine.ADC (index 8/LED
-   jamais utilise cote ADC). pinBoolOut/pinIsOutput: [9] en sortie (deja
+/* nPins : taille de tous les tableaux de broches, egale a celle de la table
+   passee a PyRuntime_new (index i = broche pinIds[i] ; MCU : 0-7 = GP0-GP7
+   externes, 8 = LED embarquee interne). pinBoolIn: [nPins] en entree (etat
+   resolu des broches). pinAnalogIn: [nPins] en entree, tension brute (V)
+   alignee sur pinBoolIn, lue par machine.ADC (seulement sur les broches
+   PIN_CAP_ADC). pinBoolOut/pinIsOutput: [nPins] en sortie (deja
    alloues par l'appelant, convention Modelica External C). Les trois tableaux
    de broches sont des Integer (0/1) cote Modelica, jamais des Boolean : un
    tableau de Boolean arrive tel quel, et modelica_boolean vaut int en
    OpenModelica 1.27 mais signed char en 1.26 et avant (cf. requirements.md
-   decision "Tableaux de booleens et fonctions externes"). pinPull: [9] en
+   decision "Tableaux de booleens et fonctions externes"). pinPull: [nPins] en
    sortie, tirage interne de chaque broche (0 = aucun, 1 = PULL_UP, 2 =
    PULL_DOWN) : MCU.mo branche en consequence une conductance vers VOH ou vers
    GND, cf. requirements.md decision "Tirages internes". pwmFreqOut/
-   pwmDutyOut: [9] en sortie, frequence (Hz, 0 = pas en PWM) et rapport
+   pwmDutyOut: [nPins] en sortie, frequence (Hz, 0 = pas en PWM) et rapport
    cyclique (0-1) par broche - cf. machine.PWM ; Modelica genere le creneau
    en continu a partir de ces deux valeurs, pas de va-et-vient au thread
    Python a chaque front. displaySeqOut/displayPayloadOut: sorties scalaires -
    seq incremente a chaque machine.Display.write(), payload le dernier texte
    transmis (livraison instantanee, pas de bauds simules, cf. requirements.md
    decision "Périphérique d'affichage pédagogique"). uartTxPinOut: broche
-   affectee a l'emission serie (0 = aucune, sinon 1-9 aligne sur pinBoolOut) ;
+   affectee a l'emission serie (0 = aucune, sinon 1-nPins aligne sur pinBoolOut) ;
    uartTxLevelOut: niveau a tenir sur cette broche jusqu'au point de synchro
    suivant, que nextWakeTime place sur le prochain CHANGEMENT de niveau de la
    trame - sans va-et-vient au thread Python (le worker n'est pas reveille). La
    RECEPTION, elle, est decodee cote C a partir des fronts de la ligne (un seul
    reveil programme par octet, au milieu du stop) : elle n'a aucune sortie ici,
    le script recupere les octets par uart.any()/uart.read() - cf.
-   requirements.md decision "UART electrique reel". nextWakeTime: sortie
-   scalaire. */
-void PyRuntime_sync(void* handle, double currentTime, const int* pinBoolIn,
+   requirements.md decision "UART electrique reel". powerGood: carte
+   alimentee (0/1) - le programme demarre a la premiere synchro alimentee et
+   s'arrete pour de bon a la premiere perte ; adcRef: tension de reference de
+   l'ADC (V). nextWakeTime: sortie scalaire. */
+void PyRuntime_sync(void* handle, double currentTime, size_t nPins, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput, int* pinPull,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
                      int* uartTxPinOut, int* uartTxLevelOut,
+                     int powerGood, double adcRef,
                      double* nextWakeTime);
 
 #endif

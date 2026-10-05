@@ -1,7 +1,12 @@
 PyRuntime
 PyRuntime_sync
+PinBridge
+PartialMcuSettings
+McuCore
+Rt6150
 UartDevice
 UartDevice_sync
+PartialSupplyPin
 PartialUartPins
 StringToCharCodes
 ResolvePath

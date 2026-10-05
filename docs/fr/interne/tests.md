@@ -110,6 +110,11 @@ omc verify_60_debugpy.mos
 omc verify_61_debug_two_mcu.mos
 omc verify_62_debug_flash.mos
 omc verify_63_debug_error.mos
+omc verify_64_pico_usb.mos
+omc verify_65_pico_battery.mos
+omc verify_66_pico_power.mos
+omc verify_67_pico_profile.mos
+omc verify_68_supply_pin.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -175,6 +180,11 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_61_debug_two_mcu.mos` | `DebugTwoMcu`, défini dans le script (`Examples.MultiMcu.Independent`, `debugEnabled` sur les deux MCU) | Un seul MCU débogué par modèle | Arrêt à la construction, message `debugEnabled is set on more than one MCU`, sans attente du débogueur |
 | `verify_62_debug_flash.mos` | `DebugFlash`, défini dans le script (`Examples.FileSystem.Boot`, copie dans `DebugFlash_ws`, port 5862) | Point d'arrêt posé dans l'**image** de la flash, client en mode `stay` (reprend sans se détacher) et qui envoie, comme tous les scénarios de débogage, le `pathMappings` du modèle *Remote Attach* de VS Code (dossier `Resources` → `"."`), à ignorer | Arrêt ligne 21 de `main.py`, rapporté sur le fichier de l'image (`i` = 0) alors que la copie s'exécute ; auto-contrôle de `main.py` passé (cloisonnement intact sous débogueur) ; fin propre client toujours attaché, qui reçoit `terminated` |
 | `verify_63_debug_error.mos` | `DebugError`, défini dans le script (`Examples.BasicBlink` avec `Verification/script_error.py`, port 5863) | Exception du programme sous débogueur | Trace au vrai nom de fichier et arrêt en erreur comme sans débogueur ; fin propre alors que le client attend encore un arrêt (lecteur de pydevd débloqué par `shutdown`) |
+| `verify_64_pico_usb.mos` | `Examples.Pico.Blink` | Pico alimentée par USB | VSYS entre 4,6 et 4,8 V, rail 3,3 V, `GP15` clignote, ligne « VSYS = 4,7 V, temperature = 27 C » au journal, courant de `VSYS` ≈ 15,7 mA LED éteintes et plus haut LED allumées |
+| `verify_65_pico_battery.mos` | `Examples.Pico.Battery` | Pico sur piles | Rail 3,3 V sous 3 V de `VSYS` ; courant des piles LED éteintes = `ICore·vRail/(eta·VSYS) + IQ` à 1 mA près ; plus haut LED allumées |
+| `verify_66_pico_power.mos` | `Examples.Pico.PowerUp` | Mise sous tension et perte d'alimentation | Démarrage à 0,38 s avec `ticks_ms() = 0`, `GP15` bascule toutes les 100 ms, un seul « supply lost » à 1,565 s, `core.powerGood`, rail et `GP15` à 0 avant et après |
+| `verify_67_pico_profile.mos` | `PicoProfile`, défini dans le script (`RPi_Pico` avec `Verification/pico_profile.py`, bouclage `GP0`→`GP1` par R + C) | Profil « pico » du shim | 12 lignes : ADC refusé sur GP5, accepté sur GP26 ; « bad TX pin », « bad SCL pin » ; GPIO 30 et `UART(2)` refusés ; `UART(1)` refusé tant que `UART(0)` est pris ; bouclage reçu ; broches I2C par défaut ; identifiant I2C déduit ; `SoftI2C` ; `ADC(4)` ≈ 14000 |
+| `verify_68_supply_pin.mos` | `SupplyPin`, défini dans le script (Pico + `UartEchoDevice` et `Hx711` sur `3V3(OUT)`, `I2cEchoDevice` sur 5 V, tous `useSupplyPin`) | Broche `VCC` des périphériques | Écho reçu ; TX au repos = rail ; courant = `IQ` ; excitation du HX711 = rail − 0,1 V, courant = `IQ` + pont ; SDA à 5 V |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

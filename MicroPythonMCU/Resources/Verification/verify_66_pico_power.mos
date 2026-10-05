@@ -1,0 +1,37 @@
+// Scénario de vérification n°66 : mise sous tension et perte d'alimentation de la Pico.
+// omc verify_66_pico_power.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie (Examples.Pico.PowerUp) : VSYS monte de 0 à 3 V
+// entre 0,2 et 0,5 s puis retombe à 1 V entre 1,5 et 1,6 s. Le programme ne
+// démarre qu'à l'établissement du rail 3,3 V (seuil de démarrage du régulateur,
+// 1,8 V, atteint à 0,38 s) et ticks_ms() vaut alors 0 ; GP15 bascule ensuite
+// toutes les 100 ms (haute à 0,5 s : seconde période) ; quand VSYS passe sous
+// 1,7 V (à 1,565 s), un seul avertissement « supply lost », le programme est
+// arrêté pour de bon, GP15 et le rail retombent à 0 V. Avant la mise sous
+// tension, GP15 reste à 0 V et powerGood est faux.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Pico.PowerUp, stopTime = 2, numberOfIntervals = 4000, fileNamePrefix = "PicoPowerUp");
+b := getErrorString();
+ret := system(".\\PicoPowerUp.bat", "PicoPowerUp_run.txt");
+log := readFile("PicoPowerUp_run.txt");
+(nStart, m1) := regex(log, "\\[t=0[.]38[0-9]* s\\] power-on, ticks_ms[(][)] = 0", 1);
+(nLost, m2) := regex(log, "warning.*\\[t=1[.]56[0-9]* s\\].*supply lost", 1);
+(nEnd, m3) := regex(log, "The simulation finished successfully", 1);
+
+pgBefore := val(pico.core.powerGood, 0.3, "PicoPowerUp_res.mat");
+gpBefore := val(pico.GP15.v, 0.3, "PicoPowerUp_res.mat");
+railBefore := val(pico.vRail, 0.3, "PicoPowerUp_res.mat");
+gpHigh := val(pico.GP15.v, 0.5, "PicoPowerUp_res.mat");
+gpLow := val(pico.GP15.v, 0.6, "PicoPowerUp_res.mat");
+rail := val(pico.vRail, 1.0, "PicoPowerUp_res.mat");
+pgAfter := val(pico.core.powerGood, 1.8, "PicoPowerUp_res.mat");
+gpAfter := val(pico.GP15.v, 1.8, "PicoPowerUp_res.mat");
+railAfter := val(pico.vRail, 1.8, "PicoPowerUp_res.mat");
+
+if ret == 0 and nStart == 1 and nLost == 1 and nEnd >= 1 and pgBefore < 0.5 and gpBefore < 0.1 and railBefore < 0.1 and gpHigh > 2.8 and gpLow < 0.1 and rail > 3.25 and pgAfter < 0.5 and gpAfter < 0.1 and railAfter < 0.1 then
+  print("PASS: verify_66_pico_power (demarrage a 0,38 s avec ticks_ms() = 0, GP15 " + String(gpHigh) + "/" + String(gpLow) + "V, arret unique a 1,565 s, rail " + String(railBefore) + "/" + String(rail) + "/" + String(railAfter) + "V)\n");
+else
+  print("FAIL: verify_66_pico_power (code " + String(ret) + ", demarrage " + String(nStart) + ", arret " + String(nLost) + ", fin " + String(nEnd) + ", powerGood " + String(pgBefore) + "/" + String(pgAfter) + ", GP15 " + String(gpBefore) + "/" + String(gpHigh) + "/" + String(gpLow) + "/" + String(gpAfter) + "V, rail " + String(railBefore) + "/" + String(rail) + "/" + String(railAfter) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

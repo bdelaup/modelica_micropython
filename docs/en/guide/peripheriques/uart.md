@@ -55,6 +55,7 @@ They all share the same connectors and parameters; they only differ by their def
 | `TX` | Device transmit, to the microcontroller's RX pin |
 | `RX` | Device receive, from the microcontroller's TX pin |
 | `GND` | Ground, to connect to the microcontroller's |
+| `VCC` | Supply of the device, **only when `useSupplyPin` is checked** (bottom left of the icon): for instance `3V3(OUT)` of a [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Model quantities the device inserts into its frames (`{v1}`…): a temperature, a position… Used if `useValueInput = true` |
 | `valueOut[nOut]` | Quantities extracted from received frames (`{o1}`…): the device then becomes an **actuator**. May stay unconnected |
 
@@ -109,10 +110,13 @@ On a mismatch, the device and the microcontroller keep the bytes received with a
 
 | Parameter | Default | Role |
 |---|---|---|
-| `VOH`, `VOL` | 3.3 V, 0 V | Levels sent on `TX` |
+| `useSupplyPin` | `false` | Shows the `VCC` pin: the device is then supplied by the circuit, its high levels follow `VCC` and it draws its quiescent current `IQ` from it. Unchecked: ideal internal supply `VOH`, nothing to wire |
+| `VOH` | 3.3 V | Ideal internal supply (without `VCC`): high level of the outputs and of the pull-ups |
+| `IQ` | 1 mA | Quiescent current drawn from `VCC` (with `useSupplyPin`) |
+| `VOL` | 0 V | Low level sent on `TX` (the high level is the supply: `VOH` or `VCC`) |
 | `VIH`, `VIL` | 2.0 V, 0.8 V | Reading thresholds of `RX` |
 | `ROut` | 100 Ω | Series resistance of the `TX` output |
-| `RPullUp` | 1 MΩ | `RX` pull-up to `VOH`: an unconnected input reads an idle level |
+| `RPullUp` | 1 MΩ | `RX` pull-up to the supply: an unconnected input reads an idle level |
 
 ## Describing the device with a table
 

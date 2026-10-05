@@ -8,12 +8,58 @@
 
 /* --- Module natif expose au shim Python (machine.Pin / time) --- */
 
-/* Traduit un identifiant de broche tel qu'ecrit dans le script (0-7 pour les
-   GPIO externes, 25 pour la LED embarquee) vers son index dans les tableaux
-   pin_*[NUM_PINS]. Retourne -1 si l'identifiant n'est pas supporte. */
+/* Traduit un identifiant de broche tel qu'ecrit dans le script (numero GPIO :
+   0-7 et 25 pour MCU, 0-29 pour la Pico) vers son index dans les tableaux
+   pin_*[], d'apres la table fournie par le modele (pin_id). Retourne -1 si
+   l'identifiant n'est pas dans la table. Appele seulement depuis le worker
+   (natives du shim) : g_current est le microcontroleur courant. */
 static int resolve_pin_index(int id) {
-    if (id >= 0 && id < LED_PIN_INDEX) return id;
-    if (id == LED_PIN_ID) return LED_PIN_INDEX;
+    struct PyRuntimeHandle* h = g_current;
+    int i;
+    for (i = 0; i < h->num_pins; i++) {
+        if (h->pin_id[i] == id) return i;
+    }
+    return -1;
+}
+
+/* Liste lisible, triee et compressee en plages ("0-7, 25"), des numeros des
+   broches qui ont toutes les capacites caps : sert aux messages d'erreur. */
+static void format_pin_list(struct PyRuntimeHandle* h, int caps, char* buf, size_t size) {
+    int ids[MAX_PINS];
+    int n = 0, i, j;
+    for (i = 0; i < h->num_pins; i++) {
+        if ((h->pin_caps[i] & caps) == caps) {
+            int v = h->pin_id[i];
+            for (j = n; j > 0 && ids[j - 1] > v; j--) ids[j] = ids[j - 1];
+            ids[j] = v;
+            n++;
+        }
+    }
+    buf[0] = '\0';
+    size_t len = 0;
+    for (i = 0; i < n; ) {
+        j = i;
+        while (j + 1 < n && ids[j + 1] == ids[j] + 1) j++;
+        int w;
+        if (j > i) {
+            w = snprintf(buf + len, size - len, "%s%d-%d", len ? ", " : "", ids[i], ids[j]);
+        } else {
+            w = snprintf(buf + len, size - len, "%s%d", len ? ", " : "", ids[i]);
+        }
+        if (w < 0 || (size_t) w >= size - len) break;
+        len += (size_t) w;
+        i = j + 1;
+    }
+}
+
+/* Index de la broche id si elle existe et a toutes les capacites caps, sinon
+   -1 avec ValueError ("<what> 12 not supported (valid: 0-7, 25)"). */
+static int require_pin(int id, int caps, const char* what) {
+    int idx = resolve_pin_index(id);
+    if (idx >= 0 && (g_current->pin_caps[idx] & caps) == caps) return idx;
+    char list[160];
+    format_pin_list(g_current, caps, list, sizeof(list));
+    PyErr_Format(PyExc_ValueError, "%s %d not supported on this board (valid: %s)", what, id, list);
     return -1;
 }
 
@@ -25,11 +71,8 @@ static PyObject* native_pin_init(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int id, mode, pull;
     if (!PyArg_ParseTuple(args, "iii", &id, &mode, &pull)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
+    if (idx < 0) return NULL;
     if (pull != PIN_PULL_NONE && pull != PIN_PULL_UP && pull != PIN_PULL_DOWN) {
         PyErr_Format(PyExc_ValueError, "invalid pull value %d (Pin.PULL_UP, Pin.PULL_DOWN or None)", pull);
         return NULL;
@@ -49,11 +92,8 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int id, value;
     if (!PyArg_ParseTuple(args, "ii", &id, &value)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
+    if (idx < 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     if (g_current->pin_is_output[idx]) {
         g_current->pin_driven_value[idx] = value;
@@ -70,11 +110,8 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
+    if (idx < 0) return NULL;
     /* Duree d'execution d'abord, lecture ensuite : on lit l'etat de la broche
        a la fin de l'acces, comme le processeur echantillonne son registre
        d'entree - la reponse d'un peripherique au front emis juste avant est
@@ -95,11 +132,8 @@ static PyObject* native_adc_init(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0 || idx == LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported as ADC input (0-%d only)", id, LED_PIN_INDEX - 1);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_ADC, "ADC input on GPIO");
+    if (idx < 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     g_current->adc_claimed[idx] = 1;
     g_current->pin_pull[idx] = PIN_PULL_NONE;   /* adc_gpio_init coupe aussi les tirages : la mesure n'est pas faussee */
@@ -112,16 +146,16 @@ static PyObject* native_adc_read(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0 || idx == LED_PIN_INDEX) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported as ADC input (0-%d only)", id, LED_PIN_INDEX - 1);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_ADC, "ADC input on GPIO");
+    if (idx < 0) return NULL;
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     double v = g_current->pin_analog_value[idx];
+    double ref = g_current->adc_ref;
     LeaveCriticalSection(&g_current->cs);
-    return PyFloat_FromDouble(v);
+    /* Fraction de la tension de reference (ADC_VREF sur la Pico, VOH pour
+       MCU), convertie en read_u16() par le shim. */
+    return PyFloat_FromDouble(ref > 0 ? v / ref : 0.0);
 }
 
 static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
@@ -129,11 +163,8 @@ static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
     int id;
     double freq;
     if (!PyArg_ParseTuple(args, "id", &id, &freq)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
+    if (idx < 0) return NULL;
     if (freq < 0) {
         /* PyErr_Format (PyUnicode_FromFormat) ne supporte pas %f - pas de conversion
            flottante native, seulement entiers/chaines/pointeurs (cf. doc C API Python).
@@ -156,11 +187,8 @@ static PyObject* native_pwm_set_duty(PyObject* self, PyObject* args) {
     int id;
     double duty;
     if (!PyArg_ParseTuple(args, "id", &id, &duty)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
+    if (idx < 0) return NULL;
     if (duty < 0.0) duty = 0.0;
     if (duty > 1.0) duty = 1.0;
     EnterCriticalSection(&g_current->cs);
@@ -174,11 +202,8 @@ static PyObject* native_pwm_deinit(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
+    if (idx < 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     g_current->pwm_freq[idx] = 0;  /* retombe en sortie numerique classique, pilotee par pin_driven_value (bas par defaut) */
     LeaveCriticalSection(&g_current->cs);
@@ -238,7 +263,7 @@ static PyObject* native_enable_irq(PyObject* self, PyObject* args) {
    800, une milliseconde d'erreur dans les calculs du script. */
 static PyObject* native_ticks_ms(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
-    return PyLong_FromLongLong(llround(g_current->sim_time * 1000.0));
+    return PyLong_FromLongLong(llround((g_current->sim_time - g_current->boot_time) * 1000.0));
 }
 
 /* Vraie resolution a la microseconde (et non ticks_ms() * 1000), arrondie pour
@@ -246,7 +271,7 @@ static PyObject* native_ticks_ms(PyObject* self, PyObject* args) {
    temps simule = 3,6e9 us, a 16 chiffres significatifs. */
 static PyObject* native_ticks_us(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
-    return PyLong_FromLongLong(llround(g_current->sim_time * 1000000.0));
+    return PyLong_FromLongLong(llround((g_current->sim_time - g_current->boot_time) * 1000000.0));
 }
 
 /* --- machine.Pin.irq() --- */
@@ -257,11 +282,8 @@ static PyObject* native_pin_irq_set(PyObject* self, PyObject* args) {
     PyObject* pin_self;
     PyObject* handler;
     if (!PyArg_ParseTuple(args, "iOOi", &id, &pin_self, &handler, &trigger)) return NULL;
-    int idx = resolve_pin_index(id);
-    if (idx < 0) {
-        PyErr_Format(PyExc_ValueError, "GPIO %d not supported (0-%d, or %d for the on-board LED)", id, LED_PIN_INDEX - 1, LED_PIN_ID);
-        return NULL;
-    }
+    int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
+    if (idx < 0) return NULL;
     EnterCriticalSection(&g_current->cs);
     Py_CLEAR(g_current->pin_irq_handler[idx]);
     Py_CLEAR(g_current->pin_irq_self[idx]);

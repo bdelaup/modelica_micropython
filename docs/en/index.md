@@ -37,6 +37,7 @@
 | Open-drain I2C master bus | `I2C` | [I2C devices](guide/peripheriques/i2c.md) |
 | Flash-like file system, `boot.py` / `main.py` | `open()`, `os` | [API](guide/api.md#file-system-open-and-os) |
 | Module imports, off-the-shelf drivers | `import` | [The MCU block](guide/mcu.md#python-script) |
+| Raspberry Pi Pico board: real pinout, USB / battery supply, power-on | `RPi_Pico` (block) | [The Raspberry Pi Pico board](guide/pico.md) |
 
 A `time.sleep(1)` costs no real time: the solver jumps straight to the deadline. One simulated hour runs in a fraction of a second.
 

@@ -70,17 +70,22 @@ The icon shows the gain and the last code, a cyan light when data is waiting to 
 | `E_plus`, `E_minus` | Bridge excitation; `E_minus` is tied to the module ground |
 | `A_plus`, `A_minus` | Channel A differential input, from the bridge output |
 | `GND` | Ground, to connect to the microcontroller's |
+| `VCC` | Supply of the module, **only when `useSupplyPin` is checked** (bottom left of the icon) |
 
 | Parameter | Default | Group | Role |
 |---|---|---|---|
 | `rate` | 10 Hz | Conversion | Conversion rate: 10 or 80 samples per second (RATE pin of the chip) |
-| `AVDD` | 4.3 V | Conversion | Bridge excitation voltage (module powered at 5 V) |
+| `AVDD` | 4.3 V | Conversion | Bridge excitation voltage (module powered at 5 V). With `VCC`, limited to `VCC − VDropout` |
 | `noiseLsb` | 0 | Conversion | Conversion noise, standard deviation in LSB. 0: perfect, reproducible measurement |
 | `seed` | 711 | Conversion | Noise seed: same seed, same sequence of measurements |
 | `tPowerDown` | 60 µs | Timing | Time `PD_SCK` must stay high to enter power-down |
 | `tUpdate` | 10 µs | Timing | Time `DOUT` goes back up before each new sample, when the previous one was not read |
 | `settlingConversions` | 4 | Timing | Conversions discarded after power-up or leaving power-down (400 ms at 10 samples per second) |
-| `VOH`, `VOL` | 3.3 V, 0 V | Electrical | `DOUT` levels |
+| `useSupplyPin` | `false` | Electrical | Shows the `VCC` pin (the off-the-shelf module has a single one, analog and digital): high level of `DOUT` = `VCC`, excitation limited by `VCC`, quiescent current `IQ` and bridge current drawn from `VCC`. Unchecked: ideal supply `VOH` |
+| `VOH` | 3.3 V | Electrical | Ideal internal supply (without `VCC`): high level of `DOUT` |
+| `IQ` | 1.5 mA | Electrical | Quiescent current of the chip, drawn from `VCC` |
+| `VDropout` | 0.1 V | Electrical | Dropout of the analog regulator of the module: with `VCC`, `AVDD` stays below `VCC − VDropout` |
+| `VOL` | 0 V | Electrical | Low level of `DOUT` |
 | `VIH`, `VIL` | 2.0 V, 0.8 V | Electrical | `PD_SCK` reading thresholds |
 | `ROut` | 100 Ω | Electrical | Series resistance of the `DOUT` output |
 

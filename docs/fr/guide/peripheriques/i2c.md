@@ -61,6 +61,7 @@ L'exemple `I2c.GroveLcd` pilote cet écran avec un **driver MicroPython du comme
 | `SDA` | Données du bus |
 | `SCL` | Horloge du bus |
 | `GND` | Masse, à relier à celle du microcontrôleur |
+| `VCC` | Alimentation de le périphérique, **seulement si `useSupplyPin` est coché** (en bas à gauche de l'icône) : par exemple `3V3(OUT)` d'une [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Grandeurs du modèle transmises au script (argument `v`) |
 | `valueOut[nOut]` | Grandeurs rendues par le script (`outputs()`) : le périphérique devient un actionneur. Peut rester non connecté |
 
@@ -71,7 +72,7 @@ L'exemple `I2c.GroveLcd` pilote cet écran avec un **driver MicroPython du comme
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
 | `addresses` | selon le composant | I2C bus | Adresse(s) sur 7 bits, sous forme de texte : `"0x42"` ou `"0x3E, 0x62"` (4 au plus) |
-| `usePullUp` | `false` (`true` pour le Grove) | I2C bus | Porter les résistances de tirage de SDA et SCL vers `VOH`. Plusieurs périphériques peuvent les porter : elles se mettent en parallèle |
+| `usePullUp` | `false` (`true` pour le Grove) | I2C bus | Porter les résistances de tirage de SDA et SCL vers l'alimentation (`VOH`, ou `VCC` avec `useSupplyPin`). Plusieurs périphériques peuvent les porter : elles se mettent en parallèle |
 | `RPullUp` | 4,7 kΩ | I2C bus | Valeur de chaque résistance de tirage |
 | `scriptPath` | script du composant | Behaviour | Fichier `.py` décrivant le périphérique |
 
@@ -88,7 +89,9 @@ L'exemple `I2c.GroveLcd` pilote cet écran avec un **driver MicroPython du comme
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
-| `VOH` | 3,3 V | Tension d'alimentation des tirages |
+| `useSupplyPin` | `false` | Fait apparaître la broche `VCC` : le périphérique est alors alimenté par le circuit, ses niveaux hauts suivent `VCC` et il en tire son courant de repos `IQ`. Décoché : alimentation idéale interne `VOH`, rien à câbler |
+| `VOH` | 3,3 V | Alimentation idéale interne (sans `VCC`) : niveau haut des sorties et des tirages |
+| `IQ` | 1 mA | Courant de repos tiré de `VCC` (avec `useSupplyPin`) |
 | `VIH`, `VIL` | 2,0 V, 0,8 V | Seuils de lecture de SDA et SCL |
 | `ROut` | 100 Ω | Résistance du transistor qui tire SDA à la masse |
 | `GOff` | 1 nS | Fuite du transistor bloqué (ligne relâchée) |

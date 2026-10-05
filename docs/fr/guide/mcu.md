@@ -1,6 +1,6 @@
 # Le bloc `MCU`
 
-`MicroPythonMCU.MCU` est le microcontrôleur : un boîtier à 8 broches d'entrée/sortie, une masse, une liaison vers un afficheur pédagogique et une LED embarquée. Son comportement est entièrement décrit par le programme Python désigné par `scriptPath`. Sa référence est le Raspberry Pi Pico (RP2040), dont il reprend l'API MicroPython ; l'icône affiche volontairement « MCU ».
+`MicroPythonMCU.MCU` est le microcontrôleur : un boîtier à 8 broches d'entrée/sortie, une masse, une liaison vers un afficheur pédagogique et une LED embarquée. Son comportement est entièrement décrit par le programme Python désigné par `scriptPath`. Sa référence est le Raspberry Pi Pico (RP2040), dont il reprend l'API MicroPython ; l'icône affiche volontairement « MCU ». À l'intérieur, un cœur programmable (`core`, composant `Internal.McuCore`) — le même que dans la [carte Raspberry Pi Pico](pico.md) —, une alimentation idéale `VOH` et la LED embarquée : le schéma interne (onglet *Diagram*) les montre câblés. Pour une carte avec ses vraies broches d'alimentation et son régulateur, voir [`RPi_Pico`](pico.md).
 
 ![Icône du bloc MCU](../images/mcu-icone.png){ width="200" }
 
@@ -23,10 +23,10 @@ Chaque broche `GPx` est un petit circuit de composants électriques standard, r�
 
 ![Schéma électrique d'une broche : source VOH/VOL et résistance ROut derrière un interrupteur, tirages internes vers VOH et vers la masse, capteur de tension lu par le programme](../images/broche-modele.svg){ width="700" }
 
-- **Étage de sortie** : une source de tension `src` (`VOH` au niveau haut, `VOL` au niveau bas) derrière une résistance `ROut`. L'interrupteur `sw` le branche sur la broche quand elle est en sortie (`Pin.OUT`, `PWM`, émission `UART`). La tension réelle de la broche dépend de ce qu'on y branche : ≈ 3,07 V avec une LED et 330 Ω, par exemple.
-- **En entrée**, l'interrupteur est ouvert : la broche est en **haute impédance**. Il ne reste qu'une fuite de 1 GΩ (`GOff`) : une broche en l'air finit à 0 V, et la plus faible résistance externe suffit à imposer son niveau.
+- **Étage de sortie** : en sortie (`Pin.OUT`, `PWM`, émission `UART`), la broche est reliée à travers une résistance `ROut` soit à l'alimentation du cœur (`VOH` : niveau haut), soit à `VOL` (niveau bas). Le courant fourni par la broche est pris sur l'alimentation — sur la Pico, il est donc tiré du régulateur, et de la pile. La tension réelle de la broche dépend de ce qu'on y branche : ≈ 3,07 V avec une LED et 330 Ω, par exemple.
+- **En entrée**, l'étage de sortie est coupé : la broche est en **haute impédance**. Il ne reste qu'une fuite de 1 GΩ (`GOff`) : une broche en l'air finit à 0 V, et la plus faible résistance externe suffit à imposer son niveau.
 - **Tirages internes** : deux résistances de 50 kΩ, l'une vers `VOH` (`Pin.PULL_UP`), l'autre vers la masse (`Pin.PULL_DOWN`), branchées par `Pin(n, mode, pull)`. Elles agissent quelle que soit la direction. `I2C()` et `I2CTarget()` activent le tirage haut de SCL et de SDA, comme sur le Pico ; `ADC(n)` coupe les tirages de sa broche.
-- **Lecture** : un capteur de tension mesure la broche en permanence, quelle que soit sa direction. Le programme lit 1 au-dessus de **1,4 V**, 0 au-dessous : c'est un seuil unique, `(VIL + VIH)/2`, sans hystérésis. L'`ADC` lit la tension telle quelle, sur 16 bits, avec une référence de 3,3 V.
+- **Lecture** : un capteur de tension mesure la broche en permanence, quelle que soit sa direction. Le programme lit 1 au-dessus de **1,4 V**, 0 au-dessous : c'est un seuil unique, `(VIL + VIH)/2`, sans hystérésis. L'`ADC` lit la tension telle quelle, sur 16 bits, avec `VOH` (3,3 V) pour référence.
 
 Les tirages sont des conductances commandées plutôt que des interrupteurs : 1/50 kΩ quand ils sont actifs, 1 pS sinon. Une broche que le programme n'utilise pas peut rester non connectée. Au démarrage, aucune broche n'a de tirage. Pas de mode drain ouvert pour l'instant (`Pin.OPEN_DRAIN`) : voir les [limitations](limites.md).
 
@@ -75,7 +75,7 @@ Onglet *Electrical*. Les valeurs par défaut approchent un RP2040 alimenté en 3
 
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
-| `VOH` | 3,3 V | Logic levels | Tension de sortie à l'état haut |
+| `VOH` | 3,3 V | Logic levels | Alimentation idéale interne : tension de sortie à l'état haut, des tirages hauts et référence de l'`ADC` |
 | `VOL` | 0 V | Logic levels | Tension de sortie à l'état bas |
 | `VIH` | 2,0 V | Logic levels | Avec `VIL`, fixe le seuil de lecture unique `(VIL + VIH)/2` = 1,4 V : au-dessus, une entrée est lue à 1 |
 | `VIL` | 0,8 V | Logic levels | Voir `VIH` : au-dessous du seuil, une entrée est lue à 0 |

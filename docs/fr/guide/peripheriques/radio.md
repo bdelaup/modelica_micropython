@@ -104,7 +104,7 @@ Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fD
 | `askLowAmplitude` | 0,3 | ASK : amplitude tracée pour un 0 |
 | `tickPeriod` | 0,1 s | Période du point de synchronisation minimal ; filet de sécurité |
 
-L'onglet *Electrical* est celui des [appareils série](uart.md#electrique-onglet-electrical).
+L'onglet *Electrical* est celui des [appareils série](uart.md#electrique-onglet-electrical), broche `VCC` facultative comprise (`useSupplyPin`) : pour le bilan d'une alimentation, régler `IQ` sur la consommation du module (un APC220 tire de l'ordre de 25 à 35 mA).
 
 ## Grandeurs à tracer
 

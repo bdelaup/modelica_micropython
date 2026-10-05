@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 49 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 52 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython3/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -137,6 +137,16 @@ Transparent radio modules between the UARTs of two microcontrollers, joined by a
 | `Radio.Overflow` | 40 bytes at 9600 baud, transmitted again at 1200 bit/s with a 16-byte buffer: the end of the message is lost | `radioA.txFill`, `radioA.nDropped`, what B prints | `radio_burst.py`, `radio_listen.py` |
 | `Radio.Modulations` | The character `U` in OOK, ASK, FSK and BPSK | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx` between 25 and 35 ms | `radio_beacon.py` |
 | `Weighing.KitchenScale` | Complete kitchen scale, TARE button | display icon | `kitchen_scale.py` |
+
+## Raspberry Pi Pico board (`Examples.Pico`)
+
+The replica of the board and its power supply (see [The Raspberry Pi Pico board](pico.md)).
+
+| Example | What it shows | What to watch | Program |
+|---|---|---|---|
+| `Pico.Blink` | Board supplied by USB, nothing to wire: on-board LED and LED on `GP15`, VSYS and temperature read by `ADC(3)` and `ADC(4)` | `pico.GP15.v`, `pico.vSys`, `pico.iSys`, log | `pico_blink.py` |
+| `Pico.Battery` | Same program on two AA cells connected to `VSYS`: current drawn from the cells, higher while the LEDs are lit | `iBattery.i`, `pico.vRail` | `pico_blink.py` |
+| `Pico.PowerUp` | Ramp on `VSYS`: the program starts at power-on (`ticks_ms() = 0`), then stops when `VSYS` falls | `pico.vRail`, `pico.core.powerGood`, `pico.GP15.v`, log | `pico_power.py` |
 
 ## Logic analyser (`Examples.Analyzer`)
 

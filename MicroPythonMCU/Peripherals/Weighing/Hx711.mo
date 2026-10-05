@@ -1,10 +1,11 @@
 within MicroPythonMCU.Peripherals.Weighing;
 
 model Hx711 "HX711 converter: 24-bit amplifier and ADC for a gauge bridge, PD_SCK/DOUT serial link"
+  extends Internal.PartialSupplyPin(IQ = 1.5e-3);
   import Modelica.Units.SI;
   parameter Real rate(unit = "Hz") = 10 "Conversion rate (RATE pin of the chip: 10 or 80 samples per second)" annotation(
     Dialog(group = "Conversion"));
-  parameter SI.Voltage AVDD = 4.3 "Excitation voltage of the bridge, E+ output (module supplied with 5 V)" annotation(
+  parameter SI.Voltage AVDD = 4.3 "Excitation voltage of the bridge, E+ output (module supplied with 5 V) - with the VCC pin, at most VCC - VDropout" annotation(
     Dialog(group = "Conversion"));
   parameter Real noiseLsb = 0 "Conversion noise, standard deviation in LSB (0 = perfect, reproducible measurement)" annotation(
     Dialog(group = "Conversion"));
@@ -16,8 +17,8 @@ model Hx711 "HX711 converter: 24-bit amplifier and ADC for a gauge bridge, PD_SC
     Dialog(group = "Timing"));
   parameter Integer settlingConversions = 4 "Conversions discarded after power-up or wake-up (400 ms at 10 samples/s)" annotation(
     Dialog(group = "Timing"));
-  parameter SI.Voltage VOH = Interfaces.VOH "High level of DOUT (digital part supplied with 3.3 V, like the microcontroller)" annotation(
-    Dialog(tab = "Electrical", group = "Levels"));
+  parameter SI.Voltage VDropout = 0.1 "Dropout of the analog regulator of the module: with the VCC pin, AVDD is limited to VCC - VDropout" annotation(
+    Dialog(tab = "Electrical", group = "Supply", enable = useSupplyPin));
   parameter SI.Voltage VOL = Interfaces.VOL "Low level of DOUT" annotation(
     Dialog(tab = "Electrical", group = "Levels"));
   parameter SI.Voltage VIH = Interfaces.VIH "Threshold above which an input reads high (PD_SCK)" annotation(
@@ -39,8 +40,6 @@ model Hx711 "HX711 converter: 24-bit amplifier and ADC for a gauge bridge, PD_SC
     Placement(transformation(origin = {124, -15}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {124, -15}, extent = {{-7, -7}, {7, 7}})));
   Modelica.Electrical.Analog.Interfaces.NegativePin E_minus "Bridge excitation (-), connected to the module ground" annotation(
     Placement(transformation(origin = {124, -45}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {124, -45}, extent = {{-7, -7}, {7, 7}})));
-  Modelica.Electrical.Analog.Interfaces.NegativePin GND "Ground, to be connected to the microcontroller's one" annotation(
-    Placement(transformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}})));
 
   // Public: they animate the icon and are used by the checks (protected
   // variables are missing from the simulation results).
@@ -71,8 +70,10 @@ protected
   discrete Real noise(start = 0, fixed = true) "Noise drawn for the last conversion, in LSB";
   discrete Real u(start = 0.5, fixed = true) "Uniform draw on ]0, 1] - working variable of the algorithm";
 
-  Modelica.Electrical.Analog.Sources.ConstantVoltage excitation(V = AVDD) "Bridge excitation, between E+ and ground" annotation(
+  Modelica.Electrical.Analog.Sources.SignalVoltage excitation "Bridge excitation (AVDD), between E+ and ground" annotation(
     Placement(visible = false, transformation(extent = {{-10, 60}, {10, 80}})));
+  Modelica.Electrical.Analog.Sources.SignalCurrent excitationLoad "Current of the excitation, drawn from the supply rail (linear regulator of the module)" annotation(
+    Placement(visible = false, transformation(extent = {{30, 60}, {50, 80}})));
   Modelica.Electrical.Analog.Sensors.VoltageSensor inSns "Differential input A+/A- (infinite impedance)" annotation(
     Placement(visible = false, transformation(extent = {{-10, 30}, {10, 50}})));
   Modelica.Electrical.Analog.Sensors.VoltageSensor refSns "Measurement of the excitation, reference of the conversion" annotation(
@@ -92,6 +93,10 @@ initial algorithm
 equation
   connect(excitation.p, E_plus);
   connect(excitation.n, GND);
+  connect(excitationLoad.p, rail);
+  connect(excitationLoad.n, GND);
+  excitation.v = if useSupplyPin then min(AVDD, max(vRail - VDropout, 0)) else AVDD;
+  excitationLoad.i = -excitation.i "the bridge current comes from the supply";
   connect(E_minus, GND);
   connect(inSns.p, A_plus);
   connect(inSns.n, A_minus);
@@ -109,7 +114,7 @@ equation
   vIn = inSns.v;
   vRef = refSns.v;
   sckHigh = sckSns.v > (VIL + VIH)/2 "logic threshold halfway, same approximation as the microcontroller";
-  doutSrc.v = if doutHigh then VOH else VOL;
+  doutSrc.v = if doutHigh then vRail else VOL "high level: the supply voltage (VOH, or VCC with useSupplyPin)";
 algorithm
   // An algorithm section (and not equations): several when clauses
   // assign the same variables, in the order in which they are written.

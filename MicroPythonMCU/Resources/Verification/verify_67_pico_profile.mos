@@ -1,0 +1,50 @@
+// Scénario de vérification n°67 : profil « pico » du shim (RPi_Pico).
+// omc verify_67_pico_profile.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie (programme Verification/pico_profile.py, GP0 relié
+// à GP1 par R + C comme Examples.Uart.Loopback) : ADC seulement sur GP26-GP29 ; multiplexage UART/I2C du RP2040 (une
+// broche non permise lève « bad TX pin » / « bad SCL pin ») ; GPIO inexistante
+// et UART(2) refusés ; broches par défaut du port rp2 (UART(0) : TX GP0, RX GP1,
+// bouclage reçu ; I2C(1) : SCL GP7, SDA GP6) ; identifiant I2C déduit des
+// broches ; un seul UART à la fois ; SoftI2C sur n'importe quelles broches ;
+// ADC(4) lit le capteur de température (27 °C : 0,706 V, soit ~14000 sur 65535).
+// Modèle défini ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model PicoProfile
+  MicroPythonMCU.RPi_Pico pico(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/pico_profile.py\"));
+  Modelica.Electrical.Analog.Basic.Ground ground;
+  Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) \"TX -> RX loopback on the same microcontroller: R + C as in Examples.Uart.Loopback\";
+  Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9, v(start = 0, fixed = true));
+equation
+  connect(pico.GND_3, ground.p);
+  connect(pico.GP0, loopR.p);
+  connect(loopR.n, pico.GP1);
+  connect(loopR.n, loopC.p);
+  connect(loopC.n, ground.p);
+end PicoProfile;"); getErrorString();
+
+buildModel(PicoProfile, stopTime = 0.2, numberOfIntervals = 200, fileNamePrefix = "PicoProfile");
+b := getErrorString();
+ret := system(".\\PicoProfile.bat", "PicoProfile_run.txt");
+log := readFile("PicoProfile_run.txt");
+(n1, m) := regex(log, "adc5 ValueError Pin doesn't have ADC capabilities", 1);
+(n2, m) := regex(log, "adc26 ok", 1);
+(n3, m) := regex(log, "uart_bad_tx ValueError bad TX pin", 1);
+(n4, m) := regex(log, "i2c_bad_scl ValueError bad SCL pin", 1);
+(n5, m) := regex(log, "pin30 ValueError GPIO 30 not supported on this board [(]valid: 0-29[)]", 1);
+(n6, m) := regex(log, "uart2 ValueError UART[(]2[)] doesn't exist", 1);
+(n7, m) := regex(log, "uart1_busy ValueError UART[(]0[)] is in use", 1);
+(n8, m) := regex(log, "loopback b'hi'", 1);
+(n9, m) := regex(log, "i2c1 pins 7 6", 1);
+(n10, m) := regex(log, "i2c id 1", 1);
+(n11, m) := regex(log, "soft pins 10 11", 1);
+(n12, m) := regex(log, "adc4 1[34][0-9][0-9][0-9]", 1);
+(nEnd, m) := regex(log, "The simulation finished successfully", 1);
+n := n1 + n2 + n3 + n4 + n5 + n6 + n7 + n8 + n9 + n10 + n11 + n12;
+
+if ret == 0 and n == 12 and nEnd >= 1 then
+  print("PASS: verify_67_pico_profile (ADC, multiplexage UART/I2C, broches par defaut, UART unique, SoftI2C, capteur de temperature : 12/12)\n");
+else
+  print("FAIL: verify_67_pico_profile (code " + String(ret) + ", " + String(n) + "/12 lignes attendues : " + String(n1) + String(n2) + String(n3) + String(n4) + String(n5) + String(n6) + String(n7) + String(n8) + String(n9) + String(n10) + String(n11) + String(n12) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

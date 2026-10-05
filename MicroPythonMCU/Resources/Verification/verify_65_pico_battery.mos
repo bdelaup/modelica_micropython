@@ -1,0 +1,31 @@
+// Scénario de vérification n°65 : Raspberry Pi Pico sur piles, par VSYS.
+// omc verify_65_pico_battery.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie (Examples.Pico.Battery) : sans câble USB, deux
+// piles AA (3 V, 0,3 Ohm) sur VSYS suffisent (régulateur buck-boost : VSYS sous
+// 3,3 V donne quand même le rail 3,3 V) ; le courant débité par les piles, LED
+// éteintes, vaut le bilan de puissance du régulateur : 20 mA sous 3,3 V divisés
+// par le rendement (0,9) et par VSYS, soit environ 24,5 mA ; il augmente quand
+// les LED sont allumées.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Pico.Battery, stopTime = 2.5, numberOfIntervals = 2500, fileNamePrefix = "PicoBattery");
+b := getErrorString();
+ret := system(".\\PicoBattery.bat", "PicoBattery_run.txt");
+log := readFile("PicoBattery_run.txt");
+(nVsys, m1) := regex(log, "VSYS = (2[.]9[0-9]|3[.]0[0-9]) V", 1);
+
+vOn := val(pico.GP15.v, 0.5, "PicoBattery_res.mat");
+vRail := val(pico.vRail, 1.5, "PicoBattery_res.mat");
+vSys := val(pico.vSys, 1.5, "PicoBattery_res.mat");
+iOn := val(iBattery.i, 0.5, "PicoBattery_res.mat");
+iOff := val(iBattery.i, 1.5, "PicoBattery_res.mat");
+// Bilan attendu LED éteintes : ICore*3,3 (rail à vRail) / (eta*VSYS), plus le courant de repos du régulateur
+iExpected := 0.02*vRail/(0.9*vSys) + 50e-6;
+
+if ret == 0 and nVsys >= 1 and vOn > 2.8 and vRail > 3.25 and abs(iOff - iExpected) < 0.001 and iOn - iOff > 0.003 then
+  print("PASS: verify_65_pico_battery (VSYS=" + String(vSys) + "V, rail=" + String(vRail) + "V, I(piles) " + String(iOff) + "A attendu " + String(iExpected) + "A, LED allumees " + String(iOn) + "A)\n");
+else
+  print("FAIL: verify_65_pico_battery (code " + String(ret) + ", ligne VSYS " + String(nVsys) + ", VSYS=" + String(vSys) + "V, rail=" + String(vRail) + "V, GP15=" + String(vOn) + "V, I(piles) " + String(iOff) + "A attendu " + String(iExpected) + "A, LED allumees " + String(iOn) + "A)\n" + b + "\n--- journal ---\n" + log);
+end if;

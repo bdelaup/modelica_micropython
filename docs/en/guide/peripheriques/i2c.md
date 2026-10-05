@@ -59,6 +59,7 @@ The `I2c.GroveLcd` example drives this display with an **off-the-shelf MicroPyth
 | `SDA` | Bus data |
 | `SCL` | Bus clock |
 | `GND` | Ground, to connect to the microcontroller's |
+| `VCC` | Supply of the peripheral, **only when `useSupplyPin` is checked** (bottom left of the icon): for instance `3V3(OUT)` of a [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Model quantities passed to the script (`v` argument) |
 | `valueOut[nOut]` | Quantities returned by the script (`outputs()`): the device becomes an actuator. May stay unconnected |
 
@@ -69,7 +70,7 @@ The `I2c.GroveLcd` example drives this display with an **off-the-shelf MicroPyth
 | Parameter | Default | Group | Role |
 |---|---|---|---|
 | `addresses` | depends on the component | I2C bus | 7-bit address(es), as text: `"0x42"` or `"0x3E, 0x62"` (4 at most) |
-| `usePullUp` | `false` (`true` for the Grove) | I2C bus | Carry the SDA and SCL pull-up resistors to `VOH`. Several devices may carry them: they end up in parallel |
+| `usePullUp` | `false` (`true` for the Grove) | I2C bus | Carry the SDA and SCL pull-up resistors to the supply (`VOH`, or `VCC` with `useSupplyPin`). Several devices may carry them: they end up in parallel |
 | `RPullUp` | 4.7 kΩ | I2C bus | Value of each pull-up resistor |
 | `scriptPath` | the component's script | Behaviour | `.py` file describing the device |
 
@@ -86,7 +87,9 @@ The `I2c.GroveLcd` example drives this display with an **off-the-shelf MicroPyth
 
 | Parameter | Default | Role |
 |---|---|---|
-| `VOH` | 3.3 V | Supply voltage of the pull-ups |
+| `useSupplyPin` | `false` | Shows the `VCC` pin: the peripheral is then supplied by the circuit, its high levels follow `VCC` and it draws its quiescent current `IQ` from it. Unchecked: ideal internal supply `VOH`, nothing to wire |
+| `VOH` | 3.3 V | Ideal internal supply (without `VCC`): high level of the outputs and of the pull-ups |
+| `IQ` | 1 mA | Quiescent current drawn from `VCC` (with `useSupplyPin`) |
 | `VIH`, `VIL` | 2.0 V, 0.8 V | Reading thresholds of SDA and SCL |
 | `ROut` | 100 Ω | Resistance of the transistor pulling SDA low |
 | `GOff` | 1 nS | Leakage of the blocked transistor (line released) |

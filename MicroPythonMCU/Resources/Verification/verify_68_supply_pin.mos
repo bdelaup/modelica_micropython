@@ -1,0 +1,60 @@
+// Scénario de vérification n°68 : broche VCC facultative des périphériques (useSupplyPin).
+// omc verify_68_supply_pin.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : un appareil d'écho série alimenté par la broche
+// 3V3(OUT) d'une Pico répond normalement (programme Verification/supply_pin.py),
+// son TX au repos est au niveau du rail de la carte, et l'ampèremètre de son
+// alimentation lit son courant de repos IQ (2 mA ici) ; un HX711 alimenté par la
+// même broche limite son excitation à VCC - VDropout (≈ 3,2 V au lieu de 4,3 V)
+// et tire de VCC le courant du pont (1 kOhm) en plus de son IQ ; une cible I2C
+// alimentée en 5 V porte ses tirages à 5 V (SDA au repos à 5 V). Modèle défini
+// ici plutôt que dans Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model SupplyPin
+  MicroPythonMCU.RPi_Pico pico(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/supply_pin.py\"));
+  MicroPythonMCU.Peripherals.UartEchoDevice echo(baudrate = 9600, useSupplyPin = true, IQ = 0.002);
+  MicroPythonMCU.Peripherals.Weighing.Hx711 hx(useSupplyPin = true);
+  MicroPythonMCU.Peripherals.I2cEchoDevice target(usePullUp = true, useSupplyPin = true);
+  Modelica.Electrical.Analog.Sensors.CurrentSensor iEcho;
+  Modelica.Electrical.Analog.Sensors.CurrentSensor iHx;
+  Modelica.Electrical.Analog.Basic.Resistor bridge(R = 1000);
+  Modelica.Electrical.Analog.Sources.ConstantVoltage five(V = 5);
+  Modelica.Electrical.Analog.Basic.Ground ground;
+equation
+  connect(pico.GND_3, ground.p);
+  connect(pico.GP0, echo.RX);
+  connect(echo.TX, pico.GP1);
+  connect(echo.GND, ground.p);
+  connect(pico.V3V3, iEcho.p);
+  connect(iEcho.n, echo.VCC);
+  connect(pico.V3V3, iHx.p);
+  connect(iHx.n, hx.VCC);
+  connect(hx.GND, ground.p);
+  connect(hx.E_plus, bridge.p);
+  connect(bridge.n, hx.E_minus);
+  connect(hx.A_plus, hx.E_minus);
+  connect(hx.A_minus, hx.E_minus);
+  connect(five.p, target.VCC);
+  connect(five.n, ground.p);
+  connect(target.GND, ground.p);
+end SupplyPin;"); getErrorString();
+
+buildModel(SupplyPin, stopTime = 0.1, numberOfIntervals = 1000, fileNamePrefix = "SupplyPin");
+b := getErrorString();
+ret := system(".\\SupplyPin.bat", "SupplyPin_run.txt");
+log := readFile("SupplyPin_run.txt");
+(nEcho, m) := regex(log, "echo b'OK\\\\n'", 1);
+
+vRail := val(pico.vRail, 0.002, "SupplyPin_res.mat");
+txIdle := val(echo.TX.v, 0.002, "SupplyPin_res.mat");
+iE := val(iEcho.i, 0.002, "SupplyPin_res.mat");
+ePlus := val(hx.E_plus.v, 0.002, "SupplyPin_res.mat");
+iH := val(iHx.i, 0.002, "SupplyPin_res.mat");
+sda := val(target.SDA.v, 0.002, "SupplyPin_res.mat");
+
+if ret == 0 and nEcho >= 1 and abs(txIdle - vRail) < 0.01 and abs(iE - 0.002) < 1e-4 and abs(ePlus - (vRail - 0.1)) < 0.01 and abs(iH - (1.5e-3 + ePlus/1000)) < 1e-4 and abs(sda - 5) < 0.01 then
+  print("PASS: verify_68_supply_pin (echo recu, TX au repos " + String(txIdle) + "V = rail, IQ " + String(iE) + "A, excitation HX711 " + String(ePlus) + "V pour " + String(iH) + "A, SDA a " + String(sda) + "V)\n");
+else
+  print("FAIL: verify_68_supply_pin (code " + String(ret) + ", echo " + String(nEcho) + ", rail " + String(vRail) + "V, TX " + String(txIdle) + "V, IQ " + String(iE) + "A, E+ " + String(ePlus) + "V, I(HX711) " + String(iH) + "A, SDA " + String(sda) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

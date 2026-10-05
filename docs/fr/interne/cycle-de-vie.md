@@ -1,5 +1,8 @@
 # Cycle de vie : instanciation et pas de temps
 
+!!! note "Où vit le `when`"
+    Depuis le 2026-10-04, la synchro (le `when`, les étages des broches) est dans `Internal/McuCore.mo`, le cœur placé à l'intérieur de `MCU` et de `RPi_Pico` ; les extraits ci-dessous qui citent `MCU.mo` s'y appliquent. Les sources des broches sont devenues les conductances de `Internal.PinBridge`, et le programme ne démarre qu'à la première synchro alimentée : voir [Cœur, MCU et carte Pico](cartes.md).
+
 Cette page détaille ce qui se passe concrètement (1) à la construction du modèle, (2) à chaque pas de temps de la simulation, et (3) à sa fin — ainsi que six pièges réels rencontrés pendant l'implémentation, parce qu'ils expliquent pourquoi le mécanisme final est ce qu'il est.
 
 ## 1. Instanciation (t = 0)

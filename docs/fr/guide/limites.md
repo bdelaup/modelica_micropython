@@ -8,7 +8,8 @@
 
 **Microcontrôleur**
 
-- 8 broches (`GP0`-`GP7`) et la LED embarquée, au lieu des 29 broches du Pico ; toutes peuvent servir d'entrée analogique.
+- `MCU` : 8 broches (`GP0`-`GP7`) et la LED embarquée, au lieu des 29 broches du Pico ; toutes peuvent servir d'entrée analogique. La carte complète est [`RPi_Pico`](pico.md).
+- [`RPi_Pico`](pico.md) : pas de redémarrage — après une perte d'alimentation (rail sous 1,6 V, `RUN` à la masse), le programme reste arrêté même quand l'alimentation revient ; régulateur en modèle moyen (ni ondulation, ni limitation de courant) ; un seul `UART` et un seul maître `I2C` à la fois (`UART(0)` ou `UART(1)`) ; pas de « slices » PWM (deux broches voisines ne partagent pas leur fréquence). Périphériques alimentés par leur broche `VCC` : seuls leurs niveaux électriques suivent l'alimentation, leur comportement continue même à 0 V.
 - Pas de mode drain ouvert (`Pin.OPEN_DRAIN`) : seul le bus I2C pilote ses lignes ainsi. Les tirages internes (`Pin.PULL_UP`, `Pin.PULL_DOWN`) sont, eux, réellement modélisés.
 - Pas de `SPI`.
 - `UART` : une seule liaison, 50 à 115 200 bauds, pas d'interruption en réception ; un octet reçu en erreur (parité, stop) est signalé au journal, pas au programme.

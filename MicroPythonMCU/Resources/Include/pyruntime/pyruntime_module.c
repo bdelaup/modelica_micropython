@@ -6,13 +6,21 @@
    requirements.md, decision "Structure du package et interface C du runtime
    Python". Ce fichier n'est jamais compile seul. */
 
+/* Profil de carte ("generic" pour MCU, "pico" pour Boards.RaspberryPiPico) :
+   le shim en deduit la numerotation de l'ADC, les broches par defaut et le
+   multiplexage UART/I2C. */
+static PyObject* native_board(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
+    return PyUnicode_FromString(g_current->board_profile);
+}
+
 static PyMethodDef native_methods[] = {
     {"pin_init", native_pin_init, METH_VARARGS, "Sets the direction of a pin"},
     {"pin_write", native_pin_write, METH_VARARGS, "Drives a pin (if it is an output)"},
     {"pin_read", native_pin_read, METH_VARARGS, "Reads the resolved state of a pin"},
     {"pin_irq_set", native_pin_irq_set, METH_VARARGS, "Registers/clears the IRQ callback of a pin"},
     {"adc_init", native_adc_init, METH_VARARGS, "Switches a pin to analog input (disconnects its digital input: no IRQ nor wake-up)"},
-    {"adc_read",native_adc_read, METH_VARARGS, "Reads the raw voltage (V) measured on an ADC pin"},
+    {"adc_read",native_adc_read, METH_VARARGS, "Reads the voltage measured on an ADC pin, as a fraction of the ADC reference voltage"},
     {"pwm_set_freq", native_pwm_set_freq, METH_VARARGS, "Sets the PWM frequency (Hz) of a pin, making it an output"},
     {"pwm_set_duty", native_pwm_set_duty, METH_VARARGS, "Sets the PWM duty cycle (0-1) of a pin"},
     {"pwm_deinit", native_pwm_deinit, METH_VARARGS, "Stops the PWM on a pin (back to a plain digital output)"},
@@ -44,6 +52,7 @@ static PyMethodDef native_methods[] = {
     {"fs_config", native_fs_config, METH_VARARGS, "File system configuration (source, workspace, instance, pythonHome)"},
     {"fs_set_root", native_fs_set_root, METH_VARARGS, "Records the root of the timestamped copy (host folder)"},
     {"on_worker", native_on_worker, METH_VARARGS, "True if the caller is the microcontroller thread"},
+    {"board", native_board, METH_VARARGS, "Board profile: 'generic' (MCU) or 'pico' (Raspberry Pi Pico)"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -406,20 +415,23 @@ static unsigned __stdcall worker_main(void* arg) {
        GIL RELACHE pendant l'attente : le thread Modelica peut avoir a executer du
        Python pendant ce temps (construction ou synchro d'un peripherique serie
        pilote par script) - le garder ici bloquerait ce thread indefiniment. */
+    /* Carte jamais alimentee (cf. started) : ce premier tour n'arrive pas, la
+       fin de simulation (shutdown) libere alors le worker sans programme. */
     Py_BEGIN_ALLOW_THREADS
     EnterCriticalSection(&h->cs);
-    while (h->turn != TURN_WORKER) {
+    while (h->turn != TURN_WORKER && !h->shutdown) {
         SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
     }
     LeaveCriticalSection(&h->cs);
     Py_END_ALLOW_THREADS
+    int never_started = h->shutdown && !h->started;
 
     /* Debogage : attente de VS Code a ce premier tour (t=0), et non dans le
        constructeur - tous les composants du modele sont alors construits, donc
        un second MCU debogue a deja ete refuse. Le thread Modelica attend dans
        PyRuntime_sync (timeout mou coupe). La copie de la flash existe :
        wait() pose aussi la correspondance des chemins image -> copie. */
-    if (h->debug_enabled
+    if (h->debug_enabled && !never_started
         && debug_host_call("wait", Py_BuildValue("(iss)", h->debug_port, h->fsSource,
                                                  h->fs_root ? h->fs_root : "")) != 0) {
         PyErr_Print();
@@ -435,9 +447,9 @@ static unsigned __stdcall worker_main(void* arg) {
        main.py de la flash s'il existe. Tous dans le meme espace de noms
        (__main__). Une exception ou un sys.exit() arrete la sequence.
        PyRuntime_new garantit qu'il y a un script ou un systeme de fichiers. */
-    int ran = 0;
-    int boot = PROGRAM_ABSENT;
-    if (h->fs_root && !h->script_error) {
+    int ran = never_started;
+    int boot = never_started ? PROGRAM_EXIT : PROGRAM_ABSENT;
+    if (h->fs_root && !h->script_error && !never_started) {
         boot = run_program_file(h, h->fs_root, "boot.py");
         ran = boot != PROGRAM_ABSENT;
     }
@@ -512,8 +524,24 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
                      const char* fsWorkspace, int fsOpenExplorer,
                      const char* instanceName, double gpioOpTime,
                      double hangWarningTime,
-                     int debugEnabled, int debugPort) {
+                     int debugEnabled, int debugPort,
+                     const int* pinIds, size_t nPinIds,
+                     const int* pinCaps, size_t nPinCaps,
+                     const char* boardProfile) {
     char err[512];
+    size_t k;
+
+    /* Table des broches fournie par le modele (cf. MAX_PINS) : erreur de
+       construction du modele, pas de l'utilisateur. */
+    if (nPinIds == 0 || nPinIds > MAX_PINS || nPinCaps != nPinIds) {
+        ModelicaFormatError("PyRuntime (%s): invalid pin table (%d identifiers, %d capabilities, at most %d)",
+                            instanceName, (int) nPinIds, (int) nPinCaps, MAX_PINS);
+        return NULL;
+    }
+    if (strlen(boardProfile) >= BOARD_PROFILE_MAX) {
+        ModelicaFormatError("PyRuntime (%s): board profile name too long ('%s')", instanceName, boardProfile);
+        return NULL;
+    }
 
     /* Sans script, le programme est main.py du systeme de fichiers : il en
        faut un. Verifie avant tout demarrage, l'erreur est de configuration. */
@@ -555,6 +583,12 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     handle->hang_warning_time = hangWarningTime > 0 ? hangWarningTime : 0;
     handle->debug_enabled = debugEnabled;
     handle->debug_port = debugPort;
+    handle->num_pins = (int) nPinIds;
+    for (k = 0; k < nPinIds; k++) {
+        handle->pin_id[k] = pinIds[k];
+        handle->pin_caps[k] = pinCaps[k];
+    }
+    strcpy(handle->board_profile, boardProfile);
     InitializeCriticalSection(&handle->cs);
     InitializeConditionVariable(&handle->cv);
     handle->turn = TURN_MODELICA;
@@ -731,18 +765,104 @@ static void hang_check(struct PyRuntimeHandle* h, double currentTime, ULONGLONG 
     *next_warn *= 2;
 }
 
-void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
+/* Etat publie quand le microcontroleur n'est pas alimente (avant son
+   demarrage, ou apres une perte d'alimentation) : broches en entree sans
+   tirage, ni PWM ni UART, aucun reveil demande. Cote Modelica, les broches
+   sont de toute facon en haute impedance tant que powerGood est faux. */
+static void publish_unpowered(struct PyRuntimeHandle* h, int* pinBoolOut, int* pinIsOutput, int* pinPull,
+                              double* pwmFreqOut, double* pwmDutyOut,
+                              int* displaySeqOut, const char** displayPayloadOut,
+                              int* uartTxPinOut, int* uartTxLevelOut, double* nextWakeTime) {
+    int i;
+    for (i = 0; i < h->num_pins; i++) {
+        pinBoolOut[i] = 0;
+        pinIsOutput[i] = 0;
+        pinPull[i] = PIN_PULL_NONE;
+        pwmFreqOut[i] = 0;
+        pwmDutyOut[i] = 0;
+    }
+    *displaySeqOut = h->display_seq;
+    *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
+    strcpy((char*) *displayPayloadOut, h->display_payload);
+    *uartTxPinOut = 0;
+    *uartTxLevelOut = 1;
+    *nextWakeTime = 1.0e300;
+}
+
+/* Perte d'alimentation d'un microcontroleur demarre : le programme se deroule
+   par SystemExit (halted, cf. yield_until), comme en fin de simulation, puis
+   tous ses peripheriques s'arretent. Pas de redemarrage au retour de
+   l'alimentation (cf. requirements.md, restrictions). Thread Modelica, cs
+   tenu. */
+static void power_loss(struct PyRuntimeHandle* h, double currentTime) {
+    int i;
+    ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): supply lost (3V3 below the power-good threshold, or RUN low) "
+                          "- program stopped, pins released; a restart when the supply comes back is not simulated\n",
+                          currentTime, h->instanceName);
+    if (!h->script_done) {
+        h->halted = 1;
+        h->turn = TURN_WORKER;
+        WakeConditionVariable(&h->cv);
+        while (!h->script_done) {
+            SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        }
+    }
+    h->powered_off = 1;
+    for (i = 0; i < h->num_pins; i++) {
+        h->pin_is_output[i] = 0;
+        h->pin_pull[i] = PIN_PULL_NONE;
+        h->pwm_freq[i] = 0;
+    }
+    h->uart_configured = 0;
+    h->i2c_configured = 0;
+    h->i2ct.configured = 0;
+    for (i = 0; i < MAX_TIMERS; i++) {
+        h->timer_active[i] = 0;
+    }
+}
+
+void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput, int* pinPull,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
                      int* uartTxPinOut, int* uartTxLevelOut,
+                     int powerGood, double adcRef,
                      double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
 
+    if ((int) nPins != h->num_pins) {
+        ModelicaFormatError("PyRuntime (%s): %d pins at the sync point, %d in the pin table",
+                            h->instanceName, (int) nPins, h->num_pins);
+        return;
+    }
+
+    /* Alimentation : le programme demarre a la premiere synchro alimentee
+       (ticks_ms() compte depuis cet instant), une perte d'alimentation ensuite
+       l'arrete pour de bon (cf. power_loss). */
+    if (h->powered_off || (!h->started && !powerGood)) {
+        publish_unpowered(h, pinBoolOut, pinIsOutput, pinPull, pwmFreqOut, pwmDutyOut,
+                          displaySeqOut, displayPayloadOut, uartTxPinOut, uartTxLevelOut, nextWakeTime);
+        return;
+    }
+    if (!h->started) {
+        EnterCriticalSection(&h->cs);
+        h->started = 1;
+        h->boot_time = currentTime;
+        LeaveCriticalSection(&h->cs);
+    } else if (!powerGood) {
+        EnterCriticalSection(&h->cs);
+        h->sim_time = currentTime;
+        power_loss(h, currentTime);
+        LeaveCriticalSection(&h->cs);
+        publish_unpowered(h, pinBoolOut, pinIsOutput, pinPull, pwmFreqOut, pwmDutyOut,
+                          displaySeqOut, displayPayloadOut, uartTxPinOut, uartTxLevelOut, nextWakeTime);
+        return;
+    }
+
     if (h->script_done) {
-        for (i = 0; i < NUM_PINS; i++) {
+        for (i = 0; i < h->num_pins; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
             pinIsOutput[i] = h->pin_is_output[i];
             pinPull[i] = h->pin_pull[i];
@@ -762,7 +882,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
            sans memoire, plus de gestionnaire pour fournir les octets (0xFF). */
         i2ct_step(h, pinBoolIn);
         i2ct_finish(h);
-        for (i = 0; i < NUM_PINS; i++) {
+        for (i = 0; i < h->num_pins; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
             pinIsOutput[i] = h->pin_is_output[i];
         }
@@ -774,6 +894,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
 
     EnterCriticalSection(&h->cs);
     h->sim_time = currentTime;
+    h->adc_ref = adcRef;
 
     /* Une vraie transition d'une broche actuellement en ENTREE justifie de
        reveiller le worker avant l'heure demandee par son sleep() (cf.
@@ -785,7 +906,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
        le sens du front correspond au trigger demande, on marque le callback
        comme du (consomme par run_due_callbacks au reveil du worker). */
     int input_changed = 0;
-    for (i = 0; i < NUM_PINS; i++) {
+    for (i = 0; i < h->num_pins; i++) {
         int old_val = h->pin_sensed_value[i];
         int new_val = pinBoolIn[i];
         /* Une broche affectee a la reception UART est exclue : ses fronts
@@ -894,7 +1015,7 @@ void PyRuntime_sync(void* handle_, double currentTime, const int* pinBoolIn,
     /* Octet differe par IRQ_READ_REQ : le gestionnaire a eu son tour. */
     i2ct_finish(h);
 
-    for (i = 0; i < NUM_PINS; i++) {
+    for (i = 0; i < h->num_pins; i++) {
         pinBoolOut[i] = h->pin_driven_value[i];
         pinIsOutput[i] = h->pin_is_output[i];
         pinPull[i] = h->pin_pull[i];
