@@ -20,7 +20,8 @@ class LogicAnalyzerCapture "External Object of Peripherals.Analyzers.LogicAnalyz
     input Boolean writeVcd "Write <base>.vcd";
     input Boolean writePulseViewSession "Write <base>.pvs next to the VCD file: PulseView session with its protocol decoders set up from the channels";
     input Boolean openPulseView "Open the VCD file in PulseView at the end of the simulation";
-    input String pulseViewPath "Path of the PulseView executable: absolute, or relative to the simulation folder (URIs resolved by the caller)";
+    input String pulseViewPath "Path of the PulseView executable: absolute, or relative to the simulation folder (URIs resolved by the caller); empty string = automatic search";
+    input String pulseViewLocal "Automatic search: pulseview.exe of the portable copy placed next to the library by get_pulseview.cmd (absolute path, may not exist)";
     input Boolean writeText "Write <base>.txt (decoded frames, ASCII timing diagram)";
     input Boolean openText "Open the text file in Notepad at the end of the simulation";
     input Integer textFlags[5] "Text file sections and options (0/1): hex dump, timing diagram, bit labels, split frames, compress silences";
@@ -31,7 +32,7 @@ class LogicAnalyzerCapture "External Object of Peripherals.Analyzers.LogicAnalyz
     // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
     // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
-    external "C" an = LogicAnalyzer_new(fileName, instanceName, channelNames, kinds, baudrates, dataBits, parities, stopBits, msbFirst, clocks, clockFalling, wordBits, signedWords, writeVcd, writePulseViewSession, openPulseView, pulseViewPath, writeText, openText, textFlags, textSilence, textResolution, textWidth) annotation(
+    external "C" an = LogicAnalyzer_new(fileName, instanceName, channelNames, kinds, baudrates, dataBits, parities, stopBits, msbFirst, clocks, clockFalling, wordBits, signedWords, writeVcd, writePulseViewSession, openPulseView, pulseViewPath, pulseViewLocal, writeText, openText, textFlags, textSilence, textResolution, textWidth) annotation(
       Include = "#include \"AnalyzerImpl.c\"",
       Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");

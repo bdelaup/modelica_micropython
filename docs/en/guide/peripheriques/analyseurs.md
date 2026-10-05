@@ -109,11 +109,21 @@ A line is only cut at an instant when no channel is in the middle of a byte. It 
 
 ![PulseView on the bus of Analyzer.I2cBus: addresses, bytes, acknowledgements, repeated START](../../images/pulseview-i2c.png)
 
-1. Install PulseView from [sigrok.org](https://sigrok.org/wiki/Downloads) (Windows installer "PulseView"): it goes into `C:\Program Files\sigrok\PulseView\`, the default path of `pulseViewPath`. PulseView also works **without installation**: its installation folder is self-contained (about 50 MB without the examples) and can be copied to a USB stick, a network share or next to the library; `pulseViewPath` then points to its `pulseview.exe`.
+1. Get PulseView, **without installing anything**: double-click `get_pulseview.cmd`, at the root of the downloaded folder (next to `MicroPythonMCU`). The script downloads a portable copy of PulseView (about 25 MB), checks its fingerprint and unzips it into a `PulseView` folder next to the library. It needs no administrator rights and only uses tools that come with Windows 10 and 11.
 2. Tick `openPulseView`: PulseView opens on the file at the end of the simulation. Otherwise, open it by hand from PulseView's open menu, *Import Value Change Dump data…*, choosing the `.vcd` file whose path the log gives.
 3. Without a session (`writePulseViewSession = false`), add a decoder yourself (*Add protocol decoder* button) and set it up by clicking on its label:
     - **UART**: *RX* channel = the wire to decode, *Baud rate*, *Data bits*, *Parity*, *Stop bits* identical to the program's (`UART(0, baudrate=1200, bits=8, parity=0, stop=2, ...)` → 1200, 8, *even*, 2);
     - **I2C**: *SCL* and *SDA* channels.
+
+`pulseViewPath` stays empty, except in special cases: the probe **looks for PulseView by itself**, in this order, and takes the first one found:
+
+| Order | Location | For whom |
+|---|---|---|
+| 1 | The environment variable `MICROPYTHONMCU_PULSEVIEW`: path of `pulseview.exe` or of its folder | A classroom: a single copy on a network share, the variable set once per computer (`setx MICROPYTHONMCU_PULSEVIEW "\\server\software\PulseView"`) or by the administrator |
+| 2 | The `PulseView` folder next to `MicroPythonMCU`, filled by `get_pulseview.cmd` | A personal computer |
+| 3 | `C:\Program Files\sigrok\PulseView\`, where the installer from [sigrok.org](https://sigrok.org/wiki/Downloads) puts it | A computer where PulseView is already installed |
+
+Not found: a warning in the log gives the paths tried, and the simulation ends normally. A non-empty `pulseViewPath` bypasses the search.
 
 PulseView names the channels `probe.TX`, `probe.RX`… (the prefix is the section of the VCD file). PulseView's SPI decoder knows nothing of bursts: clock pulses beyond a word (HX711 gain) shift its next words, whereas the text file counts them apart. GTKWave also opens the VCD file, for the timing diagram alone (no protocol decoder).
 
@@ -129,7 +139,7 @@ PulseView names the channels `probe.TX`, `probe.RX`… (the prefix is the sectio
 | `writeVcd` | `true` | Writes the VCD file |
 | `writePulseViewSession` | `true` | Writes the PulseView session next to it (`<base>.pvs`), decoders set up from the channels |
 | `openPulseView` | `false` | Opens it in PulseView at the end of the simulation (a warning if PulseView is not found) |
-| `pulseViewPath` | `C:/Program Files/sigrok/PulseView/pulseview.exe` | Path of `pulseview.exe`: absolute, relative to the simulation folder, or `modelica://` URI (`modelica://MicroPythonMCU/../PulseView/pulseview.exe` for a copy placed next to the library) |
+| `pulseViewPath` | `""` | Path of `pulseview.exe`: absolute, relative to the simulation folder, or `modelica://` URI; empty: automatic search (variable `MICROPYTHONMCU_PULSEVIEW`, copy from `get_pulseview.cmd`, sigrok installation) |
 
 Tabs `CH0` … `CH7`, one per channel (`chN` = `ch0` … `ch7`); the settings that do not apply to the chosen kind are greyed out:
 

@@ -63,7 +63,7 @@ The repository ships the following third-party components, each under its own li
 | `hx711_gpio.py` HX711 driver by [robert-hh](https://github.com/robert-hh/hx711), unmodified | `MicroPythonMCU/Resources/Scripts/MCU/` | MIT (header of the file) |
 | `driver_grove_lcd_rgb.py` Grove LCD RGB driver, © 2019 Christophe Gueneau, unmodified | `MicroPythonMCU/Resources/Scripts/MCU/` | not stated by its author |
 
-Used but not shipped: OpenModelica and the Modelica Standard Library (to be installed), PulseView (optional, for the logic analyzer), Zensical (documentation site).
+Used but not shipped: OpenModelica and the Modelica Standard Library (to be installed), PulseView (optional, for the logic analyzer; a portable copy is fetched by `get_pulseview.cmd`, GPLv3), Zensical (documentation site).
 
 The `Peripherals.LED` component (current-reactive icon) is inspired by `Arduino.Components.LED` from the [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) library (CATIA-Systems).
 
@@ -140,7 +140,7 @@ Le dépôt embarque les composants tiers suivants, chacun sous sa propre licence
 | Driver HX711 `hx711_gpio.py` de [robert-hh](https://github.com/robert-hh/hx711), sans modification | `MicroPythonMCU/Resources/Scripts/MCU/` | MIT (en-tête du fichier) |
 | Driver Grove LCD RGB `driver_grove_lcd_rgb.py`, © 2019 Christophe Gueneau, sans modification | `MicroPythonMCU/Resources/Scripts/MCU/` | non précisée par son auteur |
 
-Utilisés mais non fournis : OpenModelica et la Modelica Standard Library (à installer), PulseView (facultatif, pour l'analyseur logique), Zensical (site de documentation).
+Utilisés mais non fournis : OpenModelica et la Modelica Standard Library (à installer), PulseView (facultatif, pour l'analyseur logique ; une copie portable est téléchargée par `get_pulseview.cmd`, GPLv3), Zensical (site de documentation).
 
 Le composant `Peripherals.LED` (icône réactive au courant) s'inspire de `Arduino.Components.LED` de la bibliothèque [Modelica-Arduino](https://github.com/CATIA-Systems/Modelica-Arduino) (CATIA-Systems).
 

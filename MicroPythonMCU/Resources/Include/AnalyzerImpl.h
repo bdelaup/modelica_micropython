@@ -19,12 +19,15 @@
    textFlags[5] : section hexa, chronogramme, bits un par un, trames separees,
    silences comprimes. textSilence, textResolution : 0 = automatique.
    writePulseViewSession : <base>.pvs a cote du VCD, decodeurs regles.
-   pulseViewPath : chemin absolu, ou relatif au dossier de simulation. */
+   pulseViewPath : chemin absolu, ou relatif au dossier de simulation ; vide
+   = recherche automatique (variable d'environnement MICROPYTHONMCU_PULSEVIEW,
+   puis pulseViewLocal, copie portable posee a cote de la bibliotheque par
+   get_pulseview.cmd, puis l'installation par defaut de sigrok). */
 void* LogicAnalyzer_new(const char* fileName, const char* instanceName, const char* channelNames,
                         const int* kinds, const double* baudrates, const int* dataBits, const int* parities,
                         const int* stopBits, const int* msbFirst, const int* clocks, const int* clockFalling,
                         const int* wordBits, const int* signedWords,
-                        int writeVcd, int writePulseViewSession, int openPulseView, const char* pulseViewPath,
+                        int writeVcd, int writePulseViewSession, int openPulseView, const char* pulseViewPath, const char* pulseViewLocal,
                         int writeText, int openText, const int* textFlags,
                         double textSilence, double textResolution, int textWidth);
 

@@ -55,8 +55,12 @@ __pycache__/
 *.vcd
 /MicroPythonMCU/Resources/Verification/*.analyzer.txt
 /MicroPythonMCU/Resources/Verification/*.analyzer.pvs
-# Copie portable de PulseView (dossier d'installation recopie, ~50 Mo, GPLv3) : hors depot pour l'instant
+# Copie portable de PulseView (dossier d'installation recopie, ~50 Mo, GPLv3) :
+# hors depot, telechargee par get_pulseview.cmd ; son zip, fait par
+# make_pulseview_zip.sh, est publie dans le registre de paquets GitLab
 /PulseView/
+/PulseView.part/
+/pulseview-*-portable.zip
 /dist/
 
 # Site de documentation construit par Zensical (zensical build / serve) et son cache

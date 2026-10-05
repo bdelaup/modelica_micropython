@@ -1,6 +1,6 @@
 # Lancer les scripts sous Windows
 
-Les outils du dépôt sont des scripts bash : la suite de vérification (`run_tests.sh`), la construction du site (`make_docs.sh`), la table d'import Python (`make_pyimports.sh`) et le débogueur vendoré (`make_debugpy.sh`). Sous Windows, ils tournent avec le bash de **Git for Windows** (« Git Bash »). Un lanceur `.cmd` du même nom, à la racine du dépôt, s'occupe de le trouver : on les lance depuis PowerShell, cmd ou l'Explorateur sans ouvrir Git Bash.
+Les outils du dépôt sont des scripts bash : la suite de vérification (`run_tests.sh`), la construction du site (`make_docs.sh`), la table d'import Python (`make_pyimports.sh`), le débogueur vendoré (`make_debugpy.sh`) et le zip de PulseView (`make_pulseview_zip.sh`). Sous Windows, ils tournent avec le bash de **Git for Windows** (« Git Bash »). Un lanceur `.cmd` du même nom, à la racine du dépôt, s'occupe de le trouver : on les lance depuis PowerShell, cmd ou l'Explorateur sans ouvrir Git Bash.
 
 ## Prérequis
 
@@ -10,6 +10,7 @@ Les outils du dépôt sont des scripts bash : la suite de vérification (`run_te
 | OpenModelica | `run_tests`, `make_pyimports` | installation habituelle, plus `OPENMODELICAHOME` (ci-dessous) |
 | Python + `pip install zensical` | `make_docs` | Python du poste |
 | Python + `pip` | `make_debugpy` | Python du poste |
+| 7-Zip + Python | `make_pulseview_zip` | <https://www.7-zip.org> (cherché dans le `PATH` puis dans `Program Files\7-Zip\`) |
 
 ## Régler `OPENMODELICAHOME` une fois pour toutes
 
@@ -58,6 +59,9 @@ Dans un terminal PowerShell (celui de VS Code convient), **à la racine du dép�
 | `.\make_docs.cmd serve fr` | aperçu local du site français sur <http://localhost:8000> (Ctrl+C pour arrêter) ; `serve en` pour l'anglais |
 | `.\make_pyimports.cmd` | régénère `Resources/Include/pyimports.h` |
 | `.\make_debugpy.cmd` | reconstruit `Resources/Debugpy/` |
+| `.\make_pulseview_zip.cmd` | fabrique le zip de la copie portable de PulseView à partir du nightly de sigrok.org ; `--upload` dépose ce zip dans le registre GitLab (cf. [Publier](publication.md#pulseview-copie-portable)) |
+
+`get_pulseview.cmd`, lui, n'est pas un lanceur de script bash : il s'adresse aux utilisateurs, qui n'ont pas forcément Git Bash, et n'utilise que des outils de Windows (`curl.exe`, `certutil`, `tar.exe`).
 
 Les options sont celles des scripts `.sh` ; leur en-tête les décrit toutes. Le code de sortie est celui du script : `$LASTEXITCODE` vaut 0 si tout passe.
 

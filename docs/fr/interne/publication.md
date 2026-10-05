@@ -82,3 +82,84 @@ Les notes de version, si on en veut, se rédigent dans le message du tag ou dans
 ## Mettre à jour un composant vendoré
 
 - **Débogueur `debugpy`** (`Resources/Debugpy/`, utilisé par `MCU.debugEnabled`) : changer `VERSION` dans `make_debugpy.sh`, puis lancer `./make_debugpy.sh` à la racine, ou `.\make_debugpy.cmd` depuis PowerShell (pip télécharge la roue `cp312` `win_amd64`, le script l'allège et remplace le dossier). Rejouer `verify_60` à `verify_63` et faire un essai dans VS Code avant de livrer : la bibliothèque s'appuie sur quelques rouages internes de pydevd (`_WaitForConnectionThread`, lecteur `reader.sock`, `FilesFiltering._get_default_library_roots`), cf. `cycle-de-vie.md`, section 5.
+
+## PulseView, copie portable
+
+PulseView n'est **pas** dans le dépôt git : un binaire tiers de 50 Mo alourdirait l'historique de tous, alors qu'il reste facultatif (décision « Distribution de PulseView » de `requirements.md`). Sa copie portable voyage sous forme de zip, publié à part dans le **registre de paquets** du projet GitLab.
+
+### La chaîne complète
+
+```
+sigrok.org                    mainteneur                       GitLab                         élève
+nightly Windows   ──────►  make_pulseview_zip.sh  ──────►  registre de paquets  ──────►  get_pulseview.cmd
+(installeur NSIS)          (extrait, trie, zippe,           pulseview/<version>/           (télécharge, vérifie,
+                            réécrit get_pulseview.cmd)      pulseview-…-portable.zip        décompresse en PulseView/)
+```
+
+1. **sigrok.org** publie chaque jour un installeur Windows de PulseView, le *nightly* : <https://sigrok.org/download/binary/pulseview/pulseview-NIGHTLY-x86_64-release-installer.exe>. C'est la version que le projet sigrok recommande ; la dernière version numérotée (0.4.2) est bien plus ancienne. L'adresse ne change pas, son contenu si.
+2. **`make_pulseview_zip.sh`** (mainteneur, à la racine) en tire un zip portable et l'empreinte de ce zip ; `make_pulseview_zip.sh --upload` le dépose, une fois validé.
+3. **Le registre de paquets GitLab** (*Deploy → Package registry*) garde chaque zip sous son numéro de version. Le projet étant public, le téléchargement est anonyme.
+4. **`get_pulseview.cmd`** (élève, à la racine) contient l'adresse et l'empreinte du zip **en dur**. Il le télécharge, vérifie l'empreinte et le décompresse dans `PulseView/`, à côté de `MicroPythonMCU`, où la sonde le trouve d'elle-même (`pulseViewPath` vide, cf. [Analyse des trames](analyse-trames.md)).
+
+Le point clé : `get_pulseview.cmd` désigne **un** zip précis, figé par son empreinte. Un élève qui télécharge la bibliothèque à un tag reçoit le PulseView validé avec ce tag, pas le nightly du jour, qui pourrait casser la session `.pvs`.
+
+### Ce que fait `make_pulseview_zip.sh`
+
+| Étape | Détail |
+|---|---|
+| 1. Téléchargement | L'installeur nightly, par `curl -R` : le fichier prend la date du serveur (`Last-Modified`), qui date le build. `--installer setup.exe` part d'un installeur déjà téléchargé (sa date de modification sert alors de date de build). |
+| 2. Extraction | Par **7-Zip**, qui ouvre l'installeur NSIS **sans l'exécuter** : rien n'est installé, aucun droit administrateur n'est demandé. |
+| 3. Tri | Retrait des exemples (`examples/`), des outils de pilote USB `zadig*.exe` (inutiles pour lire un VCD), du désinstalleur et du dossier interne `$PLUGINSDIR`. Reste ≈ 48 Mo, ≈ 24 Mo compressés. |
+| 4. Version | Lue par `pulseview.exe --version` (`PulseView 0.5.0-git-e2fe9df`). Le lancer compile les décodeurs Python, dont les `__pycache__` sont retirés ensuite. |
+| 5. Licence | Ajout de `PulseView/SOURCES.txt` : origine des fichiers, adresses des sources de PulseView, libsigrok et libsigrokdecode, et sortie complète de `--version` (version exacte de chaque bibliothèque). Avec `COPYING`, fourni par l'installeur, c'est ce que demande la GPLv3 pour redistribuer le binaire. |
+| 6. Zip | `pulseview-<version>-win64-portable.zip` à la racine (ignoré par git), par le `tar.exe` de Windows : le `tar` de Git Bash ne sait pas écrire un zip. Le zip contient un seul dossier, `PulseView/`. |
+| 7. `get_pulseview.cmd` | `PV_VERSION` et `PV_SHA256` réécrits, fins de ligne CRLF conservées. |
+| Dépôt, à part | `--upload` ne fabrique rien : il dépose le zip **déjà fabriqué** que désigne `get_pulseview.cmd`, après avoir vérifié que son empreinte est bien `PV_SHA256`. Ainsi, c'est exactement le zip validé qui part, même si le nightly a changé entre-temps. |
+
+**Numéro de version** : `<version de PulseView>-<date du build>`, par exemple `0.5.0-e2fe9df-20261005`. Le nightly est recompilé avec les bibliothèques sigrok du moment, souvent sans que la version de PulseView elle-même change. La date distingue deux builds, et le registre range chacun sous son propre numéro.
+
+### Prérequis (une seule fois)
+
+- **7-Zip** (<https://www.7-zip.org>) : le script le cherche dans le `PATH`, puis dans `Program Files\7-Zip\`.
+- **Python** du poste, pour réécrire `get_pulseview.cmd`.
+- **Le registre de paquets activé** : *Settings → General → Visibility, project features, permissions → Package registry*.
+- **Un jeton d'accès GitLab**, pour le dépôt : *Settings → Access tokens* (jeton de projet) ou *Preferences → Access tokens* (jeton personnel), portée `api`, rôle Developer au moins. Le garder hors du dépôt.
+
+### Publier un nouveau PulseView
+
+À faire quand on veut un PulseView plus récent, **pas** à chaque tag de la bibliothèque.
+
+1. Fabriquer le zip, sans le publier :
+
+    ```
+    ./make_pulseview_zip.sh                  # Git Bash
+    .\make_pulseview_zip.cmd                 # PowerShell
+    ```
+
+    Le script affiche la version, la taille et l'empreinte, et réécrit `get_pulseview.cmd`.
+2. **Valider ce PulseView** avant de le publier : remplacer le dossier `PulseView/` de la racine par le contenu du zip (le dossier est ignoré par git), simuler `Examples.Analyzer.UartLink` et `Examples.Analyzer.I2cBus` avec `openPulseView = true`, et vérifier que les décodeurs se chargent depuis la session `.pvs`, sans réglage. Le format de cette session n'est pas documenté : c'est lui qui risque de casser d'une version à l'autre.
+3. Déposer ce zip :
+
+    ```
+    GITLAB_TOKEN=glpat-... ./make_pulseview_zip.sh --upload
+    ```
+
+    Depuis PowerShell : `$env:GITLAB_TOKEN = "glpat-..."`, puis `.\make_pulseview_zip.cmd --upload`. Rien n'est refait : le script dépose le zip de l'étape 1, après avoir vérifié son empreinte.
+4. Essayer `get_pulseview.cmd` dans un dossier vierge (une copie du dépôt hors OneDrive, par exemple) : téléchargement, empreinte, décompression.
+5. Committer `get_pulseview.cmd`. Le zip, lui, n'est jamais committé.
+
+Les anciens zips restent dans le registre : un tag plus ancien continue de télécharger le sien. On peut supprimer ceux qu'aucun tag ne désigne plus (*Package registry → pulseview →* version → *Delete*).
+
+### En cas de problème
+
+| Message | Cause, remède |
+|---|---|
+| `7-Zip introuvable` | Installer 7-Zip, ou l'ajouter au `PATH`. |
+| `Pas de pulseview.exe dans l'installeur` | sigrok a changé la structure de son installeur : ouvrir l'installeur avec 7-Zip et adapter l'étape 3 du script. |
+| `Version de PulseView illisible` | `pulseview.exe --version` n'affiche plus `PulseView <version>` : adapter l'étape 4. |
+| `… absent : le fabriquer d'abord` (avec `--upload`) | Le zip désigné par `get_pulseview.cmd` n'est pas à la racine : refaire l'étape 1. |
+| `… empreinte …, get_pulseview.cmd attend …` (avec `--upload`) | Le zip à la racine n'est pas celui que désigne `get_pulseview.cmd` (`get_pulseview.cmd` revenu à une version committée, par exemple) : refaire l'étape 1. |
+| `curl: (22) … 401` ou `403` au dépôt | Jeton absent, expiré, de mauvaise portée (il faut `api`) ou de rôle insuffisant. |
+| `curl: (22) … 404` au dépôt | Registre de paquets désactivé sur le projet. |
+| Côté élève : `empreinte SHA-256 obtenue … attendue …` | `get_pulseview.cmd` désigne un autre zip que celui déposé (zip refait après coup sans redéposer, ou fichier modifié dans le registre). Redéposer le zip dont l'empreinte est dans `get_pulseview.cmd`, ou refaire les étapes 1 à 5. |
+| Côté élève : `Echec du telechargement` | Paquet pas encore déposé, nom de version différent, ou poste sans accès à `gitlab.com` (proxy du lycée). En dernier recours : copier le dossier `PulseView/` à la main, ou utiliser un partage réseau et `MICROPYTHONMCU_PULSEVIEW`. |

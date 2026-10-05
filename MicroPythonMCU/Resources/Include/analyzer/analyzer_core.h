@@ -88,7 +88,8 @@ struct LogicAnalyzer {
     char* base;                      /* nom de base des fichiers (sans extension) */
     struct VcdWriter vcd;
     int write_vcd, open_pulseview, write_pvs;
-    char* pulseview_path;
+    char* pulseview_path;            /* pulseViewPath, absolu ; vide = recherche automatique */
+    char* pulseview_local;           /* copie portable a cote de la bibliotheque (get_pulseview.cmd) */
     int write_text, open_text;
     int opt_hex, opt_wave, opt_bits, opt_split, opt_compress;
     double opt_silence, opt_resolution;

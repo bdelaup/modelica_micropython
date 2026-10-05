@@ -43,7 +43,7 @@ void* LogicAnalyzer_new(const char* fileName, const char* instanceName, const ch
                         const int* kinds, const double* baudrates, const int* dataBits, const int* parities,
                         const int* stopBits, const int* msbFirst, const int* clocks, const int* clockFalling,
                         const int* wordBits, const int* signedWords,
-                        int writeVcd, int writePulseViewSession, int openPulseView, const char* pulseViewPath,
+                        int writeVcd, int writePulseViewSession, int openPulseView, const char* pulseViewPath, const char* pulseViewLocal,
                         int writeText, int openText, const int* textFlags,
                         double textSilence, double textResolution, int textWidth) {
     struct LogicAnalyzer* a;
@@ -109,6 +109,7 @@ void* LogicAnalyzer_new(const char* fileName, const char* instanceName, const ch
     /* chemin relatif : depuis le dossier de simulation (dossier courant), rendu
        absolu tout de suite pour le message d'un echec */
     a->pulseview_path = (pulseViewPath && pulseViewPath[0] != '\0') ? launch_full_path(pulseViewPath) : strdup("");
+    a->pulseview_local = strdup(pulseViewLocal ? pulseViewLocal : "");
     a->write_text = writeText;
     a->open_text = openText;
     a->opt_hex = textFlags[0];
@@ -201,6 +202,72 @@ int LogicAnalyzer_finish(void* an, double currentTime) {
     return 1;
 }
 
+/* Vrai si 'path' designe un fichier lisible. */
+static int an_file_exists(const char* path) {
+    FILE* f = (path && path[0] != '\0') ? fopen(path, "rb") : NULL;
+    if (f) {
+        fclose(f);
+        return 1;
+    }
+    return 0;
+}
+
+/* Chemin de PulseView a lancer, a liberer par free(). pulseViewPath regle :
+   lui, tel quel (un echec du lancement le dira). Vide : le premier present de
+   1. MICROPYTHONMCU_PULSEVIEW, chemin de pulseview.exe ou de son dossier
+      (reglage d'un poste ou d'une salle : copie sur un partage reseau) ;
+   2. la copie portable a cote de la bibliotheque (get_pulseview.cmd) ;
+   3. l'installation par l'installeur sigrok, dans %ProgramFiles%.
+   NULL si aucun : un avertissement dit ou il a ete cherche. */
+static char* an_find_pulseview(const struct LogicAnalyzer* a) {
+    const char* env;
+    char* cand[3] = {NULL, NULL, NULL};
+    char* found = NULL;
+    int i;
+    size_t len;
+    if (a->pulseview_path[0] != '\0') {
+        return strdup(a->pulseview_path);
+    }
+    env = getenv("MICROPYTHONMCU_PULSEVIEW");
+    if (env && env[0] != '\0') {
+        len = strlen(env) + 20;
+        cand[0] = (char*) malloc(len);
+        if (cand[0]) {
+            snprintf(cand[0], len, "%s", env);
+            if (!an_file_exists(cand[0])) {
+                /* un dossier : pulseview.exe dedans */
+                snprintf(cand[0], len, "%s/pulseview.exe", env);
+            }
+        }
+    }
+    cand[1] = strdup(a->pulseview_local);
+    env = getenv("ProgramFiles");
+    if (!env || env[0] == '\0') {
+        env = "C:/Program Files";
+    }
+    len = strlen(env) + 40;
+    cand[2] = (char*) malloc(len);
+    if (cand[2]) {
+        snprintf(cand[2], len, "%s/sigrok/PulseView/pulseview.exe", env);
+    }
+    for (i = 0; i < 3 && !found; i++) {
+        if (an_file_exists(cand[i])) {
+            found = cand[i];
+            cand[i] = NULL;
+        }
+    }
+    if (!found) {
+        ModelicaFormatWarning("Logic analyser %s: PulseView not found (looked for %s%s%s and %s) - run get_pulseview.cmd "
+                              "at the root of the library, or set pulseViewPath; open %s by hand\n",
+                              a->name, cand[0] ? cand[0] : "", cand[0] ? ", " : "",
+                              cand[1] ? cand[1] : "", cand[2] ? cand[2] : "", a->vcd.path);
+    }
+    for (i = 0; i < 3; i++) {
+        free(cand[i]);
+    }
+    return found;
+}
+
 /* Fin de simulation : clot le VCD, ecrit le fichier texte, dit ou ils sont,
    et les ouvre si demande (lanceur commun, launch.c). */
 void LogicAnalyzer_destroy(void* an) {
@@ -229,7 +296,11 @@ void LogicAnalyzer_destroy(void* an) {
             }
         }
         if (a->open_pulseview && a->vcd.path) {
-            launch_detached("PulseView", a->pulseview_path, "-c -I vcd", a->vcd.path);
+            char* exe = an_find_pulseview(a);
+            if (exe) {
+                launch_detached("PulseView", exe, "-c -I vcd", a->vcd.path);
+                free(exe);
+            }
         }
     }
     if (a->write_text && a->total_edges > 0) {
@@ -258,6 +329,7 @@ void LogicAnalyzer_destroy(void* an) {
     free(a->busy_maxb);
     free(a->vcd.path);
     free(a->pulseview_path);
+    free(a->pulseview_local);
     free(a->base);
     free(a->name);
     free(a);
