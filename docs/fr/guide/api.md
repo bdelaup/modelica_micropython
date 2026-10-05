@@ -1,6 +1,6 @@
 # API `machine` / `time`
 
-Cette page liste ce qu'un programme exécuté par le [`MCU`](mcu.md) peut appeler : le sous-ensemble de l'API MicroPython `machine`/`time` du Raspberry Pi Pico réellement implémenté. Un programme écrit pour la carte fonctionne tel quel s'il s'en tient à ce sous-ensemble. La même API vaut pour la [carte `RPi_Pico`](pico.md), avec les différences de la carte réelle signalées ci-dessous (« Sur la Pico »). Pour savoir *comment* ces modules sont construits, voir la référence interne : [Intégration de Python](../interne/integration-python.md) et [Cycle de vie](../interne/cycle-de-vie.md). L'implémentation exacte (source de vérité) est le fichier [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté tel quel par `PyRuntime_new` avant le script utilisateur.
+Cette page liste ce qu'un programme exécuté par le [`MCU`](mcu.md) peut appeler : le sous-ensemble de l'API MicroPython `machine`/`time` du Raspberry Pi Pico réellement implémenté. Un programme écrit pour la carte fonctionne tel quel s'il s'en tient à ce sous-ensemble. Pour le détail de chaque classe, se reporter à la [documentation officielle de MicroPython](https://docs.micropython.org/en/latest/) — en particulier à la [référence rapide du port rp2](https://docs.micropython.org/en/latest/rp2/quickref.html) (Raspberry Pi Pico) — : chaque section ci-dessous y renvoie, et ne décrit que ce qui est simulé et ce qui diffère. La même API vaut pour la [carte `RPi_Pico`](pico.md), avec les différences de la carte réelle signalées ci-dessous (« Sur la Pico »). Pour savoir *comment* ces modules sont construits, voir la référence interne : [Intégration de Python](../interne/integration-python.md) et [Cycle de vie](../interne/cycle-de-vie.md). L'implémentation exacte (source de vérité) est le fichier [`MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py), lu et exécuté tel quel par `PyRuntime_new` avant le script utilisateur.
 
 **Notion clé** : un appel qui *synchronise* rend la main à Modelica (le solveur peut avancer le temps simulé, éventuellement jusqu'à un `sleep` en cours) avant de continuer le script — c'est ce qui rend une transition d'entrée ou un `sleep` visibles/compressibles côté simulation. Un appel qui ne synchronise pas est une simple lecture immédiate de l'état déjà connu du script.
 
@@ -9,6 +9,8 @@ Cette page liste ce qu'un programme exécuté par le [`MCU`](mcu.md) peut appele
 ![Impulsion et rafale produites sans sleep](../images/sim/gpio-timing.svg)
 
 ## `machine.Pin`
+
+*Documentation officielle MicroPython : [`machine.Pin`](https://docs.micropython.org/en/latest/library/machine.Pin.html) · port rp2 : [quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html#pins-and-gpio)*
 
 ```python
 from machine import Pin
@@ -53,6 +55,8 @@ Constantes de `trigger` : `Pin.IRQ_RISING = 1`, `Pin.IRQ_FALLING = 2` (à combin
 
 ## `machine.ADC`
 
+*Documentation officielle MicroPython : [`machine.ADC`](https://docs.micropython.org/en/latest/library/machine.ADC.html) · port rp2 : [quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html#adc-analog-to-digital-conversion)*
+
 ```python
 from machine import ADC
 adc = ADC(1)                   # ou ADC(Pin(1))
@@ -72,6 +76,8 @@ v = adc.read_u16()             # 0-65535
 | `.read_u16()` | `read_u16() -> int` | Lit la tension mesurée sur la broche et la restitue sur 16 bits (`round(v / Vref * 65535)`, bornée à `[0, 65535]` ; `Vref` = `VOH` pour `MCU`, `ADC_VREF` pour la Pico) | Oui |
 
 ## `machine.PWM`
+
+*Documentation officielle MicroPython : [`machine.PWM`](https://docs.micropython.org/en/latest/library/machine.PWM.html) · port rp2 : [quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html#pwm-pulse-width-modulation)*
 
 ```python
 from machine import Pin, PWM
@@ -97,6 +103,8 @@ Une fois configuré, le créneau est généré **en continu côté Modelica** (e
 | `.deinit()` | `deinit()` | Arrête le PWM ; la broche repasse en sortie numérique classique (bas par défaut) | Oui |
 
 ## `machine.Timer`
+
+*Documentation officielle MicroPython : [`machine.Timer`](https://docs.micropython.org/en/latest/library/machine.Timer.html) · port rp2 : [quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html#timers)*
 
 ```python
 from machine import Timer
@@ -127,6 +135,8 @@ Minuteur logiciel : une fois armé, le callback continue de se déclencher **pen
 
 ## `machine.Display`
 
+*Propre à cette bibliothèque : `machine.Display` n'existe pas dans MicroPython (outil pédagogique, voir [LED et afficheur](peripheriques/led-afficheur.md)).*
+
 ```python
 from machine import Display
 display = Display(0)
@@ -146,6 +156,8 @@ Liaison logique unique et **écriture seule** vers un périphérique d'affichage
 | `.write(text)` | `write(text)` | Transmet `text` (converti en `str` si nécessaire) au périphérique câblé sur `MCU.Display0` ; livraison instantanée, message entier d'un coup (pas de découpage octet par octet) | Oui |
 
 ## `machine.UART`
+
+*Documentation officielle MicroPython : [`machine.UART`](https://docs.micropython.org/en/latest/library/machine.UART.html) · port rp2 : [quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html#uart-serial-bus)*
 
 ```python
 from machine import Pin, UART
@@ -186,6 +198,8 @@ uart = UART(0, baudrate=1200, bits=8, parity=0, stop=2, tx=Pin(5), rx=Pin(4))   
 
 ## `machine.I2C`
 
+*Documentation officielle MicroPython : [`machine.I2C`](https://docs.micropython.org/en/latest/library/machine.I2C.html) · port rp2 : [quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html#hardware-i2c-bus), [I2C logiciel](https://docs.micropython.org/en/latest/rp2/quickref.html#software-i2c-bus)*
+
 ```python
 from machine import Pin, I2C
 i2c = I2C(0, scl=Pin(4), sda=Pin(5), freq=100000)   # ou I2C(scl=Pin(4), sda=Pin(5))
@@ -220,6 +234,8 @@ Bus I2C **électriquement réel**, en drain ouvert, sur deux broches `GPx` : le 
 **Erreurs** : `OSError(EIO)` (errno 5) si l'adresse n'est pas acquittée ; `OSError(ETIMEDOUT)` (errno 110) si une ligne reste basse (pas de tirage externe, bus bloqué) ; `OSError(EBUSY)` (errno 16) pour un appel depuis un callback de Timer/IRQ pendant une transaction.
 
 ## `machine.I2CTarget`
+
+*Documentation officielle MicroPython : [`machine.I2CTarget`](https://docs.micropython.org/en/latest/library/machine.I2CTarget.html)*
 
 ```python
 from machine import Pin, I2CTarget
@@ -268,6 +284,8 @@ Constantes d'événement : `IRQ_ADDR_MATCH_READ`, `IRQ_ADDR_MATCH_WRITE` (adress
 
 ## Système de fichiers : `open()` et `os`
 
+*Documentation officielle MicroPython : [`os`](https://docs.micropython.org/en/latest/library/os.html), [systèmes de fichiers](https://docs.micropython.org/en/latest/reference/filesystem.html)*
+
 ```python
 import os
 
@@ -307,6 +325,8 @@ import capteurs                # /lib/capteurs.py de la flash, ou dossier désig
 
 ## Fonctions de `machine`
 
+*Documentation officielle MicroPython : [module `machine`](https://docs.micropython.org/en/latest/library/machine.html)*
+
 ```python
 from machine import disable_irq, enable_irq, idle
 state = disable_irq()
@@ -321,6 +341,8 @@ enable_irq(state)
 | `idle()` | Rend la main jusqu'à la milliseconde ronde suivante (le tic système du RP2040), plus tôt si une broche en entrée change — comme un `sleep` | Oui |
 
 ## `time`
+
+*Documentation officielle MicroPython : [`time`](https://docs.micropython.org/en/latest/library/time.html) · port rp2 : [quick reference](https://docs.micropython.org/en/latest/rp2/quickref.html#delay-and-timing)*
 
 ```python
 import time

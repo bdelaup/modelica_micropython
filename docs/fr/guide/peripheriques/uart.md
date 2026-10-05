@@ -50,6 +50,9 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 
 ## Connecteurs
 
+Côté programme, la liaison s'écrit avec `machine.UART` : voir [l'API](../api.md#machineuart) et la documentation officielle MicroPython ([`machine.UART`](https://docs.micropython.org/en/latest/library/machine.UART.html), [port rp2](https://docs.micropython.org/en/latest/rp2/quickref.html#uart-serial-bus)).
+
+
 | Connecteur | Rôle |
 |---|---|
 | `TX` | Émission de l'appareil, vers la broche RX du microcontrôleur |

@@ -9,7 +9,7 @@ Which one to choose?
 
 Both blocks contain the **same programmable core** (`core`, an `Internal.McuCore` component: the RP2040 and its program). Opening the internal diagram of the Pico (*Diagram* tab) shows this core wired to the USB connector, the Schottky diode, the regulator, the sensing dividers and the LED, as on the board. The icon has the real proportions of the board (21 × 51 mm, pins at a 2.54 mm pitch); a **lightning bolt** on the USB connector shows that it is supplied by the cable (`usbConnected`).
 
-<!-- ILLUSTRATION pico-icone : icon of RPi_Pico in OMEdit (see docs/ILLUSTRATIONS.md) -->
+![Icon of RPi_Pico: the board seen from above, 40 pins with the real pinout, lightning bolt on the USB connector when it is supplied by the cable](../images/pico-icone.png){ width="220" }
 
 ## Pinout
 
@@ -39,9 +39,21 @@ The board only runs its program while it is **supplied**. Three ways to do it, a
 2. **Through `VSYS`**, typically one or two AA cells, with `usbConnected = false`. The regulator is a *buck-boost*: it delivers 3.3 V even when `VSYS` is below (1.8 to 5.5 V).
 3. **Through `VBUS`** with an external 5 V supply, `usbConnected = false`.
 
+![Block diagram of the power supply of the Pico: USB cable, VBUS, Schottky diode, VSYS, buck-boost regulator, 3.3 V rail to the RP2040, ADC_VREF and 3V3(OUT), sensing dividers to GP24 and GP29, 3V3_EN and RUN](../images/pico-alimentation-en.svg)
+
+*Block diagram of the power supply, with the numbers of the physical pins. The colours are those of the wires of the internal diagram of `RPi_Pico` in OMEdit.*
+
+In OMEdit, the internal diagram of `RPi_Pico` (*Diagram* tab) shows this wiring as modelled, with the same colours: the core `core` (RP2040), the USB, the diode, the dividers, the regulator, the `ADC_VREF` filter and the LED.
+
+![Internal diagram of RPi_Pico in OMEdit: GPIO on the left, RP2040 core in the middle, power supply at the top right, grounds at the bottom](../images/pico-schema-interne.png){ width="700" }
+
 The **regulator** makes the 3.3 V rail from `VSYS`. It is an averaged model, without switching: the output is held at 3.3 V, and the current drawn from `VSYS` is the power delivered divided by the efficiency (`eta`, 0.9) and by the voltage of `VSYS`. The rail supplies the RP2040 and its flash (`ICore`, 20 mA), **the pins** — the current of an LED on an output is drawn from the rail, hence from the battery — and the `3V3(OUT)` output.
 
 Budget example, two AA cells (3 V): 20 mA × 3.3 V / (0.9 × 3 V) ≈ 24.5 mA drawn from the cells, program alone; a few milliamps more per lit LED.
+
+![Current of the cells in Pico.Battery: about 24.5 mA with the LEDs off, 30 mA with the LEDs on, following the blinking of GP15](../images/sim/pico-battery.svg)
+
+*Pico.Battery: "courant des piles" = current of the cells, "LED éteintes / allumées" = LEDs off / on.*
 
 ### Power-on and power loss
 
@@ -50,6 +62,10 @@ Budget example, two AA cells (3 V): 20 mA × 3.3 V / (0.9 × 3 V) ≈ 24.5 mA dr
 - A board that is never supplied runs nothing; the simulation ends normally.
 
 Example: [`Pico.PowerUp`](exemples.md#raspberry-pi-pico-board-examplespico), a ramp on `VSYS`.
+
+![Pico.PowerUp: VSYS rises from 0 to 3 V, the 3.3 V rail appears at 1.8 V and the program starts, GP15 toggles, then VSYS falls to 1 V and everything stops](../images/sim/pico-power.svg)
+
+*"démarrage du régulateur" = regulator start-up, "carte alimentée" = board supplied, "le programme démarre" = the program starts, "arrêt définitif, broches relâchées" = stopped for good, pins released, "temps" = time.*
 
 ### Supplying the peripherals from the board
 
@@ -111,3 +127,10 @@ The tabs of the `MCU` block are the same (script, execution time, file system, d
 | `pico.builtinLed.…` | On-board LED |
 
 For the current of a battery, put a `CurrentSensor` on the `VSYS` wire, as in the [`Pico.Battery`](exemples.md#raspberry-pi-pico-board-examplespico) example.
+
+## Further reading
+
+- [MicroPython quick reference of the rp2 port](https://docs.micropython.org/en/latest/rp2/quickref.html): the API as it runs on the real board; [rp2 port general information](https://docs.micropython.org/en/latest/rp2/general.html); [`rp2` module](https://docs.micropython.org/en/latest/library/rp2.html) (PIO, not simulated).
+- [Raspberry Pi Pico datasheet](https://datasheets.raspberrypi.com/pico/pico-datasheet.pdf): schematic, power supply ("Powering Pico" chapter), dimensions; [pinout](https://datasheets.raspberrypi.com/pico/Pico-R3-A4-Pinout.pdf).
+- [RP2040 datasheet](https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf): pin multiplexing (GPIO functions), ADC and temperature sensor.
+- [Raspberry Pi documentation of the Pico boards](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html).

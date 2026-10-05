@@ -9,7 +9,7 @@ Quand choisir l'un ou l'autre ?
 
 Les deux blocs contiennent le **même cœur programmable** (`core`, un composant `Internal.McuCore` : le RP2040 et son programme). Ouvrir le schéma interne de la Pico (onglet *Diagram*) montre ce cœur câblé au connecteur USB, à la diode Schottky, au régulateur, aux diviseurs de mesure et à la LED, comme sur la carte. L'icône a les proportions réelles de la carte (21 × 51 mm, broches au pas de 2,54 mm) ; un **éclair** sur le connecteur USB signale qu'elle est alimentée par le câble (`usbConnected`).
 
-<!-- ILLUSTRATION pico-icone : icône de RPi_Pico dans OMEdit (cf. docs/ILLUSTRATIONS.md) -->
+![Icône de RPi_Pico : la carte vue de dessus, 40 broches au brochage réel, éclair sur le connecteur USB quand elle est alimentée par le câble](../images/pico-icone.png){ width="220" }
 
 ## Brochage
 
@@ -39,9 +39,19 @@ La carte n'exécute son programme que si elle est **alimentée**. Trois façons 
 2. **Par `VSYS`**, typiquement une pile ou deux piles AA, avec `usbConnected = false`. Le régulateur est un *buck-boost* : il fournit 3,3 V même si `VSYS` est en dessous (de 1,8 à 5,5 V).
 3. **Par `VBUS`** avec une alimentation 5 V externe, `usbConnected = false`.
 
+![Schéma de principe de l'alimentation de la Pico : câble USB, VBUS, diode Schottky, VSYS, régulateur buck-boost, rail 3,3 V vers le RP2040, ADC_VREF et 3V3(OUT), diviseurs de mesure vers GP24 et GP29, 3V3_EN et RUN](../images/pico-alimentation.svg)
+
+*Schéma de principe de l'alimentation, avec les numéros des broches physiques. Les couleurs sont celles des fils du schéma interne de `RPi_Pico` dans OMEdit.*
+
+Dans OMEdit, le schéma interne de `RPi_Pico` (onglet *Diagram*) montre ce câblage tel qu'il est modélisé, avec les mêmes couleurs : le cœur `core` (RP2040), l'USB, la diode, les diviseurs, le régulateur, le filtre d'`ADC_VREF` et la LED.
+
+![Schéma interne de RPi_Pico dans OMEdit : GPIO à gauche, cœur RP2040 au centre, alimentation en haut à droite, masses en bas](../images/pico-schema-interne.png){ width="700" }
+
 Le **régulateur** fabrique le rail 3,3 V à partir de `VSYS`. C'est un modèle moyen, sans découpage : la tension de sortie est tenue à 3,3 V, et le courant tiré de `VSYS` vaut la puissance fournie divisée par le rendement (`eta`, 0,9) et par la tension de `VSYS`. Le rail alimente le RP2040 et sa flash (`ICore`, 20 mA), **les broches** — le courant d'une LED branchée sur une sortie est pris sur le rail, donc sur la pile — et la sortie `3V3(OUT)`.
 
 Exemple de bilan, deux piles AA (3 V) : 20 mA × 3,3 V / (0,9 × 3 V) ≈ 24,5 mA tirés des piles, programme seul ; quelques milliampères de plus par LED allumée.
+
+![Courant des piles dans Pico.Battery : environ 24,5 mA LED éteintes, 30 mA LED allumées, au rythme du clignotement de GP15](../images/sim/pico-battery.svg)
 
 ### Mise sous tension et coupure
 
@@ -50,6 +60,8 @@ Exemple de bilan, deux piles AA (3 V) : 20 mA × 3,3 V / (0,9 × 3 V) ≈ 24,5 m
 - Une carte jamais alimentée n'exécute rien ; la simulation se termine normalement.
 
 Exemple : [`Pico.PowerUp`](exemples.md#carte-raspberry-pi-pico-examplespico), une rampe sur `VSYS`.
+
+![Pico.PowerUp : VSYS monte de 0 à 3 V, le rail 3,3 V apparaît à 1,8 V et le programme démarre, GP15 bascule, puis VSYS retombe à 1 V et tout s'arrête](../images/sim/pico-power.svg)
 
 ### Alimenter les périphériques par la carte
 
@@ -111,3 +123,10 @@ Les onglets du bloc `MCU` sont les mêmes (script, temps d'exécution, système 
 | `pico.builtinLed.…` | LED embarquée |
 
 Pour le courant d'une pile, placer un `CurrentSensor` sur le fil de `VSYS`, comme dans l'exemple [`Pico.Battery`](exemples.md#carte-raspberry-pi-pico-examplespico).
+
+## Pour aller plus loin
+
+- [Référence rapide MicroPython du port rp2](https://docs.micropython.org/en/latest/rp2/quickref.html) : l'API telle qu'elle tourne sur la vraie carte ; [généralités du port rp2](https://docs.micropython.org/en/latest/rp2/general.html) ; [module `rp2`](https://docs.micropython.org/en/latest/library/rp2.html) (PIO, non simulé).
+- [Fiche technique de la Raspberry Pi Pico](https://datasheets.raspberrypi.com/pico/pico-datasheet.pdf) : schéma, alimentation (chapitre « Powering Pico »), cotes ; [brochage](https://datasheets.raspberrypi.com/pico/Pico-R3-A4-Pinout.pdf).
+- [Fiche technique du RP2040](https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf) : multiplexage des broches (fonctions des GPIO), ADC et capteur de température.
+- [Documentation Raspberry Pi des cartes Pico](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html).

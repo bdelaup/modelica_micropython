@@ -34,9 +34,9 @@ equation
   connect(pico.GND_18, ground.p) annotation(
     Line(points = {{-29, -60}, {-36, -60}, {-36, -100}, {-50, -100}}, color = {0, 0, 255}));
   annotation(
-    Diagram(coordinateSystem(extent = {{-120, 120}, {160, -120}})),
+    Diagram(coordinateSystem(extent = {{-120, -120}, {160, 120}})),
     experiment(StopTime = 4.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
-<p>Without the USB cable (<code>usbConnected = false</code>), the Pico is supplied by two AA cells (3 V, 0.3 Ω) on <code>VSYS</code>; the regulator makes the 3.3 V rail from it (buck-boost: VSYS may be below 3.3 V). Expected result: the same blinking as <code>Blink</code>, the log prints VSYS ≈ 3 V. <code>iBattery.i</code> (also <code>pico.iSys</code>) is about 25 mA while the LED is off — RP2040 and flash, 20 mA under 3.3 V, divided by the efficiency (0.9) and by VSYS — and rises by about 4 mA while the LED on GP15 is lit: the current of the pin is drawn from the 3.3 V rail.</p>
+<p>Without the USB cable (<code>usbConnected = false</code>), the Pico is supplied by two AA cells (3 V, 0.3 Ω) on <code>VSYS</code>; the regulator makes the 3.3 V rail from it (buck-boost: VSYS may be below 3.3 V). Expected result: the same blinking as <code>Blink</code>, the log prints VSYS ≈ 3 V. <code>iBattery.i</code> (also <code>pico.iSys</code>) is about 25 mA while the LED is off — RP2040 and flash, 20 mA under 3.3 V, divided by the efficiency (0.9) and by VSYS — and rises by about 6 mA while the LEDs (on-board and GP15, lit together) are on: the current of the pins is drawn from the 3.3 V rail.</p>
 </html>"));
 end Battery;

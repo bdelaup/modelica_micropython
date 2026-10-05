@@ -53,7 +53,11 @@ Les images « oui » ont été faites le 2026-10-02 (voir ci-dessous) ; celles q
 | `logo.svg`, `logo.png` | en-tête et onglet du site, `interne/architecture.md` | Miroir de l'icône de `package.mo`, resynchronisé à la main |
 | `BasicBlink.gif`, `BasicBlink.png` | accueil, `guide/premiers-pas.md` | Capture de la relecture de `BasicBlink`. **À refaire** : montre encore « (v0) » sous « MCU », retiré de l'icône le 2026-10-02 |
 | `library_tree.png` | `guide/premiers-pas.md` | Capture de l'explorateur d'OMEdit |
-| `broche-modele.svg` | `guide/mcu.md` (FR et EN) | Schéma du pont électrique d'une broche (source, `ROut`, interrupteur, tirages internes, capteur), dessiné à la main en SVG d'après `MCU.mo`. À retoucher si le pont change (drain ouvert, etc.). Texte en français, traduit dans la légende de la page anglaise |
+| `broche-modele.svg` | `guide/mcu.md` (FR et EN) | Schéma du pont électrique d'une broche (source, `ROut`, interrupteur, tirages internes, capteur), dessiné à la main en SVG d'après l'ancien `MCU.mo`. **À refaire** : depuis le 2026-10-04, l'étage de sortie est la brique `Internal.PinBridge` du cœur (deux conductances `1/ROut`, vers l'alimentation `vdd` et vers `VOL`, sans source ni interrupteur) ; le texte de `guide/mcu.md` est à jour, pas l'image. Texte en français, traduit dans la légende de la page anglaise |
+| `pico-icone.png` | `guide/pico.md` (FR et EN) | Capture MCP de l'icône de `RPi_Pico`, `--no-name`. Icône générée par `make_pico.py` : la recapturer après toute retouche du générateur |
+| `pico-schema-interne.png` | `guide/pico.md` (FR et EN), `interne/cartes.md` | Capture MCP de la vue *Diagramme* de `RPi_Pico` (fils colorés par réseau, zones de fond), générée par `make_pico.py` |
+| `exemple-pico-blink.png`, `exemple-pico-battery.png`, `exemple-pico-powerup.png` | vignettes de `guide/exemples.md` (FR et EN) | Captures MCP des vues *Diagramme* des exemples `Pico.*` |
+| `pico-alimentation.svg`, `pico-alimentation-en.svg` | `guide/pico.md` (FR, EN), `interne/cartes.md` | Schéma de principe de l'alimentation de la Pico, dessiné à la main en SVG d'après `make_pico.py` (mêmes couleurs que les fils du schéma interne). **Version anglaise à part** (demande de l'utilisateur, exception à la règle « texte en français ») : `-en.svg` est produite à partir du français par la table de traductions de `python docs/figures/make_pico_alimentation_en.py` ; retoucher d'abord le français, puis répercuter dans l'anglais. À retoucher si l'arbre d'alimentation change |
 | `sim/*.svg` | pages du guide | Générées par `docs/figures/make_figures.py` |
 
 ## Courbes de simulation générées
@@ -79,6 +83,8 @@ python docs/figures/make_figures.py uart hx711     # certaines
 | `kitchen-scale.svg` | `Weighing.KitchenScale` | `totalMass.y`, `hx.code`, appui TARE | chaîne de pesée |
 | `radio-modulations.svg` | `Radio.Modulations` (pas de 2,5 µs) | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx`, grille des bits de `U` | liaison radio |
 | `radio-overflow.svg` | `Radio.Overflow` | `radioA.txFill`, `radioA.nDropped`, `radioA.carrierOn` | liaison radio |
+| `pico-power.svg` | `Pico.PowerUp` | `pico.vSys`, `pico.vRail`, `pico.GP15.v`, `pico.core.powerGood` | carte Pico, exemples |
+| `pico-battery.svg` | `Pico.Battery` | `iBattery.i`, `pico.GP15.v` | carte Pico |
 
 À relancer quand un exemple ou un composant tracé change. Prérequis : `omc` (via `OPENMODELICAHOME` ou le `PATH`) et `matplotlib`. Compter quelques minutes : chaque figure compile son exemple.
 

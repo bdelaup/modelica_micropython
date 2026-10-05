@@ -54,6 +54,9 @@ The `I2c.GroveLcd` example drives this display with an **off-the-shelf MicroPyth
 
 ## Connectors
 
+On the program side, the bus is written with `machine.I2C` (controller) or `machine.I2CTarget` (target): see [the API](../api.md#machinei2c) and the official MicroPython documentation ([`machine.I2C`](https://docs.micropython.org/en/latest/library/machine.I2C.html), [`machine.I2CTarget`](https://docs.micropython.org/en/latest/library/machine.I2CTarget.html), [rp2 port](https://docs.micropython.org/en/latest/rp2/quickref.html#hardware-i2c-bus)).
+
+
 | Connector | Role |
 |---|---|
 | `SDA` | Bus data |

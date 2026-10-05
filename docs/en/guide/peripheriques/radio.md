@@ -63,7 +63,14 @@ The modulated signal `sTx` is drawn with a **scaled carrier**, `fDisplay`, four 
 | `BPSK` | inverted carrier | carrier |
 
 !!! warning "Seeing the carrier: reduce the output interval"
-    `sTx` is only stored at the output points of the simulation. To see the carrier, the output interval must be much shorter than its period: for example 10 µs for 4800 Hz, as in `Radio.Modulations`. With the default interval, the curve looks wrong (aliasing) although the link works. The result file grows fast: simulate a short duration.
+    `sTx` is only stored at the output points of the simulation. To see the carrier, the output interval must be much shorter than its period: about ten points per period at least. With too long an interval, the curve jumps at random between -1 and +1 (aliasing) although the link works.
+
+    | Air data rate | Drawn carrier (default) | Advised interval | Example |
+    |---|---|---|---|
+    | 1200 bit/s | 4800 Hz (FSK: 3600 and 6000 Hz) | 10 µs | `Radio.Modulations` |
+    | 9600 bit/s | 38.4 kHz (FSK: 28.8 and 48 kHz) | 2 µs | `Radio.Link` |
+
+    The price: at 2 µs, `Radio.Link` (0.25 s simulated) writes a result file of about 150 MB and simulates about six times slower than at 100 µs. Simulate a short duration, or keep a long interval when you do not look at the carrier. Raising `fDisplay` calls for an even shorter interval.
 
 ## Parameters
 
@@ -99,10 +106,13 @@ The modulated signal `sTx` is drawn with a **scaled carrier**, `fDisplay`, four 
 
 | Parameter | Default | Role |
 |---|---|---|
-| `fDisplay` | 4 × `airBaudrate` | Scaled carrier used to draw `sTx` |
+| `fDisplay` | 4 × `airBaudrate` | Scaled carrier used to draw `sTx`; the higher it is, the shorter the output interval must be |
 | `deltaFDisplay` | `airBaudrate` | FSK: frequency shift of the drawn carrier |
 | `askLowAmplitude` | 0.3 | ASK: amplitude drawn for a 0 |
 | `tickPeriod` | 0.1 s | Period of the minimal sync point; a safety net |
+
+!!! note "Setting `fDisplay` from the air data rate"
+    The default value shown in grey, `4*airBaudrate`, is written in the radio module itself, where `airBaudrate` is a neighbouring parameter. A value entered in the parameter dialog is written in the model that contains the module: the module must be named there, `radioA(fDisplay = 16*radioA.airBaudrate)`. Writing `16*airBaudrate` gives the error `Variable airBaudrate not found in scope`.
 
 The *Electrical* tab is the one of the [serial devices](uart.md#electrical-electrical-tab), optional `VCC` pin included (`useSupplyPin`): for the budget of a supply, set `IQ` to the consumption of the module (an APC220 draws about 25 to 35 mA).
 

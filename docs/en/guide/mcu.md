@@ -1,6 +1,6 @@
 # The `MCU` block
 
-`MicroPythonMCU.MCU` is the microcontroller: a package with 8 input/output pins, a ground, a link to a teaching display and an on-board LED. Its behaviour is entirely described by the Python program given by `scriptPath`. Its reference is the Raspberry Pi Pico (RP2040), whose MicroPython API it reproduces; the icon deliberately reads "MCU". Inside, a programmable core (`core`, an `Internal.McuCore` component) — the same as in the [Raspberry Pi Pico board](pico.md) —, an ideal supply `VOH` and the on-board LED: the internal diagram (*Diagram* tab) shows them wired. For a board with its real supply pins and regulator, see [`RPi_Pico`](pico.md).
+`MicroPythonMCU.MCU` is the microcontroller: a package with 8 input/output pins, a ground, a link to a teaching display and an on-board LED. Its behaviour is entirely described by the Python program given by `scriptPath`. Its reference is the Raspberry Pi Pico (RP2040), whose MicroPython API it reproduces ([rp2 port](https://docs.micropython.org/en/latest/rp2/quickref.html)); the icon deliberately reads "MCU". Inside, a programmable core (`core`, an `Internal.McuCore` component) — the same as in the [Raspberry Pi Pico board](pico.md) —, an ideal supply `VOH` and the on-board LED: the internal diagram (*Diagram* tab) shows them wired. For a board with its real supply pins and regulator, see [`RPi_Pico`](pico.md).
 
 ![Icon of the MCU block](../images/mcu-icone.png){ width="200" }
 

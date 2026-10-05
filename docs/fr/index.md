@@ -2,7 +2,7 @@
 
 **Un microcontrôleur programmable en Python, à poser dans un schéma OpenModelica.**
 
-`MicroPythonMCU` est une bibliothèque [OpenModelica](https://openmodelica.org/) dont le bloc `MCU` exécute un vrai script Python, écrit avec l'API [MicroPython](https://micropython.org/) (`machine`, `time`), celle du Raspberry Pi Pico. Ses broches sont de vrais nœuds électriques : le script pilote et mesure le circuit Modelica qui l'entoure. On met ainsi au point un programme embarqué sur le jumeau numérique d'un système, avant de le téléverser sur la carte réelle.
+`MicroPythonMCU` est une bibliothèque [OpenModelica](https://openmodelica.org/) dont le bloc `MCU` exécute un vrai script Python, écrit avec l'API [MicroPython](https://micropython.org/) (`machine`, `time`), celle du Raspberry Pi Pico ([documentation officielle](https://docs.micropython.org/en/latest/), [port rp2](https://docs.micropython.org/en/latest/rp2/quickref.html)). Ses broches sont de vrais nœuds électriques : le script pilote et mesure le circuit Modelica qui l'entoure. On met ainsi au point un programme embarqué sur le jumeau numérique d'un système, avant de le téléverser sur la carte réelle.
 
 ![Le modèle BasicBlink en cours de simulation : la LED clignote](images/BasicBlink.gif){ width="320" }
 

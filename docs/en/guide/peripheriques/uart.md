@@ -50,6 +50,9 @@ They all share the same connectors and parameters; they only differ by their def
 
 ## Connectors
 
+On the program side, the link is written with `machine.UART`: see [the API](../api.md#machineuart) and the official MicroPython documentation ([`machine.UART`](https://docs.micropython.org/en/latest/library/machine.UART.html), [rp2 port](https://docs.micropython.org/en/latest/rp2/quickref.html#uart-serial-bus)).
+
+
 | Connector | Role |
 |---|---|
 | `TX` | Device transmit, to the microcontroller's RX pin |

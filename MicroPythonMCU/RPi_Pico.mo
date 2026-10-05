@@ -102,11 +102,11 @@ model RPi_Pico "Raspberry Pi Pico board: RP2040 programmable in MicroPython, rea
   Interfaces.DisplayLinkOutput Display0 "Logical link to an educational display peripheral (machine.Display(0).write()) - not on the real board: simplified causal link, see requirements.md decision \"Périphérique d'affichage pédagogique\"" annotation(
     Placement(transformation(origin = {300, -120}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {64, 214}, extent = {{-6, -6}, {6, 6}}, rotation = 90)));
   Internal.McuCore core(final nPins = 30, final pinIds = {i for i in 0:29}, final pinCaps = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 7, 7, 7, 5}, final boardProfile = "pico", final instanceName = boardName, final hasTempSensor = true, final dieTemperature = dieTemperature, final ICore = ICore, final VPowerOn = VPowerOn, final VPowerOff = VPowerOff, final scriptPath = scriptPath, final addScriptDirToPath = addScriptDirToPath, final libraryPath = libraryPath, final fsEnabled = fsEnabled, final fsSource = fsSource, final fsWorkspace = fsWorkspace, final fsOpenExplorer = fsOpenExplorer, final tickPeriod = tickPeriod, final gpioOpTime = gpioOpTime, final hangWarningTime = hangWarningTime, final debugEnabled = debugEnabled, final debugPort = debugPort, final VOL = VOL, final VIH = VIH, final VIL = VIL, final ROut = ROut, final ledSeriesR = ledSeriesR, final RPullUp = RPullUp, final RPullDown = RPullDown, final GOff = GOff) "The RP2040: pin[i] = GPIO i-1 (GP0-GP22, GP23 power-save, GP24 VBUS sense, GP25 LED, GP26-GP28, GP29 VSYS/3)" annotation(
-    Placement(transformation(origin = {-66, -32}, extent = {{-46, -46}, {46, 46}})));
+    Placement(transformation(origin = {-120, -20}, extent = {{-70, -70}, {70, 70}})));
   Internal.Rt6150 regulator(eta = eta) "Buck-boost regulator VSYS -> 3.3 V (RT6150B)" annotation(
-    Placement(transformation(origin = {158, 120}, extent = {{-20, -20}, {20, 20}})));
+    Placement(transformation(origin = {176, 120}, extent = {{-20, -20}, {20, 20}})));
   MicroPythonMCU.Peripherals.LED builtinLed "On-board LED (GPIO25)" annotation(
-    Placement(transformation(origin = {-112, -134}, extent = {{-10, -10}, {10, 10}})));
+    Placement(transformation(origin = {-110, -170}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Units.SI.Voltage vRail = V3V3.v - core.gnd.v "Voltage of the 3.3 V rail (3V3(OUT))";
   Modelica.Units.SI.Voltage vSys = VSYS.v - core.gnd.v "Voltage of VSYS";
   Modelica.Units.SI.Current iSys = regulator.iIn "Current drawn from VSYS by the regulator";
@@ -129,138 +129,138 @@ protected
   Modelica.Electrical.Analog.Basic.Resistor enPullUp(R = 100e3) "Pull-up of 3V3_EN to VSYS" annotation(
     Placement(transformation(origin = {270, 150}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
   Modelica.Electrical.Analog.Basic.Resistor vrefFilter(R = 200) "ADC_VREF filter from 3V3" annotation(
-    Placement(transformation(origin = {262, 10}, extent = {{-10, -10}, {10, 10}})));
+    Placement(transformation(origin = {240, 30}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
   Modelica.Electrical.Analog.Basic.Resistor ledResistor(R = ledSeriesR) "Series resistance of the on-board LED" annotation(
-    Placement(transformation(origin = {-152, -134}, extent = {{-10, -10}, {10, 10}})));
+    Placement(transformation(origin = {-150, -170}, extent = {{-10, -10}, {10, 10}})));
 equation
   connect(GP0, core.pin[1]) annotation(
-    Line(points = {{-300, 230}, {-230, 230}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 230}, {-230, 230}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP1, core.pin[2]) annotation(
-    Line(points = {{-300, 212}, {-230, 212}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 212}, {-230, 212}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP2, core.pin[3]) annotation(
-    Line(points = {{-300, 194}, {-230, 194}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 194}, {-230, 194}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP3, core.pin[4]) annotation(
-    Line(points = {{-300, 176}, {-230, 176}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 176}, {-230, 176}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP4, core.pin[5]) annotation(
-    Line(points = {{-300, 158}, {-230, 158}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 158}, {-230, 158}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP5, core.pin[6]) annotation(
-    Line(points = {{-300, 140}, {-230, 140}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 140}, {-230, 140}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP6, core.pin[7]) annotation(
-    Line(points = {{-300, 122}, {-230, 122}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 122}, {-230, 122}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP7, core.pin[8]) annotation(
-    Line(points = {{-300, 104}, {-230, 104}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 104}, {-230, 104}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP8, core.pin[9]) annotation(
-    Line(points = {{-300, 86}, {-230, 86}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 86}, {-230, 86}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP9, core.pin[10]) annotation(
-    Line(points = {{-300, 68}, {-230, 68}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 68}, {-230, 68}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP10, core.pin[11]) annotation(
-    Line(points = {{-300, 50}, {-230, 50}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 50}, {-230, 50}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP11, core.pin[12]) annotation(
-    Line(points = {{-300, 32}, {-230, 32}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 32}, {-230, 32}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP12, core.pin[13]) annotation(
-    Line(points = {{-300, 14}, {-230, 14}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, 14}, {-230, 14}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP13, core.pin[14]) annotation(
-    Line(points = {{-300, -4}, {-230, -4}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP16, core.pin[17]) annotation(
-    Line(points = {{-300, -58}, {-230, -58}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP17, core.pin[18]) annotation(
-    Line(points = {{-300, -76}, {-230, -76}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP18, core.pin[19]) annotation(
-    Line(points = {{-300, -94}, {-230, -94}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP19, core.pin[20]) annotation(
-    Line(points = {{-300, -112}, {-230, -112}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP20, core.pin[21]) annotation(
-    Line(points = {{-300, -130}, {-230, -130}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP21, core.pin[22]) annotation(
-    Line(points = {{-300, -148}, {-230, -148}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP22, core.pin[23]) annotation(
-    Line(points = {{-300, -166}, {-230, -166}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP26, core.pin[27]) annotation(
-    Line(points = {{-300, -184}, {-230, -184}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP27, core.pin[28]) annotation(
-    Line(points = {{-300, -202}, {-230, -202}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GP28, core.pin[29]) annotation(
-    Line(points = {{-300, -220}, {-230, -220}, {-230, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(GND_3, core.gnd) annotation(
-    Line(points = {{-140, -250}, {-140, -230}, {-66, -230}, {-66, -83}}, color = {0, 0, 255}));
-  connect(GND_18, core.gnd) annotation(
-    Line(points = {{10, -250}, {10, -230}, {-66, -230}, {-66, -83}}, color = {0, 0, 255}));
-  connect(GND_38, core.gnd) annotation(
-    Line(points = {{60, -250}, {60, -230}, {-66, -230}, {-66, -83}}, color = {0, 0, 255}));
-  connect(GND_28, core.gnd) annotation(
-    Line(points = {{110, -250}, {110, -230}, {-66, -230}, {-66, -83}}, color = {0, 0, 255}));
-  connect(GND_23, core.gnd) annotation(
-    Line(points = {{160, -250}, {160, -230}, {-66, -230}, {-66, -83}}, color = {0, 0, 255}));
-  connect(AGND, core.gnd) annotation(
-    Line(points = {{210, -250}, {210, -230}, {-66, -230}, {-66, -83}}, color = {0, 0, 255}));
-  connect(usbSupply.p, usbCable.p) annotation(
-    Line(points = {{40, 210}, {40, 220}, {60, 220}}, color = {0, 0, 255}));
-  connect(usbCable.n, VBUS) annotation(
-    Line(points = {{80, 220}, {300, 220}}, color = {0, 0, 255}));
-  connect(usbSupply.n, core.gnd) annotation(
-    Line(points = {{40, 190}, {40, -83}, {-66, -83}}, color = {0, 0, 255}));
-  connect(VBUS, schottky.p) annotation(
-    Line(points = {{300, 220}, {200, 220}, {200, 210}}, color = {0, 0, 255}));
-  connect(schottky.n, VSYS) annotation(
-    Line(points = {{200, 190}, {200, 170}, {300, 170}}, color = {0, 0, 255}));
-  connect(VBUS, vbusSenseTop.p) annotation(
-    Line(points = {{300, 220}, {120, 220}, {120, 200}}, color = {0, 0, 255}));
-  connect(vbusSenseTop.n, vbusSenseBottom.p) annotation(
-    Line(points = {{120, 180}, {120, 160}}, color = {0, 0, 255}));
-  connect(vbusSenseBottom.n, core.gnd) annotation(
-    Line(points = {{120, 140}, {120, -83}, {-66, -83}}, color = {0, 0, 255}));
-  connect(vbusSenseTop.n, core.pin[25]) annotation(
-    Line(points = {{120, 180}, {120.5, 180}, {120.5, 174}, {-215, 174}, {-215, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(VSYS, vsysSenseTop.p) annotation(
-    Line(points = {{300, 170}, {240, 170}, {240, 160}}, color = {0, 0, 255}));
-  connect(vsysSenseTop.n, vsysSenseBottom.p) annotation(
-    Line(points = {{240, 140}, {240, 120}}, color = {0, 0, 255}));
-  connect(vsysSenseBottom.n, core.gnd) annotation(
-    Line(points = {{240, 100}, {240, -83}, {-66, -83}}, color = {0, 0, 255}));
-  connect(vsysSenseTop.n, core.pin[30]) annotation(
-    Line(points = {{240, 140}, {239.5, 140}, {239.5, 134}, {213, 134}, {213, 80}, {-215, 80}, {-215, -32}, {-117, -32}}, color = {0, 0, 255}));
-  connect(VSYS, enPullUp.p) annotation(
-    Line(points = {{300, 170}, {270, 170}, {270, 160}}, color = {0, 0, 255}));
-  connect(enPullUp.n, V3V3_EN) annotation(
-    Line(points = {{270, 140}, {270, 120}, {300, 120}}, color = {0, 0, 255}));
-  connect(V3V3_EN, regulator.en) annotation(
-    Line(points = {{300, 120}, {280, 120}, {280, 90}, {146, 90}, {146, 100}}, color = {0, 0, 255}));
-  connect(VSYS, regulator.vin) annotation(
-    Line(points = {{300, 170}, {132, 170}, {132, 120}, {138, 120}}, color = {0, 0, 255}));
-  connect(regulator.gnd, core.gnd) annotation(
-    Line(points = {{158, 100}, {158, -83}, {-66, -83}}, color = {0, 0, 255}));
-  connect(regulator.vout, V3V3) annotation(
-    Line(points = {{178, 120}, {185, 120}, {185, 60}, {300, 60}}, color = {0, 0, 255}));
-  connect(V3V3, core.vdd) annotation(
-    Line(points = {{300, 60}, {-66, 60}, {-66, 19}}, color = {0, 0, 255}));
-  connect(V3V3, vrefFilter.p) annotation(
-    Line(points = {{300, 60}, {240, 60}, {240, 10}, {252, 10}}, color = {0, 0, 255}));
-  connect(vrefFilter.n, ADC_VREF) annotation(
-    Line(points = {{272, 10}, {300, 10}}, color = {0, 0, 255}));
-  connect(ADC_VREF, core.vref) annotation(
-    Line(points = {{300, 10}, {285, 10}, {285, 72}, {-94, 72}, {-94, 19}}, color = {0, 0, 255}));
-  connect(RUN, core.run) annotation(
-    Line(points = {{300, -60}, {-15, -60}}, color = {0, 0, 255}));
-  connect(core.Display0, Display0) annotation(
-    Line(points = {{-15, -4}, {20, -4}, {20, -120}, {300, -120}}, color = {28, 108, 200}));
-  connect(core.pin[26], ledResistor.p) annotation(
-    Line(points = {{-117, -32}, {-215, -32}, {-215, -134}, {-162, -134}}, color = {0, 0, 255}));
-  connect(ledResistor.n, builtinLed.p) annotation(
-    Line(points = {{-142, -134}, {-122, -134}}, color = {0, 0, 255}));
-// GPIO23 (core.pin[24]): power-save mode of the regulator, no electrical effect in the averaged model (Internal.Rt6150)
-  connect(builtinLed.n, core.gnd) annotation(
-    Line(points = {{-102, -134}, {-102, -133.5}, {-66, -133.5}, {-66, -83}}, color = {0, 0, 255}));
-  connect(GND_13, core.gnd) annotation(
-    Line(points = {{-40, -250}, {-40, -230}, {-66, -230}, {-66, -82}}, color = {0, 0, 255}));
-  connect(GND_8, core.gnd) annotation(
-    Line(points = {{-90, -250}, {-90, -230}, {-66, -230}, {-66, -82}}, color = {0, 0, 255}));
+    Line(points = {{-300, -4}, {-230, -4}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP14, core.pin[15]) annotation(
-    Line(points = {{-300, -22}, {-238, -22}, {-238, -32}, {-116, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, -22}, {-230, -22}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
   connect(GP15, core.pin[16]) annotation(
-    Line(points = {{-300, -40}, {-230, -40}, {-230, -32}, {-116, -32}}, color = {0, 0, 255}));
+    Line(points = {{-300, -40}, {-230, -40}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP16, core.pin[17]) annotation(
+    Line(points = {{-300, -58}, {-230, -58}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP17, core.pin[18]) annotation(
+    Line(points = {{-300, -76}, {-230, -76}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP18, core.pin[19]) annotation(
+    Line(points = {{-300, -94}, {-230, -94}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP19, core.pin[20]) annotation(
+    Line(points = {{-300, -112}, {-230, -112}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP20, core.pin[21]) annotation(
+    Line(points = {{-300, -130}, {-230, -130}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP21, core.pin[22]) annotation(
+    Line(points = {{-300, -148}, {-230, -148}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP22, core.pin[23]) annotation(
+    Line(points = {{-300, -166}, {-230, -166}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP26, core.pin[27]) annotation(
+    Line(points = {{-300, -184}, {-230, -184}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP27, core.pin[28]) annotation(
+    Line(points = {{-300, -202}, {-230, -202}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GP28, core.pin[29]) annotation(
+    Line(points = {{-300, -220}, {-230, -220}, {-230, -20}, {-197, -20}}, color = {0, 0, 255}));
+  connect(GND_3, core.gnd) annotation(
+    Line(points = {{-140, -250}, {-140, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(GND_8, core.gnd) annotation(
+    Line(points = {{-90, -250}, {-90, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(GND_13, core.gnd) annotation(
+    Line(points = {{-40, -250}, {-40, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(GND_18, core.gnd) annotation(
+    Line(points = {{10, -250}, {10, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(GND_38, core.gnd) annotation(
+    Line(points = {{60, -250}, {60, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(GND_28, core.gnd) annotation(
+    Line(points = {{110, -250}, {110, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(GND_23, core.gnd) annotation(
+    Line(points = {{160, -250}, {160, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(AGND, core.gnd) annotation(
+    Line(points = {{210, -250}, {210, -230}, {-120, -230}, {-120, -97}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(usbSupply.p, usbCable.p) annotation(
+    Line(points = {{40, 210}, {40, 220}, {60, 220}}, color = {230, 120, 0}, thickness = 0.75));
+  connect(usbCable.n, VBUS) annotation(
+    Line(points = {{80, 220}, {300, 220}}, color = {230, 120, 0}, thickness = 0.75));
+  connect(usbSupply.n, core.gnd) annotation(
+    Line(points = {{40, 190}, {40, -230}, {-120, -230}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(VBUS, schottky.p) annotation(
+    Line(points = {{300, 220}, {200, 220}, {200, 210}}, color = {230, 120, 0}, thickness = 0.75));
+  connect(schottky.n, VSYS) annotation(
+    Line(points = {{200, 190}, {200, 170}, {300, 170}}, color = {160, 80, 0}, thickness = 0.75));
+  connect(VBUS, vbusSenseTop.p) annotation(
+    Line(points = {{300, 220}, {120, 220}, {120, 200}}, color = {230, 120, 0}, thickness = 0.75));
+  connect(vbusSenseTop.n, vbusSenseBottom.p) annotation(
+    Line(points = {{120, 180}, {120, 160}}, color = {0, 150, 0}, thickness = 0.5));
+  connect(vbusSenseBottom.n, core.gnd) annotation(
+    Line(points = {{120, 140}, {120, -230}, {-120, -230}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(vbusSenseTop.n, core.pin[25]) annotation(
+    Line(points = {{120, 180}, {90, 180}, {-215, 180}, {-215, -20}, {-197, -20}}, color = {0, 150, 0}, thickness = 0.5));
+  connect(VSYS, vsysSenseTop.p) annotation(
+    Line(points = {{300, 170}, {240, 170}, {240, 160}}, color = {160, 80, 0}, thickness = 0.75));
+  connect(vsysSenseTop.n, vsysSenseBottom.p) annotation(
+    Line(points = {{240, 140}, {240, 120}}, color = {0, 150, 0}, thickness = 0.5));
+  connect(vsysSenseBottom.n, core.gnd) annotation(
+    Line(points = {{240, 100}, {240, -230}, {-120, -230}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(vsysSenseTop.n, core.pin[30]) annotation(
+    Line(points = {{240, 140}, {255, 140}, {255, 80}, {-215, 80}, {-215, -20}, {-197, -20}}, color = {0, 150, 0}, thickness = 0.5));
+  connect(VSYS, enPullUp.p) annotation(
+    Line(points = {{300, 170}, {270, 170}, {270, 160}}, color = {160, 80, 0}, thickness = 0.75));
+  connect(enPullUp.n, V3V3_EN) annotation(
+    Line(points = {{270, 140}, {270, 120}, {300, 120}}, color = {150, 0, 200}, thickness = 0.5));
+  connect(V3V3_EN, regulator.en) annotation(
+    Line(points = {{300, 120}, {280, 120}, {280, 90}, {164, 90}, {164, 100}}, color = {150, 0, 200}, thickness = 0.5));
+  connect(VSYS, regulator.vin) annotation(
+    Line(points = {{300, 170}, {138, 170}, {138, 120}, {156, 120}}, color = {160, 80, 0}, thickness = 0.75));
+  connect(regulator.gnd, core.gnd) annotation(
+    Line(points = {{176, 100}, {176, -230}, {-120, -230}}, color = {90, 90, 90}, thickness = 0.5));
+  connect(regulator.vout, V3V3) annotation(
+    Line(points = {{196, 120}, {203, 120}, {203, 60}, {300, 60}}, color = {220, 0, 0}, thickness = 0.75));
+  connect(V3V3, core.vdd) annotation(
+    Line(points = {{300, 60}, {-120, 60}, {-120, 57}}, color = {220, 0, 0}, thickness = 0.75));
+  connect(V3V3, vrefFilter.p) annotation(
+    Line(points = {{300, 60}, {240, 60}, {240, 40}}, color = {220, 0, 0}, thickness = 0.75));
+  connect(vrefFilter.n, ADC_VREF) annotation(
+    Line(points = {{240, 20}, {240, 10}, {300, 10}}, color = {0, 150, 0}, thickness = 0.5));
+  connect(ADC_VREF, core.vref) annotation(
+    Line(points = {{300, 10}, {285, 10}, {285, 70}, {-162, 70}, {-162, 57}}, color = {0, 150, 0}, thickness = 0.5));
+  connect(RUN, core.run) annotation(
+    Line(points = {{300, -60}, {-43, -60}, {-43, -62}}, color = {150, 0, 200}, thickness = 0.5));
+  connect(core.Display0, Display0) annotation(
+    Line(points = {{-43, 22}, {20, 22}, {20, -120}, {300, -120}}, color = {28, 108, 200}, thickness = 0.5));
+  connect(core.pin[26], ledResistor.p) annotation(
+    Line(points = {{-197, -20}, {-215, -20}, {-215, -170}, {-160, -170}}, color = {0, 0, 255}));
+  connect(ledResistor.n, builtinLed.p) annotation(
+    Line(points = {{-140, -170}, {-120, -170}}, color = {0, 0, 255}));
+  connect(builtinLed.n, core.gnd) annotation(
+    Line(points = {{-100, -170}, {-100, -230}, {-120, -230}}, color = {90, 90, 90}, thickness = 0.5));
+// GPIO23 (core.pin[24]): power-save mode of the regulator, no electrical effect in the averaged model (Internal.Rt6150)
   annotation(
-    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -210}, {100, 270}}), graphics = {Rectangle(lineColor = {0, 90, 40}, fillColor = {0, 120, 60}, fillPattern = FillPattern.Solid, extent = {{-82.7, 200.8}, {82.7, -200.8}}, radius = 6), Rectangle(lineColor = {110, 110, 110}, fillColor = {200, 200, 200}, fillPattern = FillPattern.Solid, extent = {{-31.5, 211}, {31.5, 166.9}}), Polygon(visible = usbConnected, lineColor = {200, 140, 0}, fillColor = {255, 210, 0}, fillPattern = FillPattern.Solid, points = {{4.5, 206}, {-6, 189.5}, {0, 189.5}, {-4.5, 173}, {7.5, 194}, {1.5, 194}, {6, 206}}), Ellipse(lineColor = {230, 190, 60}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{-53.2, -176.8}, {-36.6, -193.4}}), Ellipse(lineColor = {230, 190, 60}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{-53.2, 193.4}, {-36.6, 176.8}}), Ellipse(lineColor = {230, 190, 60}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{36.6, -176.8}, {53.2, -193.4}}), Ellipse(lineColor = {230, 190, 60}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{36.6, 193.4}, {53.2, 176.8}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 197}, {-63, 183}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 197}, {77, 183}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 177}, {-63, 163}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 177}, {77, 163}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 157}, {-63, 143}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 157}, {77, 143}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 137}, {-63, 123}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 137}, {77, 123}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 117}, {-63, 103}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 117}, {77, 103}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 97}, {-63, 83}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 97}, {77, 83}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 77}, {-63, 63}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 77}, {77, 63}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 57}, {-63, 43}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 57}, {77, 43}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 37}, {-63, 23}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 37}, {77, 23}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 17}, {-63, 3}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 17}, {77, 3}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -3}, {-63, -17}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -3}, {77, -17}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -23}, {-63, -37}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -23}, {77, -37}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -43}, {-63, -57}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -43}, {77, -57}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -63}, {-63, -77}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -63}, {77, -77}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -83}, {-63, -97}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -83}, {77, -97}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -103}, {-63, -117}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -103}, {77, -117}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -123}, {-63, -137}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -123}, {77, -137}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -143}, {-63, -157}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -143}, {77, -157}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -163}, {-63, -177}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -163}, {77, -177}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -183}, {-63, -197}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -183}, {77, -197}}), Rectangle(lineColor = {20, 20, 20}, fillColor = {40, 40, 40}, fillPattern = FillPattern.Solid, extent = {{-27.55, 57.55}, {27.55, 2.45}}), Text(textColor = {220, 220, 220}, extent = {{-23.55, 40}, {23.55, 20}}, textString = "RP2040"), Rectangle(lineColor = {20, 20, 20}, fillColor = {40, 40, 40}, fillPattern = FillPattern.Solid, extent = {{-18, -40}, {18, -70}}), Ellipse(lineColor = {180, 180, 180}, fillColor = {245, 245, 245}, fillPattern = FillPattern.Solid, extent = {{-14, 130}, {14, 102}}), Ellipse(fillColor = DynamicSelect({40, 90, 40}, {integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(-40)), integer(90 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*130), integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(-40))}), fillPattern = FillPattern.Solid, extent = {{-38, 160}, {-26, 148}}), Text(textColor = {255, 255, 255}, extent = {{-42, 146}, {-22, 138}}, textString = "LED"), Text(textColor = {255, 255, 255}, extent = {{-40, -100}, {40, -130}}, textString = "Pico", textStyle = {TextStyle.Bold}), Text(textColor = {255, 255, 255}, extent = {{-40, -132}, {40, -146}}, textString = "Raspberry Pi"), Text(textColor = {255, 255, 255}, extent = {{-60, 196}, {-14, 184}}, textString = "GP0", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 176}, {-14, 164}}, textString = "GP1", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 156}, {-14, 144}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 136}, {-14, 124}}, textString = "GP2", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 116}, {-14, 104}}, textString = "GP3", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 96}, {-14, 84}}, textString = "GP4", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 76}, {-14, 64}}, textString = "GP5", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 56}, {-14, 44}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 36}, {-14, 24}}, textString = "GP6", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 16}, {-14, 4}}, textString = "GP7", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -4}, {-14, -16}}, textString = "GP8", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -24}, {-14, -36}}, textString = "GP9", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -44}, {-14, -56}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -64}, {-14, -76}}, textString = "GP10", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -84}, {-14, -96}}, textString = "GP11", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -104}, {-14, -116}}, textString = "GP12", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -124}, {-14, -136}}, textString = "GP13", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -144}, {-14, -156}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -164}, {-14, -176}}, textString = "GP14", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -184}, {-14, -196}}, textString = "GP15", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{14, 196}, {60, 184}}, textString = "VBUS", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 176}, {60, 164}}, textString = "VSYS", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 156}, {60, 144}}, textString = "GND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 136}, {60, 124}}, textString = "3V3_EN", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 116}, {60, 104}}, textString = "3V3(OUT)", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 96}, {60, 84}}, textString = "ADC_VREF", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 76}, {60, 64}}, textString = "GP28", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 56}, {60, 44}}, textString = "AGND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 36}, {60, 24}}, textString = "GP27", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 16}, {60, 4}}, textString = "GP26", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -4}, {60, -16}}, textString = "RUN", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -24}, {60, -36}}, textString = "GP22", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -44}, {60, -56}}, textString = "GND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -64}, {60, -76}}, textString = "GP21", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -84}, {60, -96}}, textString = "GP20", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -104}, {60, -116}}, textString = "GP19", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -124}, {60, -136}}, textString = "GP18", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -144}, {60, -156}}, textString = "GND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -164}, {60, -176}}, textString = "GP17", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -184}, {60, -196}}, textString = "GP16", horizontalAlignment = TextAlignment.Right), Text(textColor = {28, 108, 200}, extent = {{38, 236}, {90, 226}}, textString = "DISPLAY"), Text(textColor = {0, 0, 255}, extent = {{-150, 268}, {150, 246}}, textString = "%name")}),
-    Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-320, -270}, {320, 260}}), graphics = {Text(extent = {{-300, 255}, {-200, 245}}, textString = "GPIO", horizontalAlignment = TextAlignment.Left), Text(extent = {{20, 255}, {300, 245}}, textString = "Power supply: USB, VBUS, VSYS, regulator, 3V3", horizontalAlignment = TextAlignment.Right), Text(extent = {{-160, -262}, {240, -270}}, textString = "Ground (GND pins and AGND)")}),
+    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -210}, {100, 270}}), graphics = {Rectangle(lineColor = {0, 90, 40}, fillColor = {0, 120, 60}, fillPattern = FillPattern.Solid, extent = {{-82.7, 200.8}, {82.7, -200.8}}, radius = 6), Rectangle(lineColor = {110, 110, 110}, fillColor = {200, 200, 200}, fillPattern = FillPattern.Solid, extent = {{-31.5, 211}, {31.5, 166.9}}), Polygon(visible = usbConnected, lineColor = {200, 140, 0}, fillColor = {255, 210, 0}, fillPattern = FillPattern.Solid, points = {{4.5, 206}, {-6, 189.5}, {0, 189.5}, {-4.5, 173}, {7.5, 194}, {1.5, 194}, {6, 206}}), Ellipse(lineColor = {230, 190, 60}, lineThickness = 0.75, fillColor = {0, 80, 35}, fillPattern = FillPattern.Solid, extent = {{-53.2, -176.8}, {-36.6, -193.4}}), Ellipse(lineColor = {230, 190, 60}, lineThickness = 0.75, fillColor = {0, 80, 35}, fillPattern = FillPattern.Solid, extent = {{-53.2, 193.4}, {-36.6, 176.8}}), Ellipse(lineColor = {230, 190, 60}, lineThickness = 0.75, fillColor = {0, 80, 35}, fillPattern = FillPattern.Solid, extent = {{36.6, -176.8}, {53.2, -193.4}}), Ellipse(lineColor = {230, 190, 60}, lineThickness = 0.75, fillColor = {0, 80, 35}, fillPattern = FillPattern.Solid, extent = {{36.6, 193.4}, {53.2, 176.8}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 197}, {-63, 183}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 197}, {77, 183}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 177}, {-63, 163}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 177}, {77, 163}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 157}, {-63, 143}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 157}, {77, 143}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 137}, {-63, 123}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 137}, {77, 123}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 117}, {-63, 103}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 117}, {77, 103}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 97}, {-63, 83}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 97}, {77, 83}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 77}, {-63, 63}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 77}, {77, 63}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 57}, {-63, 43}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 57}, {77, 43}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 37}, {-63, 23}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 37}, {77, 23}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, 17}, {-63, 3}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, 17}, {77, 3}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -3}, {-63, -17}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -3}, {77, -17}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -23}, {-63, -37}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -23}, {77, -37}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -43}, {-63, -57}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -43}, {77, -57}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -63}, {-63, -77}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -63}, {77, -77}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -83}, {-63, -97}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -83}, {77, -97}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -103}, {-63, -117}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -103}, {77, -117}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -123}, {-63, -137}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -123}, {77, -137}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -143}, {-63, -157}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -143}, {77, -157}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -163}, {-63, -177}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -163}, {77, -177}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{-77, -183}, {-63, -197}}), Ellipse(lineColor = {200, 160, 40}, fillColor = {230, 190, 60}, fillPattern = FillPattern.Solid, extent = {{63, -183}, {77, -197}}), Rectangle(lineColor = {20, 20, 20}, fillColor = {40, 40, 40}, fillPattern = FillPattern.Solid, extent = {{-27.55, 57.55}, {27.55, 2.45}}), Text(textColor = {220, 220, 220}, extent = {{-23.55, 40}, {23.55, 20}}, textString = "RP2040"), Rectangle(lineColor = {20, 20, 20}, fillColor = {40, 40, 40}, fillPattern = FillPattern.Solid, extent = {{-18, -40}, {18, -70}}), Ellipse(lineColor = {180, 180, 180}, fillColor = {245, 245, 245}, fillPattern = FillPattern.Solid, extent = {{-14, 130}, {14, 102}}), Ellipse(fillColor = DynamicSelect({40, 90, 40}, {integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(-40)), integer(90 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*130), integer(40 + min(1, max(0, builtinLed.mean.y)/builtinLed.IMax)*(-40))}), fillPattern = FillPattern.Solid, extent = {{-38, 160}, {-26, 148}}), Text(textColor = {255, 255, 255}, extent = {{-42, 146}, {-22, 138}}, textString = "LED"), Text(textColor = {255, 255, 255}, extent = {{-40, -100}, {40, -130}}, textString = "Pico", textStyle = {TextStyle.Bold}), Text(textColor = {255, 255, 255}, extent = {{-40, -132}, {40, -146}}, textString = "Raspberry Pi"), Text(textColor = {255, 255, 255}, extent = {{-60, 196}, {-14, 184}}, textString = "GP0", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 176}, {-14, 164}}, textString = "GP1", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 156}, {-14, 144}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 136}, {-14, 124}}, textString = "GP2", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 116}, {-14, 104}}, textString = "GP3", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 96}, {-14, 84}}, textString = "GP4", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 76}, {-14, 64}}, textString = "GP5", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 56}, {-14, 44}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 36}, {-14, 24}}, textString = "GP6", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, 16}, {-14, 4}}, textString = "GP7", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -4}, {-14, -16}}, textString = "GP8", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -24}, {-14, -36}}, textString = "GP9", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -44}, {-14, -56}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -64}, {-14, -76}}, textString = "GP10", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -84}, {-14, -96}}, textString = "GP11", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -104}, {-14, -116}}, textString = "GP12", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -124}, {-14, -136}}, textString = "GP13", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -144}, {-14, -156}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -164}, {-14, -176}}, textString = "GP14", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-60, -184}, {-14, -196}}, textString = "GP15", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{14, 196}, {60, 184}}, textString = "VBUS", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 176}, {60, 164}}, textString = "VSYS", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 156}, {60, 144}}, textString = "GND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 136}, {60, 124}}, textString = "3V3_EN", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 116}, {60, 104}}, textString = "3V3(OUT)", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 96}, {60, 84}}, textString = "ADC_VREF", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 76}, {60, 64}}, textString = "GP28", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 56}, {60, 44}}, textString = "AGND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 36}, {60, 24}}, textString = "GP27", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, 16}, {60, 4}}, textString = "GP26", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -4}, {60, -16}}, textString = "RUN", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -24}, {60, -36}}, textString = "GP22", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -44}, {60, -56}}, textString = "GND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -64}, {60, -76}}, textString = "GP21", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -84}, {60, -96}}, textString = "GP20", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -104}, {60, -116}}, textString = "GP19", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -124}, {60, -136}}, textString = "GP18", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -144}, {60, -156}}, textString = "GND", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -164}, {60, -176}}, textString = "GP17", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{14, -184}, {60, -196}}, textString = "GP16", horizontalAlignment = TextAlignment.Right), Text(textColor = {28, 108, 200}, extent = {{38, 236}, {90, 226}}, textString = "DISPLAY"), Text(textColor = {0, 0, 255}, extent = {{-150, 268}, {150, 246}}, textString = "%name")}),
+    Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-320, -270}, {320, 260}}), graphics = {Rectangle(lineColor = {200, 200, 200}, fillColor = {235, 242, 255}, fillPattern = FillPattern.Solid, extent = {{-314, 250}, {-206, -234}}, radius = 4), Rectangle(lineColor = {200, 200, 200}, fillColor = {242, 242, 242}, fillPattern = FillPattern.Solid, extent = {{-200, 62}, {-40, -104}}, radius = 4), Rectangle(lineColor = {200, 200, 200}, fillColor = {255, 243, 228}, fillPattern = FillPattern.Solid, extent = {{22, 250}, {316, -2}}, radius = 4), Rectangle(lineColor = {200, 200, 200}, fillColor = {238, 238, 238}, fillPattern = FillPattern.Solid, extent = {{-200, -238}, {280, -266}}, radius = 4), Text(textColor = {90, 90, 90}, extent = {{-310, 248}, {-210, 240}}, textString = "GPIO", horizontalAlignment = TextAlignment.Left), Text(textColor = {90, 90, 90}, extent = {{-196, 60}, {-44, 52}}, textString = "RP2040 core", horizontalAlignment = TextAlignment.Left), Text(textColor = {90, 90, 90}, extent = {{26, 248}, {312, 240}}, textString = "Power supply: USB, VBUS, VSYS, regulator, 3V3", horizontalAlignment = TextAlignment.Left), Text(textColor = {90, 90, 90}, extent = {{80, -257}, {276, -265}}, textString = "Ground (GND pins, AGND)", horizontalAlignment = TextAlignment.Right)}),
     Documentation(info = "<html>
 <p>Replica of the <b>Raspberry Pi Pico</b> board (RP2040): real pinout (40 pins, viewed from above, USB connector at the top) and real dimensions (21 x 51 mm, 2.54 mm pitch, rows 17.78 mm apart), and its <b>power supply</b>. It contains the same programmable core as <code>MCU</code> (<code>Internal.McuCore</code>: Python program, <code>machine</code> API, sync point), wired to the power components of the board — see the internal diagram. The pins are supplied by the 3.3 V rail of the board, and the program only runs while the board is supplied.</p>
 <h4>Power supply</h4>

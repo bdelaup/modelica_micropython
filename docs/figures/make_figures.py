@@ -318,10 +318,54 @@ def fig_radio_buffer(work):
     save(fig, "radio-overflow")
 
 
+def fig_pico_power(work):
+    c = simulate("Pico.PowerUp", ["pico.vSys", "pico.vRail", "pico.GP15.v", "pico.core.powerGood"],
+                 2.0, 8000, work)
+    t = c["time"]
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(8, 3.8), sharex=True)
+    a1.plot(t, c["pico.vSys"], color="#a05000", label="VSYS (pico.vSys)")
+    a1.plot(t, c["pico.vRail"], color="#dc0000", label="rail 3,3 V (pico.vRail)")
+    a1.axhline(1.8, color=GREY, linewidth=0.6, linestyle="--")
+    a1.text(0.02, 1.95, "démarrage du régulateur : VSYS > 1,8 V", fontsize=7, color=GREY)
+    a1.legend(loc="lower center", fontsize=8, frameon=False)
+    a2.plot(t, c["pico.GP15.v"], color=BLUE)
+    a2.fill_between(t, 0, [3.6 * x for x in c["pico.core.powerGood"]], color=GREEN, alpha=0.12,
+                    linewidth=0, step="post")
+    a2.text(0.95, 3.75, "carte alimentée (pico.core.powerGood)", fontsize=8, color=GREEN, ha="center")
+    a2.annotate("le programme démarre :\nticks_ms() = 0", (0.38, 0.1), (0.02, 1.6), fontsize=8,
+                arrowprops={"arrowstyle": "->"})
+    a2.annotate("arrêt définitif,\nbroches relâchées", (1.565, 0.1), (1.62, 1.6), fontsize=8,
+                arrowprops={"arrowstyle": "->"})
+    style(a1, "", "tension (V)")
+    style(a2, "temps (s)", "GP15 (V)")
+    a2.set_ylim(-0.3, 4.3)
+    a1.set_title("Pico.PowerUp : VSYS monte de 0 à 3 V puis retombe à 1 V ; GP15 bascule toutes les 100 ms",
+                 loc="left", fontsize=10)
+    save(fig, "pico-power")
+
+
+def fig_pico_battery(work):
+    c = simulate("Pico.Battery", ["iBattery.i", "pico.GP15.v"], 4.5, 4500, work)
+    t = c["time"]
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(8, 3.4), sharex=True,
+                                 gridspec_kw={"height_ratios": [2, 1]})
+    a1.plot(t, [x * 1e3 for x in c["iBattery.i"]], color="#a05000", drawstyle="steps-post")
+    a2.plot(t, c["pico.GP15.v"], color=BLUE)
+    style(a1, "", "courant des piles (mA)")
+    style(a2, "temps (s)", "GP15 (V)")
+    a1.text(1.5, 23.0, "LED éteintes : 20 mA × 3,3 V / (0,9 × 3 V) ≈ 24,5 mA", fontsize=8, ha="center")
+    a1.text(0.5, 30.8, "LED allumées", fontsize=8, ha="center")
+    a1.set_ylim(22, 33)
+    a1.set_title("Pico.Battery : deux piles AA sur VSYS, le courant des LED passe par le régulateur",
+                 loc="left", fontsize=10)
+    save(fig, "pico-battery")
+
+
 FIGURES = {"blink": fig_blink, "uart": fig_uart, "i2c": fig_i2c, "pwm": fig_pwm,
            "hx711": fig_hx711, "regulation": fig_regulation, "fade": fig_fade,
            "reactivity": fig_reactivity, "timing": fig_timing, "scale": fig_scale,
-           "radio": fig_radio, "radio-buffer": fig_radio_buffer}
+           "radio": fig_radio, "radio-buffer": fig_radio_buffer,
+           "pico-power": fig_pico_power, "pico-battery": fig_pico_battery}
 
 if __name__ == "__main__":
     wanted = sys.argv[1:] or list(FIGURES)

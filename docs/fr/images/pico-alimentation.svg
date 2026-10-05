@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" font-family="Segoe UI, Arial, sans-serif" font-size="13">
+  <!-- Schéma de principe de l'alimentation de RPi_Pico, dessiné à la main d'après make_pico.py.
+       Couleurs des réseaux identiques au schéma interne d'OMEdit. -->
+  <defs>
+    <style>
+      .usb  { stroke: #e67800; stroke-width: 3; fill: none; }
+      .vsys { stroke: #a05000; stroke-width: 3; fill: none; }
+      .rail { stroke: #dc0000; stroke-width: 3; fill: none; }
+      .sens { stroke: #009600; stroke-width: 2; fill: none; }
+      .ctl  { stroke: #9600c8; stroke-width: 2; fill: none; }
+      .gnd  { stroke: #5a5a5a; stroke-width: 2; fill: none; }
+      .dash { stroke: #888; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+      .box  { fill: #ffffff; stroke: #333; stroke-width: 1.5; }
+      .res  { fill: #ffffff; stroke: #333; stroke-width: 1.5; }
+      .pin  { fill: #fff3cc; stroke: #b08800; stroke-width: 1.2; }
+      .t    { fill: #222; }
+      .s    { fill: #555; font-size: 11.5px; }
+      .b    { font-weight: bold; }
+    </style>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+  </defs>
+  <rect width="960" height="560" fill="#ffffff"/>
+  <text x="20" y="28" class="t b" font-size="16">Raspberry Pi Pico (RPi_Pico) : arbre d'alimentation</text>
+
+  <!-- Sources possibles -->
+  <rect x="20" y="118" width="110" height="64" rx="6" class="box"/>
+  <text x="75" y="142" text-anchor="middle" class="t b">Câble USB</text>
+  <text x="75" y="160" text-anchor="middle" class="t">5 V</text>
+  <text x="75" y="175" text-anchor="middle" class="s">usbConnected</text>
+  <path d="M130,150 H200" class="usb"/>
+  <text x="165" y="141" text-anchor="middle" class="s">0,2 Ω</text>
+
+  <rect x="150" y="52" width="110" height="36" rx="5" fill="#fafafa" stroke="#888" stroke-dasharray="5 4"/>
+  <text x="205" y="68" text-anchor="middle" class="s">ou : 5 V externe</text>
+  <text x="205" y="82" text-anchor="middle" class="s">sur VBUS</text>
+  <path d="M200,88 V146" class="dash" marker-end="url(#arr)"/>
+
+  <rect x="290" y="52" width="130" height="36" rx="5" fill="#fafafa" stroke="#888" stroke-dasharray="5 4"/>
+  <text x="355" y="68" text-anchor="middle" class="s">ou : pile(s) sur VSYS</text>
+  <text x="355" y="82" text-anchor="middle" class="s">usbConnected = false</text>
+  <path d="M330,88 V146" class="dash" marker-end="url(#arr)"/>
+
+  <!-- VBUS -->
+  <circle cx="200" cy="150" r="4" fill="#e67800"/>
+  <!-- Diode Schottky -->
+  <path d="M200,150 H240" class="usb"/>
+  <path d="M240,136 L240,164 L264,150 Z" fill="#e67800" stroke="#e67800"/>
+  <path d="M265,136 V164" class="vsys"/>
+  <path d="M265,150 H330" class="vsys"/>
+  <text x="252" y="182" text-anchor="middle" class="s">Schottky ≈ 0,3 V</text>
+  <circle cx="330" cy="150" r="4" fill="#a05000"/>
+
+  <!-- Régulateur -->
+  <path d="M330,150 H420" class="vsys"/>
+  <rect x="420" y="104" width="170" height="92" rx="6" class="box"/>
+  <text x="505" y="124" text-anchor="middle" class="t b">Régulateur buck-boost</text>
+  <text x="505" y="141" text-anchor="middle" class="s">RT6150, modèle moyen</text>
+  <text x="505" y="157" text-anchor="middle" class="s">VSYS 1,8 à 5,5 V → 3,3 V</text>
+  <text x="505" y="173" text-anchor="middle" class="s">rendement η = 0,9</text>
+  <text x="440" y="190" class="s">EN</text>
+
+  <!-- Rail 3,3 V -->
+  <path d="M590,150 H930" class="rail"/>
+  <circle cx="640" cy="150" r="4" fill="#dc0000"/>
+  <circle cx="700" cy="150" r="4" fill="#dc0000"/>
+  <circle cx="790" cy="150" r="4" fill="#dc0000"/>
+  <path d="M640,150 V100" class="rail" marker-end="url(#arr)"/>
+  <text x="640" y="72" text-anchor="middle" class="t">vers les périphériques</text>
+  <text x="640" y="88" text-anchor="middle" class="s">(leur broche VCC, useSupplyPin)</text>
+  <text x="935" y="140" text-anchor="end" class="s">rail 3,3 V : pico.vRail</text>
+
+  <!-- ADC_VREF -->
+  <path d="M700,150 V180" class="rail"/>
+  <rect x="692" y="180" width="16" height="36" class="res"/>
+  <text x="714" y="203" class="s">200 Ω</text>
+  <path d="M700,216 V300 H760" class="sens"/>
+  <circle cx="700" cy="250" r="4" fill="#009600"/>
+  <text x="694" y="292" text-anchor="end" class="s">vers vref : référence</text>
+  <text x="694" y="306" text-anchor="end" class="s">de l'ADC</text>
+
+  <!-- RP2040 -->
+  <path d="M790,150 V240" class="rail"/>
+  <rect x="760" y="240" width="180" height="170" rx="6" class="box"/>
+  <text x="850" y="262" text-anchor="middle" class="t b">RP2040 (core)</text>
+  <text x="772" y="282" class="s">vdd : consommation ICore</text>
+  <text x="772" y="297" class="s">(20 mA, programme en marche)</text>
+  <text x="772" y="318" class="s">sorties GPx : niveau haut</text>
+  <text x="772" y="333" class="s">= rail, courant pris sur le rail</text>
+  <text x="772" y="354" class="s">démarre : rail &gt; 1,8 V et RUN haut</text>
+  <text x="772" y="369" class="s">arrêt définitif : rail &lt; 1,6 V</text>
+  <text x="772" y="384" class="s">ou RUN à la masse</text>
+  <text x="772" y="400" class="s">vref (gauche) · run (bas)</text>
+  <path d="M850,410 V450" class="ctl"/>
+  <text x="858" y="440" class="s">tirage interne 50 kΩ</text>
+
+  <!-- Diviseur VBUS -> GP24 -->
+  <path d="M200,150 V214" class="usb"/>
+  <rect x="192" y="214" width="16" height="40" class="res"/>
+  <text x="214" y="238" class="s">5,6 kΩ</text>
+  <path d="M200,254 V290" class="sens"/>
+  <circle cx="200" cy="290" r="4" fill="#009600"/>
+  <path d="M200,290 V320" class="gnd"/>
+  <rect x="192" y="320" width="16" height="40" class="res"/>
+  <text x="214" y="344" class="s">10 kΩ</text>
+  <path d="M200,360 V390 M188,390 H212 M192,396 H208 M197,402 H203" class="gnd"/>
+  <path d="M200,290 H120" class="sens" marker-end="url(#arr)"/>
+  <text x="20" y="286" class="t">GP24 : Pin(24)</text>
+  <text x="20" y="302" class="s">USB présent ?</text>
+
+  <!-- Diviseur VSYS -> GP29 -->
+  <path d="M330,150 V214" class="vsys"/>
+  <rect x="322" y="214" width="16" height="40" class="res"/>
+  <text x="316" y="238" text-anchor="end" class="s">200 kΩ</text>
+  <path d="M330,254 V290" class="sens"/>
+  <circle cx="330" cy="290" r="4" fill="#009600"/>
+  <path d="M330,290 V320" class="gnd"/>
+  <rect x="322" y="320" width="16" height="40" class="res"/>
+  <text x="316" y="344" text-anchor="end" class="s">100 kΩ</text>
+  <path d="M330,360 V390 M318,390 H342 M322,396 H338 M327,402 H333" class="gnd"/>
+  <path d="M330,290 H372" class="sens" marker-end="url(#arr)"/>
+  <text x="378" y="295" class="t">GP29 = ADC(3)</text>
+  <text x="378" y="311" class="s">lit VSYS / 3</text>
+
+  <!-- 3V3_EN -->
+  <path d="M395,150 V205" class="vsys"/>
+  <rect x="387" y="205" width="16" height="36" class="res"/>
+  <text x="383" y="227" text-anchor="end" class="s">100 kΩ</text>
+  <path d="M395,241 V262 H440 V196" class="ctl"/>
+  <circle cx="440" cy="262" r="4" fill="#9600c8"/>
+  <rect x="448" y="252" width="80" height="20" rx="4" class="pin"/>
+  <text x="488" y="266" text-anchor="middle" class="s">3V3_EN (37)</text>
+  <text x="534" y="266" class="s">à la masse : régulateur arrêté</text>
+
+  <!-- Broches de la carte (étiquettes) -->
+  <rect x="166" y="94" width="68" height="20" rx="4" class="pin"/>
+  <text x="200" y="108" text-anchor="middle" class="s">VBUS (40)</text>
+  <rect x="296" y="94" width="68" height="20" rx="4" class="pin"/>
+  <text x="330" y="108" text-anchor="middle" class="s">VSYS (39)</text>
+  <rect x="600" y="158" width="80" height="20" rx="4" class="pin"/>
+  <text x="640" y="172" text-anchor="middle" class="s">3V3(OUT) (36)</text>
+  <rect x="614" y="222" width="80" height="20" rx="4" class="pin"/>
+  <text x="654" y="236" text-anchor="middle" class="s">ADC_VREF (35)</text>
+  <rect x="816" y="450" width="68" height="20" rx="4" class="pin"/>
+  <text x="850" y="464" text-anchor="middle" class="s">RUN (30)</text>
+
+  <!-- Bilan -->
+  <rect x="20" y="490" width="600" height="56" rx="6" fill="#f6f6f6" stroke="#ccc"/>
+  <text x="32" y="511" class="t">Courant tiré de VSYS : I = P(rail) / (η · V(VSYS)) + courant de repos du régulateur  (pico.iSys)</text>
+  <text x="32" y="533" class="s">Deux piles AA (3 V), programme seul : 20 mA × 3,3 V / (0,9 × 3 V) ≈ 24,5 mA ; chaque LED allumée en ajoute.</text>
+
+  <!-- Légende -->
+  <g font-size="11.5" transform="translate(640,490)">
+    <path d="M0,6 H22" class="usb"/><text x="28" y="10" class="s">USB / VBUS</text>
+    <path d="M110,6 H132" class="vsys"/><text x="138" y="10" class="s">VSYS</text>
+    <path d="M220,6 H242" class="rail"/><text x="248" y="10" class="s">rail 3,3 V</text>
+    <path d="M0,28 H22" class="sens"/><text x="28" y="32" class="s">mesures</text>
+    <path d="M110,28 H132" class="ctl"/><text x="138" y="32" class="s">commandes</text>
+    <path d="M220,28 H242" class="gnd"/><text x="248" y="32" class="s">masse</text>
+  </g>
+</svg>

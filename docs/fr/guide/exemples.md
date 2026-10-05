@@ -127,7 +127,7 @@ Des modules radio transparents entre les UART de deux microcontrôleurs, reliés
 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
-| `Radio.Link` | Les programmes PING/PONG de `MultiMcu.Uart`, inchangés, à travers deux modules radio | `mcuA.GP0.v`, `radioA.carrierOn`, `mcuB.GP1.v`, bilan de chaque module au journal | `uart_ping.py`, `uart_pong.py` |
+| `Radio.Link` | Les programmes PING/PONG de `MultiMcu.Uart`, inchangés, à travers deux modules radio | `mcuA.GP0.v`, `radioA.carrierOn`, `mcuB.GP1.v`, `radioA.sTx` (porteuse FSK, sortie toutes les 2 µs), bilan de chaque module au journal | `uart_ping.py`, `uart_pong.py` |
 | `Radio.Overflow` | 40 octets à 9600 bauds, réémis à 1200 bit/s avec un tampon de 16 octets : la fin du message est perdue | `radioA.txFill`, `radioA.nDropped`, ce que B affiche | `radio_burst.py`, `radio_listen.py` |
 | `Radio.Modulations` | Le caractère `U` en OOK, ASK, FSK et BPSK | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx` entre 25 et 35 ms | `radio_beacon.py` |
 | `Weighing.KitchenScale` | Balance de cuisine complète, bouton TARE | icône de l'écran | `kitchen_scale.py` |
@@ -136,11 +136,17 @@ Des modules radio transparents entre les UART de deux microcontrôleurs, reliés
 
 La réplique de la carte et son alimentation (voir [La carte Raspberry Pi Pico](pico.md)).
 
+| `Pico.Blink` | `Pico.Battery` | `Pico.PowerUp` |
+|---|---|---|
+| ![Pico.Blink](../images/exemple-pico-blink.png){ width="220" } | ![Pico.Battery](../images/exemple-pico-battery.png){ width="260" } | ![Pico.PowerUp](../images/exemple-pico-powerup.png){ width="240" } |
+
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
 | `Pico.Blink` | Carte alimentée par USB, rien à câbler : LED embarquée et LED sur `GP15`, VSYS et température lus par `ADC(3)` et `ADC(4)` | `pico.GP15.v`, `pico.vSys`, `pico.iSys`, journal | `pico_blink.py` |
 | `Pico.Battery` | Même programme sur deux piles AA branchées sur `VSYS` : courant tiré des piles, plus fort quand les LED sont allumées | `iBattery.i`, `pico.vRail` | `pico_blink.py` |
 | `Pico.PowerUp` | Rampe de `VSYS` : le programme démarre à la mise sous tension (`ticks_ms() = 0`), puis s'arrête quand `VSYS` retombe | `pico.vRail`, `pico.core.powerGood`, `pico.GP15.v`, journal | `pico_power.py` |
+
+![Pico.PowerUp : VSYS et rail 3,3 V, GP15 ; le programme démarre à 0,38 s et s'arrête à 1,565 s](../images/sim/pico-power.svg)
 
 ## Analyseur logique (`Examples.Analyzer`)
 

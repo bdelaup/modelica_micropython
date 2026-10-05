@@ -79,11 +79,11 @@ Ce que le `when` publie (porteuse, bit, identifiant) n'entre dans le fil qu'à t
 - BPSK : même porteuse, signe selon le bit ;
 - FSK : phase continue sans état continu. À chaque changement de bit (`when change(txBit) or change(txOn)`), `phi0` cumule la phase parcourue depuis le changement précédent ; entre deux, `sin(phi0 + 2π·f(bit)·(t - tRef))`.
 
-La contrepartie : `sTx` n'existe dans le fichier de résultats qu'aux points de sortie. D'où `fDisplay`, porteuse mise à l'échelle (4 × débit radio), distincte de `fCarrier`, qui ne sert qu'à l'accord, et l'intervalle de 10 µs de `Examples.Radio.Modulations`. `sRx` rend le signal de l'autre émetteur, tel que vu depuis ce module.
+La contrepartie : `sTx` n'existe dans le fichier de résultats qu'aux points de sortie. D'où `fDisplay`, porteuse mise à l'échelle (4 × débit radio), distincte de `fCarrier`, qui ne sert qu'à l'accord, et les intervalles de sortie des exemples : 10 µs pour `Examples.Radio.Modulations` (4800 Hz), 2 µs pour `Examples.Radio.Link` (38,4 kHz ; FSK à 28,8 et 48 kHz, une dizaine de points par période). `sRx` rend le signal de l'autre émetteur, tel que vu depuis ce module.
 
 ## 6. Coût
 
-`Examples.Radio.Link` (deux MCU, deux modules, 0,25 s, 42 octets dans chaque sens de l'air) : 2,8 s de simulation sur une copie hors OneDrive (OpenModelica 1.27.1). `Radio.Modulations` (huit modules, 40 ms, sortie toutes les 10 µs) : 1 s. Les événements ajoutés par un module sont ceux de ses deux liaisons série (un par changement de niveau, un réveil par octet reçu) ; le fil d'antenne n'en crée aucun en propre.
+`Examples.Radio.Link` (deux MCU, deux modules, 0,25 s, 42 octets dans chaque sens de l'air) : 2,8 s de simulation sur une copie hors OneDrive (OpenModelica 1.27.1) avec une sortie toutes les 100 µs (celle de `verify_51`) ; avec l'intervalle de 2 µs de l'annotation `experiment` (125 000 points), environ 18 s et un fichier de résultats de 150 Mo (300 Mo à 1 µs, pour une courbe à peine plus lisse). Le signal tracé ne coûte rien au solveur ; ce sont les points de sortie qui coûtent : chaque point arrête l'intégrateur et écrit toutes les variables du modèle. `Radio.Modulations` (huit modules, 40 ms, sortie toutes les 10 µs) : 1 s. Les événements ajoutés par un module sont ceux de ses deux liaisons série (un par changement de niveau, un réveil par octet reçu) ; le fil d'antenne n'en crée aucun en propre.
 
 ## 7. Pour aller plus loin
 

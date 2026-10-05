@@ -56,6 +56,9 @@ L'exemple `I2c.GroveLcd` pilote cet écran avec un **driver MicroPython du comme
 
 ## Connecteurs
 
+Côté programme, le bus s'écrit avec `machine.I2C` (maître) ou `machine.I2CTarget` (cible) : voir [l'API](../api.md#machinei2c) et la documentation officielle MicroPython ([`machine.I2C`](https://docs.micropython.org/en/latest/library/machine.I2C.html), [`machine.I2CTarget`](https://docs.micropython.org/en/latest/library/machine.I2CTarget.html), [port rp2](https://docs.micropython.org/en/latest/rp2/quickref.html#hardware-i2c-bus)).
+
+
 | Connecteur | Rôle |
 |---|---|
 | `SDA` | Données du bus |

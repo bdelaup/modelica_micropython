@@ -93,7 +93,31 @@ def route(a, b, first='h'):
         pts = [a, (ax, by), b]
     return '{' + ', '.join('{%g, %g}' % pt for pt in pts) + '}'
 
-def wire(c1, c2, pts, color='{0, 0, 255}'):
+# Couleur des fils du schema, par reseau (l'ordre des tests compte)
+NET_COLORS = [
+    ('{90, 90, 90}', ('core.gnd',)),                                          # masse
+    ('{28, 108, 200}', ('Display0',)),                                        # liaison d'affichage
+    ('{150, 0, 200}', ('V3V3_EN', 'enPullUp.n', 'regulator.en', 'RUN', 'core.run')),  # commandes
+    ('{0, 150, 0}', ('vbusSenseTop.n', 'vsysSenseTop.n', 'vrefFilter.n', 'ADC_VREF', 'core.vref')),  # mesures
+    ('{230, 120, 0}', ('usb', 'VBUS', 'schottky.p')),                          # USB / VBUS
+    ('{160, 80, 0}', ('VSYS', 'schottky.n', 'regulator.vin')),                 # VSYS
+    ('{220, 0, 0}', ('V3V3', 'regulator.vout', 'core.vdd')),                   # rail 3,3 V
+]
+
+def net_color(c1, c2):
+    for color, keys in NET_COLORS:
+        if any(k in c for k in keys for c in (c1, c2)):
+            return color
+    return '{0, 0, 255}'                                                       # GPIO, LED
+
+POWER_COLORS = ('{230, 120, 0}', '{160, 80, 0}', '{220, 0, 0}')   # USB/VBUS, VSYS, rail : traits epais
+
+def wire(c1, c2, pts, color=None):
+    color = color or net_color(c1, c2)
+    if color in POWER_COLORS:
+        color += ', thickness = 0.75'
+    elif color != '{0, 0, 255}':
+        color += ', thickness = 0.5'
     return '  connect(%s, %s) annotation(\n    Line(points = %s, color = %s));' % (c1, c2, pts, color)
 
 # Composants : origine, rotation ; broches calculees
@@ -182,7 +206,7 @@ wires.append(wire('vrefFilter.n', 'ADC_VREF', route(vn, D['ADC_VREF'], 'v')))
 wires.append(wire('ADC_VREF', 'core.vref', '{{%g, %g}, {285, %g}, {285, 70}, {%g, 70}, {%g, %g}}' % (D['ADC_VREF'][0], D['ADC_VREF'][1], D['ADC_VREF'][1], CORE['vref'][0], CORE['vref'][0], CORE['vref'][1])))
 # RUN, Display0
 wires.append(wire('RUN', 'core.run', route(D['RUN'], CORE['run'])))
-wires.append(wire('core.Display0', 'Display0', '{{%g, %g}, {%g, %g}, {%g, %g}, {%g, %g}}' % (CORE['Display0'][0], CORE['Display0'][1], 20, CORE['Display0'][1], 20, D['Display0'][1], D['Display0'][0], D['Display0'][1]), '{28, 108, 200}'))
+wires.append(wire('core.Display0', 'Display0', '{{%g, %g}, {%g, %g}, {%g, %g}, {%g, %g}}' % (CORE['Display0'][0], CORE['Display0'][1], 20, CORE['Display0'][1], 20, D['Display0'][1], D['Display0'][0], D['Display0'][1])))
 # LED embarquee
 lp, ln = comp['ledResistor']; dp, dn = comp['builtinLed']
 wires.append(wire('core.pin[26]', 'ledResistor.p', '{{%g, %g}, {-215, %g}, {-215, %g}, {%g, %g}}' % (CORE['pin'][0], CORE['pin'][1], CORE['pin'][1], lp[1], lp[0], lp[1])))
@@ -221,7 +245,7 @@ icon.append('Polygon(visible = usbConnected, lineColor = {200, 140, 0}, fillColo
 for sx in (-1, 1):
     for sy in (-1, 1):
         cx, cy, r = sx * u(11.4 / 2), sy * (HALF_L - u(2)), u(2.1 / 2)
-        icon.append('Ellipse(lineColor = {230, 190, 60}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{%g, %g}, {%g, %g}})' % (cx - r, cy + r, cx + r, cy - r))
+        icon.append('Ellipse(lineColor = {230, 190, 60}, lineThickness = 0.75, fillColor = {0, 80, 35}, fillPattern = FillPattern.Solid, extent = {{%g, %g}, {%g, %g}})' % (cx - r, cy + r, cx + r, cy - r))
 # pastilles des broches
 for row in range(20):
     y = ypin(row)
@@ -297,10 +321,26 @@ equation
   // GPIO23 (core.pin[24]): power-save mode of the regulator, no electrical effect in the averaged model (Internal.Rt6150)
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -210}, {100, 270}}), graphics = {%(graphics)s}),
-    Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-320, -270}, {320, 260}}), graphics = {Text(extent = {{-300, 255}, {-200, 245}}, textString = "GPIO", horizontalAlignment = TextAlignment.Left), Text(extent = {{20, 255}, {300, 245}}, textString = "Power supply: USB, VBUS, VSYS, regulator, 3V3", horizontalAlignment = TextAlignment.Right), Text(extent = {{-160, -262}, {240, -270}}, textString = "Ground (GND pins and AGND)")}),
+    Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-320, -270}, {320, 260}}), graphics = {%(zones)s}),
     Documentation(info = "%(doc)s"));
 end RPi_Pico;
 '''
+# Zones de fond du schema, sous les composants : GPIO, coeur, alimentation, masse
+ZONES = [
+    ((-314, 250), (-206, -234), '{235, 242, 255}', 'GPIO'),
+    ((-200, 62), (-40, -104), '{242, 242, 242}', 'RP2040 core'),
+    ((22, 250), (316, -2), '{255, 243, 228}', 'Power supply: USB, VBUS, VSYS, regulator, 3V3'),
+    ((-200, -238), (280, -266), '{238, 238, 238}', 'Ground (GND pins, AGND)'),
+]
+zone_g = []
+for (x1, y1), (x2, y2), fill, label in ZONES:
+    zone_g.append('Rectangle(lineColor = {200, 200, 200}, fillColor = %s, fillPattern = FillPattern.Solid, extent = {{%g, %g}, {%g, %g}}, radius = 4)' % (fill, x1, y1, x2, y2))
+for (x1, y1), (x2, y2), fill, label in ZONES:
+    if label.startswith('Ground'):
+        zone_g.append('Text(textColor = {90, 90, 90}, extent = {{%g, %g}, {%g, %g}}, textString = "%s", horizontalAlignment = TextAlignment.Right)' % (x2 - 200, y2 + 9, x2 - 4, y2 + 1, label))
+    else:
+        zone_g.append('Text(textColor = {90, 90, 90}, extent = {{%g, %g}, {%g, %g}}, textString = "%s", horizontalAlignment = TextAlignment.Left)' % (x1 + 4, y1 - 2, x2 - 4, y1 - 10, label))
+
 decls = [
     comp_decl('Modelica.Electrical.Analog.Sources.ConstantVoltage', 'usbSupply', '(V = VUsb)', 'USB supply (5 V)', ' if usbConnected'),
     comp_decl('Modelica.Electrical.Analog.Basic.Resistor', 'usbCable', '(R = RUsb)', 'Resistance of the USB cable', ' if usbConnected'),
@@ -315,6 +355,6 @@ decls = [
 ]
 src = src % dict(conns='\n'.join(conns), dx=D['Display0'][0], dy=D['Display0'][1], core_mods=core_mods,
                  cx=CORE_O[0], cy=CORE_O[1], rx=REG_O[0], ry=REG_O[1], lx=P['builtinLed'][0][0], ly=P['builtinLed'][0][1],
-                 decls='\n'.join(decls), wires='\n'.join(wires), graphics=', '.join(icon), doc=doc)
+                 decls='\n'.join(decls), wires='\n'.join(wires), graphics=', '.join(icon), zones=', '.join(zone_g), doc=doc)
 open(os.path.join(ROOT, 'RPi_Pico.mo'), 'w', encoding='utf-8').write(src)
 print('ok', len(src))

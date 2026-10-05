@@ -63,7 +63,14 @@ Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fD
 | `BPSK` | porteuse inversée | porteuse |
 
 !!! warning "Voir la porteuse : réduire l'intervalle de sortie"
-    `sTx` n'est enregistré qu'aux points de sortie de la simulation. Pour voir la porteuse, l'intervalle de sortie doit être bien plus court que sa période : par exemple 10 µs pour 4800 Hz, comme dans `Radio.Modulations`. Avec l'intervalle par défaut, la courbe paraît fausse (repliement), alors que la liaison fonctionne. Le fichier de résultats grossit vite : simuler une durée courte.
+    `sTx` n'est enregistré qu'aux points de sortie de la simulation. Pour voir la porteuse, l'intervalle de sortie doit être bien plus court que sa période : une dizaine de points par période au moins. Avec un intervalle trop long, la courbe saute au hasard entre -1 et +1 (repliement), alors que la liaison fonctionne.
+
+    | Débit radio | Porteuse tracée (défaut) | Intervalle conseillé | Exemple |
+    |---|---|---|---|
+    | 1200 bit/s | 4800 Hz (FSK : 3600 et 6000 Hz) | 10 µs | `Radio.Modulations` |
+    | 9600 bit/s | 38,4 kHz (FSK : 28,8 et 48 kHz) | 2 µs | `Radio.Link` |
+
+    Le prix : à 2 µs, `Radio.Link` (0,25 s simulées) écrit un fichier de résultats d'environ 150 Mo et simule environ six fois plus lentement qu'à 100 µs. Simuler une durée courte, ou garder un intervalle long quand on ne regarde pas la porteuse. Augmenter `fDisplay` impose un intervalle encore plus court.
 
 ## Paramètres
 
@@ -99,10 +106,13 @@ Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fD
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
-| `fDisplay` | 4 × `airBaudrate` | Porteuse mise à l'échelle utilisée pour tracer `sTx` |
+| `fDisplay` | 4 × `airBaudrate` | Porteuse mise à l'échelle utilisée pour tracer `sTx` ; plus elle est élevée, plus l'intervalle de sortie doit être court |
 | `deltaFDisplay` | `airBaudrate` | FSK : écart de fréquence de la porteuse tracée |
 | `askLowAmplitude` | 0,3 | ASK : amplitude tracée pour un 0 |
 | `tickPeriod` | 0,1 s | Période du point de synchronisation minimal ; filet de sécurité |
+
+!!! note "Régler `fDisplay` d'après le débit radio"
+    La valeur par défaut affichée en grisé, `4*airBaudrate`, est écrite dans le module radio lui-même, où `airBaudrate` est un paramètre voisin. Une valeur saisie dans la fenêtre des paramètres est écrite dans le modèle qui contient le module : il faut y nommer le module, `radioA(fDisplay = 16*radioA.airBaudrate)`. Écrire `16*airBaudrate` donne l'erreur `Variable airBaudrate not found in scope`.
 
 L'onglet *Electrical* est celui des [appareils série](uart.md#electrique-onglet-electrical), broche `VCC` facultative comprise (`useSupplyPin`) : pour le bilan d'une alimentation, régler `IQ` sur la consommation du module (un APC220 tire de l'ordre de 25 à 35 mA).
 

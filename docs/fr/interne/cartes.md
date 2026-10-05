@@ -47,7 +47,15 @@ Côté C (`PyRuntime_sync`, `pyruntime_module.c`) :
 
 ## Arbre d'alimentation de `RPi_Pico`
 
-Visible dans le schéma interne de la carte :
+Visible dans le schéma interne de la carte (fils colorés par réseau dans `make_pico.py`, `NET_COLORS` ; zones de fond `ZONES`) :
+
+![Schéma interne de RPi_Pico dans OMEdit](../images/pico-schema-interne.png){ width="700" }
+
+Schéma de principe, dessiné à la main (`images/pico-alimentation.svg`) :
+
+![Schéma de principe de l'alimentation](../images/pico-alimentation.svg)
+
+En texte :
 
 ```
 USB 5 V ─ RUsb ─ VBUS ─ Schottky (0,3 V) ─ VSYS ─ Rt6150 ─ 3V3 ─ core.vdd ─ broches, ICore
