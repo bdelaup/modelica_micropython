@@ -5,7 +5,7 @@
 # par son chemin absolu - le modèle n'est plus lié à python312 (cf.
 # requirements.md, décision « Distribution Python embarquée »).
 #
-#   ./make_pyimports.sh
+#   tools/make_pyimports.sh
 #
 # À relancer quand le code C se met à utiliser une nouvelle fonction ou donnée
 # de l'API Python : la simulation échoue alors à l'édition de liens avec
@@ -18,7 +18,7 @@
 # kernel32, du runtime C ou d'OpenModelica).
 
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # racine du dépôt
 ROOT=$(pwd)
 INC="$ROOT/MicroPythonMCU/Resources/Include"
 DLL="$ROOT/MicroPythonMCU/Resources/PythonRuntime/python312.dll"

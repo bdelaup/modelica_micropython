@@ -5,9 +5,9 @@
 # de PulseView n'est suivi par git : le zip est publié à part, dans le
 # registre de paquets (Generic Package Registry) du projet GitLab.
 #
-#   ./make_pulseview_zip.sh                        # nightly du jour -> zip + empreinte
-#   ./make_pulseview_zip.sh --installer setup.exe  # à partir d'un installeur déjà téléchargé
-#   ./make_pulseview_zip.sh --upload               # dépose le zip DÉJÀ fabriqué (GITLAB_TOKEN)
+#   tools/make_pulseview_zip.sh                        # nightly du jour -> zip + empreinte
+#   tools/make_pulseview_zip.sh --installer setup.exe  # à partir d'un installeur déjà téléchargé
+#   tools/make_pulseview_zip.sh --upload               # dépose le zip DÉJÀ fabriqué (GITLAB_TOKEN)
 #
 # Fabrication et dépôt sont séparés : entre les deux, on valide ce PulseView
 # (session .pvs), et c'est exactement ce zip-là qui est déposé, celui dont
@@ -33,7 +33,7 @@
 set -e
 NIGHTLY_URL="https://sigrok.org/download/binary/pulseview/pulseview-NIGHTLY-x86_64-release-installer.exe"
 PROJECT_API="https://gitlab.com/api/v4/projects/bdelaup%2Fmodelica_micropython3"
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # racine du dépôt
 WINTAR="$(cygpath "$SYSTEMROOT")/System32/tar.exe"
 
 UPLOAD=0
@@ -58,7 +58,7 @@ if [ "$UPLOAD" = 1 ]; then
   EXPECTED=$(sed -n 's/^set "PV_SHA256=\(.*\)"\r*$/\1/p' get_pulseview.cmd)
   FILE="pulseview-$VERSION-win64-portable.zip"
   if [ ! -f "$FILE" ]; then
-    echo "$FILE absent : le fabriquer d'abord (./make_pulseview_zip.sh)" >&2
+    echo "$FILE absent : le fabriquer d'abord (tools/make_pulseview_zip.sh)" >&2
     exit 1
   fi
   SHA=$(sha256sum "$FILE" | cut -d' ' -f1)
@@ -162,4 +162,4 @@ EOF
 echo "PulseView $PV, build du $BUILD_DATE"
 echo "$FILE : $SIZE Mo, SHA-256 $SHA"
 echo "get_pulseview.cmd mis à jour (PV_VERSION, PV_SHA256) : à committer une fois le zip déposé"
-echo "Valider ce PulseView, puis le déposer : GITLAB_TOKEN=... ./make_pulseview_zip.sh --upload"
+echo "Valider ce PulseView, puis le déposer : GITLAB_TOKEN=... tools/make_pulseview_zip.sh --upload"

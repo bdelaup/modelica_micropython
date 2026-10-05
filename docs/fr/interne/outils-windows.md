@@ -1,6 +1,6 @@
 # Lancer les scripts sous Windows
 
-Les outils du dépôt sont des scripts bash : la suite de vérification (`run_tests.sh`), la construction du site (`make_docs.sh`), la table d'import Python (`make_pyimports.sh`), le débogueur vendoré (`make_debugpy.sh`) et le zip de PulseView (`make_pulseview_zip.sh`). Sous Windows, ils tournent avec le bash de **Git for Windows** (« Git Bash »). Un lanceur `.cmd` du même nom, à la racine du dépôt, s'occupe de le trouver : on les lance depuis PowerShell, cmd ou l'Explorateur sans ouvrir Git Bash.
+Les outils du dépôt sont des scripts bash : la suite de vérification (`run_tests.sh`), la construction du site (`make_docs.sh`), la table d'import Python (`make_pyimports.sh`), le débogueur vendoré (`make_debugpy.sh`) et le zip de PulseView (`make_pulseview_zip.sh`). Sous Windows, ils tournent avec le bash de **Git for Windows** (« Git Bash »). Un lanceur `.cmd` du même nom, à côté de son script dans le dossier `tools/`, s'occupe de le trouver : on les lance depuis PowerShell, cmd ou l'Explorateur sans ouvrir Git Bash.
 
 ## Prérequis
 
@@ -38,7 +38,7 @@ Test-Path "$env:OPENMODELICAHOME\bin\omc.exe"     # doit afficher True
 
 ```
 $env:OPENMODELICAHOME = "D:\Programmes\OpenModelica1.24.4-64bit"
-.\run_tests.cmd --copy
+.\tools\run_tests.cmd --copy
 ```
 
 Pour changer de version durablement, refaire `setx` avec l'autre dossier.
@@ -51,21 +51,21 @@ Dans un terminal PowerShell (celui de VS Code convient), **à la racine du dép�
 
 | Commande | Effet |
 |---|---|
-| `.\run_tests.cmd` | toute la suite de vérification, dans le dépôt |
-| `.\run_tests.cmd --copy` | la suite sur une copie des fichiers suivis par git, hors du dépôt : **à faire avant un tag** |
-| `.\run_tests.cmd verify_08_pwm.mos verify_09_import.mos` | seulement ces scénarios |
-| `.\run_tests.cmd -j 2 -k` | 2 exécutions simultanées, artefacts et journaux gardés |
-| `.\make_docs.cmd` | construit le site dans `public/` (comme la CI, en `--strict`) |
-| `.\make_docs.cmd serve fr` | aperçu local du site français sur <http://localhost:8000> (Ctrl+C pour arrêter) ; `serve en` pour l'anglais |
-| `.\make_pyimports.cmd` | régénère `Resources/Include/pyimports.h` |
-| `.\make_debugpy.cmd` | reconstruit `Resources/Debugpy/` |
-| `.\make_pulseview_zip.cmd` | fabrique le zip de la copie portable de PulseView à partir du nightly de sigrok.org ; `--upload` dépose ce zip dans le registre GitLab (cf. [Publier](publication.md#pulseview-copie-portable)) |
+| `.\tools\run_tests.cmd` | toute la suite de vérification, dans le dépôt |
+| `.\tools\run_tests.cmd --copy` | la suite sur une copie des fichiers suivis par git, hors du dépôt : **à faire avant un tag** |
+| `.\tools\run_tests.cmd verify_08_pwm.mos verify_09_import.mos` | seulement ces scénarios |
+| `.\tools\run_tests.cmd -j 2 -k` | 2 exécutions simultanées, artefacts et journaux gardés |
+| `.\tools\make_docs.cmd` | construit le site dans `public/` (comme la CI, en `--strict`) |
+| `.\tools\make_docs.cmd serve fr` | aperçu local du site français sur <http://localhost:8000> (Ctrl+C pour arrêter) ; `serve en` pour l'anglais |
+| `.\tools\make_pyimports.cmd` | régénère `Resources/Include/pyimports.h` |
+| `.\tools\make_debugpy.cmd` | reconstruit `Resources/Debugpy/` |
+| `.\tools\make_pulseview_zip.cmd` | fabrique le zip de la copie portable de PulseView à partir du nightly de sigrok.org ; `--upload` dépose ce zip dans le registre GitLab (cf. [Publier](publication.md#pulseview-copie-portable)) |
 
-`get_pulseview.cmd`, lui, n'est pas un lanceur de script bash : il s'adresse aux utilisateurs, qui n'ont pas forcément Git Bash, et n'utilise que des outils de Windows (`curl.exe`, `certutil`, `tar.exe`).
+`get_pulseview.cmd`, lui, reste à la racine du dépôt : ce n'est pas un lanceur de script bash, il s'adresse aux utilisateurs, qui n'ont pas forcément Git Bash, et n'utilise que des outils de Windows (`curl.exe`, `certutil`, `tar.exe`).
 
 Les options sont celles des scripts `.sh` ; leur en-tête les décrit toutes. Le code de sortie est celui du script : `$LASTEXITCODE` vaut 0 si tout passe.
 
-Le préfixe `.\` est **obligatoire** dans PowerShell, qui ne cherche pas les commandes dans le dossier courant. Dans cmd, `run_tests.cmd` suffit.
+Le préfixe `.\` est **obligatoire** dans PowerShell, qui ne cherche pas les commandes dans le dossier courant. Dans cmd, `tools\run_tests.cmd` suffit.
 
 Un **double-clic** sur un `.cmd` dans l'Explorateur lance aussi le script, sans argument. La fenêtre attend une touche à la fin, le temps de lire le récapitulatif.
 
@@ -74,7 +74,7 @@ Un **double-clic** sur un `.cmd` dans l'Explorateur lance aussi le script, sans 
 Dans VS Code, la flèche `˅` à côté du `+` du panneau Terminal propose **Git Bash** (« Select Default Profile » pour l'ouvrir par défaut). On y lance directement les `.sh` :
 
 ```
-./make_docs.sh serve fr
+tools/make_docs.sh serve fr
 MicroPythonMCU/Resources/Verification/run_tests.sh --copy
 ```
 
@@ -82,7 +82,7 @@ MicroPythonMCU/Resources/Verification/run_tests.sh --copy
 
 ## Comment marchent les lanceurs
 
-Chaque lanceur (`run_tests.cmd`, `make_docs.cmd`, etc.) se contente d'appeler `gitbash.cmd` avec le chemin de son script. `gitbash.cmd <script.sh> [arguments…]` peut aussi servir à lancer n'importe quel autre script bash. Il :
+Chaque lanceur (`run_tests.cmd`, `make_docs.cmd`, etc.) se contente d'appeler `gitbash.cmd`, rangé avec eux dans `tools/`, avec le chemin de son script. `gitbash.cmd <script.sh> [arguments…]` peut aussi servir à lancer n'importe quel autre script bash. Il :
 
 - prend le `bash.exe` de Git for Windows, cherché à côté du `git` du `PATH`, puis dans `Program Files\Git` et `%LOCALAPPDATA%\Programs\Git`. Il n'utilise **jamais** le `bash` du `PATH` (voir les pièges) ;
 - passe le chemin du script avec des `/` : les scripts retrouvent leur dossier par `dirname "$0"`, qui ne reconnaît pas les `\` ;

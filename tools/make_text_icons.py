@@ -4,7 +4,7 @@
 # une chaîne if/elseif dans un DynamicSelect (cf. Internal.TwoLineTextIcon pour
 # la raison : une variable String n'est pas enregistrée dans les résultats).
 #
-#   python make_text_icons.py
+#   python tools/make_text_icons.py
 #
 # À relancer après toute modification de ce script (géométrie, jeu de
 # caractères) ; les fichiers générés sont versionnés, comme pyimports.h.
@@ -12,7 +12,7 @@
 import io
 import os
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # racine du dépôt
 INTERNAL = os.path.join(ROOT, "MicroPythonMCU", "Internal")
 
 COLS = 32            # aligné sur Interfaces.TEXT_DISPLAY_COLS
@@ -65,7 +65,7 @@ def icon(lines):
         '      Text(extent = {{-150, -%s}, {150, -%s}}, textColor = {0, 0, 255}, textString = "%%name")'
         % (fmt(frame + 4), fmt(frame + 30)))
     name = "TextIcon%dx%d" % (lines, COLS)
-    doc = ("<p>Base class <b>generated</b> by <code>make_text_icons.py</code> (repository root) - "
+    doc = ("<p>Base class <b>generated</b> by <code>make_text_icons.py</code> (folder tools/ of the repository) - "
            "do not edit by hand: change the script and run it again. Icon of a %d-line, %d-column text screen: "
            "cell <code>k</code> shows the character whose ASCII code is <code>%s[k]</code>, "
            "line <code>i</code>, column <code>j</code> being <code>k = (i - 1)*%d + j</code>. "

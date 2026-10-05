@@ -4,9 +4,9 @@
 # LED), connexions et documentation. A relancer apres toute modification ici ;
 # ne pas editer RPi_Pico.mo a la main.
 #
-#   python make_pico.py
+#   python tools/make_pico.py
 import os, sys
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'MicroPythonMCU')
+ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'MicroPythonMCU')
 MM = 2.54 / 20          # 1 unite d'icone = 0,127 mm : pas de 2,54 mm = 20 unites
 def u(mm):
     return round(mm / MM, 1)
@@ -138,7 +138,7 @@ def core_pt(lx, ly):
     return (CORE_O[0] + lx * CORE_S, CORE_O[1] + ly * CORE_S)
 CORE = {'pin': core_pt(-110, 0), 'vdd': core_pt(0, 110), 'gnd': core_pt(0, -110),
         'vref': core_pt(-60, 110), 'run': core_pt(110, -60), 'Display0': core_pt(110, 60)}
-REG_O = (150, 120)                   # regulateur : extent {{-20,-20},{20,20}}, rotation 0
+REG_O = (176, 120)                   # regulateur : extent {{-20,-20},{20,20}}, rotation 0
 REG = {'vin': (REG_O[0] - 20, REG_O[1]), 'vout': (REG_O[0] + 20, REG_O[1]),
        'en': (REG_O[0] - 12, REG_O[1] - 20), 'gnd': (REG_O[0], REG_O[1] - 20)}
 
@@ -193,11 +193,13 @@ wires.append(wire('enPullUp.n', 'V3V3_EN', route(en, D['V3V3_EN'], 'v')))
 wires.append(wire('V3V3_EN', 'regulator.en', '{{%g, %g}, {%g, %g}, {%g, %g}}' % (D['V3V3_EN'][0], D['V3V3_EN'][1], 280, D['V3V3_EN'][1], 280, REG['en'][1] - 10) + '' ))
 # corrige : trace EN jusqu'a la broche en du regulateur
 wires[-1] = wire('V3V3_EN', 'regulator.en', '{{%g, %g}, {280, %g}, {280, %g}, {%g, %g}, {%g, %g}}' % (D['V3V3_EN'][0], D['V3V3_EN'][1], D['V3V3_EN'][1], REG['en'][1] - 10, REG['en'][0], REG['en'][1] - 10, REG['en'][0], REG['en'][1]))
-# regulateur
-wires.append(wire('VSYS', 'regulator.vin', '{{%g, %g}, {%g, %g}, {%g, %g}, {%g, %g}}' % (D['VSYS'][0], D['VSYS'][1], 110, D['VSYS'][1], 110, REG['vin'][1], REG['vin'][0], REG['vin'][1])))
+# regulateur : abscisses des coudes de VSYS (a gauche de vin) et de la sortie
+# (a droite de vout), retouchees dans OMEdit avec le regulateur
+VSYS_X, VOUT_X = 138, 203
+wires.append(wire('VSYS', 'regulator.vin', '{{%g, %g}, {%g, %g}, {%g, %g}, {%g, %g}}' % (D['VSYS'][0], D['VSYS'][1], VSYS_X, D['VSYS'][1], VSYS_X, REG['vin'][1], REG['vin'][0], REG['vin'][1])))
 wires.append(wire('regulator.gnd', 'core.gnd', '{{%g, %g}, {%g, %g}, {%g, %g}}' % (REG['gnd'][0], REG['gnd'][1], REG['gnd'][0], GND_RAIL, CORE['gnd'][0], GND_RAIL)))
 RAIL_Y = 60
-wires.append(wire('regulator.vout', 'V3V3', '{{%g, %g}, {%g, %g}, {%g, %g}, {%g, %g}}' % (REG['vout'][0], REG['vout'][1], 185, REG['vout'][1], 185, RAIL_Y, D['V3V3'][0], D['V3V3'][1])))
+wires.append(wire('regulator.vout', 'V3V3', '{{%g, %g}, {%g, %g}, {%g, %g}, {%g, %g}}' % (REG['vout'][0], REG['vout'][1], VOUT_X, REG['vout'][1], VOUT_X, RAIL_Y, D['V3V3'][0], D['V3V3'][1])))
 wires.append(wire('V3V3', 'core.vdd', '{{%g, %g}, {%g, %g}, {%g, %g}}' % (D['V3V3'][0], D['V3V3'][1], CORE['vdd'][0], RAIL_Y, CORE['vdd'][0], CORE['vdd'][1])))
 # ADC_VREF
 vp, vn = comp['vrefFilter']
@@ -318,7 +320,7 @@ protected
 %(decls)s
 equation
 %(wires)s
-  // GPIO23 (core.pin[24]): power-save mode of the regulator, no electrical effect in the averaged model (Internal.Rt6150)
+// GPIO23 (core.pin[24]): power-save mode of the regulator, no electrical effect in the averaged model (Internal.Rt6150)
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -210}, {100, 270}}), graphics = {%(graphics)s}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-320, -270}, {320, 260}}), graphics = {%(zones)s}),

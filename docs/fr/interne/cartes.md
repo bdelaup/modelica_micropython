@@ -10,7 +10,7 @@ Depuis le 2026-10-04, le microcontrôleur programmable est un **composant**, `In
 | `Internal.McuCore` | Le RP2040 et son programme : `PyRuntime`, la synchro (le grand `when`), un `PinBridge` par broche, la mise sous tension. Connecteurs : `pin[nPins]`, `vdd`, `gnd`, `vref`, `run`, `Display0` |
 | `Internal.PinBridge` | Étage électrique d'une broche, en équations : sortie push-pull par deux conductances (`1/ROut` de `vdd` vers la broche, ou de la broche vers `VOL`), tirages, fuite `GOff` |
 | `MCU` | Le cœur + une `ConstantVoltage(VOH)` sur `vdd` et `vref` + la LED embarquée sur `pin[9]`. `run` reste en l'air (tirage interne) |
-| `RPi_Pico` | Le cœur + l'arbre d'alimentation de la carte + la LED sur `pin[26]`. **Généré** par `make_pico.py` (racine du dépôt) : ne pas éditer `RPi_Pico.mo` à la main |
+| `RPi_Pico` | Le cœur + l'arbre d'alimentation de la carte + la LED sur `pin[26]`. **Généré** par `tools/make_pico.py` : ne pas éditer `RPi_Pico.mo` à la main |
 | `Internal.Rt6150` | Régulateur buck-boost, modèle moyen |
 | `Internal.PartialSupplyPin` | `GND` + broche `VCC` facultative (`useSupplyPin`) des périphériques |
 

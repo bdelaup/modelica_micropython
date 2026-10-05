@@ -1,14 +1,14 @@
 # Documentation site, ENGLISH version (user guide only: the maintainer
 # reference stays in French), built by Zensical from docs/en/ and published on
 # GitLab Pages under /en/. See zensical.fr.toml for the full French site; both
-# are built by make_docs.sh (also run by .gitlab-ci.yml).
+# are built by tools/make_docs.sh (also run by .gitlab-ci.yml).
 #
-#   ./make_docs.sh              # both languages into public/
-#   ./make_docs.sh serve en     # preview at http://localhost:8000
+#   tools/make_docs.sh              # both languages into public/
+#   tools/make_docs.sh serve en     # preview at http://localhost:8000
 #
 # Every page here translates the page of docs/fr/ found at the SAME PATH (the
 # language selector relies on it). docs/en/images/ is a copy of docs/fr/images/
-# made by make_docs.sh, not versioned.
+# made by tools/make_docs.sh, not versioned.
 
 [project]
 site_name = "MicroPythonMCU"

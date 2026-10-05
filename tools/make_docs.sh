@@ -5,14 +5,14 @@
 # renvoie vers l'anglais, langue par défaut du site. Appelé tel quel par
 # .gitlab-ci.yml.
 #
-#   ./make_docs.sh              # construction stricte des deux langues
-#   ./make_docs.sh serve [en|fr]  # aperçu local d'une langue, anglais par défaut (http://localhost:8000)
+#   tools/make_docs.sh              # construction stricte des deux langues
+#   tools/make_docs.sh serve [en|fr]  # aperçu local d'une langue, anglais par défaut (http://localhost:8000)
 #
 # Prérequis : pip install zensical. Les images n'existent qu'une fois, dans
 # docs/fr/images/ : le site anglais en reçoit une copie (docs/en/images/, ignoré
 # par git), refaite à chaque appel.
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # racine du dépôt
 
 sync_images() {
   rm -rf docs/en/images

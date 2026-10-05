@@ -3,8 +3,8 @@
 # vendoré, qu'utilise MCU.debugEnabled (cf. requirements.md, décision
 # « Débogage du programme (debugpy + VS Code) »). Le résultat est versionné.
 #
-#   ./make_debugpy.sh                 # télécharge la roue par pip
-#   ./make_debugpy.sh chemin/vers/debugpy-X.Y.Z-cp312-cp312-win_amd64.whl
+#   tools/make_debugpy.sh                 # télécharge la roue par pip
+#   tools/make_debugpy.sh chemin/vers/debugpy-X.Y.Z-cp312-cp312-win_amd64.whl
 #
 # Version figée ci-dessous : en changer, c'est rejouer verify_60 à verify_62.
 # La roue cp312 win_amd64 correspond à la distribution Python embarquée
@@ -17,7 +17,7 @@
 
 set -e
 VERSION=1.8.20
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # racine du dépôt
 DEST="MicroPythonMCU/Resources/Debugpy"
 
 WORK=$(mktemp -d)

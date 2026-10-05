@@ -1,11 +1,11 @@
 # Site de documentation, version FRANÇAISE (complète : guide utilisateur +
 # référence interne), construit par Zensical à partir de docs/fr/ et publié sur
 # GitLab Pages sous /fr/. La version anglaise (guide utilisateur seulement) est
-# décrite par zensical.en.toml ; les deux sont construites par make_docs.sh,
+# décrite par zensical.en.toml ; les deux sont construites par tools/make_docs.sh,
 # appelé aussi par .gitlab-ci.yml (docs/fr/interne/publication.md) :
 #
-#   ./make_docs.sh              # les deux langues dans public/
-#   ./make_docs.sh serve fr     # aperçu http://localhost:8000
+#   tools/make_docs.sh              # les deux langues dans public/
+#   tools/make_docs.sh serve fr     # aperçu http://localhost:8000
 #
 # Toute nouvelle page de docs/fr/ doit aussi être ajoutée à nav ci-dessous ; une
 # page du guide utilisateur a sa traduction dans docs/en/, SOUS LE MÊME CHEMIN

@@ -11,7 +11,7 @@ Cette page documente comment relancer, de façon reproductible, les scripts qui 
 
 ### Toute la suite, en parallèle (recommandé)
 
-Depuis PowerShell, à la racine du dépôt, le lanceur `run_tests.cmd` accepte les mêmes options (`.\run_tests.cmd --copy`, `.\run_tests.cmd verify_08_pwm.mos`… ; cf. [Lancer les scripts sous Windows](outils-windows.md)). Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, ou le msys fourni avec OpenModelica) :
+Depuis PowerShell, à la racine du dépôt, le lanceur `tools\run_tests.cmd` accepte les mêmes options (`.\tools\run_tests.cmd --copy`, `.\tools\run_tests.cmd verify_08_pwm.mos`… ; cf. [Lancer les scripts sous Windows](outils-windows.md)). Depuis `MicroPythonMCU/Resources/Verification/`, dans un shell bash (Git Bash, ou le msys fourni avec OpenModelica) :
 ```
 ./run_tests.sh                        # toute la suite, 4 exécutions simultanées
 ./run_tests.sh -j 2                   # autre degré de parallélisme

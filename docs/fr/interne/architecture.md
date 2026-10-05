@@ -46,13 +46,17 @@ modelica_micropython3/
 ├── CLAUDE.md                       -- guidance pour Claude Code dans ce dépôt
 ├── docs/                           -- ce site : fr/ (guide utilisateur + référence interne), en/ (guide utilisateur traduit, mêmes chemins), figures/make_figures.py (courbes de simulation), ILLUSTRATIONS.md (images attendues, non publié)
 ├── zensical.fr.toml, zensical.en.toml -- configuration du site, une par langue
-├── make_docs.sh                    -- construit les deux langues dans public/ (appelé par .gitlab-ci.yml)
-├── gitbash.cmd                     -- lance un script bash avec Git Bash depuis PowerShell, cmd ou l'Explorateur (voir outils-windows.md)
-├── run_tests.cmd, make_docs.cmd, make_pyimports.cmd, make_debugpy.cmd -- un lanceur par script bash, qui appelle gitbash.cmd
+├── get_pulseview.cmd               -- télécharge la copie portable de PulseView dans PulseView/ (pour l'utilisateur final, sans Git Bash)
+├── tools/                          -- outillage mainteneur :
+│   ├── make_pico.py, make_text_icons.py -- générateurs de RPi_Pico.mo et des icônes Internal.TextIcon4x32/8x32
+│   ├── make_docs.sh                -- construit les deux langues dans public/ (appelé par .gitlab-ci.yml)
+│   ├── make_pyimports.sh, make_debugpy.sh, make_pulseview_zip.sh -- pyimports.h, Resources/Debugpy/, zip de PulseView
+│   ├── gitbash.cmd                 -- lance un script bash avec Git Bash depuis PowerShell, cmd ou l'Explorateur (voir outils-windows.md)
+│   └── run_tests.cmd, make_docs.cmd, make_pyimports.cmd, make_debugpy.cmd, make_pulseview_zip.cmd -- un lanceur par script bash, qui appelle gitbash.cmd
 └── MicroPythonMCU/                 -- la bibliothèque OpenModelica elle-même
     ├── package.mo, package.order   -- déclaration du package racine
     ├── MCU.mo                      -- le microcontrôleur simplifié : icône, 8 broches GP0-GP7 + GND + Display0 ; à l'intérieur, le cœur Internal.McuCore, une source idéale VOH et la LED embarquée (cf. cartes.md)
-    ├── RPi_Pico.mo                 -- la carte Raspberry Pi Pico : brochage et cotes réels, cœur + alimentation (USB, VBUS, VSYS, régulateur Rt6150, 3V3) ; GÉNÉRÉ par make_pico.py
+    ├── RPi_Pico.mo                 -- la carte Raspberry Pi Pico : brochage et cotes réels, cœur + alimentation (USB, VBUS, VSYS, régulateur Rt6150, 3V3) ; GÉNÉRÉ par tools/make_pico.py
     ├── Interfaces/                 -- constantes électriques (VOH, VOL, VIH, VIL, ROut, RPull, GOff) — approximation RP2040 ; énumérations UartParity, ChannelKind, BitOrder, ClockEdge, Modulation ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique) ; connecteur acausal Antenna (fil d'antenne des modules radio, voir radio.md)
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
@@ -153,7 +157,7 @@ modelica_micropython3/
     └── Resources/
         ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), AnalyzerImpl.c + .h (chapeau de la sonde d'analyseur logique, sans Python), RadioModemImpl.c + .h (chapeau des modules radio, sans Python), StringToCharCodes.c, uartcore.h/.c, i2ctarget.h/.c, devscript.c, launch.c
         │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
-        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de python312.dll par son chemin absolu dans PythonRuntime/ (table d'import pyimports.h, générée par make_pyimports.sh), démarrage unique de l'interpréteur principal (le premier composant construit le démarre ; chaque MCU crée ensuite son sous-interpréteur), relais stdout/stderr avec un tampon par interpréteur, lecture de fichier
+        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de python312.dll par son chemin absolu dans PythonRuntime/ (table d'import pyimports.h, générée par tools/make_pyimports.sh), démarrage unique de l'interpréteur principal (le premier composant construit le démarre ; chaque MCU crée ensuite son sous-interpréteur), relais stdout/stderr avec un tampon par interpréteur, lecture de fichier
         │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame au format choisi, niveau de la ligne d'émission, décodage de la réception à partir des fronts, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
         │   ├── launch.c            -- lanceur commun PARTAGÉ (Explorateur sur la copie de la flash ; Bloc-notes et PulseView sur les fichiers de l'analyseur logique) : CreateProcess sans attente, seul point du runtime qui dépend du système pour lancer un programme ; hors Windows, un message au journal. Garde d'inclusion
         │   ├── analyzer/           -- parties du chapeau AnalyzerImpl.c, dans cet ordre : analyzer_vcd.c (enregistreur VCD : nanosecondes, coalescence par instant), analyzer_core.h (structures), analyzer_text.c (décodeurs UART / I2C / série synchrone hors ligne et fichier texte), analyzer_logic.c (capture, API exportée)

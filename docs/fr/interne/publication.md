@@ -11,7 +11,7 @@ Le site est construit par [Zensical](https://zensical.org/) en deux langues, cha
 | Français | `docs/fr/` | [`zensical.fr.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.fr.toml) | `/fr/` | Guide utilisateur et référence interne |
 | Anglais | `docs/en/` | [`zensical.en.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.en.toml) | `/en/` | Guide utilisateur seulement |
 
-[`make_docs.sh`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/make_docs.sh) construit les deux dans `public/`, plus `public/index.html`, qui renvoie vers l'anglais, **langue par défaut** du site. À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/.gitlab-ci.yml) l'exécute et publie le résultat sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
+[`make_docs.sh`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/tools/make_docs.sh) construit les deux dans `public/`, plus `public/index.html`, qui renvoie vers l'anglais, **langue par défaut** du site. À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/.gitlab-ci.yml) l'exécute et publie le résultat sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
 
 Adresse : <https://bdelaup.gitlab.io/modelica_micropython3/>
 
@@ -34,10 +34,10 @@ Adresse : <https://bdelaup.gitlab.io/modelica_micropython3/>
 
 ```
 pip install zensical
-./make_docs.sh serve fr      # ou en
+tools/make_docs.sh serve fr      # ou en
 ```
 
-puis <http://localhost:8000>. La page se recharge à chaque enregistrement. `./make_docs.sh` seul fait la construction complète et stricte, comme la CI. Depuis PowerShell : `.\make_docs.cmd serve fr` et `.\make_docs.cmd` (cf. [Lancer les scripts sous Windows](outils-windows.md)).
+puis <http://localhost:8000>. La page se recharge à chaque enregistrement. `tools/make_docs.sh` seul fait la construction complète et stricte, comme la CI. Depuis PowerShell : `.\tools\make_docs.cmd serve fr` et `.\tools\make_docs.cmd` (cf. [Lancer les scripts sous Windows](outils-windows.md)).
 
 ## Livrer une version
 
@@ -67,7 +67,7 @@ Dans Git Bash, à la racine du dépôt :
     MicroPythonMCU/Resources/Verification/run_tests.sh --copy
     ```
 
-    Depuis PowerShell, l'équivalent est `.\run_tests.cmd --copy`, avec `OPENMODELICAHOME` déjà réglé (cf. [Lancer les scripts sous Windows](outils-windows.md)). Toutes les lignes doivent être `PASS`.
+    Depuis PowerShell, l'équivalent est `.\tools\run_tests.cmd --copy`, avec `OPENMODELICAHOME` déjà réglé (cf. [Lancer les scripts sous Windows](outils-windows.md)). Toutes les lignes doivent être `PASS`.
 3. Poser et pousser le tag :
 
     ```
@@ -81,7 +81,7 @@ Les notes de version, si on en veut, se rédigent dans le message du tag ou dans
 
 ## Mettre à jour un composant vendoré
 
-- **Débogueur `debugpy`** (`Resources/Debugpy/`, utilisé par `MCU.debugEnabled`) : changer `VERSION` dans `make_debugpy.sh`, puis lancer `./make_debugpy.sh` à la racine, ou `.\make_debugpy.cmd` depuis PowerShell (pip télécharge la roue `cp312` `win_amd64`, le script l'allège et remplace le dossier). Rejouer `verify_60` à `verify_63` et faire un essai dans VS Code avant de livrer : la bibliothèque s'appuie sur quelques rouages internes de pydevd (`_WaitForConnectionThread`, lecteur `reader.sock`, `FilesFiltering._get_default_library_roots`), cf. `cycle-de-vie.md`, section 5.
+- **Débogueur `debugpy`** (`Resources/Debugpy/`, utilisé par `MCU.debugEnabled`) : changer `VERSION` dans `tools/make_debugpy.sh`, puis le lancer depuis Git Bash, ou `.\tools\make_debugpy.cmd` depuis PowerShell (pip télécharge la roue `cp312` `win_amd64`, le script l'allège et remplace le dossier). Rejouer `verify_60` à `verify_63` et faire un essai dans VS Code avant de livrer : la bibliothèque s'appuie sur quelques rouages internes de pydevd (`_WaitForConnectionThread`, lecteur `reader.sock`, `FilesFiltering._get_default_library_roots`), cf. `cycle-de-vie.md`, section 5.
 
 ## PulseView, copie portable
 
@@ -97,7 +97,7 @@ nightly Windows   ──────►  make_pulseview_zip.sh  ─────�
 ```
 
 1. **sigrok.org** publie chaque jour un installeur Windows de PulseView, le *nightly* : <https://sigrok.org/download/binary/pulseview/pulseview-NIGHTLY-x86_64-release-installer.exe>. C'est la version que le projet sigrok recommande ; la dernière version numérotée (0.4.2) est bien plus ancienne. L'adresse ne change pas, son contenu si.
-2. **`make_pulseview_zip.sh`** (mainteneur, à la racine) en tire un zip portable et l'empreinte de ce zip ; `make_pulseview_zip.sh --upload` le dépose, une fois validé.
+2. **`tools/make_pulseview_zip.sh`** (mainteneur) en tire un zip portable et l'empreinte de ce zip ; `make_pulseview_zip.sh --upload` le dépose, une fois validé.
 3. **Le registre de paquets GitLab** (*Deploy → Package registry*) garde chaque zip sous son numéro de version. Le projet étant public, le téléchargement est anonyme.
 4. **`get_pulseview.cmd`** (élève, à la racine) contient l'adresse et l'empreinte du zip **en dur**. Il le télécharge, vérifie l'empreinte et le décompresse dans `PulseView/`, à côté de `MicroPythonMCU`, où la sonde le trouve d'elle-même (`pulseViewPath` vide, cf. [Analyse des trames](analyse-trames.md)).
 
@@ -132,8 +132,8 @@ Le point clé : `get_pulseview.cmd` désigne **un** zip précis, figé par son e
 1. Fabriquer le zip, sans le publier :
 
     ```
-    ./make_pulseview_zip.sh                  # Git Bash
-    .\make_pulseview_zip.cmd                 # PowerShell
+    tools/make_pulseview_zip.sh              # Git Bash
+    .\tools\make_pulseview_zip.cmd           # PowerShell
     ```
 
     Le script affiche la version, la taille et l'empreinte, et réécrit `get_pulseview.cmd`.
@@ -141,10 +141,10 @@ Le point clé : `get_pulseview.cmd` désigne **un** zip précis, figé par son e
 3. Déposer ce zip :
 
     ```
-    GITLAB_TOKEN=glpat-... ./make_pulseview_zip.sh --upload
+    GITLAB_TOKEN=glpat-... tools/make_pulseview_zip.sh --upload
     ```
 
-    Depuis PowerShell : `$env:GITLAB_TOKEN = "glpat-..."`, puis `.\make_pulseview_zip.cmd --upload`. Rien n'est refait : le script dépose le zip de l'étape 1, après avoir vérifié son empreinte.
+    Depuis PowerShell : `$env:GITLAB_TOKEN = "glpat-..."`, puis `.\tools\make_pulseview_zip.cmd --upload`. Rien n'est refait : le script dépose le zip de l'étape 1, après avoir vérifié son empreinte.
 4. Essayer `get_pulseview.cmd` dans un dossier vierge (une copie du dépôt hors OneDrive, par exemple) : téléchargement, empreinte, décompression.
 5. Committer `get_pulseview.cmd`. Le zip, lui, n'est jamais committé.
 
