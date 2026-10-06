@@ -11,9 +11,9 @@ partial model PartialSupplyPin "Supply of a peripheral: optional GND and VCC pin
     Dialog(tab = "Electrical", group = "Supply"),
     choices(checkBox = true));
   Modelica.Electrical.Analog.Interfaces.NegativePin GND if useGroundPin "Common reference (ground), to be connected to the microcontroller's one - shown when useGroundPin is checked" annotation(
-    Placement(transformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}})));
+    Placement(transformation(origin = {0, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, -60}, extent = {{-5, -5}, {5, 5}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin VCC if useSupplyPin "Supply of the peripheral (e.g. 3V3(OUT) of a Raspberry Pi Pico) - shown when useSupplyPin is checked" annotation(
-    Placement(transformation(origin = {-60, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {-60, -72}, extent = {{-6, -6}, {6, 6}})));
+    Placement(transformation(origin = {-60, -72}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {-60, -60}, extent = {{-5, -5}, {5, 5}})));
 protected
   constant Modelica.Units.SI.Voltage VIqFull = 1 "Supply voltage above which the full quiescent current IQ is drawn (below, it decreases linearly to 0: a peripheral without supply draws nothing)";
   constant Modelica.Units.SI.Conductance GLeak = 1e-9 "Leakage of the rail to GND";
@@ -43,7 +43,7 @@ equation
   vRail = railSensor.v;
   quiescent.i = IQ*min(1, max(vRail, 0)/VIqFull) + GLeak*vRail "GLeak: a VCC pin left unconnected still settles at 0 V";
   annotation(
-    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Text(visible = useSupplyPin, extent = {{-85, -60}, {-35, -69}}, textString = "VCC")}),
+    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}, initialScale = 0.2), graphics = {Text(visible = useSupplyPin, extent = {{-53, -56}, {-13, -64}}, textString = "VCC", horizontalAlignment = TextAlignment.Left)}),
     Documentation(info = "<html>
 <p>Supply of a peripheral (serial devices, radio modems, I2C peripherals, HX711), shared by their base classes. The <code>GND</code> pin is shown by default; with <code>useGroundPin</code> unchecked it disappears and the peripheral is referenced to the simulation ground (0 V, an internal <code>Ground</code>), common to every <code>Ground</code> block and to every component whose <code>GND</code> is hidden. The inner wiring of the subclasses connects to the protected node <code>gnd</code>, never to the conditional <code>GND</code>. By default (<code>useSupplyPin</code> unchecked) the peripheral carries an <b>ideal internal supply</b> <code>VOH</code>: nothing to wire, as in all the examples. Checked, a <code>VCC</code> pin appears (bottom left of the icon): the internal rail becomes the voltage of <code>VCC</code> — the high levels of the outputs and the pull-ups follow it — and the peripheral draws its quiescent current <code>IQ</code> from it, so that the supply of the circuit (for instance <code>3V3(OUT)</code> of <code>RPi_Pico</code>, or a battery) sees its load.</p>
 <p>Not modelled: the behaviour of the peripheral itself without supply (its engine keeps running; only its electrical levels fall to 0 V), the current of the push-pull outputs (drawn from an ideal source referenced to GND, a few µA in practice). See <code>requirements.md</code>, decision \"Carte Raspberry Pi Pico et alimentation\".</p>

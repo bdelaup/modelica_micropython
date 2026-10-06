@@ -2,19 +2,19 @@ within MicroPythonMCU.Examples.Gpio;
 model Timing "Time cost of GPIO accesses (gpioOpTime): on()/off() pulse without sleep, bit-bang burst, busy wait, masked IRQ, idle(), high()/low()"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Verification/gpio_timing.py")) "scriptPath = Verification/gpio_timing.py; default gpioOpTime (5 µs)" annotation(
-    Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {0, 0}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
-    Placement(transformation(origin = {0, -100}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {0, -70}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Resistor rLoad(R = 10e3) "Load of GP0, the pulse pin" annotation(
-    Placement(transformation(origin = {-90, 25}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {-62, 18}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage inSrc "Drives GP1: the input watched by the busy wait" annotation(
-    Placement(transformation(origin = {-90, -20}, extent = {{15, -15}, {-15, 15}})));
+    Placement(transformation(origin = {-62, -14}, extent = {{10, -10}, {-10, 10}})));
   Modelica.Blocks.Sources.Step inStep(height = 3.3, startTime = 0.3) "Rising edge on GP1 at t = 300 ms" annotation(
-    Placement(transformation(origin = {-90, 70}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {-62, 48}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage irqSrc "Drives GP3: the IRQ input" annotation(
-    Placement(transformation(origin = {-90, -60}, extent = {{15, -15}, {-15, 15}})));
+    Placement(transformation(origin = {-62, -42}, extent = {{10, -10}, {-10, 10}})));
   Modelica.Blocks.Sources.Step irqStep(height = 3.3, startTime = 0.45) "Rising edge on GP3 at t = 450 ms, while IRQs are masked" annotation(
-    Placement(transformation(origin = {-140, -60}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {-98, -42}, extent = {{-10, -10}, {10, 10}})));
   Boolean gp0High = mcu.GP0.v > 1.65 "GP0 as seen by an external observer";
   discrete Modelica.Units.SI.Time tRise(start = 0, fixed = true) "Last rising edge of GP0";
   discrete Modelica.Units.SI.Time pulseWidth(start = 0, fixed = true) "Width of the last pulse of GP0, measured on the Modelica side";
@@ -36,25 +36,25 @@ equation
     tIrq = time;
   end when;
   connect(mcu.GND, ground.p) annotation(
-    Line(points = {{0, -39}, {0, -85}}, color = {0, 0, 255}));
+    Line(points = {{0, -14}, {0, -60}}, color = {0, 0, 255}));
   connect(mcu.GP0, rLoad.n) annotation(
-    Line(points = {{-31, 25}, {-75, 25}}, color = {0, 0, 255}));
+    Line(points = {{-12, 10}, {-32, 10}, {-32, 18}, {-52, 18}}, color = {0, 0, 255}));
   connect(rLoad.p, ground.p) annotation(
-    Line(points = {{-105, 25}, {-157, 25}, {-157, -85}, {0, -85}}, color = {0, 0, 255}));
+    Line(points = {{-72, 18}, {-110, 18}, {-110, -56}, {0, -56}, {0, -60}}, color = {0, 0, 255}));
   connect(inStep.y, inSrc.v) annotation(
-    Line(points = {{-90, 54}, {-90, -8}}, color = {0, 0, 127}));
+    Line(points = {{-51, 48}, {-47, 48}, {-47, 2}, {-62, 2}, {-62, -2}}, color = {0, 0, 127}));
   connect(mcu.GP1, inSrc.p) annotation(
-    Line(points = {{-31, 10}, {-31, -20}, {-75, -20}}, color = {0, 0, 255}));
+    Line(points = {{-12, 4}, {-22, 4}, {-22, -14}, {-52, -14}}, color = {0, 0, 255}));
   connect(inSrc.n, ground.p) annotation(
-    Line(points = {{-105, -20}, {-115, -20}, {-115, -85}, {0, -85}}, color = {0, 0, 255}));
+    Line(points = {{-72, -14}, {-80, -14}, {-80, -56}, {0, -56}, {0, -60}}, color = {0, 0, 255}));
   connect(irqStep.y, irqSrc.v) annotation(
-    Line(points = {{-124, -60}, {-110, -60}, {-110, -40}, {-90, -40}, {-90, -48}}, color = {0, 0, 127}));
+    Line(points = {{-87, -42}, {-76, -42}, {-76, -28}, {-62, -28}, {-62, -30}}, color = {0, 0, 127}));
   connect(mcu.GP3, irqSrc.p) annotation(
-    Line(points = {{-31, -25}, {-50, -25}, {-50, -60}, {-75, -60}}, color = {0, 0, 255}));
+    Line(points = {{-12, -10}, {-36, -10}, {-36, -42}, {-52, -42}}, color = {0, 0, 255}));
   connect(irqSrc.n, ground.p) annotation(
-    Line(points = {{-105, -60}, {-115, -60}, {-115, -85}, {0, -85}}, color = {0, 0, 255}));
+    Line(points = {{-72, -42}, {-76, -42}, {-76, -56}, {0, -56}, {0, -60}}, color = {0, 0, 255}));
   annotation(
-    Diagram(coordinateSystem(extent = {{-170, -120}, {80, 100}})),
+    Diagram(coordinateSystem(extent = {{-118, -84}, {56, 70}})),
     experiment(StopTime = 0.6, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
 <p>Verification scenario 28: the <strong>time cost of GPIO accesses</strong>. Each <code>Pin.value()</code>, <code>on()</code>, <code>off()</code> or <code>pin(x)</code> keeps the processor busy for <code>mcu.gpioOpTime</code> (5 µs by default, the order of magnitude of MicroPython on RP2040): two writes without <code>sleep()</code> between them therefore give a real pulse, visible by the circuit. This is what enables <em>bit-banging</em> (the HX711 driver, for instance).</p>

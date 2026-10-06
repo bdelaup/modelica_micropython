@@ -5,7 +5,7 @@ partial model PartialTextDisplay "Behaviour of the large text screens: each mess
   parameter Boolean logReceived = true "Also write each received message in the simulation log (turn off when several displays share the same link, to avoid duplicate lines)";
   constant Integer nCols = Interfaces.TEXT_DISPLAY_COLS "Number of columns";
   Interfaces.DisplayLinkInput displayLink(seq(start = 0, fixed = true)) "To be connected to MCU.Display0 (connect(mcu.Display0, display.displayLink))" annotation(
-    Placement(transformation(origin = {-108, 0}, extent = {{-8, -8}, {8, 8}})));
+    Placement(transformation(origin = {-110, 0}, extent = {{-5, -5}, {5, 5}})));
   Integer textCode[nLines*nCols](each start = 32, each fixed = true) "ASCII codes shown on the icon, line after line: line i, column j at index (i - 1)*nCols + j";
   Integer filled(start = 0, fixed = true) "Number of lines written so far (at most nLines)";
 protected

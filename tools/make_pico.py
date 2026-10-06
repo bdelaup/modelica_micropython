@@ -47,7 +47,7 @@ HALF_L = u(51 / 2)              # 200,8
 ROW = u(17.78 / 2)              # 70
 PITCH = 20
 Y0 = PITCH * 19 / 2             # 190 : broche 1 en haut
-XCONN = 92                      # connecteurs juste au-dela du bord de la carte
+XCONN = 90                      # connecteurs juste au-dela du bord de la carte, sur la grille (multiple de 10)
 
 def ypin(row):
     return Y0 - PITCH * row
@@ -220,12 +220,12 @@ conns = []
 for row, name in enumerate(LEFT):
     kind = 'NegativePin' if name.startswith('GND') else 'PositivePin'
     x, y = D[name]
-    conns.append('  Modelica.Electrical.Analog.Interfaces.%s %s "%s" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}})));'
+    conns.append('  Modelica.Electrical.Analog.Interfaces.%s %s "%s" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}})));'
                  % (kind, name, descr(name), x, y, -XCONN, ypin(row)))
 for row, name in enumerate(RIGHT):
     kind = 'NegativePin' if name.startswith('GND') or name == 'AGND' else 'PositivePin'
     x, y = D[name]
-    conns.append('  Modelica.Electrical.Analog.Interfaces.%s %s "%s" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}})));'
+    conns.append('  Modelica.Electrical.Analog.Interfaces.%s %s "%s" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}})));'
                  % (kind, name, descr(name), x, y, XCONN, ypin(row)))
 
 def comp_decl(cls, name, mods, doc, extra=''):
@@ -271,8 +271,8 @@ for row, name in enumerate(LEFT):
 for row, name in enumerate(RIGHT):
     y = ypin(row)
     icon.append('Text(textColor = {255, 255, 255}, extent = {{%g, %g}, {%g, %g}}, textString = "%s", horizontalAlignment = TextAlignment.Right)' % (14, y + 6, ROW - 10, y - 6, SILK.get(name, 'GND' if name.startswith('GND') else name)))
-icon.append('Text(textColor = {28, 108, 200}, extent = {{38, 236}, {90, 226}}, textString = "DISPLAY")')
-icon.append('Text(textColor = {0, 0, 255}, extent = {{-150, 268}, {150, 246}}, textString = "%name")')
+icon.append('Text(textColor = {28, 108, 200}, extent = {{34, 230}, {86, 220}}, textString = "DISPLAY")')
+icon.append('Text(textColor = {0, 0, 255}, extent = {{-150, 262}, {150, 242}}, textString = "%name")')
 
 doc = DOC.replace('"', '\\"')
 
@@ -305,7 +305,7 @@ model RPi_Pico "Raspberry Pi Pico board: RP2040 programmable in MicroPython, rea
     Dialog(tab = "Power supply", group = "Temperature sensor"));
 %(conns)s
   Interfaces.DisplayLinkOutput Display0 "Logical link to an educational display peripheral (machine.Display(0).write()) - not on the real board: simplified causal link, see requirements.md decision \\"P\u00e9riph\u00e9rique d'affichage p\u00e9dagogique\\"" annotation(
-    Placement(transformation(origin = {%(dx)g, %(dy)g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {64, 214}, extent = {{-6, -6}, {6, 6}}, rotation = 90)));
+    Placement(transformation(origin = {%(dx)g, %(dy)g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {60, 210}, extent = {{-5, -5}, {5, 5}}, rotation = 90)));
   Internal.McuCore core(%(core_mods)s) "The RP2040: pin[i] = GPIO i-1 (GP0-GP22, GP23 power-save, GP24 VBUS sense, GP25 LED, GP26-GP28, GP29 VSYS/3)" annotation(
     Placement(transformation(origin = {%(cx)g, %(cy)g}, extent = {{-70, -70}, {70, 70}})));
   Internal.Rt6150 regulator(eta = eta) "Buck-boost regulator VSYS -> 3.3 V (RT6150B)" annotation(
@@ -322,7 +322,7 @@ equation
 %(wires)s
 // GPIO23 (core.pin[24]): power-save mode of the regulator, no electrical effect in the averaged model (Internal.Rt6150)
   annotation(
-    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -210}, {100, 270}}), graphics = {%(graphics)s}),
+    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -210}, {100, 270}}, initialScale = 0.2), graphics = {%(graphics)s}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-320, -270}, {320, 260}}), graphics = {%(zones)s}),
     Documentation(info = "%(doc)s"));
 end RPi_Pico;

@@ -3,36 +3,36 @@ within MicroPythonMCU.Examples.Uart;
 model Loopback "Real electrical serial link looped back on itself: GP0 (TX) transmits a frame, GP1 (RX) receives and decodes it, GP3 (LED) confirms that the byte arrived intact"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_loopback.py")) "scriptPath = Resources/Scripts/MCU/uart_loopback.py" annotation(
-    Placement(transformation(origin = {1, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {0, 0}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
-    Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {0, -90}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "TX->RX loopback: link resistance. A direct connect() between two pins of the same MCU makes the driven voltage disappear from the simulation results (alias merge, observed empirically on Gpio.PinEcho) - worked around by giving RX a real dynamic state through loopC, see requirements.md" annotation(
     Placement(transformation(origin = {-90, 10}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9, v(start = 0, fixed = true)) "Time constant of the loopback: (ROut + loopR)*C = 1.1 us, i.e. 0.13% of a bit at 1200 baud (833 us) - enough to avoid the exact algebraic alias, too little to distort the frame" annotation(
     Placement(transformation(origin = {-60, -30}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
   Modelica.Electrical.Analog.Basic.Resistor r3(R = 330) "limits the current of the reception indicator" annotation(
-    Placement(transformation(origin = {-90, -50}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {-90, -50}, extent = {{-10, -10}, {10, 10}})));
   MicroPythonMCU.Peripherals.LED led3 "GP3: lights up if the received byte is indeed the one transmitted" annotation(
-    Placement(transformation(origin = {-140, -50}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
+    Placement(transformation(origin = {-140, -50}, extent = {{-10, 10}, {10, -10}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(
-    Line(points = {{1, -39}, {1, -57}, {0, -57}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{0, -14}, {0, -80}}, color = {0, 0, 255}));
 // Electrical TX -> RX loopback (loopR/loopC pattern of Gpio.PinEcho, see requirements.md)
   connect(mcu.GP0, loopR.p) annotation(
-    Line(points = {{-30, 25}, {-110, 25}, {-110, 10}, {-100, 10}}, color = {0, 0, 255}));
+    Line(points = {{-12, 10}, {-20, 10}, {-20, 26}, {-110, 26}, {-110, 10}, {-100, 10}}, color = {0, 0, 255}));
   connect(loopR.n, mcu.GP1) annotation(
-    Line(points = {{-80, 10}, {-30, 10}}, color = {0, 0, 255}));
+    Line(points = {{-80, 10}, {-46, 10}, {-46, 4}, {-12, 4}}, color = {0, 0, 255}));
   connect(loopR.n, loopC.p) annotation(
-    Line(points = {{-60, 10}, {-60, -20}}, color = {0, 0, 255}));
+    Line(points = {{-80, 10}, {-60, 10}, {-60, -20}}, color = {0, 0, 255}));
   connect(loopC.n, ground.p) annotation(
-    Line(points = {{-60, -40}, {-60, -75}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{-60, -40}, {-60, -76}, {0, -76}, {0, -80}}, color = {0, 0, 255}));
 // Reception indicator
   connect(mcu.GP3, r3.n) annotation(
-    Line(points = {{-30, -25}, {-30, -40}, {-75, -40}, {-75, -50}}, color = {0, 0, 255}));
+    Line(points = {{-12, -10}, {-76, -10}, {-76, -50}, {-80, -50}}, color = {0, 0, 255}));
   connect(r3.p, led3.p) annotation(
-    Line(points = {{-105, -50}, {-125, -50}}, color = {0, 0, 255}));
+    Line(points = {{-100, -50}, {-130, -50}}, color = {0, 0, 255}));
   connect(led3.n, ground.p) annotation(
-    Line(points = {{-155, -50}, {-155, -75}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{-150, -50}, {-156, -50}, {-156, -76}, {0, -76}, {0, -80}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-200, -120}, {80, 80}})),
     experiment(StopTime = 0.05, Interval = 5e-6),

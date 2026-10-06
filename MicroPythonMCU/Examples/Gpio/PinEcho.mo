@@ -3,44 +3,44 @@ within MicroPythonMCU.Examples.Gpio;
 model PinEcho "GP1 toggles, GP2 reads back its electrical state, GP3 copies what was read (with LEDs on GP1 and GP3 for visualisation)"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/pin_echo.py")) "scriptPath = Resources/Scripts/MCU/pin_echo.py" annotation(
-    Placement(transformation(extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {0, 0}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
-    Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {0, -90}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limits the current of led1 (GP1, the source)" annotation(
-    Placement(transformation(origin = {-90, 10}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {-90, 10}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Resistor r3(R = 330) "limits the current of led3 (GP3, the echo)" annotation(
-    Placement(transformation(origin = {-90, -25}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {-90, -24}, extent = {{-10, -10}, {10, 10}})));
   MicroPythonMCU.Peripherals.LED led1 "GP1: toggles (source)" annotation(
-    Placement(transformation(origin = {-138, 10}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
+    Placement(transformation(origin = {-138, 10}, extent = {{-10, 10}, {10, -10}}, rotation = -180)));
   MicroPythonMCU.Peripherals.LED led3 "GP3: copies what GP2 read on GP1 (echo)" annotation(
-    Placement(transformation(origin = {-138, -25}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
+    Placement(transformation(origin = {-138, -24}, extent = {{-10, 10}, {10, -10}}, rotation = -180)));
   Modelica.Electrical.Analog.Basic.Resistor loopR(R = 1000) "GP1->GP2 loopback: link resistance. A direct connect() (or an exact algebraic equality through a sensor + ideal source) between GP1 and GP2 turned out to cancel the driven voltage of GP1 in the results (observed empirically, reproduced with several different loopback mechanisms) - worked around by giving GP2 a real dynamic state (see loopC) rather than an exact algebraic alias of GP1, see requirements.md" annotation(
-    Placement(transformation(origin = {-57, -9}, extent = {{-10, -10}, {10, 10}})));
+    Placement(transformation(origin = {-56, -8}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Capacitor loopC(C = 1e-9, v(start = 0, fixed = true)) "Time constant of the loopback (R*C = 1 microsecond, completely negligible compared with PERIOD=0.3s of pin_echo.py): just enough for GP2 to be a real dynamic state rather than an exact algebraic alias of GP1, see loopR" annotation(
-    Placement(transformation(origin = {-47, -57}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
+    Placement(transformation(origin = {-48, -56}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
 equation
   connect(mcu.GND, ground.p) annotation(
-    Line(points = {{0, -39}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{0, -14}, {0, -80}}, color = {0, 0, 255}));
   connect(mcu.GP1, r1.n) annotation(
-    Line(points = {{-31, 10}, {-75, 10}}, color = {0, 0, 255}));
+    Line(points = {{-12, 4}, {-36, 4}, {-36, 10}, {-80, 10}}, color = {0, 0, 255}));
   connect(r1.p, led1.p) annotation(
-    Line(points = {{-105, 10}, {-123, 10}}, color = {0, 0, 255}));
+    Line(points = {{-100, 10}, {-128, 10}}, color = {0, 0, 255}));
   connect(led1.n, ground.p) annotation(
-    Line(points = {{-153, 10}, {-153, -75}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{-148, 10}, {-152, 10}, {-152, -76}, {0, -76}, {0, -80}}, color = {0, 0, 255}));
   connect(mcu.GP3, r3.n) annotation(
-    Line(points = {{-31, -25}, {-75, -25}}, color = {0, 0, 255}));
+    Line(points = {{-12, -10}, {-30, -10}, {-30, -24}, {-80, -24}}, color = {0, 0, 255}));
   connect(r3.p, led3.p) annotation(
-    Line(points = {{-105, -25}, {-123, -25}}, color = {0, 0, 255}));
+    Line(points = {{-100, -24}, {-128, -24}}, color = {0, 0, 255}));
   connect(led3.n, ground.p) annotation(
-    Line(points = {{-153, -25}, {-153, -75}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{-148, -24}, {-152, -24}, {-152, -76}, {0, -76}, {0, -80}}, color = {0, 0, 255}));
   connect(r1.n, loopR.p) annotation(
-    Line(points = {{-75, 10}, {-75, -9}, {-67, -9}}, color = {0, 0, 255}));
+    Line(points = {{-80, 10}, {-76, 10}, {-76, -8}, {-66, -8}}, color = {0, 0, 255}));
   connect(loopR.n, mcu.GP2) annotation(
-    Line(points = {{-47, -9}, {-31, -9}, {-31, -10}}, color = {0, 0, 255}));
+    Line(points = {{-46, -8}, {-24, -8}, {-24, -4}, {-12, -4}}, color = {0, 0, 255}));
   connect(loopR.n, loopC.p) annotation(
-    Line(points = {{-47, -9}, {-47, -47}}, color = {0, 0, 255}));
+    Line(points = {{-46, -8}, {-40, -8}, {-40, -40}, {-48, -40}, {-48, -46}}, color = {0, 0, 255}));
   connect(loopC.n, ground.p) annotation(
-    Line(points = {{-47, -67}, {-47, -75}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{-48, -66}, {-48, -76}, {0, -76}, {0, -80}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-200, -120}, {80, 80}})),
     experiment(StopTime = 3, Interval = 0.001),

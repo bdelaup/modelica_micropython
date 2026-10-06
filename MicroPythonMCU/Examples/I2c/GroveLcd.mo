@@ -3,21 +3,21 @@ within MicroPythonMCU.Examples.I2c;
 model GroveLcd "Grove LCD RGB screen driven by an off-the-shelf MicroPython driver, run without modification"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/i2c_grove_lcd_rgb.py")) "scriptPath = Resources/Scripts/MCU/i2c_grove_lcd_rgb.py - main program, which imports the driver driver_grove_lcd_rgb.py placed next to it ((c) 2019 Christophe Gueneau, unchanged)" annotation(
-    Placement(transformation(origin = {-90, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {-90, 0}, extent = {{-20, -20}, {20, 20}})));
   MicroPythonMCU.Peripherals.I2cGroveLcdRgb lcd "16x2 screen with RGB backlight (JHD1313 at 0x3E, PCA9633 at 0x62), carrying the pull-ups of the bus" annotation(
-    Placement(transformation(origin = {50, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {50, 0}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
-    Placement(transformation(origin = {-25, -80}, extent = {{-10, -10}, {10, 10}})));
+    Placement(transformation(origin = {-24, -80}, extent = {{-10, -10}, {10, 10}})));
 equation
 // Driver pinout: I2C(scl=Pin(4), sda=Pin(5))
   connect(mcu.GP4, lcd.SCL) annotation(
-    Line(points = {{-59, 25}, {-35, 25}, {-35, -17}, {-12, -17}}, color = {0, 0, 255}));
+    Line(points = {{-78, 10}, {-36, 10}, {-36, -6}, {28, -6}}, color = {0, 0, 255}));
   connect(mcu.GP5, lcd.SDA) annotation(
-    Line(points = {{-59, 10}, {-45, 10}, {-45, 17}, {-12, 17}}, color = {0, 0, 255}));
+    Line(points = {{-78, 4}, {-44, 4}, {-44, 6}, {28, 6}}, color = {0, 0, 255}));
   connect(mcu.GND, ground.p) annotation(
-    Line(points = {{-90, -39}, {-90, -70}, {-25, -70}}, color = {0, 0, 255}));
+    Line(points = {{-90, -14}, {-90, -66}, {-24, -66}, {-24, -70}}, color = {0, 0, 255}));
   connect(lcd.GND, ground.p) annotation(
-    Line(points = {{50, -36}, {50, -70}, {-25, -70}}, color = {0, 0, 255}));
+    Line(points = {{50, -12}, {50, -66}, {-24, -66}, {-24, -70}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-160, -100}, {120, 80}})),
     experiment(StopTime = 3.5, Interval = 1e-4),

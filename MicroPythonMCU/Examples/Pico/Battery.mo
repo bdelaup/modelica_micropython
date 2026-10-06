@@ -3,7 +3,7 @@ within MicroPythonMCU.Examples.Pico;
 model Battery "Raspberry Pi Pico supplied by two AA cells on VSYS: current drawn from the battery"
   extends Modelica.Icons.Example;
   RPi_Pico pico(usbConnected = false, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/pico_blink.py")) "no USB cable: supplied through VSYS" annotation(
-    Placement(transformation(origin = {8, 0}, extent = {{-40, -84}, {40, 108}})));
+    Placement(transformation(origin = {8, 0}, extent = {{-20, -42}, {20, 54}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-50, -110}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Sources.ConstantVoltage cells(V = 3.0) "two AA cells in series" annotation(
@@ -22,17 +22,17 @@ equation
   connect(rInternal.n, iBattery.p) annotation(
     Line(points = {{106, 68}, {102, 68}}, color = {0, 0, 255}));
   connect(iBattery.n, pico.VSYS) annotation(
-    Line(points = {{82, 68}, {45, 68}}, color = {0, 0, 255}));
+    Line(points = {{82, 68}, {54, 68}, {54, 34}, {26, 34}}, color = {0, 0, 255}));
   connect(cells.n, pico.GND_38) annotation(
-    Line(points = {{136, 20}, {136, 0}, {70, 0}, {70, 60}, {45, 60}}, color = {0, 0, 255}));
+    Line(points = {{136, 20}, {136, 0}, {70, 0}, {70, 30}, {26, 30}}, color = {0, 0, 255}));
   connect(pico.GP15, r15.p) annotation(
-    Line(points = {{-29, -76}, {-50, -76}}, color = {0, 0, 255}));
+    Line(points = {{-10, -38}, {-30, -38}, {-30, -76}, {-50, -76}}, color = {0, 0, 255}));
   connect(r15.n, led15.p) annotation(
     Line(points = {{-70, -76}, {-80, -76}}, color = {0, 0, 255}));
   connect(led15.n, ground.p) annotation(
-    Line(points = {{-100, -76}, {-110, -76}, {-110, -100}, {-50, -100}}, color = {0, 0, 255}));
+    Line(points = {{-100, -76}, {-110, -76}, {-110, -96}, {-50, -96}, {-50, -100}}, color = {0, 0, 255}));
   connect(pico.GND_18, ground.p) annotation(
-    Line(points = {{-29, -60}, {-36, -60}, {-36, -100}, {-50, -100}}, color = {0, 0, 255}));
+    Line(points = {{-10, -30}, {-36, -30}, {-36, -96}, {-50, -96}, {-50, -100}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-120, -120}, {160, 120}})),
     experiment(StopTime = 4.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),

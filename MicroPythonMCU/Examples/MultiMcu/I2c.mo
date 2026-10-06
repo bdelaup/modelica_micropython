@@ -3,11 +3,11 @@ within MicroPythonMCU.Examples.MultiMcu;
 model I2c "I2C between two microcontrollers: A is the controller, B is a target that behaves as a memory (machine.I2CTarget with mem=)"
   extends Modelica.Icons.Example;
   MCU mcuA(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/i2c_controller.py")) "Controller: Resources/Scripts/MCU/i2c_controller.py (SCL = GP4, SDA = GP5)" annotation(
-    Placement(transformation(origin = {-60, 0}, extent = {{-40, -40}, {40, 40}})));
+    Placement(transformation(origin = {-60, 0}, extent = {{-20, -20}, {20, 20}})));
   MCU mcuB(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/i2c_target_mem.py")) "Target at 0x42: Resources/Scripts/MCU/i2c_target_mem.py (SCL = GP4, SDA = GP5)" annotation(
-    Placement(transformation(origin = {120, 0}, extent = {{-40, -40}, {40, 40}})));
+    Placement(transformation(origin = {120, 0}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
-    Placement(transformation(origin = {30, -100}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {30, -100}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Sources.ConstantVoltage vdd(V = 3.3) "3.3 V supply of the pull-up resistors" annotation(
     Placement(transformation(origin = {30, 60}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
   Modelica.Electrical.Analog.Basic.Resistor pullScl(R = 4700) "pull-up of SCL: an I2C bus only rises through its pull-ups" annotation(
@@ -22,35 +22,35 @@ model I2c "I2C between two microcontrollers: A is the controller, B is a target 
     Placement(transformation(origin = {170, -70}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
 equation
   connect(mcuA.GND, ground.p) annotation(
-    Line(points = {{-60, -31}, {-60, -85}, {30, -85}}, color = {0, 0, 255}));
+    Line(points = {{-60, -14}, {-60, -84}, {30, -84}, {30, -90}}, color = {0, 0, 255}));
   connect(mcuB.GND, ground.p) annotation(
-    Line(points = {{120, -31}, {120, -85}, {30, -85}}, color = {0, 0, 255}));
+    Line(points = {{120, -14}, {120, -84}, {30, -84}, {30, -90}}, color = {0, 0, 255}));
 // Bus: SCL and SDA shared by both boards, pulled up to 3.3 V
   connect(vdd.n, ground.p) annotation(
-    Line(points = {{30, 50}, {30, -85}}, color = {0, 0, 255}));
+    Line(points = {{30, 50}, {30, -90}}, color = {0, 0, 255}));
   connect(vdd.p, pullScl.p) annotation(
-    Line(points = {{30, 70}, {50, 70}}, color = {0, 0, 255}));
+    Line(points = {{30, 70}, {30, 74}, {46, 74}, {46, 70}, {50, 70}}, color = {0, 0, 255}));
   connect(vdd.p, pullSda.p) annotation(
-    Line(points = {{30, 70}, {40, 70}, {40, 40}, {50, 40}}, color = {0, 0, 255}));
+    Line(points = {{30, 70}, {30, 74}, {46, 74}, {46, 40}, {50, 40}}, color = {0, 0, 255}));
   connect(mcuA.GP4, pullScl.n) annotation(
-    Line(points = {{-35, 20}, {0, 20}, {0, 80}, {80, 80}, {80, 70}, {70, 70}}, color = {0, 0, 255}));
+    Line(points = {{-48, 10}, {0, 10}, {0, 80}, {80, 80}, {80, 70}, {70, 70}}, color = {0, 0, 255}));
   connect(mcuB.GP4, pullScl.n) annotation(
-    Line(points = {{145, 20}, {160, 20}, {160, 80}, {80, 80}, {80, 70}, {70, 70}}, color = {0, 0, 255}));
+    Line(points = {{132, 10}, {160, 10}, {160, 80}, {80, 80}, {80, 70}, {70, 70}}, color = {0, 0, 255}));
   connect(mcuA.GP5, pullSda.n) annotation(
-    Line(points = {{-35, 8}, {10, 8}, {10, 30}, {90, 30}, {90, 40}, {70, 40}}, color = {0, 0, 255}));
+    Line(points = {{-48, 4}, {74, 4}, {74, 40}, {70, 40}}, color = {0, 0, 255}));
   connect(mcuB.GP5, pullSda.n) annotation(
-    Line(points = {{145, 8}, {150, 8}, {150, 30}, {90, 30}, {90, 40}, {70, 40}}, color = {0, 0, 255}));
+    Line(points = {{132, 4}, {150, 4}, {150, 30}, {90, 30}, {90, 40}, {70, 40}}, color = {0, 0, 255}));
 // Board B: measured voltage and LED
   connect(measured.p, mcuB.GP2) annotation(
-    Line(points = {{80, -30}, {80, -8}, {95, -8}}, color = {0, 0, 255}));
+    Line(points = {{80, -30}, {80, -4}, {108, -4}}, color = {0, 0, 255}));
   connect(measured.n, ground.p) annotation(
-    Line(points = {{80, -50}, {80, -85}, {30, -85}}, color = {0, 0, 255}));
+    Line(points = {{80, -50}, {80, -84}, {30, -84}, {30, -90}}, color = {0, 0, 255}));
   connect(mcuB.GP3, r3.p) annotation(
-    Line(points = {{95, -20}, {90, -20}, {90, -60}, {150, -60}, {150, -40}, {160, -40}}, color = {0, 0, 255}));
+    Line(points = {{108, -10}, {90, -10}, {90, -60}, {150, -60}, {150, -40}, {160, -40}}, color = {0, 0, 255}));
   connect(r3.n, ledB.p) annotation(
-    Line(points = {{180, -40}, {180, -60}, {170, -60}}, color = {0, 0, 255}));
+    Line(points = {{180, -40}, {184, -40}, {184, -56}, {170, -56}, {170, -60}}, color = {0, 0, 255}));
   connect(ledB.n, ground.p) annotation(
-    Line(points = {{170, -80}, {170, -85}, {30, -85}}, color = {0, 0, 255}));
+    Line(points = {{170, -80}, {170, -84}, {30, -84}, {30, -90}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-120, -140}, {200, 100}})),
     experiment(StopTime = 0.06, Interval = 1e-05, StartTime = 0, Tolerance = 1e-06),

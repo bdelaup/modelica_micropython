@@ -16,9 +16,9 @@ partial model PartialUartPins "Electrical side of a serial device: TX output and
     Dialog(tab = "Electrical", group = "Impedances"));
 
   Modelica.Electrical.Analog.Interfaces.PositivePin TX "Transmission of the device - to be connected to the receive pin of the microcontroller" annotation(
-    Placement(transformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}})));
+    Placement(transformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, 30}, extent = {{-5, -5}, {5, 5}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin RX "Reception of the device - to be connected to the transmit pin of the microcontroller" annotation(
-    Placement(transformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}})));
+    Placement(transformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, -30}, extent = {{-5, -5}, {5, 5}})));
 protected
   // CIn is not cosmetic: it gives the receive node a real dynamic state,
   // which breaks the mutual dependency between the when of this device and

@@ -3,7 +3,7 @@ within MicroPythonMCU.Examples.Pico;
 model Blink "Raspberry Pi Pico supplied by USB: on-board LED and external LED on GP15, VSYS and temperature read by the ADC"
   extends Modelica.Icons.Example;
   RPi_Pico pico(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/pico_blink.py")) "USB cable plugged in (default): nothing to wire for the supply" annotation(
-    Placement(transformation(origin = {16, 0}, extent = {{-40, -84}, {40, 108}})));
+    Placement(transformation(origin = {16, 0}, extent = {{-20, -42}, {20, 54}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-50, -110}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Basic.Resistor r15(R = 330) "limits the current of led15" annotation(
@@ -12,13 +12,13 @@ model Blink "Raspberry Pi Pico supplied by USB: on-board LED and external LED on
     Placement(transformation(origin = {-90, -76}, extent = {{10, -10}, {-10, 10}})));
 equation
   connect(pico.GP15, r15.p) annotation(
-    Line(points = {{-21, -76}, {-50, -76}}, color = {0, 0, 255}));
+    Line(points = {{-2, -38}, {-26, -38}, {-26, -76}, {-50, -76}}, color = {0, 0, 255}));
   connect(r15.n, led15.p) annotation(
     Line(points = {{-70, -76}, {-80, -76}}, color = {0, 0, 255}));
   connect(led15.n, ground.p) annotation(
-    Line(points = {{-100, -76}, {-110, -76}, {-110, -100}, {-50, -100}}, color = {0, 0, 255}));
+    Line(points = {{-100, -76}, {-110, -76}, {-110, -96}, {-50, -96}, {-50, -100}}, color = {0, 0, 255}));
   connect(pico.GND_18, ground.p) annotation(
-    Line(points = {{-21, -60}, {-36, -60}, {-36, -100}, {-50, -100}}, color = {0, 0, 255}));
+    Line(points = {{-2, -30}, {-36, -30}, {-36, -96}, {-50, -96}, {-50, -100}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-140, -130}, {80, 110}})),
     experiment(StopTime = 4.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),

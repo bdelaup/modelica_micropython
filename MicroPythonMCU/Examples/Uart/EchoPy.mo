@@ -3,23 +3,23 @@ within MicroPythonMCU.Examples.Uart;
 model EchoPy "The microcontroller talks to an external serial device: it sends a line, the device sends it back"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_echo.py")) "scriptPath = Resources/Scripts/MCU/uart_echo.py" annotation(
-    Placement(transformation(origin = {-90, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {-90, 0}, extent = {{-20, -20}, {20, 20}})));
   MicroPythonMCU.Peripherals.UartEchoDevice echo(baudrate = 1200, behaviour = MicroPythonMCU.Interfaces.UartBehaviour.Script, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/echo.py")) "Sends back each received line - behaviour described by Resources/Scripts/Device/echo.py" annotation(
-    Placement(transformation(origin = {40, 0}, extent = {{-40, -40}, {40, 40}})));
+    Placement(transformation(origin = {40, 0}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
-    Placement(transformation(origin = {-25, -80}, extent = {{-10, -10}, {10, 10}})));
+    Placement(transformation(origin = {-24, -80}, extent = {{-10, -10}, {10, 10}})));
 equation
 // Serial link: GP5 (TX) goes down to RX, TX comes back up to GP4 (RX).
 // Both wires stay in the free space between the two components.
   connect(mcu.GP5, echo.RX) annotation(
-    Line(points = {{-59, 10}, {-34, 10}, {-34, -13.6}, {-9.6, -13.6}}, color = {0, 0, 255}));
+    Line(points = {{-78, 4}, {-34, 4}, {-34, -6}, {18, -6}}, color = {0, 0, 255}));
   connect(echo.TX, mcu.GP4) annotation(
-    Line(points = {{-9.6, 13.6}, {-34, 13.6}, {-34, 25}, {-59, 25}}, color = {0, 0, 255}));
+    Line(points = {{18, 6}, {-34, 6}, {-34, 10}, {-78, 10}}, color = {0, 0, 255}));
 // Ground shared by both devices, brought in from below
   connect(mcu.GND, ground.p) annotation(
-    Line(points = {{-90, -39}, {-90, -70}, {-25, -70}}, color = {0, 0, 255}));
+    Line(points = {{-90, -14}, {-90, -66}, {-24, -66}, {-24, -70}}, color = {0, 0, 255}));
   connect(echo.GND, ground.p) annotation(
-    Line(points = {{40, -28.8}, {40, -70}, {-25, -70}}, color = {0, 0, 255}));
+    Line(points = {{40, -12}, {40, -66}, {-24, -66}, {-24, -70}}, color = {0, 0, 255}));
   annotation(
     Diagram(coordinateSystem(extent = {{-160, -100}, {120, 80}})),
     experiment(StopTime = 0.1, Interval = 5e-6),

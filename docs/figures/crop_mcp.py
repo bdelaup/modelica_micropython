@@ -37,6 +37,10 @@ def name_rows(src, w, h):
             p = (r, g, b)
             if a == 0 or p in BACKGROUND or p in GRID or min(p) >= 220 or (min(p) >= 180 and max(p) - min(p) <= 3):   # fond, quadrillage (et son lissage), presque blanc
                 continue
+            if max(p) == 255 and min(p) >= 150:   # frange colorée du lissage sous-pixel d'un petit texte (rose, cyan)
+                continue
+            if min(p) >= 200 and max(p) - min(p) <= 25:   # gris bleuté très clair : lissage du quadrillage
+                continue
             if p == NAME:
                 blue = True
             elif not (b >= 150 and b - max(r, g) >= 5):   # bleu mêlé de blanc ou de gris clair

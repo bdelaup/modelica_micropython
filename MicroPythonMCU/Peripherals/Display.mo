@@ -4,7 +4,7 @@ model Display "Educational 20x2 display: received text shown on the icon (2-line
   // Carries the 20x2 icon and the two arrays of ASCII codes, shared with Peripherals.UartLcd20x2.
   extends Internal.TwoLineTextIcon;
   Interfaces.DisplayLinkInput displayLink(seq(start = 0, fixed = true)) "To be connected to MCU.Display0 (connect(mcu.Display0, display.displayLink))" annotation(
-    Placement(transformation(origin = {-108, 0}, extent = {{-8, -8}, {8, 8}})));
+    Placement(transformation(origin = {-110, 0}, extent = {{-5, -5}, {5, 5}})));
 equation
   when {initial(), change(displayLink.seq)} then
     line2CharCode = pre(line1CharCode) "the former line 1 (previous message) becomes line 2";
@@ -12,7 +12,7 @@ equation
     Modelica.Utilities.Streams.print("[DISPLAY] t=" + String(time) + " s - display received: \"" + displayLink.payload + "\"");
   end when;
   annotation(
-    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Text(extent = {{-150, -62}, {150, -92}}, textColor = {0, 0, 255}, textString = "%name")}),
+    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}, initialScale = 0.2), graphics = {Text(extent = {{-150, -60}, {150, -80}}, textColor = {0, 0, 255}, textString = "%name")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}})),
     Documentation(info = "<html>
 <p>Educational display peripheral, true to a 20×2 character display: to be connected with <code>connect(mcu.Display0, display.displayLink)</code> (causal logical connector <code>Interfaces.DisplayLinkInput</code>, not electrical - see <code>requirements.md</code>, decision \"Périphérique d'affichage pédagogique\"). Optional: connect it in a circuit or not, as the teaching needs require, like any other peripheral of <code>Peripherals</code>.</p>

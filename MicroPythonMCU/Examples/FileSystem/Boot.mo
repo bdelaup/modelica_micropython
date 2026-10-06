@@ -3,30 +3,30 @@ within MicroPythonMCU.Examples.FileSystem;
 model Boot "File system: with no script, the microcontroller runs boot.py then main.py of a flash image copied at each simulation; main.py logs the ADC measurements (GP0) to /data/measurements.csv"
   extends Modelica.Icons.Example;
   MCU mcu(scriptPath = "", fsEnabled = true, fsSource = "modelica://MicroPythonMCU/Resources/FileSystems/datalogger") "empty scriptPath: boot.py then main.py of the image Resources/FileSystems/datalogger; copy created in the simulation folder (fsWorkspace = \".\" by default), opened in Explorer at the end of the simulation" annotation(
-    Placement(transformation(origin = {0, 0}, extent = {{-50, -50}, {50, 50}})));
+    Placement(transformation(origin = {0, 0}, extent = {{-20, -20}, {20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
-    Placement(transformation(origin = {0, -90}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {0, -62}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Sources.RampVoltage ramp(V = 3.3, duration = 1) "voltage measured by the ADC (GP0): ramp from 0 to 3.3 V in 1 s" annotation(
-    Placement(transformation(origin = {-110, -30}, extent = {{-15, -15}, {15, 15}}, rotation = -90)));
+    Placement(transformation(origin = {-76, -20}, extent = {{-10, -10}, {10, 10}}, rotation = -90)));
   Modelica.Electrical.Analog.Basic.Resistor r1(R = 330) "limits the current of led1 (GP1)" annotation(
-    Placement(transformation(origin = {-90, 10}, extent = {{-15, -15}, {15, 15}})));
+    Placement(transformation(origin = {-62, 8}, extent = {{-10, -10}, {10, 10}})));
   MicroPythonMCU.Peripherals.LED led1 "GP1: self-check of main.py passed" annotation(
-    Placement(transformation(origin = {-140, 10}, extent = {{-15, 15}, {15, -15}}, rotation = -180)));
+    Placement(transformation(origin = {-98, 8}, extent = {{-10, 10}, {10, -10}}, rotation = -180)));
 equation
   connect(mcu.GND, ground.p) annotation(
-    Line(points = {{0, -39}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{0, -14}, {0, -52}}, color = {0, 0, 255}));
   connect(ramp.p, mcu.GP0) annotation(
-    Line(points = {{-110, -15}, {-110, 25}, {-31, 25}}, color = {0, 0, 255}));
+    Line(points = {{-76, -10}, {-76, -6}, {-16, -6}, {-16, 10}, {-12, 10}}, color = {0, 0, 255}));
   connect(ramp.n, ground.p) annotation(
-    Line(points = {{-110, -45}, {-110, -75}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{-76, -30}, {-76, -48}, {0, -48}, {0, -52}}, color = {0, 0, 255}));
   connect(mcu.GP1, r1.n) annotation(
-    Line(points = {{-31, 10}, {-75, 10}}, color = {0, 0, 255}));
+    Line(points = {{-12, 4}, {-32, 4}, {-32, 8}, {-52, 8}}, color = {0, 0, 255}));
   connect(r1.p, led1.p) annotation(
-    Line(points = {{-105, 10}, {-125, 10}}, color = {0, 0, 255}));
+    Line(points = {{-72, 8}, {-88, 8}}, color = {0, 0, 255}));
   connect(led1.n, ground.p) annotation(
-    Line(points = {{-155, 10}, {-165, 10}, {-165, -75}, {0, -75}}, color = {0, 0, 255}));
+    Line(points = {{-108, 8}, {-116, 8}, {-116, -48}, {0, -48}, {0, -52}}, color = {0, 0, 255}));
   annotation(
-    Diagram(coordinateSystem(extent = {{-180, -120}, {80, 80}})),
+    Diagram(coordinateSystem(extent = {{-126, -84}, {56, 56}})),
     experiment(StopTime = 1.5, Interval = 0.001, StartTime = 0, Tolerance = 1e-06),
     Documentation(info = "<html>
 <p>Verification scenario 25 (see <code>requirements.md</code>, decision \"Système de fichiers\"): the file system is enabled (<code>fsEnabled</code>) and <code>scriptPath</code> is empty, so the microcontroller starts like a real board — <code>boot.py</code> then <code>main.py</code>, read at the root of the flash.</p>
