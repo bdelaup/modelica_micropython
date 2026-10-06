@@ -6,9 +6,9 @@ model Overflow "A burst written faster than the air can carry it: the 16-byte tr
     Placement(transformation(origin = {-104, 0}, extent = {{20, -20}, {-20, 20}})));
   MCU mcuB(scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/radio_listen.py")) "Board B: Resources/Scripts/MCU/radio_listen.py (RX = GP1)" annotation(
     Placement(transformation(origin = {104, 0}, extent = {{-20, -20}, {20, 20}})));
-  Peripherals.Radio.RadioModem radioA(airBaudrate = 1200, txBufferSize = 16) "9600 baud on the UART, only 1200 bit/s on air, 16-byte transmit buffer" annotation(
+  Peripherals.Radio.RadioModem radioA(airBaudrate = 1200, txBufferSize = 16, warnSampling = false) "9600 baud on the UART, only 1200 bit/s on air, 16-byte transmit buffer - warnSampling = false: the 100 us output interval is chosen for the buffers, not for the drawn carrier" annotation(
     Placement(transformation(origin = {-36, 8}, extent = {{-20, -20}, {20, 20}})));
-  Peripherals.Radio.RadioModem radioB(airBaudrate = 1200) "Same air data rate, otherwise default settings" annotation(
+  Peripherals.Radio.RadioModem radioB(airBaudrate = 1200, warnSampling = false) "Same air data rate, otherwise default settings" annotation(
     Placement(transformation(origin = {36, 8}, extent = {{20, -20}, {-20, 20}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {0, -70}, extent = {{-10, -10}, {10, 10}})));

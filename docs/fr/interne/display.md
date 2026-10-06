@@ -1,7 +1,7 @@
 # Périphérique d'affichage pédagogique — `Peripherals.Display`
 
 !!! info "Référence interne"
-    Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [LED et afficheur](../guide/peripheriques/led-afficheur.md).
+    Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [LED et afficheurs](../guide/peripheriques/led-afficheur.md).
 
 Cette page documente le périphérique `Peripherals.Display` (cf. `requirements.md`, décision « Périphérique d'affichage pédagogique »). Il remplace un chantier initial plus large de bus de communication (« Bus UART », « Bus I2C ») : après un premier tour d'implémentation avec un vrai port UART bidirectionnel (`UART0Tx`/`UART0Rx`) et deux périphériques (un afficheur LCD et un capteur de température), le périmètre a été réduit à la demande de l'utilisateur à **un seul périphérique pédagogique**, sans terminologie de protocole réel (« UART », « Serial », « LCD ») pour éviter toute ambiguïté avec un vrai bus de communication.
 

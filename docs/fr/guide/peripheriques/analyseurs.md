@@ -12,11 +12,11 @@ En fin de simulation, elle écrit ses fichiers dans le dossier de simulation (ch
 
 ## Brancher la sonde
 
-Relier les voies `CH0`…`CH7` aux fils à observer et `GND` à la masse du montage (ou décocher `useGroundPin` : la broche disparaît et la sonde se rapporte à la masse de la simulation) ; une voie non câblée lit 0. Chaque voie se règle dans **son onglet** (`CH0`…`CH7`) : un nom et un **type**.
+Relier les voies `CH0`…`CH7` aux fils à observer et `GND` à la masse du montage (ou décocher `useGroundPin` : la broche disparaît et la sonde se rapporte à la masse de la simulation) ; une voie non câblée lit 0. Chaque voie se règle dans **son onglet** (`CH0`…`CH7`) : un nom et un **type**. Par défaut, `CH0` à `CH3` sont actives (`Logic`) et `CH4` à `CH7` éteintes (`Off`) : la broche d'une voie `Off` disparaît de l'icône, et le nom des voies actives y est écrit en vert. Pour utiliser `CH4`…`CH7`, leur donner un type.
 
 | Type (`chNKind`) | Pour quoi | Ce que la sonde en fait |
 |---|---|---|
-| `Off` | Voie inutilisée | Rien : elle n'est pas enregistrée et ne coûte rien |
+| `Off` | Voie inutilisée | Rien : elle n'est pas enregistrée, ne coûte rien, et sa broche disparaît |
 | `Logic` | Un niveau quelconque (LED, bouton, PWM) **et toute ligne d'horloge** (SCL, PD_SCK, SCK) | Enregistrée, dessinée ; bilan des fronts et du rapport cyclique |
 | `Uart` | Un fil d'une liaison série | Décodée avec le format de l'onglet : débit, bits, parité, stops, ordre des bits |
 | `I2cSda` | La ligne SDA d'un bus I2C | Décodée, SCL étant la voie `chNClockChannel` |
@@ -28,7 +28,8 @@ C'est la voie de **données** qui désigne sa voie d'horloge : SCL reste une voi
 MicroPythonMCU.Peripherals.Analyzers.LogicAnalyzer analyzer(
   ch0Name = "SCL",                                              // Logic par défaut
   ch1Kind = MicroPythonMCU.Interfaces.ChannelKind.I2cSda, ch1Name = "SDA", ch1ClockChannel = 0,
-  ch2Kind = MicroPythonMCU.Interfaces.ChannelKind.Off, ...);    // CH2 à CH7 inutilisées
+  ch2Kind = MicroPythonMCU.Interfaces.ChannelKind.Off,          // CH2 et CH3 éteintes à la main,
+  ch3Kind = MicroPythonMCU.Interfaces.ChannelKind.Off);         // CH4 à CH7 le sont par défaut
 ...
 connect(analyzer.CH0, mcu.GP4);
 connect(analyzer.CH1, mcu.GP5);
@@ -145,7 +146,7 @@ Onglets `CH0` … `CH7`, un par voie (`chN` = `ch0` … `ch7`) ; les réglages s
 
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
-| `chNKind` | `Logic` | Channel | Type de la voie (tableau plus haut) |
+| `chNKind` | `Logic` pour `CH0`…`CH3`, `Off` pour `CH4`…`CH7` | Channel | Type de la voie (tableau plus haut) ; `Off` retire sa broche |
 | `chNName` | `""` | Channel | Nom dans les fichiers, sans virgule ; vide : `CH0`, `CH1`… |
 | `chNBaudrate` | 1200 | UART | Débit |
 | `chNDataBits` | 8 | UART | Bits de données, de 5 à 8 |

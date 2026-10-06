@@ -47,7 +47,7 @@ Les images « oui » ont été faites le 2026-10-02 (voir ci-dessous) ; celles q
 | `uart-schema.png`, `i2c-schema.png`, `pesee-schema.png` | `guide/peripheriques/uart.md`, `i2c.md`, `pesee.md` (FR et EN), vignettes de `guide/exemples.md` | Captures MCP des vues *Diagramme* de `Uart.Sensor`, `I2c.MultiDevice`, `Weighing.KitchenScale` |
 | `analyseur-schema.png` | `guide/peripheriques/analyseurs.md` (FR et EN) | Capture MCP de la vue *Diagramme* de `Analyzer.UartLink` |
 | `pulseview-uart.png`, `pulseview-i2c.png` | `guide/peripheriques/analyseurs.md` (FR et EN) | Captures d'écran de PulseView (copie portable) ouvert sur les VCD d'`Analyzer.UartLink` (`stopTime` = 0,17 s) et d'`Analyzer.I2cBus` (`stopTime` = 3,4 ms), décodeurs chargés depuis la session `.pvs` ; fenêtre maximisée capturée par PowerShell (`System.Drawing`), recadrée sur la règle et les voies, réduite à 1500 px |
-| `display-cablage.png`, `grands-ecrans-cablage.png` | `guide/peripheriques/led-afficheur.md` (FR et EN), sections « Câblage » | Captures MCP des vues *Diagramme* de `Display.Demo` et `Display.Large` (2026-10-06) |
+| `grands-ecrans-cablage.png` | `guide/peripheriques/led-afficheur.md` (FR et EN), section « Câblage » des afficheurs | Capture MCP de la vue *Diagramme* de `Display.Large`, refaite le 2026-10-07 après le resserrement du schéma (`display-cablage.png`, schéma de `Display.Demo`, retirée le même jour avec la fusion des deux sections d'afficheurs) |
 | `radio-schema.png` | `guide/peripheriques/radio.md` (FR et EN) | Capture MCP de la vue *Diagramme* de `Radio.Link` |
 | `uart-icones.png` | `guide/peripheriques/uart.md` (FR et EN) | Cinq captures MCP d'icônes, `--no-name --row --max-width 1400` |
 | `exemple-basicblink.png`, `exemple-ledchaser.png`, `exemple-ledfade.png`, `exemple-grovelcd.png` | vignettes de `guide/exemples.md` (FR et EN), `interne/architecture.md` (BasicBlink) | Captures MCP des vues *Diagramme* (remplacent `exemple-basicblink.svg`, supprimé) |
@@ -83,6 +83,8 @@ python docs/figures/make_figures.py uart hx711     # certaines
 | `gpio-timing.svg` | `Gpio.Timing` | `mcu.GP0.v` à la µs : impulsion `on(); off()` et rafale de 10 impulsions | API |
 | `kitchen-scale.svg` | `Weighing.KitchenScale` | `totalMass.y`, `hx.code`, appui TARE | chaîne de pesée |
 | `radio-modulations.svg` | `Radio.Modulations` (pas de 2,5 µs) | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx`, grille des bits de `U` | liaison radio |
+| `radio-signal-trace.svg` | aucun : schéma calculé (bits 0 1 1 0, réglages par défaut) ; écrit aussi `MicroPythonMCU/Resources/Images/radio_drawn_signal.png` (version anglaise, image du groupe *Drawn carrier* de la boîte de paramètres du `RadioModem`) | `sTx` ASK et FSK annotés (`fDisplay`, `deltaFDisplay`, `askLowAmplitude`) | liaison radio |
+| `radio-sampling.svg` | `Radio.Modulations` simulé deux fois (intervalles 2,5 µs et 200 µs) | `txFSK.sTx` : porteuse nette, puis repliement | liaison radio |
 | `radio-overflow.svg` | `Radio.Overflow` | `radioA.txFill`, `radioA.nDropped`, `radioA.carrierOn` | liaison radio |
 | `pico-power.svg` | `Pico.PowerUp` | `pico.vSys`, `pico.vRail`, `pico.GP15.v`, `pico.core.powerGood` | carte Pico, exemples |
 | `pico-battery.svg` | `Pico.Battery` | `iBattery.i`, `pico.GP15.v` | carte Pico |

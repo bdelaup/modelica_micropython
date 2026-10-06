@@ -33,12 +33,16 @@ partial model PartialRadioModem "Base of the transparent radio modems: serial li
   parameter Modelica.Units.SI.Time rxDelay = 0.001 "Fixed delay between the end of a byte on air and its earliest transmission on the UART" annotation(
     Dialog(group = "Buffers and delays"));
 
-  parameter Modelica.Units.SI.Frequency fDisplay = 4*airBaudrate "Scaled carrier used to draw sTx (a real carrier, hundreds of MHz, cannot be drawn) - keep several periods per bit" annotation(
-    Dialog(tab = "Drawn signal"));
-  parameter Modelica.Units.SI.Frequency deltaFDisplay = airBaudrate "FSK only: shift of the drawn carrier, fDisplay - deltaFDisplay for a 0 and fDisplay + deltaFDisplay for a 1" annotation(
-    Dialog(tab = "Drawn signal", enable = modulation == Interfaces.Modulation.FSK));
-  parameter Real askLowAmplitude(min = 0, max = 1) = 0.3 "ASK only: amplitude of the drawn carrier for a 0 (1 for a 1)" annotation(
-    Dialog(tab = "Drawn signal", enable = modulation == Interfaces.Modulation.ASK));
+  // Drawn signal only: none of these settings changes what the receiver decodes (masked synchronisation).
+  parameter Modelica.Units.SI.Frequency fDisplay = 4*airBaudrate "Scaled carrier used to draw sTx (a real one, hundreds of MHz, cannot be drawn). Default 4*airBaudrate = 4 periods per bit: 4.8 kHz at 1200 bit/s, 38.4 kHz at 9600 bit/s" annotation(
+    Dialog(tab = "Drawn signal", group = "Drawn carrier", groupImage = "modelica://MicroPythonMCU/Resources/Images/radio_drawn_signal.png"));
+  parameter Modelica.Units.SI.Frequency deltaFDisplay = airBaudrate "FSK only: shift of the drawn carrier, fDisplay - deltaFDisplay for a 0, fDisplay + deltaFDisplay for a 1. Default airBaudrate: 3 and 5 periods per bit (28.8 and 48 kHz at 9600 bit/s)" annotation(
+    Dialog(tab = "Drawn signal", group = "Drawn carrier", enable = modulation == Interfaces.Modulation.FSK));
+  parameter Real askLowAmplitude(min = 0, max = 1) = 0.3 "ASK only: amplitude of the drawn carrier for a 0 (1 for a 1). 0 looks like OOK, 0.3 is clearly visible, above 0.7 a 0 is hard to tell from a 1" annotation(
+    Dialog(tab = "Drawn signal", group = "Drawn carrier", enable = modulation == Interfaces.Modulation.ASK));
+  parameter Boolean warnSampling = true "Warn in the log when the output interval is too long to draw the carrier: more than 1/(10*(fDisplay + deltaFDisplay in FSK)), i.e. 2.1 us at 9600 bit/s with the defaults" annotation(
+    Dialog(tab = "Drawn signal", group = "Simulation"),
+    choices(checkBox = true));
   parameter Modelica.Units.SI.Time tickPeriod = 0.1 "Period of the minimal sync point: a safety net, the actual pace comes from the engine's deadlines" annotation(
     Dialog(tab = "Drawn signal", group = "Simulation"));
 
@@ -96,7 +100,7 @@ protected
   discrete Modelica.Units.SI.Time tRef(start = 0, fixed = true) "Instant of the last bit change of the drawn FSK carrier";
 
   // Integer(parity) - 2: None/Even/Odd (1/2/3) -> the machine.UART convention (-1/0/1) expected by the C code.
-  Internal.RadioModem modem = Internal.RadioModem(baudrate, dataBits, Integer(parity) - 2, stopBits, airBaudrate, txBufferSize, rxBufferSize, txDelay, rxDelay, halfDuplex, getInstanceName()) "Engine of the modem: serial and radio frames, buffers, delays" annotation(
+  Internal.RadioModem modem = Internal.RadioModem(baudrate, dataBits, Integer(parity) - 2, stopBits, airBaudrate, txBufferSize, rxBufferSize, txDelay, rxDelay, halfDuplex, if modulation == Interfaces.Modulation.FSK then fDisplay + deltaFDisplay else fDisplay, warnSampling, getInstanceName()) "Engine of the modem: serial and radio frames, buffers, delays" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
 equation
   assert(fDisplay > 0 and deltaFDisplay >= 0 and deltaFDisplay < fDisplay, "fDisplay must be positive and deltaFDisplay smaller than fDisplay");

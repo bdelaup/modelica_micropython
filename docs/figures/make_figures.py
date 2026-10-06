@@ -299,6 +299,94 @@ def fig_radio(work):
     save(fig, "radio-modulations")
 
 
+def draw_radio_trace(lang):
+    """Schéma calculé (sans simulation) du signal tracé par un RadioModem, réglages
+    par défaut : bits 0 1 1 0, porteuse à 4 périodes par bit, FSK à 3 et 5,
+    ASK à 0,3 pour un 0. lang = "fr" (documentation) ou "en" (image de la boîte de
+    paramètres du modèle, la bibliothèque étant en anglais)."""
+    import math
+    fr = lang == "fr"
+    bits = [0, 1, 1, 0]
+    n = 2000
+    t = [k * len(bits) / n for k in range(n + 1)]          # temps en durées de bit
+    f0, df, a0 = 4.0, 1.0, 0.3                              # fDisplay, deltaFDisplay (x débit)
+    ask, fsk, phase = [], [], 0.0
+    for k, x in enumerate(t):
+        b = bits[min(int(x), len(bits) - 1)]
+        ask.append((1.0 if b else a0) * math.sin(2 * math.pi * f0 * x))
+        fsk.append(math.sin(phase))
+        if k < n:                                           # phase continue
+            phase += 2 * math.pi * (f0 + (df if b else -df)) * (t[k + 1] - x)
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(8.6, 4.0), sharex=True)
+    for ax, y, col in ((a1, ask, GREEN), (a2, fsk, ORANGE)):
+        ax.plot(t, y, color=col, linewidth=1)
+        for k in range(len(bits) + 1):
+            ax.axvline(k, color=GREY, linewidth=0.5, linestyle=":")
+        ax.set_ylim(-1.3, 2.2)
+        ax.set_yticks([-1, 0, 1])
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+    for k, b in enumerate(bits):
+        a1.text(k + 0.5, 1.85, "bit %d" % b, ha="center", fontsize=8, color=GREY)
+    a1.set_ylabel("ASK")
+    a2.set_ylabel("FSK")
+    # ASK : amplitudes ; FSK : fréquences, chaque libellé au-dessus de son bit
+    a1.text(0.5, 1.2, ("amplitude askLowAmplitude\n(0,3 par défaut)" if fr
+                       else "amplitude askLowAmplitude\n(0.3 by default)"), ha="center", fontsize=7.5)
+    a1.text(1.5, 1.2, "amplitude 1", ha="center", fontsize=7.5)
+    a1.text(2.5, 1.2, ("fDisplay = 4 × airBaudrate\n4 périodes par bit" if fr
+                       else "fDisplay = 4 × airBaudrate\n4 periods per bit"), ha="center", fontsize=7.5)
+    a2.text(0.5, 1.2, ("fDisplay − deltaFDisplay\n3 périodes par bit" if fr
+                       else "fDisplay − deltaFDisplay\n3 periods per bit"), ha="center", fontsize=7.5)
+    a2.text(1.5, 1.2, ("fDisplay + deltaFDisplay\n5 périodes par bit" if fr
+                       else "fDisplay + deltaFDisplay\n5 periods per bit"), ha="center", fontsize=7.5)
+    a2.text(2.5, 1.2, ("deltaFDisplay = airBaudrate\nphase continue" if fr
+                       else "deltaFDisplay = airBaudrate\ncontinuous phase"), ha="center", fontsize=7.5)
+    a2.annotate("", xy=(4, 1.75), xytext=(3, 1.75), arrowprops=dict(arrowstyle="<->", color="k", lw=0.8))
+    a2.text(3.5, 1.85, "1 bit = 1/airBaudrate", ha="center", va="bottom", fontsize=7.5)
+    a2.set_xlabel("durée, en bits radio" if fr else "time, in radio bits")
+    a1.set_title(("Signal tracé sTx, réglages par défaut" if fr else "Drawn signal sTx, default settings"),
+                 loc="left", fontsize=9)
+    return fig
+
+
+def fig_radio_trace(work):
+    save(draw_radio_trace("fr"), "radio-signal-trace")
+    fig = draw_radio_trace("en")
+    path = os.path.join(ROOT, "MicroPythonMCU", "Resources", "Images", "radio_drawn_signal.png")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fig.savefig(path, format="png", dpi=80, bbox_inches="tight", metadata={"Software": None})
+    plt.close(fig)
+    print("écrit", os.path.relpath(path, ROOT))
+
+
+def fig_radio_sampling(work):
+    """Radio.Modulations, FSK : la même trame avec deux intervalles de sortie."""
+    runs = []
+    for intervals in (16000, 200):                          # 2,5 µs et 200 µs sur 40 ms
+        c = simulate("Radio.Modulations", ["txFSK.sTx", "txFSK.carrierOn"], 0.04, intervals, work)
+        runs.append(c)
+    start = next(x for x, on in zip(runs[0]["time"], runs[0]["txFSK.carrierOn"]) if on > 0.5)
+    bit = 1 / 1200
+    fig, axes = plt.subplots(2, 1, figsize=(8, 3.8), sharex=True)
+    titles = ["intervalle de sortie 2,5 µs : 67 points par période de la porteuse la plus rapide (6 kHz)",
+              "intervalle de sortie 200 µs : 0,8 point par période — courbe trompeuse (repliement)"]
+    for ax, c, title, col in zip(axes, runs, titles, [ORANGE, "#c0392b"]):
+        t, (y,) = window(c["time"], [c["txFSK.sTx"]], start - bit, start + 11 * bit)
+        ax.plot([x * 1e3 for x in t], y, color=col, linewidth=0.8, marker="." if col != ORANGE else None,
+                markersize=3)
+        for k in range(11):
+            ax.axvline((start + k * bit) * 1e3, color=GREY, linewidth=0.5, linestyle=":")
+        ax.set_ylim(-1.25, 1.25)
+        style(ax, "", "sTx")
+        ax.set_title(title, loc="left", fontsize=8.5)
+    axes[-1].set_xlabel("temps (ms)")
+    fig.suptitle("Radio.Modulations, FSK à 1200 bit/s : le même caractère 'U', deux intervalles de sortie",
+                 x=0.01, ha="left", fontsize=10)
+    fig.tight_layout()
+    save(fig, "radio-sampling")
+
+
 def fig_radio_buffer(work):
     c = simulate("Radio.Overflow", ["radioA.txFill", "radioA.nDropped", "radioA.carrierOn"],
                  0.25, 25000, work)
@@ -365,6 +453,7 @@ FIGURES = {"blink": fig_blink, "uart": fig_uart, "i2c": fig_i2c, "pwm": fig_pwm,
            "hx711": fig_hx711, "regulation": fig_regulation, "fade": fig_fade,
            "reactivity": fig_reactivity, "timing": fig_timing, "scale": fig_scale,
            "radio": fig_radio, "radio-buffer": fig_radio_buffer,
+           "radio-trace": fig_radio_trace, "radio-sampling": fig_radio_sampling,
            "pico-power": fig_pico_power, "pico-battery": fig_pico_battery}
 
 if __name__ == "__main__":

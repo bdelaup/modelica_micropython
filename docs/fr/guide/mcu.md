@@ -13,7 +13,7 @@
 |---|---|---|
 | `GP0` … `GP7` | Broche électrique (`PositivePin`) | Chacune au choix du programme : entrée ou sortie numérique (`Pin`), entrée analogique (`ADC`), sortie PWM (`PWM`), ligne série (`UART`) ou ligne de bus I2C (`I2C`). `GP0`-`GP3` sont sur le bord gauche de l'icône, `GP4`-`GP7` sur le bord droit |
 | `GND` | Broche électrique (`NegativePin`) | Référence commune de toutes les broches. **À relier à la masse du circuit** (`Ground`), comme sur un vrai montage. Masquée si `useGroundPin` est décoché |
-| `Display0` | Liaison logique (`DisplayLinkOutput`) | Vers un `Peripherals.Display`, `Display4x32` ou `Display8x32` (un ou plusieurs) : texte envoyé par `machine.Display(0).write()`. Pas électrique : voir [LED et afficheur](peripheriques/led-afficheur.md) |
+| `Display0` | Liaison logique (`DisplayLinkOutput`) | Vers un `Peripherals.Display`, `Display4x32` ou `Display8x32` (un ou plusieurs) : texte envoyé par `machine.Display(0).write()`. Pas électrique : voir [LED et afficheurs](peripheriques/led-afficheur.md) |
 
 La **LED embarquée** (`Pin.LED`, broche 25 du Pico) est câblée à l'intérieur du bloc, avec sa résistance série : elle n'a pas de connecteur. Elle s'allume sur l'icône, et son courant se trace sous `mcu.builtinLed`.
 

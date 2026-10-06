@@ -137,7 +137,7 @@ Software timer: once armed, the callback keeps firing **during** a `sleep()` pen
 
 ## `machine.Display`
 
-*Specific to this library: `machine.Display` does not exist in MicroPython (teaching tool, see [LED and display](peripheriques/led-afficheur.md)).*
+*Specific to this library: `machine.Display` does not exist in MicroPython (teaching tool, see [LED and displays](peripheriques/led-afficheur.md)).*
 
 ```python
 from machine import Display
@@ -146,7 +146,7 @@ display.write("Hello")          # to a Peripherals.Display wired to MCU.Display0
 display.write("T =", 21.5, "C") # like print(): "T = 21.5 C"
 ```
 
-Single, **write-only** logical link to a teaching display (`Display0` on the `MCU`). Not a real UART/serial protocol: no reception, no addressing. Unlike the `GPx` pins, the link is not electrical: the message is delivered **instantly** at the next synchronisation point, with no simulated baud rate nor bit-level waveform — component and wiring: [LED and display](peripheriques/led-afficheur.md).
+Single, **write-only** logical link to a teaching display (`Display0` on the `MCU`). Not a real UART/serial protocol: no reception, no addressing. Unlike the `GPx` pins, the link is not electrical: the message is delivered **instantly** at the next synchronisation point, with no simulated baud rate nor bit-level waveform — component and wiring: [LED and displays](peripheriques/led-afficheur.md).
 
 ### Constructor
 

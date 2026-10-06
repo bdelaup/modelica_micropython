@@ -21,4 +21,5 @@
 #include "uartcore.h"                           /* struct UartEngine + constantes du protocole */
 #include "radiomodem/radiomodem_core.h"         /* struct RadioModem, files horodatees */
 #include "uartcore.c"                           /* files TX/RX, trame, decodage */
+#include "simoutput.c"                          /* intervalle de sortie de la simulation (avertissement d'echantillonnage) */
 #include "radiomodem/radiomodem_engine.c"       /* construction, ordonnancement, point de synchro */

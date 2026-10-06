@@ -1,4 +1,4 @@
-# LED et afficheur pédagogique
+# LED et afficheurs pédagogiques
 
 Des composants simples pour voir ce que fait le programme : une LED dont l'icône s'éclaire selon le courant qui la traverse, et des afficheurs de texte reliés au microcontrôleur par une liaison logique (un 20x2, et deux grands écrans qui se remplissent ligne après ligne).
 
@@ -30,55 +30,19 @@ Comme sur un vrai montage, une résistance limite le courant : `GP0` → résist
 
 Le courant se trace sous `led0.p.i` (pour une LED nommée `led0`).
 
-## `Peripherals.Display`
+## Afficheurs : `Display`, `Display4x32`, `Display8x32`
 
-Un afficheur de texte de 2 lignes de 20 caractères, qui affiche **sur son icône** les messages envoyés par le programme avec `machine.Display(0).write(...)`. Il sert à afficher un résultat sans avoir à monter une vraie liaison série ou I2C.
+Trois afficheurs de texte qui montrent **sur leur icône** les messages envoyés par le programme avec `machine.Display(0).write(...)`. Ils servent à afficher un résultat sans avoir à monter une vraie liaison série ou I2C. Les trois se programment et se câblent de la même façon ; ils ne diffèrent que par leur taille et la façon dont les messages s'y succèdent.
+
+| Composant | Taille | Défilement |
+|---|---|---|
+| `Peripherals.Display` | 2 lignes de 20 caractères | Chaque message s'affiche en **ligne 1** ; le précédent descend en ligne 2 |
+| `Peripherals.Display4x32` | 4 lignes de 32 caractères | Comme un terminal : chaque message s'écrit **sous la dernière ligne écrite** ; une fois l'écran plein, tout remonte d'une ligne et le nouveau message prend la ligne du bas |
+| `Peripherals.Display8x32` | 8 lignes de 32 caractères | Comme `Display4x32` |
+
+Les grands écrans sont pratiques pour suivre un historique de mesures ou d'états sans ouvrir le journal.
 
 <!-- ILLUSTRATION display-icone : icône de Peripherals.Display affichant deux messages (fin de simulation de Display.Demo) (cf. docs/ILLUSTRATIONS.md) -->
-
-```python
-from machine import Display
-import time
-
-ecran = Display(0)
-ecran.write("Bonjour")
-time.sleep(1)
-ecran.write("Ca marche")      # "Bonjour" descend en ligne 2
-```
-
-### Connecteur
-
-| Connecteur | Rôle |
-|---|---|
-| `displayLink` | À relier à `mcu.Display0`. C'est une **liaison logique** : elle porte le texte directement, sans tension ni forme d'onde |
-
-Le composant n'a pas de paramètre.
-
-### Câblage
-
-Un seul fil, de la sortie `DISPLAY` du microcontrôleur (`mcu.Display0`, au-dessus de l'icône du `MCU`) à l'entrée de l'afficheur (`displayLink`, à sa gauche). Pas de masse ni d'alimentation à câbler pour l'afficheur : la liaison est logique. Le `MCU`, lui, garde sa masse.
-
-![Schéma de Display.Demo : la sortie DISPLAY du MCU reliée à l'entrée de l'afficheur, la broche GND du MCU à la masse](../../images/display-cablage.png){ width="420" }
-
-En texte, dans la vue *Text* d'OMEdit : `connect(mcu.Display0, display.displayLink);`.
-
-### Comportement
-
-- Chaque message s'affiche en **ligne 1** ; le message précédent descend en **ligne 2**.
-- Un message est une ligne envoyée par `write()`, qui s'utilise comme `print()` (voir [l'API](../api.md#machinedisplay)) : `write("a\nb")` envoie deux messages. Plusieurs messages envoyés au même instant (sans `sleep()` entre eux) arrivent tous, dans l'ordre : l'afficheur montre les deux derniers.
-- Un message écrit dès le début du programme, avant le premier `sleep()` (t = 0), s'affiche aussi.
-- Au-delà de 20 caractères, le message est coupé sur l'icône, mais apparaît en entier dans le journal de simulation (chaque message y est aussi imprimé).
-- Caractères affichables : lettres sans accent, chiffres, espace et `! ' , - . ?`. Les autres s'affichent comme des espaces. Message limité à 128 caractères.
-- La liaison est instantanée : le message arrive au moment même du `write()`, sans délai de transmission. Écriture seule : l'afficheur ne répond rien.
-
-Pour un afficheur relié par une **vraie** liaison électrique, voir `UartLcd20x2` ([Appareils série](uart.md)) ou l'écran Grove LCD RGB ([Périphériques I2C](i2c.md)).
-
-Exemples : `Display.Demo`, `Weighing.Hx711Read`.
-
-## `Peripherals.Display4x32` et `Peripherals.Display8x32`
-
-Deux grands écrans de texte, de 4 et 8 lignes de 32 caractères, qui reçoivent les mêmes messages que `Display` (`machine.Display(0).write(...)`). Ils se lisent comme un terminal : chaque message s'écrit **sous la dernière ligne écrite** ; une fois l'écran plein, tout remonte d'une ligne et le nouveau message prend la ligne du bas. Pratiques pour suivre un historique de mesures ou d'états sans ouvrir le journal.
-
 <!-- ILLUSTRATION grands-ecrans : icônes de Display4x32 et Display8x32 en fin de simulation de Display.Large (cf. docs/ILLUSTRATIONS.md) -->
 
 ```python
@@ -91,21 +55,27 @@ for i in range(10):
     time.sleep_ms(100)
 ```
 
+À la fin, le 20x2 montre les deux dernières mesures (la plus récente en haut), le 4x32 les mesures 6 à 9 et le 8x32 les mesures 2 à 9 (la plus récente en bas).
+
 ### Connecteur
 
 | Connecteur | Rôle |
 |---|---|
-| `displayLink` | À relier à `mcu.Display0`, comme pour `Display`. Plusieurs afficheurs peuvent être reliés au même `Display0` : ils reçoivent tous chaque message |
+| `displayLink` | À relier à `mcu.Display0`. C'est une **liaison logique** : elle porte le texte directement, sans tension ni forme d'onde |
 
 ### Câblage
 
-Comme pour `Display` : un fil de `mcu.Display0` à `displayLink`. Pour montrer les mêmes messages sur plusieurs afficheurs, on tire un fil de `mcu.Display0` vers chacun d'eux ; c'est ce que fait `Display.Large`, avec un 20x2 (`display`), un 4x32 (`screen4`) et un 8x32 (`screen8`).
+Un fil, de la sortie `DISPLAY` du microcontrôleur (`mcu.Display0`, au-dessus de l'icône du `MCU`) à l'entrée de l'afficheur (`displayLink`, à sa gauche). Pas de masse ni d'alimentation à câbler pour l'afficheur : la liaison est logique. Le `MCU`, lui, garde sa masse.
 
-![Schéma de Display.Large : la sortie DISPLAY du MCU reliée aux trois afficheurs](../../images/grands-ecrans-cablage.png){ width="440" }
+Plusieurs afficheurs peuvent être reliés au même `Display0` : ils reçoivent tous chaque message. C'est ce que fait `Display.Large`, avec un 20x2 (`display`), un 4x32 (`screen4`) et un 8x32 (`screen8`) :
 
-En texte : `connect(mcu.Display0, screen4.displayLink);` et `connect(mcu.Display0, screen8.displayLink);`.
+![Schéma de Display.Large : la sortie DISPLAY du MCU reliée aux trois afficheurs, la broche GND du MCU à la masse](../../images/grands-ecrans-cablage.png){ width="440" }
+
+En texte, dans la vue *Text* d'OMEdit : `connect(mcu.Display0, display.displayLink);`, et de même pour `screen4` et `screen8`.
 
 ### Paramètre
+
+`Display` n'a pas de paramètre. Les deux grands écrans en ont un :
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
@@ -113,10 +83,13 @@ En texte : `connect(mcu.Display0, screen4.displayLink);` et `connect(mcu.Display
 
 ### Comportement
 
-- L'écran démarre vide ; le premier message prend la ligne du haut, même s'il est écrit à t = 0, avant le premier `sleep()`.
-- Plusieurs messages envoyés au même instant (sans `sleep()` entre eux, ou `write()` d'un texte de plusieurs lignes) s'écrivent tous, l'un sous l'autre, dans l'ordre.
-- Au-delà de 32 caractères, le message est coupé sur l'icône ; il reste entier dans le journal.
-- Caractères affichables : lettres sans accent, chiffres, espace et `! " # & ' ( ) * + , - . / : < = > ? _`. Les autres s'affichent comme des espaces.
-- Le texte de l'icône est enregistré dans `textCode` (codes ASCII, ligne `i`, colonne `j` à l'indice `(i - 1)*32 + j`) et le nombre de lignes écrites dans `filled` : on les retrouve dans les résultats.
+- Un message est une ligne envoyée par `write()`, qui s'utilise comme `print()` (voir [l'API](../api.md#machinedisplay)) : `write("a\nb")` envoie deux messages. Plusieurs messages envoyés au même instant (sans `sleep()` entre eux) arrivent tous, dans l'ordre : le 20x2 montre les deux derniers, les grands écrans les écrivent l'un sous l'autre.
+- Un message écrit dès le début du programme, avant le premier `sleep()` (t = 0), s'affiche aussi. Les grands écrans démarrent vides : le premier message prend la ligne du haut.
+- Un message plus long que la ligne (20 ou 32 caractères) est coupé sur l'icône, mais apparaît en entier dans le journal de simulation. Message limité à 128 caractères.
+- Caractères affichables : lettres sans accent, chiffres et espace, plus `! ' , - . ?` sur le 20x2 et `! " # & ' ( ) * + , - . / : < = > ? _` sur les grands écrans. Les autres s'affichent comme des espaces.
+- La liaison est instantanée : le message arrive au moment même du `write()`, sans délai de transmission. Écriture seule : l'afficheur ne répond rien.
+- Sur les grands écrans, le texte de l'icône est enregistré dans `textCode` (codes ASCII, ligne `i`, colonne `j` à l'indice `(i - 1)*32 + j`) et le nombre de lignes écrites dans `filled` : on les retrouve dans les résultats.
 
-Exemple : `Display.Large` (les trois afficheurs côte à côte).
+Pour un afficheur relié par une **vraie** liaison électrique, voir `UartLcd20x2` ([Appareils série](uart.md)) ou l'écran Grove LCD RGB ([Périphériques I2C](i2c.md)).
+
+Exemples : `Display.Demo` (un 20x2, deux messages), `Display.Large` (les trois afficheurs sur la même liaison), `Weighing.Hx711Read`.

@@ -10,7 +10,7 @@
 |---|---|---|
 | `GP0` … `GP7` | Electrical pin (`PositivePin`) | Each one, at the program's choice: digital input or output (`Pin`), analog input (`ADC`), PWM output (`PWM`), serial line (`UART`) or I2C bus line (`I2C`). `GP0`-`GP3` are on the left edge of the icon, `GP4`-`GP7` on the right edge |
 | `GND` | Electrical pin (`NegativePin`) | Common reference of all pins. **Connect it to the circuit ground** (`Ground`), as on a real board. Hidden when `useGroundPin` is unchecked |
-| `Display0` | Logical link (`DisplayLinkOutput`) | To a `Peripherals.Display`, `Display4x32` or `Display8x32` (one or several): text sent by `machine.Display(0).write()`. Not electrical: see [LED and display](peripheriques/led-afficheur.md) |
+| `Display0` | Logical link (`DisplayLinkOutput`) | To a `Peripherals.Display`, `Display4x32` or `Display8x32` (one or several): text sent by `machine.Display(0).write()`. Not electrical: see [LED and displays](peripheriques/led-afficheur.md) |
 
 The **on-board LED** (`Pin.LED`, pin 25 on the Pico) is wired inside the block, with its series resistor: it has no connector. It lights up on the icon, and its current can be plotted under `mcu.builtinLed`.
 

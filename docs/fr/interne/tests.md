@@ -117,6 +117,7 @@ omc verify_67_pico_profile.mos
 omc verify_68_supply_pin.mos
 omc verify_69_ground_pin.mos
 omc verify_70_display_write.mos
+omc verify_71_radio_sampling.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -189,6 +190,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_68_supply_pin.mos` | `SupplyPin`, défini dans le script (Pico + `UartEchoDevice` et `Hx711` sur `3V3(OUT)`, `I2cEchoDevice` sur 5 V, tous `useSupplyPin`) | Broche `VCC` des périphériques | Écho reçu ; TX au repos = rail ; courant = `IQ` ; excitation du HX711 = rail − 0,1 V, courant = `IQ` + pont ; SDA à 5 V |
 | `verify_69_ground_pin.mos` | `GroundPin`, défini dans le script (`MCU`, `UartEchoDevice`, `I2cEchoDevice`, `Hx711`, `LogicAnalyzer`, tous `useGroundPin = false`, programme `Verification/ground_pin.py`) | Broche `GND` facultative | Sans aucun fil de masse : écho série et écho I2C corrects (LED témoin de `GP7` allumée, seule liaison vers un `Ground`) ; TX de l'appareil au repos = `VOH` ; excitation du HX711 = `AVDD` ; la sonde décode `4F 4B 0A` |
 | `verify_70_display_write.mos` | `DisplayWrite`, défini dans le script (`MCU`, `Display` et `Display4x32` sur le même `Display0`, programme `Verification/display_write.py`) | Message à t = 0, `Display.write()` comme `print()`, messages d'un même instant, `Timer(...)` avec les arguments de `init()` | « Zero », écrit avant le premier `sleep()`, sur les deux écrans et au journal (`t=0`) ; « T = 25 C » construit en deux appels (`end=''`), « a-b » (`sep`), « L1 » et « L2 » (un `'\n'`), tous au même instant et tous journalisés ; 4x32 défilé d'une ligne, 20x2 à « L2 »/« L1 » ; `Timer(period=10, ...)` 10 appels en 105 ms, `Timer(freq=20, mode=ONE_SHOT, ...)` 1 appel |
+| `verify_71_radio_sampling.mos` | `Examples.Radio.Modulations` compilé une fois (`buildModel`, 200 intervalles), lancé trois fois | Avertissement d'échantillonnage de la porteuse tracée (`warnSampling`, `simoutput.c`) | 200 µs lus dans `_init.xml` : avertissement de chaque module, FSK 0,83 et OOK 1 point par période ; `-override=stepSize=2.5e-6` : aucun ; `-override=numberOfIntervals=100,...` : FSK 0,42 |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

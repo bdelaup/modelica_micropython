@@ -53,7 +53,7 @@ Un module n'entend que les émetteurs **accordés sur son canal** (même fréque
 
 Le récepteur **ne démodule pas** le signal tracé. Le fil d'antenne transporte aussi le bit émis, et c'est ce bit que le récepteur décode, comme le ferait un vrai récepteur série. C'est la **synchronisation masquée** : la démodulation est supposée parfaite, sans filtre ni bruit.
 
-Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fDisplay`, quatre fois le débit radio par défaut. Une vraie porteuse (434 MHz) aurait des centaines de millions de périodes par seconde et ne pourrait pas être tracée. La fréquence nominale `fCarrier` ne sert qu'à décider quels modules s'entendent.
+Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fDisplay`, quatre fois le débit radio par défaut. Une vraie porteuse (434 MHz) aurait des centaines de millions de périodes par seconde et ne pourrait pas être tracée. La fréquence nominale `fCarrier` ne sert qu'à décider quels modules s'entendent. Les réglages du tracé (`fDisplay`, `deltaFDisplay`, `askLowAmplitude`) ne changent **rien** à ce que reçoit l'autre module : ils ne servent qu'à la courbe.
 
 | Modulation | Un 0 | Un 1 |
 |---|---|---|
@@ -62,15 +62,58 @@ Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fD
 | `FSK` | porteuse à `fDisplay - deltaFDisplay` | porteuse à `fDisplay + deltaFDisplay` (phase continue) |
 | `BPSK` | porteuse inversée | porteuse |
 
-!!! warning "Voir la porteuse : réduire l'intervalle de sortie"
-    `sTx` n'est enregistré qu'aux points de sortie de la simulation. Pour voir la porteuse, l'intervalle de sortie doit être bien plus court que sa période : une dizaine de points par période au moins. Avec un intervalle trop long, la courbe saute au hasard entre -1 et +1 (repliement), alors que la liaison fonctionne.
+![Signal tracé sTx avec les réglages par défaut, pour les bits 0 1 1 0 : en ASK, amplitude 0,3 pour un 0 et 1 pour un 1, quatre périodes par bit ; en FSK, trois périodes par bit pour un 0 et cinq pour un 1](../../images/sim/radio-signal-trace.svg)
 
-    | Débit radio | Porteuse tracée (défaut) | Intervalle conseillé | Exemple |
-    |---|---|---|---|
-    | 1200 bit/s | 4800 Hz (FSK : 3600 et 6000 Hz) | 10 µs | `Radio.Modulations` |
-    | 9600 bit/s | 38,4 kHz (FSK : 28,8 et 48 kHz) | 2 µs | `Radio.Link` |
+### Valeurs typiques
 
-    Le prix : à 2 µs, `Radio.Link` (0,25 s simulées) écrit un fichier de résultats d'environ 150 Mo et simule environ six fois plus lentement qu'à 100 µs. Simuler une durée courte, ou garder un intervalle long quand on ne regarde pas la porteuse. Augmenter `fDisplay` impose un intervalle encore plus court.
+**Selon le débit radio**, avec les réglages par défaut du tracé (`fDisplay` = 4 × débit, `deltaFDisplay` = débit). L'intervalle de sortie maximal donne dix points par période de la porteuse la plus rapide : 1/(50 × débit) en FSK, 1/(40 × débit) dans les autres modulations.
+
+| Débit radio | Durée d'un bit | `fDisplay` | FSK : un 0 / un 1 | Intervalle maximal (FSK / autres) | Intervalle conseillé |
+|---|---|---|---|---|---|
+| 1200 bit/s | 833 µs | 4,8 kHz | 3,6 / 6 kHz | 16,7 / 20,8 µs | 10 µs (`Radio.Modulations`) |
+| 2400 bit/s | 417 µs | 9,6 kHz | 7,2 / 12 kHz | 8,3 / 10,4 µs | 5 µs |
+| 4800 bit/s | 208 µs | 19,2 kHz | 14,4 / 24 kHz | 4,2 / 5,2 µs | 2 µs |
+| 9600 bit/s (APC220) | 104 µs | 38,4 kHz | 28,8 / 48 kHz | 2,1 / 2,6 µs | 2 µs (`Radio.Link`) |
+| 19200 bit/s | 52 µs | 76,8 kHz | 57,6 / 96 kHz | 1,04 / 1,3 µs | 1 µs |
+
+**Choisir `fDisplay`** (exemple à 9600 bit/s, en OOK, ASK ou BPSK) : plus de périodes par bit donnent une courbe plus parlante, mais demandent un intervalle plus court, donc un fichier de résultats plus gros et une simulation plus lente.
+
+| `fDisplay` | Périodes par bit | Intervalle maximal | Points enregistrés | Rendu |
+|---|---|---|---|---|
+| 2 × débit (19,2 kHz) | 2 | 5,2 µs | × 0,5 | La porteuse se distingue mal d'un créneau, les changements de bit se lisent mal |
+| 4 × débit (38,4 kHz, défaut) | 4 | 2,6 µs | × 1 | Bon compromis |
+| 8 × débit (76,8 kHz) | 8 | 1,3 µs | × 2 | Porteuse bien visible, pour une figure |
+| 16 × débit (153,6 kHz) | 16 | 0,65 µs | × 4 | Proche de l'idée d'une « vraie » porteuse, coûteux |
+
+**FSK : `deltaFDisplay`** (avec `fDisplay` = 4 × débit). L'indice de modulation h = 2 × `deltaFDisplay` / débit mesure l'écart entre les deux fréquences. Les modules réels utilisent souvent un indice de l'ordre de 0,5 à 1 ; le tracé par défaut l'exagère pour que la différence saute aux yeux. `deltaFDisplay` doit rester inférieur à `fDisplay`.
+
+| `deltaFDisplay` | Périodes par bit, un 0 / un 1 | Indice h | Rendu |
+|---|---|---|---|
+| 0,25 × débit | 3,75 / 4,25 | 0,5 | Différence à peine visible |
+| 0,5 × débit | 3,5 / 4,5 | 1 | Visible en zoomant |
+| 1 × débit (défaut) | 3 / 5 | 2 | Nette |
+| 2 × débit | 2 / 6 | 4 | Très nette ; la porteuse la plus rapide passe à 6 × débit, intervalle maximal 1/(60 × débit) |
+
+**ASK : `askLowAmplitude`**. Le taux de modulation m = (1 − a) / (1 + a), où a = `askLowAmplitude`, dit à quel point un 0 se distingue d'un 1.
+
+| `askLowAmplitude` | Taux de modulation | Rendu |
+|---|---|---|
+| 0 | 100 % | Identique à OOK : pas de porteuse pour un 0 |
+| 0,3 (défaut) | 54 % | Un 0 et un 1 nettement différents |
+| 0,5 | 33 % | Encore lisible |
+| 0,8 | 11 % | Un 0 et un 1 presque confondus |
+
+### Voir la porteuse : l'intervalle de sortie
+
+`sTx` n'est enregistré qu'aux points de sortie de la simulation : c'est une courbe continue, pas une suite d'événements. Pour voir la porteuse, il faut une dizaine de points par période au moins (tableaux ci-dessus). Avec un intervalle trop long, la courbe saute au hasard entre -1 et +1 (repliement), alors que la liaison fonctionne parfaitement.
+
+![Le caractère 'U' en FSK à 1200 bit/s : avec un intervalle de sortie de 2,5 µs, la porteuse est nette ; avec 200 µs, 0,8 point par période, la courbe est trompeuse](../../images/sim/radio-sampling.svg)
+
+Chaque module le **signale** dans le journal en début de simulation, quand l'intervalle de sortie dépasse 1/(10 × la porteuse la plus rapide) : il donne le nombre de points par période et l'intervalle à choisir. Pour ne plus voir ce message, quand on ne regarde pas la porteuse, décocher `warnSampling` (onglet *Drawn signal*).
+
+Les autres courbes de la bibliothèque ne sont pas concernées : les fronts d'une sortie numérique, d'une trame UART ou I2C, d'un PWM sont des **événements**, écrits dans le fichier de résultats quel que soit l'intervalle de sortie.
+
+Le prix d'un intervalle court : à 2 µs, `Radio.Link` (0,25 s simulées) écrit un fichier de résultats d'environ 150 Mo et simule environ six fois plus lentement qu'à 100 µs. Simuler une durée courte, ou garder un intervalle long quand on ne regarde pas la porteuse.
 
 ## Paramètres
 
@@ -104,11 +147,19 @@ Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fD
 
 ### Signal tracé (onglet *Drawn signal*)
 
+Groupe *Drawn carrier*, illustré dans la boîte de paramètres par le schéma ci-dessus (version anglaise) ; valeurs typiques : [tableaux plus haut](#valeurs-typiques).
+
 | Paramètre | Défaut | Rôle |
 |---|---|---|
-| `fDisplay` | 4 × `airBaudrate` | Porteuse mise à l'échelle utilisée pour tracer `sTx` ; plus elle est élevée, plus l'intervalle de sortie doit être court |
-| `deltaFDisplay` | `airBaudrate` | FSK : écart de fréquence de la porteuse tracée |
-| `askLowAmplitude` | 0,3 | ASK : amplitude tracée pour un 0 |
+| `fDisplay` | 4 × `airBaudrate` | Porteuse mise à l'échelle utilisée pour tracer `sTx` : 4 périodes par bit (38,4 kHz à 9600 bit/s) ; plus elle est élevée, plus l'intervalle de sortie doit être court |
+| `deltaFDisplay` | `airBaudrate` | FSK : écart de fréquence de la porteuse tracée, 3 et 5 périodes par bit pour un 0 et un 1 |
+| `askLowAmplitude` | 0,3 | ASK : amplitude tracée pour un 0 (taux de modulation 54 %) |
+
+Groupe *Simulation* :
+
+| Paramètre | Défaut | Rôle |
+|---|---|---|
+| `warnSampling` | `true` | Avertit dans le journal quand l'intervalle de sortie est trop long pour tracer la porteuse (plus de 1/(10 × la porteuse la plus rapide)) |
 | `tickPeriod` | 0,1 s | Période du point de synchronisation minimal ; filet de sécurité |
 
 !!! note "Régler `fDisplay` d'après le débit radio"

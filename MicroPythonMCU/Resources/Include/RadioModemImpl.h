@@ -15,10 +15,14 @@
    file UART -> air, rxBufferSize : file air -> UART, en octets ; un octet qui
    arrive file pleine est perdu. txDelay/rxDelay : delai fixe entre la fin de
    reception d'un octet et le moment ou il peut partir de l'autre cote.
-   halfDuplex : le modem est sourd pendant qu'il emet. */
+   halfDuplex : le modem est sourd pendant qu'il emet. drawnFMax : plus haute
+   frequence de la porteuse tracee (fDisplay, + deltaFDisplay en FSK) ;
+   warnSampling : avertir si l'intervalle de sortie de la simulation est trop
+   long pour la tracer (cf. simoutput.c). */
 void* RadioModem_new(double baudrate, int dataBits, int parity, int stopBits,
                      double airBaudrate, int txBufferSize, int rxBufferSize,
                      double txDelay, double rxDelay, int halfDuplex,
+                     double drawnFMax, int warnSampling,
                      const char* instanceName);
 void RadioModem_destroy(void* modem);
 

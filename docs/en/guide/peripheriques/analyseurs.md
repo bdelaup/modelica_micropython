@@ -12,11 +12,11 @@ At the end of the simulation, it writes its files in the simulation folder (full
 
 ## Connecting the probe
 
-Connect channels `CH0`…`CH7` to the wires to observe and `GND` to the ground of the circuit (or uncheck `useGroundPin`: the pin disappears and the probe is referenced to the simulation ground); an unconnected channel reads 0. Each channel is set up in **its own tab** (`CH0`…`CH7`): a name and a **kind**.
+Connect channels `CH0`…`CH7` to the wires to observe and `GND` to the ground of the circuit (or uncheck `useGroundPin`: the pin disappears and the probe is referenced to the simulation ground); an unconnected channel reads 0. Each channel is set up in **its own tab** (`CH0`…`CH7`): a name and a **kind**. By default, `CH0` to `CH3` are active (`Logic`) and `CH4` to `CH7` are off (`Off`): the pin of an `Off` channel disappears from the icon, and the names of the active channels are written in green on it. To use `CH4`…`CH7`, give them a kind.
 
 | Kind (`chNKind`) | For | What the probe does with it |
 |---|---|---|
-| `Off` | Unused channel | Nothing: not recorded, costs nothing |
+| `Off` | Unused channel | Nothing: not recorded, costs nothing, and its pin disappears |
 | `Logic` | Any level (LED, button, PWM) **and any clock line** (SCL, PD_SCK, SCK) | Recorded, drawn; summary of its edges and duty cycle |
 | `Uart` | One wire of a serial link | Decoded with the format of the tab: speed, bits, parity, stop bits, bit order |
 | `I2cSda` | The SDA line of an I2C bus | Decoded, SCL being the channel `chNClockChannel` |
@@ -28,7 +28,8 @@ The **data** channel names its clock channel: SCL stays a `Logic` channel. One p
 MicroPythonMCU.Peripherals.Analyzers.LogicAnalyzer analyzer(
   ch0Name = "SCL",                                              // Logic by default
   ch1Kind = MicroPythonMCU.Interfaces.ChannelKind.I2cSda, ch1Name = "SDA", ch1ClockChannel = 0,
-  ch2Kind = MicroPythonMCU.Interfaces.ChannelKind.Off, ...);    // CH2 to CH7 unused
+  ch2Kind = MicroPythonMCU.Interfaces.ChannelKind.Off,          // CH2 and CH3 turned off by hand,
+  ch3Kind = MicroPythonMCU.Interfaces.ChannelKind.Off);         // CH4 to CH7 are off by default
 ...
 connect(analyzer.CH0, mcu.GP4);
 connect(analyzer.CH1, mcu.GP5);
@@ -145,7 +146,7 @@ Tabs `CH0` … `CH7`, one per channel (`chN` = `ch0` … `ch7`); the settings th
 
 | Parameter | Default | Group | Role |
 |---|---|---|---|
-| `chNKind` | `Logic` | Channel | Kind of the channel (table above) |
+| `chNKind` | `Logic` for `CH0`…`CH3`, `Off` for `CH4`…`CH7` | Channel | Kind of the channel (table above); `Off` removes its pin |
 | `chNName` | `""` | Channel | Name in the files, without comma; empty: `CH0`, `CH1`… |
 | `chNBaudrate` | 1200 | UART | Speed |
 | `chNDataBits` | 8 | UART | Data bits, from 5 to 8 |

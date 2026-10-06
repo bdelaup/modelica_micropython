@@ -1,0 +1,36 @@
+// Scénario de vérification n°71 : avertissement quand l'intervalle de sortie
+// est trop long pour tracer la porteuse des modules radio (warnSampling).
+// omc verify_71_radio_sampling.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie, sur Examples.Radio.Modulations (1200 bit/s,
+// porteuses tracées à 4800 Hz, FSK jusqu'à 6000 Hz) :
+// - intervalle de 200 µs lu dans le fichier _init.xml : chaque module avertit,
+//   avec le bon nombre de points par période (FSK 0,83, OOK 1,04 -> "1") ;
+// - même exécutable lancé avec -override=stepSize=2.5e-6 (ce que fait OMEdit
+//   avec les réglages de sa fenêtre de simulation) : aucun avertissement ;
+// - -override=numberOfIntervals=100,startTime=0,stopTime=0.04 (400 µs) :
+//   l'avertissement revient, calculé depuis le nombre d'intervalles.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.Radio.Modulations, stopTime = 0.04, numberOfIntervals = 200, fileNamePrefix = "RadioSampling");
+b := getErrorString();
+
+ret1 := system(".\\RadioSampling.bat", "RadioSampling_run1.txt");
+log1 := readFile("RadioSampling_run1.txt");
+(nFsk, m1) := regex(log1, "txFSK\\] output interval 0.0002 s: 0.83 point", 1);
+(nOok, m2) := regex(log1, "rxOOK\\] output interval 0.0002 s: 1 point", 1);
+
+ret2 := system(".\\RadioSampling.bat -override=stepSize=2.5e-6", "RadioSampling_run2.txt");
+log2 := readFile("RadioSampling_run2.txt");
+(nNone, m3) := regex(log2, "drawn carrier", 1);
+
+ret3 := system(".\\RadioSampling.bat -override=numberOfIntervals=100,startTime=0,stopTime=0.04", "RadioSampling_run3.txt");
+log3 := readFile("RadioSampling_run3.txt");
+(nN, m4) := regex(log3, "txFSK\\] output interval 0.0004 s: 0.42 point", 1);
+
+if ret1 == 0 and ret2 == 0 and ret3 == 0 and nFsk >= 1 and nOok >= 1 and nNone == 0 and nN >= 1 then
+  print("PASS: verify_71_radio_sampling (200 us lu dans _init.xml : avertissement FSK 0,83 et OOK 1 point par periode ; -override=stepSize=2.5e-6 : aucun ; -override=numberOfIntervals=100 : FSK 0,42)\n");
+else
+  print("FAIL: verify_71_radio_sampling (codes " + String(ret1) + "/" + String(ret2) + "/" + String(ret3) + ", FSK " + String(nFsk) + ", OOK " + String(nOok) + ", sans avertissement " + String(nNone) + " (attendu 0), numberOfIntervals " + String(nN) + ")\n" + b + "\n--- journal 1 ---\n" + log1 + "\n--- journal 2 ---\n" + log2 + "\n--- journal 3 ---\n" + log3);
+end if;

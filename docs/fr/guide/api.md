@@ -135,7 +135,7 @@ Minuteur logiciel : une fois armé, le callback continue de se déclencher **pen
 
 ## `machine.Display`
 
-*Propre à cette bibliothèque : `machine.Display` n'existe pas dans MicroPython (outil pédagogique, voir [LED et afficheur](peripheriques/led-afficheur.md)).*
+*Propre à cette bibliothèque : `machine.Display` n'existe pas dans MicroPython (outil pédagogique, voir [LED et afficheurs](peripheriques/led-afficheur.md)).*
 
 ```python
 from machine import Display
@@ -144,7 +144,7 @@ display.write("Bonjour")        # vers un Peripherals.Display cable sur MCU.Disp
 display.write("T =", 21.5, "C") # comme print() : "T = 21.5 C"
 ```
 
-Liaison logique unique et **écriture seule** vers un périphérique d'affichage pédagogique (`Display0` côté `MCU`). Ce n'est pas un vrai protocole UART/Serial : pas de réception, pas d'adressage. Contrairement aux broches `GPx`, la liaison n'est pas électrique (`Modelica.Electrical.Analog`) mais un connecteur logique causal (`Interfaces.DisplayLinkOutput`/`DisplayLinkInput`) : le message est livré **instantanément** au point de synchro suivant, pas de simulation de bauds ni de forme d'onde série bit-à-bit — composant et câblage : [LED et afficheur](peripheriques/led-afficheur.md).
+Liaison logique unique et **écriture seule** vers un périphérique d'affichage pédagogique (`Display0` côté `MCU`). Ce n'est pas un vrai protocole UART/Serial : pas de réception, pas d'adressage. Contrairement aux broches `GPx`, la liaison n'est pas électrique (`Modelica.Electrical.Analog`) mais un connecteur logique causal (`Interfaces.DisplayLinkOutput`/`DisplayLinkInput`) : le message est livré **instantanément** au point de synchro suivant, pas de simulation de bauds ni de forme d'onde série bit-à-bit — composant et câblage : [LED et afficheurs](peripheriques/led-afficheur.md).
 
 ### Constructeur
 

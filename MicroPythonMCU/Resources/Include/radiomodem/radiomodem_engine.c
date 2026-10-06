@@ -85,6 +85,7 @@ static void radio_abort_air_rx(struct RadioModem* m, double now, const char* why
 void* RadioModem_new(double baudrate, int dataBits, int parity, int stopBits,
                      double airBaudrate, int txBufferSize, int rxBufferSize,
                      double txDelay, double rxDelay, int halfDuplex,
+                     double drawnFMax, int warnSampling,
                      const char* instanceName) {
     struct RadioModem* m;
     size_t n;
@@ -147,6 +148,23 @@ void* RadioModem_new(double baudrate, int dataBits, int parity, int stopBits,
     }
     memcpy(m->name, instanceName ? instanceName : "RadioModem", n);
     m->name[n] = '\0';
+
+    /* Porteuse tracee mal echantillonnee : sTx n'est enregistre qu'aux points
+       de sortie, et ce n'est pas un evenement (sinus continu) - au-dela d'un
+       dixieme de periode entre deux points, la courbe devient trompeuse. Les
+       fronts numeriques, eux, sont des evenements, ecrits dans les resultats
+       quel que soit l'intervalle : rien a signaler pour eux. Une fois par
+       modem, a la construction. */
+    if (warnSampling && drawnFMax > 0) {
+        double step = sim_output_interval();
+        double limit = 1.0 / (10.0 * drawnFMax);
+        if (step > limit * 1.001) {
+            ModelicaFormatWarning("[%s] output interval %g s: %.2g point(s) per period of the drawn carrier (%g Hz). "
+                                  "Plotted, sTx will look wrong (aliasing); the radio link itself is not affected. "
+                                  "To see the carrier, use an output interval of %.3g s or less; to hide this message, set warnSampling = false.\n",
+                                  m->name, step, 1.0 / (step * drawnFMax), drawnFMax, limit);
+        }
+    }
     return (void*) m;
 }
 

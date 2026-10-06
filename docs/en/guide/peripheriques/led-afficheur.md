@@ -1,4 +1,4 @@
-# LED and teaching display
+# LED and teaching displays
 
 Simple components to see what the program does: an LED whose icon lights up according to the current flowing through it, and text displays connected to the microcontroller by a logical link (a 20x2 one, and two large screens that fill line after line).
 
@@ -28,52 +28,17 @@ As on a real board, a resistor limits the current: `GP0` → 330 Ω resistor →
 
 The current is plotted under `led0.p.i` (for an LED named `led0`).
 
-## `Peripherals.Display`
+## Displays: `Display`, `Display4x32`, `Display8x32`
 
-A text display with 2 lines of 20 characters, which shows **on its icon** the messages sent by the program with `machine.Display(0).write(...)`. It displays a result without having to set up a real serial or I2C link.
+Three text displays which show **on their icon** the messages sent by the program with `machine.Display(0).write(...)`. They display a result without having to set up a real serial or I2C link. All three are programmed and wired the same way; they only differ in size and in how messages follow one another.
 
-```python
-from machine import Display
-import time
+| Component | Size | Scrolling |
+|---|---|---|
+| `Peripherals.Display` | 2 lines of 20 characters | Each message is shown on **line 1**; the previous one moves down to line 2 |
+| `Peripherals.Display4x32` | 4 lines of 32 characters | Like a terminal: each message is written **under the last written line**; once the screen is full, everything moves up by one line and the new message takes the bottom line |
+| `Peripherals.Display8x32` | 8 lines of 32 characters | Like `Display4x32` |
 
-screen = Display(0)
-screen.write("Hello")
-time.sleep(1)
-screen.write("It works")      # "Hello" moves down to line 2
-```
-
-### Connector
-
-| Connector | Role |
-|---|---|
-| `displayLink` | To connect to `mcu.Display0`. It is a **logical link**: it carries the text directly, with no voltage nor waveform |
-
-The component has no parameters.
-
-### Wiring
-
-A single wire, from the `DISPLAY` output of the microcontroller (`mcu.Display0`, above the `MCU` icon) to the input of the display (`displayLink`, on its left). No ground nor supply to wire for the display: the link is logical. The `MCU` keeps its own ground.
-
-![Diagram of Display.Demo: the DISPLAY output of the MCU wired to the input of the display, the GND pin of the MCU to the ground](../../images/display-cablage.png){ width="420" }
-
-As text, in the *Text* view of OMEdit: `connect(mcu.Display0, display.displayLink);`.
-
-### Behaviour
-
-- Each message is shown on **line 1**; the previous message moves down to **line 2**.
-- A message is one line sent by `write()`, which is used like `print()` (see [the API](../api.md#machinedisplay)): `write("a\nb")` sends two messages. Several messages sent at the same instant (without `sleep()` in between) all arrive, in order: the display shows the last two.
-- A message written at the very start of the program, before the first `sleep()` (t = 0), is shown as well.
-- Beyond 20 characters, the message is cut on the icon, but appears in full in the simulation log (each message is printed there too).
-- Displayable characters: unaccented letters, digits, space and `! ' , - . ?`. Others are shown as spaces. Messages are limited to 128 characters.
-- The link is instantaneous: the message arrives at the very moment of the `write()`, with no transmission delay. Write-only: the display never answers.
-
-For a display connected by a **real** electrical link, see `UartLcd20x2` ([Serial devices](uart.md)) or the Grove LCD RGB display ([I2C devices](i2c.md)).
-
-Examples: `Display.Demo`, `Weighing.Hx711Read`.
-
-## `Peripherals.Display4x32` and `Peripherals.Display8x32`
-
-Two large text screens, of 4 and 8 lines of 32 characters, which receive the same messages as `Display` (`machine.Display(0).write(...)`). They read like a terminal: each message is written **under the last written line**; once the screen is full, everything moves up by one line and the new message takes the bottom line. Handy to follow a history of measurements or states without opening the log.
+The large screens are handy to follow a history of measurements or states without opening the log.
 
 ```python
 from machine import Display
@@ -85,21 +50,27 @@ for i in range(10):
     time.sleep_ms(100)
 ```
 
+At the end, the 20x2 shows the last two readings (the most recent at the top), the 4x32 readings 6 to 9 and the 8x32 readings 2 to 9 (the most recent at the bottom).
+
 ### Connector
 
 | Connector | Role |
 |---|---|
-| `displayLink` | To connect to `mcu.Display0`, as for `Display`. Several displays may be connected to the same `Display0`: they all receive every message |
+| `displayLink` | To connect to `mcu.Display0`. It is a **logical link**: it carries the text directly, with no voltage nor waveform |
 
 ### Wiring
 
-As for `Display`: one wire from `mcu.Display0` to `displayLink`. To show the same messages on several displays, draw a wire from `mcu.Display0` to each of them; this is what `Display.Large` does, with a 20x2 (`display`), a 4x32 (`screen4`) and an 8x32 (`screen8`).
+One wire, from the `DISPLAY` output of the microcontroller (`mcu.Display0`, above the `MCU` icon) to the input of the display (`displayLink`, on its left). No ground nor supply to wire for the display: the link is logical. The `MCU` keeps its own ground.
 
-![Diagram of Display.Large: the DISPLAY output of the MCU wired to the three displays](../../images/grands-ecrans-cablage.png){ width="440" }
+Several displays may be connected to the same `Display0`: they all receive every message. This is what `Display.Large` does, with a 20x2 (`display`), a 4x32 (`screen4`) and an 8x32 (`screen8`):
 
-As text: `connect(mcu.Display0, screen4.displayLink);` and `connect(mcu.Display0, screen8.displayLink);`.
+![Diagram of Display.Large: the DISPLAY output of the MCU wired to the three displays, the GND pin of the MCU to the ground](../../images/grands-ecrans-cablage.png){ width="440" }
+
+As text, in the *Text* view of OMEdit: `connect(mcu.Display0, display.displayLink);`, and likewise for `screen4` and `screen8`.
 
 ### Parameter
+
+`Display` has no parameters. The two large screens have one:
 
 | Parameter | Default | Role |
 |---|---|---|
@@ -107,10 +78,13 @@ As text: `connect(mcu.Display0, screen4.displayLink);` and `connect(mcu.Display0
 
 ### Behaviour
 
-- The screen starts empty; the first message takes the top line, even when written at t = 0, before the first `sleep()`.
-- Several messages sent at the same instant (without `sleep()` in between, or `write()` of a text of several lines) are all written, one under the other, in order.
-- Beyond 32 characters, the message is cut on the icon; it stays complete in the log.
-- Displayable characters: unaccented letters, digits, space and `! " # & ' ( ) * + , - . / : < = > ? _`. Others are shown as spaces.
-- The text of the icon is stored in `textCode` (ASCII codes, line `i`, column `j` at index `(i - 1)*32 + j`) and the number of written lines in `filled`: both can be found in the results.
+- A message is one line sent by `write()`, which is used like `print()` (see [the API](../api.md#machinedisplay)): `write("a\nb")` sends two messages. Several messages sent at the same instant (without `sleep()` in between) all arrive, in order: the 20x2 shows the last two, the large screens write them one under the other.
+- A message written at the very start of the program, before the first `sleep()` (t = 0), is shown as well. The large screens start empty: the first message takes the top line.
+- A message longer than the line (20 or 32 characters) is cut on the icon, but appears in full in the simulation log. Messages are limited to 128 characters.
+- Displayable characters: unaccented letters, digits and space, plus `! ' , - . ?` on the 20x2 and `! " # & ' ( ) * + , - . / : < = > ? _` on the large screens. Others are shown as spaces.
+- The link is instantaneous: the message arrives at the very moment of the `write()`, with no transmission delay. Write-only: the display never answers.
+- On the large screens, the text of the icon is stored in `textCode` (ASCII codes, line `i`, column `j` at index `(i - 1)*32 + j`) and the number of written lines in `filled`: both can be found in the results.
 
-Example: `Display.Large` (the three displays side by side).
+For a display connected by a **real** electrical link, see `UartLcd20x2` ([Serial devices](uart.md)) or the Grove LCD RGB display ([I2C devices](i2c.md)).
+
+Examples: `Display.Demo` (one 20x2, two messages), `Display.Large` (the three displays on the same link), `Weighing.Hx711Read`.

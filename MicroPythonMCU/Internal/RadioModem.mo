@@ -14,12 +14,14 @@ class RadioModem "External Object wrapping the state of a transparent radio mode
     input Real txDelay "Fixed delay between the reception of a byte on the UART and its transmission on air (s)";
     input Real rxDelay "Fixed delay between the reception of a byte on air and its transmission on the UART (s)";
     input Boolean halfDuplex "The module is deaf while it transmits";
+    input Real drawnFMax "Highest frequency of the drawn carrier (fDisplay, plus deltaFDisplay in FSK), Hz";
+    input Boolean warnSampling "Warn when the output interval of the simulation is too long to draw the carrier";
     input String instanceName "Component name, prefixed to the log messages";
     output RadioModem modem;
     // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
     // the simulation under OpenModelica/Windows (see requirements.md, decision
     // "Comportement en cas d'exception non geree dans le script").
-    external "C" modem = RadioModem_new(baudrate, dataBits, parity, stopBits, airBaudrate, txBufferSize, rxBufferSize, txDelay, rxDelay, halfDuplex, instanceName) annotation(
+    external "C" modem = RadioModem_new(baudrate, dataBits, parity, stopBits, airBaudrate, txBufferSize, rxBufferSize, txDelay, rxDelay, halfDuplex, drawnFMax, warnSampling, instanceName) annotation(
       Include = "#include \"RadioModemImpl.c\"",
       Library = "-lwinpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
