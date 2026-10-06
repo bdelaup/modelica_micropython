@@ -69,7 +69,7 @@ L'icône affiche le gain et le dernier code, un voyant cyan quand une donnée at
 | `DOUT` | Données série (broche DT du module), lue par le microcontrôleur |
 | `E_plus`, `E_minus` | Excitation du pont ; `E_minus` est reliée à la masse du module |
 | `A_plus`, `A_minus` | Entrée différentielle du canal A, depuis la sortie du pont |
-| `GND` | Masse, à relier à celle du microcontrôleur |
+| `GND` | Masse, à relier à celle du microcontrôleur, **seulement si `useGroundPin` est coché** (par défaut) |
 | `VCC` | Alimentation du module, **seulement si `useSupplyPin` est coché** (en bas à gauche de l'icône) |
 
 | Paramètre | Défaut | Groupe | Rôle |
@@ -81,6 +81,7 @@ L'icône affiche le gain et le dernier code, un voyant cyan quand une donnée at
 | `tPowerDown` | 60 µs | Timing | Durée à l'état haut de `PD_SCK` qui met le circuit en veille |
 | `tUpdate` | 10 µs | Timing | Durée pendant laquelle `DOUT` remonte avant chaque nouvelle donnée, quand la précédente n'a pas été lue |
 | `settlingConversions` | 4 | Timing | Conversions écartées après la mise sous tension ou la sortie de veille (400 ms à 10 mesures par seconde) |
+| `useGroundPin` | `true` | Electrical | Affiche la broche `GND`. Décoché : la broche disparaît et le module se rapporte à la masse de la simulation (0 V, commune à tous les blocs `Ground`) ; `E_minus` reste relié à cette masse |
 | `useSupplyPin` | `false` | Electrical | Fait apparaître la broche `VCC` (le module du commerce n'en a qu'une, analogique et logique) : niveau haut de `DOUT` = `VCC`, excitation bornée par `VCC`, courant de repos `IQ` et courant du pont tirés de `VCC`. Décoché : alimentation idéale `VOH` |
 | `VOH` | 3,3 V | Electrical | Alimentation idéale interne (sans `VCC`) : niveau haut de `DOUT` |
 | `IQ` | 1,5 mA | Electrical | Courant de repos du circuit, tiré de `VCC` |

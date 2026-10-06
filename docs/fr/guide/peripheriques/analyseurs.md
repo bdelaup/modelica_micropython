@@ -12,7 +12,7 @@ En fin de simulation, elle écrit ses fichiers dans le dossier de simulation (ch
 
 ## Brancher la sonde
 
-Relier les voies `CH0`…`CH7` aux fils à observer et `GND` à la masse du montage ; une voie non câblée lit 0. Chaque voie se règle dans **son onglet** (`CH0`…`CH7`) : un nom et un **type**.
+Relier les voies `CH0`…`CH7` aux fils à observer et `GND` à la masse du montage (ou décocher `useGroundPin` : la broche disparaît et la sonde se rapporte à la masse de la simulation) ; une voie non câblée lit 0. Chaque voie se règle dans **son onglet** (`CH0`…`CH7`) : un nom et un **type**.
 
 | Type (`chNKind`) | Pour quoi | Ce que la sonde en fait |
 |---|---|---|
@@ -177,6 +177,7 @@ Onglet *Electrical* :
 |---|---|---|
 | `VIH`, `VIL` | 2,0 V, 0,8 V | Le niveau change à mi-chemin, `(VIL + VIH)/2` = 1,4 V, comme pour le microcontrôleur |
 | `GIn` | 1e-9 S | Conductance d'entrée de chaque voie vers la masse (1 GΩ) |
+| `useGroundPin` | `true` | Affiche la broche `GND`. Décoché : la sonde se rapporte à la masse de la simulation (0 V, commune à tous les blocs `Ground`), rien à câbler |
 
 ## Bon à savoir
 

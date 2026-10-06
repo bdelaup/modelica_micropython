@@ -9,7 +9,7 @@
 | Connector | Type | Role |
 |---|---|---|
 | `GP0` … `GP7` | Electrical pin (`PositivePin`) | Each one, at the program's choice: digital input or output (`Pin`), analog input (`ADC`), PWM output (`PWM`), serial line (`UART`) or I2C bus line (`I2C`). `GP0`-`GP3` are on the left edge of the icon, `GP4`-`GP7` on the right edge |
-| `GND` | Electrical pin (`NegativePin`) | Common reference of all pins. **Connect it to the circuit ground** (`Ground`), as on a real board |
+| `GND` | Electrical pin (`NegativePin`) | Common reference of all pins. **Connect it to the circuit ground** (`Ground`), as on a real board. Hidden when `useGroundPin` is unchecked |
 | `Display0` | Logical link (`DisplayLinkOutput`) | To a `Peripherals.Display`, `Display4x32` or `Display8x32` (one or several): text sent by `machine.Display(0).write()`. Not electrical: see [LED and display](peripheriques/led-afficheur.md) |
 
 The **on-board LED** (`Pin.LED`, pin 25 on the Pico) is wired inside the block, with its series resistor: it has no connector. It lights up on the icon, and its current can be plotted under `mcu.builtinLed`.
@@ -73,6 +73,7 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 | Parameter | Default | Group | Role |
 |---|---|---|---|
 | `VOH` | 3.3 V | Logic levels | Ideal internal supply: output voltage in the high state, voltage of the pull-ups and reference of the `ADC` |
+| `useGroundPin` | `true` | Supply | Shows the `GND` pin. Unchecked: the pin disappears and the microcontroller is referenced to the simulation ground (0 V, common to every `Ground` block), nothing to wire |
 | `VOL` | 0 V | Logic levels | Output voltage in the low state |
 | `VIH` | 2.0 V | Logic levels | With `VIL`, sets the single reading threshold `(VIL + VIH)/2` = 1.4 V: above it, an input reads 1 |
 | `VIL` | 0.8 V | Logic levels | See `VIH`: below the threshold, an input reads 0 |

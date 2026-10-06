@@ -57,7 +57,7 @@ Côté programme, la liaison s'écrit avec `machine.UART` : voir [l'API](../api.
 |---|---|
 | `TX` | Émission de l'appareil, vers la broche RX du microcontrôleur |
 | `RX` | Réception de l'appareil, depuis la broche TX du microcontrôleur |
-| `GND` | Masse, à relier à celle du microcontrôleur |
+| `GND` | Masse, à relier à celle du microcontrôleur, **seulement si `useGroundPin` est coché** (par défaut) |
 | `VCC` | Alimentation de l'appareil, **seulement si `useSupplyPin` est coché** (en bas à gauche de l'icône) : par exemple `3V3(OUT)` d'une [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Grandeurs du modèle que l'appareil insère dans ses trames (`{v1}`…) : une température, une position… Utilisé si `useValueInput = true` |
 | `valueOut[nOut]` | Grandeurs extraites des trames reçues (`{o1}`…) : l'appareil devient alors un **actionneur**. Peut rester non connecté |
@@ -113,6 +113,7 @@ En cas de désaccord, l'appareil et le microcontrôleur gardent les octets reçu
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
+| `useGroundPin` | `true` | Affiche la broche `GND`. Décoché : la broche disparaît et l'appareil se rapporte à la masse de la simulation (0 V, commune à tous les blocs `Ground`), rien à câbler |
 | `useSupplyPin` | `false` | Fait apparaître la broche `VCC` : l'appareil est alors alimenté par le circuit, ses niveaux hauts suivent `VCC` et il en tire son courant de repos `IQ`. Décoché : alimentation idéale interne `VOH`, rien à câbler |
 | `VOH` | 3,3 V | Alimentation idéale interne (sans `VCC`) : niveau haut des sorties et des tirages |
 | `IQ` | 1 mA | Courant de repos tiré de `VCC` (avec `useSupplyPin`) |

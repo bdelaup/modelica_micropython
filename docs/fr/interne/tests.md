@@ -115,6 +115,7 @@ omc verify_65_pico_battery.mos
 omc verify_66_pico_power.mos
 omc verify_67_pico_profile.mos
 omc verify_68_supply_pin.mos
+omc verify_69_ground_pin.mos
 ```
 Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule, vérifie) et affiche `PASS: verify_0X_...` ou `FAIL: verify_0X_...` sur sa propre ligne — reproductible en ligne de commande, sans session OMEdit interactive.
 
@@ -185,6 +186,7 @@ Chaque script est autonome (charge `Modelica`, charge `../../package.mo`, simule
 | `verify_66_pico_power.mos` | `Examples.Pico.PowerUp` | Mise sous tension et perte d'alimentation | Démarrage à 0,38 s avec `ticks_ms() = 0`, `GP15` bascule toutes les 100 ms, un seul « supply lost » à 1,565 s, `core.powerGood`, rail et `GP15` à 0 avant et après |
 | `verify_67_pico_profile.mos` | `PicoProfile`, défini dans le script (`RPi_Pico` avec `Verification/pico_profile.py`, bouclage `GP0`→`GP1` par R + C) | Profil « pico » du shim | 12 lignes : ADC refusé sur GP5, accepté sur GP26 ; « bad TX pin », « bad SCL pin » ; GPIO 30 et `UART(2)` refusés ; `UART(1)` refusé tant que `UART(0)` est pris ; bouclage reçu ; broches I2C par défaut ; identifiant I2C déduit ; `SoftI2C` ; `ADC(4)` ≈ 14000 |
 | `verify_68_supply_pin.mos` | `SupplyPin`, défini dans le script (Pico + `UartEchoDevice` et `Hx711` sur `3V3(OUT)`, `I2cEchoDevice` sur 5 V, tous `useSupplyPin`) | Broche `VCC` des périphériques | Écho reçu ; TX au repos = rail ; courant = `IQ` ; excitation du HX711 = rail − 0,1 V, courant = `IQ` + pont ; SDA à 5 V |
+| `verify_69_ground_pin.mos` | `GroundPin`, défini dans le script (`MCU`, `UartEchoDevice`, `I2cEchoDevice`, `Hx711`, `LogicAnalyzer`, tous `useGroundPin = false`, programme `Verification/ground_pin.py`) | Broche `GND` facultative | Sans aucun fil de masse : écho série et écho I2C corrects (LED témoin de `GP7` allumée, seule liaison vers un `Ground`) ; TX de l'appareil au repos = `VOH` ; excitation du HX711 = `AVDD` ; la sonde décode `4F 4B 0A` |
 
 ## Scénarios sans `.mos` (vérification visuelle ou démonstrateurs)
 

@@ -60,16 +60,16 @@ protected
   Modelica.Electrical.Analog.Basic.Capacitor cIn(C = CIn, v(start = 0, fixed = true)) "Input capacitance of RX - gives the node a real dynamic state, see CIn" annotation(
     Placement(visible = false, transformation(extent = {{110, -90}, {150, -50}})));
 equation
-  connect(src.n, GND);
+  connect(src.n, gnd);
   connect(src.p, rOut.p);
   connect(rOut.n, TX);
   connect(rIn.p, RX);
   connect(sns.p, rIn.n);
-  connect(sns.n, GND);
+  connect(sns.n, gnd);
   connect(rail, rPull.p);
   connect(rPull.n, rIn.n);
   connect(cIn.p, rIn.n);
-  connect(cIn.n, GND);
+  connect(cIn.n, gnd);
 
   rxVoltage = sns.v;
   rxBoolIn = rxVoltage > (VIL + VIH)/2 "logic threshold halfway, same approximation as the microcontroller";

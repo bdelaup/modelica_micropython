@@ -61,7 +61,7 @@ On the program side, the bus is written with `machine.I2C` (controller) or `mach
 |---|---|
 | `SDA` | Bus data |
 | `SCL` | Bus clock |
-| `GND` | Ground, to connect to the microcontroller's |
+| `GND` | Ground, to connect to the microcontroller's, **only when `useGroundPin` is checked** (default) |
 | `VCC` | Supply of the peripheral, **only when `useSupplyPin` is checked** (bottom left of the icon): for instance `3V3(OUT)` of a [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Model quantities passed to the script (`v` argument) |
 | `valueOut[nOut]` | Quantities returned by the script (`outputs()`): the device becomes an actuator. May stay unconnected |
@@ -90,6 +90,7 @@ On the program side, the bus is written with `machine.I2C` (controller) or `mach
 
 | Parameter | Default | Role |
 |---|---|---|
+| `useGroundPin` | `true` | Shows the `GND` pin. Unchecked: the pin disappears and the peripheral is referenced to the simulation ground (0 V, common to every `Ground` block), nothing to wire |
 | `useSupplyPin` | `false` | Shows the `VCC` pin: the peripheral is then supplied by the circuit, its high levels follow `VCC` and it draws its quiescent current `IQ` from it. Unchecked: ideal internal supply `VOH`, nothing to wire |
 | `VOH` | 3.3 V | Ideal internal supply (without `VCC`): high level of the outputs and of the pull-ups |
 | `IQ` | 1 mA | Quiescent current drawn from `VCC` (with `useSupplyPin`) |

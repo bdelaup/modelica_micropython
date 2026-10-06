@@ -92,23 +92,23 @@ initial algorithm
   rngState := Modelica.Math.Random.Generators.Xorshift64star.initialState(seed, 0);
 equation
   connect(excitation.p, E_plus);
-  connect(excitation.n, GND);
+  connect(excitation.n, gnd);
   connect(excitationLoad.p, rail);
-  connect(excitationLoad.n, GND);
+  connect(excitationLoad.n, gnd);
   excitation.v = if useSupplyPin then min(AVDD, max(vRail - VDropout, 0)) else AVDD;
   excitationLoad.i = -excitation.i "the bridge current comes from the supply";
-  connect(E_minus, GND);
+  connect(E_minus, gnd);
   connect(inSns.p, A_plus);
   connect(inSns.n, A_minus);
   connect(refSns.p, E_plus);
   connect(refSns.n, E_minus);
   connect(sckSns.p, PD_SCK);
-  connect(sckSns.n, GND);
+  connect(sckSns.n, gnd);
   connect(cIn.p, PD_SCK);
-  connect(cIn.n, GND);
+  connect(cIn.n, gnd);
   connect(rPull.p, PD_SCK);
-  connect(rPull.n, GND);
-  connect(doutSrc.n, GND);
+  connect(rPull.n, gnd);
+  connect(doutSrc.n, gnd);
   connect(doutSrc.p, rOut.p);
   connect(rOut.n, DOUT);
   vIn = inSns.v;
@@ -191,7 +191,7 @@ algorithm
     end if;
   end when;
   annotation(
-    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(fillColor = {30, 110, 60}, fillPattern = FillPattern.Solid, extent = {{-104, 56}, {104, -56}}), Rectangle(fillColor = {30, 30, 30}, fillPattern = FillPattern.Solid, extent = {{-40, 30}, {40, -12}}), Text(textColor = {255, 255, 255}, extent = {{-38, 26}, {38, 6}}, textString = "HX711", textStyle = {TextStyle.Bold}), Text(textColor = {200, 200, 200}, extent = {{-38, 4}, {38, -10}}, textString = "24 bits"), Text(textColor = {255, 255, 255}, extent = {{-40, -18}, {40, -34}}, textString = DynamicSelect("gain 128", "gain " + String(gain))), Text(textColor = {255, 255, 255}, extent = {{-40, -36}, {40, -52}}, textString = DynamicSelect("", String(code))), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if ready then {60, 210, 255} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-60, -38}, {-48, -50}}), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if poweredDown then {255, 180, 60} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{48, -38}, {60, -50}}), Text(textColor = {255, 255, 255}, extent = {{-98, 38}, {-66, 22}}, textString = "SCK", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-98, -22}, {-66, -38}}, textString = "DT", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{66, 53}, {98, 37}}, textString = "E+", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, 23}, {98, 7}}, textString = "A+", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, -7}, {98, -23}}, textString = "A-", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, -37}, {98, -53}}, textString = "E-", horizontalAlignment = TextAlignment.Right), Text(extent = {{-25, -76}, {25, -84}}, textString = "GND"), Line(points = {{-117, 30}, {-104, 30}}, color = {0, 0, 255}), Line(points = {{-117, -30}, {-104, -30}}, color = {0, 0, 255}), Line(points = {{104, 45}, {117, 45}}, color = {0, 0, 255}), Line(points = {{104, 15}, {117, 15}}, color = {0, 0, 255}), Line(points = {{104, -15}, {117, -15}}, color = {0, 0, 255}), Line(points = {{104, -45}, {117, -45}}, color = {0, 0, 255}), Line(points = {{0, -56}, {0, -66}}, color = {0, 0, 255}), Text(textColor = {0, 0, 255}, extent = {{-150, 100}, {150, 64}}, textString = "%name")}),
+    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(fillColor = {30, 110, 60}, fillPattern = FillPattern.Solid, extent = {{-104, 56}, {104, -56}}), Rectangle(fillColor = {30, 30, 30}, fillPattern = FillPattern.Solid, extent = {{-40, 30}, {40, -12}}), Text(textColor = {255, 255, 255}, extent = {{-38, 26}, {38, 6}}, textString = "HX711", textStyle = {TextStyle.Bold}), Text(textColor = {200, 200, 200}, extent = {{-38, 4}, {38, -10}}, textString = "24 bits"), Text(textColor = {255, 255, 255}, extent = {{-40, -18}, {40, -34}}, textString = DynamicSelect("gain 128", "gain " + String(gain))), Text(textColor = {255, 255, 255}, extent = {{-40, -36}, {40, -52}}, textString = DynamicSelect("", String(code))), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if ready then {60, 210, 255} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-60, -38}, {-48, -50}}), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if poweredDown then {255, 180, 60} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{48, -38}, {60, -50}}), Text(textColor = {255, 255, 255}, extent = {{-98, 38}, {-66, 22}}, textString = "SCK", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-98, -22}, {-66, -38}}, textString = "DT", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{66, 53}, {98, 37}}, textString = "E+", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, 23}, {98, 7}}, textString = "A+", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, -7}, {98, -23}}, textString = "A-", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{66, -37}, {98, -53}}, textString = "E-", horizontalAlignment = TextAlignment.Right), Text(visible = useGroundPin, extent = {{-25, -76}, {25, -84}}, textString = "GND"), Line(points = {{-117, 30}, {-104, 30}}, color = {0, 0, 255}), Line(points = {{-117, -30}, {-104, -30}}, color = {0, 0, 255}), Line(points = {{104, 45}, {117, 45}}, color = {0, 0, 255}), Line(points = {{104, 15}, {117, 15}}, color = {0, 0, 255}), Line(points = {{104, -15}, {117, -15}}, color = {0, 0, 255}), Line(points = {{104, -45}, {117, -45}}, color = {0, 0, 255}), Line(points = {{0, -56}, {0, -66}}, color = {0, 0, 255}), Text(textColor = {0, 0, 255}, extent = {{-150, 100}, {150, 64}}, textString = "%name")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}})),
     Documentation(info = "<html>
 <p>The <strong>HX711</strong> (Avia Semiconductor) is the converter of electronic scales: a programmable-gain amplifier followed by a 24-bit analog-to-digital converter, designed to read a gauge bridge directly. This model reproduces its behaviour as seen from the microcontroller, based on the datasheet.</p>

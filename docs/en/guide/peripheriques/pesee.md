@@ -69,7 +69,7 @@ The icon shows the gain and the last code, a cyan light when data is waiting to 
 | `DOUT` | Serial data (DT pin of the module), read by the microcontroller |
 | `E_plus`, `E_minus` | Bridge excitation; `E_minus` is tied to the module ground |
 | `A_plus`, `A_minus` | Channel A differential input, from the bridge output |
-| `GND` | Ground, to connect to the microcontroller's |
+| `GND` | Ground, to connect to the microcontroller's, **only when `useGroundPin` is checked** (default) |
 | `VCC` | Supply of the module, **only when `useSupplyPin` is checked** (bottom left of the icon) |
 
 | Parameter | Default | Group | Role |
@@ -81,6 +81,7 @@ The icon shows the gain and the last code, a cyan light when data is waiting to 
 | `tPowerDown` | 60 µs | Timing | Time `PD_SCK` must stay high to enter power-down |
 | `tUpdate` | 10 µs | Timing | Time `DOUT` goes back up before each new sample, when the previous one was not read |
 | `settlingConversions` | 4 | Timing | Conversions discarded after power-up or leaving power-down (400 ms at 10 samples per second) |
+| `useGroundPin` | `true` | Electrical | Shows the `GND` pin. Unchecked: the pin disappears and the module is referenced to the simulation ground (0 V, common to every `Ground` block); `E_minus` stays tied to that ground |
 | `useSupplyPin` | `false` | Electrical | Shows the `VCC` pin (the off-the-shelf module has a single one, analog and digital): high level of `DOUT` = `VCC`, excitation limited by `VCC`, quiescent current `IQ` and bridge current drawn from `VCC`. Unchecked: ideal supply `VOH` |
 | `VOH` | 3.3 V | Electrical | Ideal internal supply (without `VCC`): high level of `DOUT` |
 | `IQ` | 1.5 mA | Electrical | Quiescent current of the chip, drawn from `VCC` |

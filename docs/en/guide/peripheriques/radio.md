@@ -114,7 +114,7 @@ The modulated signal `sTx` is drawn with a **scaled carrier**, `fDisplay`, four 
 !!! note "Setting `fDisplay` from the air data rate"
     The default value shown in grey, `4*airBaudrate`, is written in the radio module itself, where `airBaudrate` is a neighbouring parameter. A value entered in the parameter dialog is written in the model that contains the module: the module must be named there, `radioA(fDisplay = 16*radioA.airBaudrate)`. Writing `16*airBaudrate` gives the error `Variable airBaudrate not found in scope`.
 
-The *Electrical* tab is the one of the [serial devices](uart.md#electrical-electrical-tab), optional `VCC` pin included (`useSupplyPin`): for the budget of a supply, set `IQ` to the consumption of the module (an APC220 draws about 25 to 35 mA).
+The *Electrical* tab is the one of the [serial devices](uart.md#electrical-electrical-tab), optional `GND` and `VCC` pins included (`useGroundPin`, `useSupplyPin`): for the budget of a supply, set `IQ` to the consumption of the module (an APC220 draws about 25 to 35 mA).
 
 ## Quantities to plot
 

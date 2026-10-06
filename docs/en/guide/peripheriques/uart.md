@@ -57,7 +57,7 @@ On the program side, the link is written with `machine.UART`: see [the API](../a
 |---|---|
 | `TX` | Device transmit, to the microcontroller's RX pin |
 | `RX` | Device receive, from the microcontroller's TX pin |
-| `GND` | Ground, to connect to the microcontroller's |
+| `GND` | Ground, to connect to the microcontroller's, **only when `useGroundPin` is checked** (default) |
 | `VCC` | Supply of the device, **only when `useSupplyPin` is checked** (bottom left of the icon): for instance `3V3(OUT)` of a [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Model quantities the device inserts into its frames (`{v1}`…): a temperature, a position… Used if `useValueInput = true` |
 | `valueOut[nOut]` | Quantities extracted from received frames (`{o1}`…): the device then becomes an **actuator**. May stay unconnected |
@@ -113,6 +113,7 @@ On a mismatch, the device and the microcontroller keep the bytes received with a
 
 | Parameter | Default | Role |
 |---|---|---|
+| `useGroundPin` | `true` | Shows the `GND` pin. Unchecked: the pin disappears and the device is referenced to the simulation ground (0 V, common to every `Ground` block), nothing to wire |
 | `useSupplyPin` | `false` | Shows the `VCC` pin: the device is then supplied by the circuit, its high levels follow `VCC` and it draws its quiescent current `IQ` from it. Unchecked: ideal internal supply `VOH`, nothing to wire |
 | `VOH` | 3.3 V | Ideal internal supply (without `VCC`): high level of the outputs and of the pull-ups |
 | `IQ` | 1 mA | Quiescent current drawn from `VCC` (with `useSupplyPin`) |

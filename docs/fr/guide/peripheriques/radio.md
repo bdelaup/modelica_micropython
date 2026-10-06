@@ -114,7 +114,7 @@ Le signal modulé `sTx` est tracé avec une **porteuse mise à l'échelle**, `fD
 !!! note "Régler `fDisplay` d'après le débit radio"
     La valeur par défaut affichée en grisé, `4*airBaudrate`, est écrite dans le module radio lui-même, où `airBaudrate` est un paramètre voisin. Une valeur saisie dans la fenêtre des paramètres est écrite dans le modèle qui contient le module : il faut y nommer le module, `radioA(fDisplay = 16*radioA.airBaudrate)`. Écrire `16*airBaudrate` donne l'erreur `Variable airBaudrate not found in scope`.
 
-L'onglet *Electrical* est celui des [appareils série](uart.md#electrique-onglet-electrical), broche `VCC` facultative comprise (`useSupplyPin`) : pour le bilan d'une alimentation, régler `IQ` sur la consommation du module (un APC220 tire de l'ordre de 25 à 35 mA).
+L'onglet *Electrical* est celui des [appareils série](uart.md#electrique-onglet-electrical), broches `GND` et `VCC` facultatives comprises (`useGroundPin`, `useSupplyPin`) : pour le bilan d'une alimentation, régler `IQ` sur la consommation du module (un APC220 tire de l'ordre de 25 à 35 mA).
 
 ## Grandeurs à tracer
 

@@ -107,15 +107,15 @@ equation
   connect(rInSda.p, SDA);
   connect(rInScl.p, SCL);
   connect(sdaOut.p, rInSda.n);
-  connect(sdaOut.n, GND);
+  connect(sdaOut.n, gnd);
   connect(sdaSns.p, rInSda.n);
-  connect(sdaSns.n, GND);
+  connect(sdaSns.n, gnd);
   connect(sclSns.p, rInScl.n);
-  connect(sclSns.n, GND);
+  connect(sclSns.n, gnd);
   connect(cSda.p, rInSda.n);
-  connect(cSda.n, GND);
+  connect(cSda.n, gnd);
   connect(cScl.p, rInScl.n);
-  connect(cScl.n, GND);
+  connect(cScl.n, gnd);
   connect(rail, rPullSda.p);
   connect(rPullSda.n, SDA);
   connect(rail, rPullScl.p);
@@ -130,7 +130,7 @@ equation
     Modelica.Utilities.Streams.print("[" + getInstanceName() + "] t=" + String(time) + " s - " + lastEvent);
   end when;
   annotation(
-    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(fillColor = {50, 80, 95}, fillPattern = FillPattern.Solid, extent = {{-104, 56}, {104, -56}}), Text(textColor = {255, 255, 255}, extent = {{-56, 24}, {56, 2}}, textString = "I2C", textStyle = {TextStyle.Bold}), Text(textColor = {200, 220, 230}, extent = {{-90, -2}, {90, -20}}, textString = "%addresses"), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if busy then {60, 210, 255} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{86, 52}, {98, 40}}), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if sdaDriveLow then {255, 180, 60} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-98, 52}, {-86, 40}}), Text(textColor = {255, 255, 255}, extent = {{-94, 40}, {-52, 26}}, textString = "SDA", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-94, -26}, {-52, -40}}, textString = "SCL", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{56, 42}, {98, 28}}, textString = "val", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{56, -28}, {98, -42}}, textString = "out", horizontalAlignment = TextAlignment.Right), Text(extent = {{-25, -60}, {25, -69}}, textString = "GND"), Text(origin = {0, -6}, textColor = {0, 0, 255}, extent = {{-150, 108}, {150, 72}}, textString = "%name")}),
+    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}), graphics = {Rectangle(fillColor = {50, 80, 95}, fillPattern = FillPattern.Solid, extent = {{-104, 56}, {104, -56}}), Text(textColor = {255, 255, 255}, extent = {{-56, 24}, {56, 2}}, textString = "I2C", textStyle = {TextStyle.Bold}), Text(textColor = {200, 220, 230}, extent = {{-90, -2}, {90, -20}}, textString = "%addresses"), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if busy then {60, 210, 255} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{86, 52}, {98, 40}}), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if sdaDriveLow then {255, 180, 60} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-98, 52}, {-86, 40}}), Text(textColor = {255, 255, 255}, extent = {{-94, 40}, {-52, 26}}, textString = "SDA", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-94, -26}, {-52, -40}}, textString = "SCL", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{56, 42}, {98, 28}}, textString = "val", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{56, -28}, {98, -42}}, textString = "out", horizontalAlignment = TextAlignment.Right), Text(visible = useGroundPin, extent = {{-25, -60}, {25, -69}}, textString = "GND"), Text(origin = {0, -6}, textColor = {0, 0, 255}, extent = {{-150, 108}, {150, 72}}, textString = "%name")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}})),
     Documentation(info = "<html>
 <p>Base class of the I2C slave peripherals. It cannot be instantiated directly: a concrete peripheral extends it and sets its parameters — see <code>Peripherals.I2cEchoDevice</code>, <code>Peripherals.I2cGroveLcdRgb</code>, or <code>Peripherals.I2cGenericDevice</code> to start from a script template.</p>

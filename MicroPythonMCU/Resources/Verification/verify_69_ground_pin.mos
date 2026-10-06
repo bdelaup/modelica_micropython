@@ -1,0 +1,57 @@
+// Scénario de vérification n°69 : broche GND facultative (useGroundPin).
+// omc verify_69_ground_pin.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie : un MCU, un appareil d'écho série, une cible I2C
+// d'écho, un HX711 et une sonde d'analyseur logique, tous avec
+// useGroundPin = false (broche GND masquée, référence = masse de la
+// simulation), fonctionnent sans aucun fil de masse : l'écho série et l'écho
+// I2C sont corrects (LED témoin de GP7 parcourue par du courant, seule
+// liaison vers un bloc Ground), le TX de l'appareil au repos est à VOH,
+// l'excitation du HX711 vaut AVDD et la sonde décode « OK\n » sur TX.
+// Programme Verification/ground_pin.py. Modèle défini ici plutôt que dans
+// Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model GroundPin
+  MicroPythonMCU.MCU mcu(useGroundPin = false, scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/ground_pin.py\"));
+  MicroPythonMCU.Peripherals.UartEchoDevice echo(baudrate = 9600, useGroundPin = false);
+  MicroPythonMCU.Peripherals.I2cEchoDevice target(usePullUp = true, useGroundPin = false);
+  MicroPythonMCU.Peripherals.Weighing.Hx711 hx(useGroundPin = false);
+  MicroPythonMCU.Peripherals.Analyzers.LogicAnalyzer analyzer(useGroundPin = false, ch0Kind = MicroPythonMCU.Interfaces.ChannelKind.Uart, ch0Name = \"TX\", ch0Baudrate = 9600, openText = false, openPulseView = false, writeVcd = false, writePulseViewSession = false);
+  Modelica.Electrical.Analog.Basic.Resistor bridge(R = 1000);
+  Modelica.Electrical.Analog.Basic.Resistor r7(R = 330);
+  MicroPythonMCU.Peripherals.LED led7;
+  Modelica.Electrical.Analog.Basic.Ground ground;
+equation
+  connect(mcu.GP0, echo.RX);
+  connect(echo.TX, mcu.GP1);
+  connect(mcu.GP0, analyzer.CH0);
+  connect(mcu.GP2, target.SCL);
+  connect(mcu.GP3, target.SDA);
+  connect(hx.E_plus, bridge.p);
+  connect(bridge.n, hx.E_minus);
+  connect(hx.A_plus, hx.E_minus);
+  connect(hx.A_minus, hx.E_minus);
+  connect(mcu.GP7, r7.p);
+  connect(r7.n, led7.p);
+  connect(led7.n, ground.p);
+end GroundPin;"); getErrorString();
+
+buildModel(GroundPin, stopTime = 0.1, numberOfIntervals = 1000, fileNamePrefix = "GroundPin");
+b := getErrorString();
+ret := system(".\\GroundPin.bat", "GroundPin_run.txt");
+log := readFile("GroundPin_run.txt");
+(nEcho, m1) := regex(log, "echo b'OK\\\\n'", 1);
+(nI2c, m2) := regex(log, "i2c 3 b'GND'", 1);
+txt := readFile("GroundPin.analyzer.txt");
+(nHex, m3) := regex(txt, "4F 4B 0A", 1);
+
+iLed := val(r7.i, 0.09, "GroundPin_res.mat");
+txIdle := val(echo.TX.v, 0.002, "GroundPin_res.mat");
+ePlus := val(hx.E_plus.v, 0.002, "GroundPin_res.mat");
+
+if ret == 0 and nEcho >= 1 and nI2c >= 1 and nHex >= 1 and iLed > 1e-4 and abs(txIdle - 3.3) < 0.01 and abs(ePlus - 4.3) < 0.01 then
+  print("PASS: verify_69_ground_pin (echo serie et I2C recus, LED " + String(iLed) + "A, TX au repos " + String(txIdle) + "V, excitation HX711 " + String(ePlus) + "V, sonde : OK decode)\n");
+else
+  print("FAIL: verify_69_ground_pin (code " + String(ret) + ", echo " + String(nEcho) + ", i2c " + String(nI2c) + ", sonde " + String(nHex) + ", LED " + String(iLed) + "A, TX " + String(txIdle) + "V, E+ " + String(ePlus) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

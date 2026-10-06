@@ -12,7 +12,7 @@ At the end of the simulation, it writes its files in the simulation folder (full
 
 ## Connecting the probe
 
-Connect channels `CH0`…`CH7` to the wires to observe and `GND` to the ground of the circuit; an unconnected channel reads 0. Each channel is set up in **its own tab** (`CH0`…`CH7`): a name and a **kind**.
+Connect channels `CH0`…`CH7` to the wires to observe and `GND` to the ground of the circuit (or uncheck `useGroundPin`: the pin disappears and the probe is referenced to the simulation ground); an unconnected channel reads 0. Each channel is set up in **its own tab** (`CH0`…`CH7`): a name and a **kind**.
 
 | Kind (`chNKind`) | For | What the probe does with it |
 |---|---|---|
@@ -177,6 +177,7 @@ Tabs `CH0` … `CH7`, one per channel (`chN` = `ch0` … `ch7`); the settings th
 |---|---|---|
 | `VIH`, `VIL` | 2.0 V, 0.8 V | The level changes halfway, `(VIL + VIH)/2` = 1.4 V, as for the microcontroller |
 | `GIn` | 1e-9 S | Input conductance of each channel to ground (1 GΩ) |
+| `useGroundPin` | `true` | Shows the `GND` pin. Unchecked: the probe is referenced to the simulation ground (0 V, common to every `Ground` block), nothing to wire |
 
 ## Good to know
 

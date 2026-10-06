@@ -63,7 +63,7 @@ Côté programme, le bus s'écrit avec `machine.I2C` (maître) ou `machine.I2CTa
 |---|---|
 | `SDA` | Données du bus |
 | `SCL` | Horloge du bus |
-| `GND` | Masse, à relier à celle du microcontrôleur |
+| `GND` | Masse, à relier à celle du microcontrôleur, **seulement si `useGroundPin` est coché** (par défaut) |
 | `VCC` | Alimentation de le périphérique, **seulement si `useSupplyPin` est coché** (en bas à gauche de l'icône) : par exemple `3V3(OUT)` d'une [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Grandeurs du modèle transmises au script (argument `v`) |
 | `valueOut[nOut]` | Grandeurs rendues par le script (`outputs()`) : le périphérique devient un actionneur. Peut rester non connecté |
@@ -92,6 +92,7 @@ Côté programme, le bus s'écrit avec `machine.I2C` (maître) ou `machine.I2CTa
 
 | Paramètre | Défaut | Rôle |
 |---|---|---|
+| `useGroundPin` | `true` | Affiche la broche `GND`. Décoché : la broche disparaît et le périphérique se rapporte à la masse de la simulation (0 V, commune à tous les blocs `Ground`), rien à câbler |
 | `useSupplyPin` | `false` | Fait apparaître la broche `VCC` : le périphérique est alors alimenté par le circuit, ses niveaux hauts suivent `VCC` et il en tire son courant de repos `IQ`. Décoché : alimentation idéale interne `VOH`, rien à câbler |
 | `VOH` | 3,3 V | Alimentation idéale interne (sans `VCC`) : niveau haut des sorties et des tirages |
 | `IQ` | 1 mA | Courant de repos tiré de `VCC` (avec `useSupplyPin`) |

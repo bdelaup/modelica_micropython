@@ -12,7 +12,7 @@
 | Connecteur | Type | Rôle |
 |---|---|---|
 | `GP0` … `GP7` | Broche électrique (`PositivePin`) | Chacune au choix du programme : entrée ou sortie numérique (`Pin`), entrée analogique (`ADC`), sortie PWM (`PWM`), ligne série (`UART`) ou ligne de bus I2C (`I2C`). `GP0`-`GP3` sont sur le bord gauche de l'icône, `GP4`-`GP7` sur le bord droit |
-| `GND` | Broche électrique (`NegativePin`) | Référence commune de toutes les broches. **À relier à la masse du circuit** (`Ground`), comme sur un vrai montage |
+| `GND` | Broche électrique (`NegativePin`) | Référence commune de toutes les broches. **À relier à la masse du circuit** (`Ground`), comme sur un vrai montage. Masquée si `useGroundPin` est décoché |
 | `Display0` | Liaison logique (`DisplayLinkOutput`) | Vers un `Peripherals.Display`, `Display4x32` ou `Display8x32` (un ou plusieurs) : texte envoyé par `machine.Display(0).write()`. Pas électrique : voir [LED et afficheur](peripheriques/led-afficheur.md) |
 
 La **LED embarquée** (`Pin.LED`, broche 25 du Pico) est câblée à l'intérieur du bloc, avec sa résistance série : elle n'a pas de connecteur. Elle s'allume sur l'icône, et son courant se trace sous `mcu.builtinLed`.
@@ -76,6 +76,7 @@ Onglet *Electrical*. Les valeurs par défaut approchent un RP2040 alimenté en 3
 | Paramètre | Défaut | Groupe | Rôle |
 |---|---|---|---|
 | `VOH` | 3,3 V | Logic levels | Alimentation idéale interne : tension de sortie à l'état haut, des tirages hauts et référence de l'`ADC` |
+| `useGroundPin` | `true` | Supply | Affiche la broche `GND`. Décoché : la broche disparaît et le microcontrôleur se rapporte à la masse de la simulation (0 V, commune à tous les blocs `Ground`), rien à câbler |
 | `VOL` | 0 V | Logic levels | Tension de sortie à l'état bas |
 | `VIH` | 2,0 V | Logic levels | Avec `VIL`, fixe le seuil de lecture unique `(VIL + VIH)/2` = 1,4 V : au-dessus, une entrée est lue à 1 |
 | `VIL` | 0,8 V | Logic levels | Voir `VIH` : au-dessous du seuil, une entrée est lue à 0 |
