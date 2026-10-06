@@ -36,7 +36,7 @@ La réception ne réveille pas le programme : il interroge la liaison avec `any(
 
 ## Les appareils fournis
 
-Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par leurs valeurs par défaut et leur icône.
+Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par leurs valeurs par défaut et leur icône. Seule exception, `UartLcd20x2` ne montre que le format de la liaison (`baudrate`, `dataBits`, `parity`, `stopBits`) et l'onglet *Electrical* : ses autres réglages sont figés, et il n'a ni broche `TX` ni connecteur `valueOut` (il n'émet rien et ne rend rien au modèle).
 
 | Composant | Ce qu'il fait | Réglages par défaut qui le distinguent |
 |---|---|---|
@@ -44,7 +44,7 @@ Tous partagent les mêmes connecteurs et paramètres ; ils ne diffèrent que par
 | `UartEchoDevice` | Renvoie tel quel chaque octet reçu | `echoEnabled = true` |
 | `UartTemperatureSensor` | Répond `AT+TEMP` par la valeur de son entrée, `AT+ID` par son identifiant, et accepte une consigne par `SET <nombre>` | `commandTable = "AT+TEMP=>TEMP={v1:.1f}\r\n|AT+ID=>SIM-TEMP-1\r\n|SET {o1}=>OK\r\n"`, `responseDelay = 5 ms`, `useValueInput = true`, `fixedValue = 20`, `nOut = 1` |
 | `UartGpsModule` | Émet spontanément une trame de position chaque seconde, sans être interrogé | `periodicEnabled = true`, `periodicTemplate = "$GPGLL,{v1:.4f},{v2:.4f},{v3:.1f}\r\n"`, `useValueInput = true`, `nIn = 3` |
-| `UartLcd20x2` | Afficheur 2 × 20 caractères : affiche sur son icône chaque ligne reçue, la précédente descendant en ligne 2 | ne répond rien ; `behaviour` fixé à `Table` |
+| `UartLcd20x2` | Afficheur 2 × 20 caractères : affiche sur son icône chaque ligne reçue, la précédente descendant en ligne 2 | ne répond rien : pas de broche `TX` ni de connecteur `valueOut` ; seuls `baudrate`, `dataBits`, `parity`, `stopBits` et l'onglet *Electrical* sont réglables, le reste est figé (`final`) : table de commandes vide, fin de ligne `\n`, ni écho ni émission |
 
 ![Les cinq appareils série : générique, écho, capteur de température, GPS, afficheur 20x2](../../images/uart-icones.png)
 
@@ -55,12 +55,12 @@ Côté programme, la liaison s'écrit avec `machine.UART` : voir [l'API](../api.
 
 | Connecteur | Rôle |
 |---|---|
-| `TX` | Émission de l'appareil, vers la broche RX du microcontrôleur |
+| `TX` | Émission de l'appareil, vers la broche RX du microcontrôleur. Présente si `useTxPin` est coché (par défaut) |
 | `RX` | Réception de l'appareil, depuis la broche TX du microcontrôleur |
 | `GND` | Masse, à relier à celle du microcontrôleur, **seulement si `useGroundPin` est coché** (par défaut) |
 | `VCC` | Alimentation de l'appareil, **seulement si `useSupplyPin` est coché** (en bas à gauche de l'icône) : par exemple `3V3(OUT)` d'une [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Grandeurs du modèle que l'appareil insère dans ses trames (`{v1}`…) : une température, une position… Utilisé si `useValueInput = true` |
-| `valueOut[nOut]` | Grandeurs extraites des trames reçues (`{o1}`…) : l'appareil devient alors un **actionneur**. Peut rester non connecté |
+| `valueOut[nOut]` | Grandeurs extraites des trames reçues (`{o1}`…) : l'appareil devient alors un **actionneur**. Peut rester non connecté. Présent si `useValueOutput` est coché (par défaut) |
 
 ## Format de trame
 
@@ -106,6 +106,7 @@ En cas de désaccord, l'appareil et le microcontrôleur gardent les octets reçu
 | `useValueInput` | `false` | Prendre les grandeurs sur le connecteur `valueIn` ; sinon, `fixedValue` |
 | `nIn` | 1 | Nombre de grandeurs reçues du modèle (4 au plus) |
 | `fixedValue` | 0 | Valeur utilisée quand `valueIn` n'est pas utilisé |
+| `useValueOutput` | `true` | Affiche le connecteur `valueOut`. Décoché : l'appareil ne rend rien au modèle |
 | `nOut` | 1 | Nombre de grandeurs rendues au modèle sur `valueOut` (4 au plus) |
 | `valueOutStart` | 0 | Valeur de `valueOut` avant toute capture |
 
@@ -114,6 +115,7 @@ En cas de désaccord, l'appareil et le microcontrôleur gardent les octets reçu
 | Paramètre | Défaut | Rôle |
 |---|---|---|
 | `useGroundPin` | `true` | Affiche la broche `GND`. Décoché : la broche disparaît et l'appareil se rapporte à la masse de la simulation (0 V, commune à tous les blocs `Ground`), rien à câbler |
+| `useTxPin` | `true` | Affiche la broche `TX`. Décoché, pour un appareil qui n'émet jamais : la broche disparaît, l'étage de sortie reste en l'air |
 | `useSupplyPin` | `false` | Fait apparaître la broche `VCC` : l'appareil est alors alimenté par le circuit, ses niveaux hauts suivent `VCC` et il en tire son courant de repos `IQ`. Décoché : alimentation idéale interne `VOH`, rien à câbler |
 | `VOH` | 3,3 V | Alimentation idéale interne (sans `VCC`) : niveau haut des sorties et des tirages |
 | `IQ` | 1 mA | Courant de repos tiré de `VCC` (avec `useSupplyPin`) |

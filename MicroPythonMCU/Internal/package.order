@@ -9,6 +9,11 @@ UartDevice_sync
 PartialSupplyPin
 PartialUartPins
 StringToCharCodes
+DisplayMessageCount
+DisplayMessage
+LogDisplayMessages
+ScrollText
+PreviousMessageCodes
 ResolvePath
 TwoLineTextIcon
 PartialUartDevice

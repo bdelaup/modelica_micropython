@@ -31,7 +31,8 @@
 #define PIN_PULL_UP 1
 #define PIN_PULL_DOWN 2
 
-#define DISPLAY_MSG_MAX_LEN 128      /* tres au-dessus des 40 caracteres d'un afficheur 20x2, buffer fixe modeste (meme esprit que g_stdout_buf) */
+#define DISPLAY_MSG_MAX_LEN 128      /* un message (une ligne) : tres au-dessus des 32 colonnes du plus large afficheur */
+#define DISPLAY_QUEUE_MAX_LEN 2048   /* messages en file entre deux publications, separes par un saut de ligne : buffer fixe modeste (meme esprit que g_stdout_buf) */
 
 /* machine.UART : un seul peripherique (id 0), sur deux broches GPx au choix
    du script. Les constantes du protocole (UART_TX_BUF_LEN, UART_MAX_FRAME_BITS,
@@ -206,9 +207,14 @@ struct PyRuntimeHandle {
        uniquement par native_display_write (jamais par PyRuntime_sync) -
        peripherique pedagogique, pas un vrai protocole (pas de reception
        modelisee), cf. requirements.md decision "Périphérique d'affichage
-       pédagogique". */
+       pédagogique". Les messages ecrits depuis la derniere publication
+       (plusieurs write() sans sleep() entre eux, ou un texte a plusieurs
+       lignes decoupe par le shim) s'accumulent dans display_payload, separes
+       par un saut de ligne : un point de synchro publie tous les messages de
+       l'instant, et display_seq avance d'un par message (cf. publish_display). */
     int display_seq;
-    char display_payload[DISPLAY_MSG_MAX_LEN + 1];
+    int display_queued;                /* messages ecrits depuis la derniere publication (0 : le prochain write() remplace payload) */
+    char display_payload[DISPLAY_QUEUE_MAX_LEN + 1];
 
     /* machine.UART : contrairement a Display, cet etat est ecrit des DEUX cotes -
        par les natives (uart_init/uart_write) ET par PyRuntime_sync, qui fait

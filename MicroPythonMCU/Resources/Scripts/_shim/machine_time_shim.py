@@ -164,12 +164,32 @@ class PWM:
         self._freq = 0
 
 class Display:
+    # Texte en attente de son '\n', par id : partage entre les objets Display
+    # d'un meme id, comme le tampon de sortie de print().
+    _pending = {}
+
     def __init__(self, id=0, **kwargs):
+        # Verifie des la construction : une ligne sans '\n' n'appelle pas le C
+        if id != 0:
+            raise ValueError("Display %s not supported (only Display(0) exists)" % (id,))
         self.id = id  # kwargs : signature volontairement minimale, composant
                       # pedagogique (Peripherals.Display), pas un vrai protocole
 
-    def write(self, text):
-        _native.display_write(self.id, text if isinstance(text, str) else str(text))
+    def write(self, *args, sep=' ', end='\n'):
+        # Comme print() : arguments convertis par str(), joints par sep, suivis
+        # de end ; chaque '\n' envoie la ligne qui le precede (un message par
+        # ligne), le reste attend le '\n' d'un appel suivant.
+        if sep is None:
+            sep = ' '
+        if end is None:
+            end = '\n'
+        if not isinstance(sep, str) or not isinstance(end, str):
+            raise TypeError("sep and end must be None or strings")
+        text = Display._pending.get(self.id, '') + sep.join(str(a) for a in args) + end
+        lines = text.split('\n')
+        Display._pending[self.id] = lines.pop()
+        for line in lines:
+            _native.display_write(self.id, line)
 
 class UART:
     # Format de trame comme le port rp2 : bits 5-8, parity None/0 (paire)/1
@@ -397,10 +417,18 @@ class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
 
-    def __init__(self, id=-1):
+    def __init__(self, id=-1, **kwargs):
         self._slot = _native.timer_new()
+        # Comme MicroPython : les arguments de init() passes au constructeur
+        # demarrent le minuteur aussitot (Timer(period=..., callback=...)).
+        if kwargs:
+            self.init(**kwargs)
 
-    def init(self, period=1000, mode=PERIODIC, callback=None):
+    def init(self, period=1000, mode=PERIODIC, callback=None, freq=None):
+        if freq is not None:
+            if freq <= 0:
+                raise ValueError("freq must be positive")
+            period = 1000.0 / freq
         _native.timer_init(self._slot, period / 1000.0, mode, callback, self)
 
     def deinit(self):

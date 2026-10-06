@@ -36,7 +36,7 @@ Reception does not wake the program up: it polls the link with `any()`, `read()`
 
 ## Supplied devices
 
-They all share the same connectors and parameters; they only differ by their defaults and their icon.
+They all share the same connectors and parameters; they only differ by their defaults and their icon. The only exception, `UartLcd20x2` shows only the frame format (`baudrate`, `dataBits`, `parity`, `stopBits`) and the *Electrical* tab: its other settings are fixed, and it has neither a `TX` pin nor a `valueOut` connector (it transmits nothing and returns nothing to the model).
 
 | Component | What it does | Defaults that set it apart |
 |---|---|---|
@@ -44,7 +44,7 @@ They all share the same connectors and parameters; they only differ by their def
 | `UartEchoDevice` | Sends back each received byte as is | `echoEnabled = true` |
 | `UartTemperatureSensor` | Answers `AT+TEMP` with the value of its input, `AT+ID` with its identifier, and accepts a setpoint through `SET <number>` | `commandTable = "AT+TEMP=>TEMP={v1:.1f}\r\n|AT+ID=>SIM-TEMP-1\r\n|SET {o1}=>OK\r\n"`, `responseDelay = 5 ms`, `useValueInput = true`, `fixedValue = 20`, `nOut = 1` |
 | `UartGpsModule` | Sends a position frame every second on its own, without being asked | `periodicEnabled = true`, `periodicTemplate = "$GPGLL,{v1:.4f},{v2:.4f},{v3:.1f}\r\n"`, `useValueInput = true`, `nIn = 3` |
-| `UartLcd20x2` | 2 × 20 character display: shows each received line on its icon, the previous one moving down to line 2 | never replies; `behaviour` fixed to `Table` |
+| `UartLcd20x2` | 2 × 20 character display: shows each received line on its icon, the previous one moving down to line 2 | never replies: no `TX` pin nor `valueOut` connector; only `baudrate`, `dataBits`, `parity`, `stopBits` and the *Electrical* tab can be set, the rest is fixed (`final`): empty command table, end of line `\n`, neither echo nor transmission |
 
 ![The five serial devices: generic, echo, temperature sensor, GPS, 20x2 display](../../images/uart-icones.png)
 
@@ -55,12 +55,12 @@ On the program side, the link is written with `machine.UART`: see [the API](../a
 
 | Connector | Role |
 |---|---|
-| `TX` | Device transmit, to the microcontroller's RX pin |
+| `TX` | Device transmit, to the microcontroller's RX pin. Present when `useTxPin` is checked (default) |
 | `RX` | Device receive, from the microcontroller's TX pin |
 | `GND` | Ground, to connect to the microcontroller's, **only when `useGroundPin` is checked** (default) |
 | `VCC` | Supply of the device, **only when `useSupplyPin` is checked** (bottom left of the icon): for instance `3V3(OUT)` of a [Raspberry Pi Pico](../pico.md) |
 | `valueIn[nIn]` | Model quantities the device inserts into its frames (`{v1}`…): a temperature, a position… Used if `useValueInput = true` |
-| `valueOut[nOut]` | Quantities extracted from received frames (`{o1}`…): the device then becomes an **actuator**. May stay unconnected |
+| `valueOut[nOut]` | Quantities extracted from received frames (`{o1}`…): the device then becomes an **actuator**. May stay unconnected. Present when `useValueOutput` is checked (default) |
 
 ## Frame format
 
@@ -106,6 +106,7 @@ On a mismatch, the device and the microcontroller keep the bytes received with a
 | `useValueInput` | `false` | Take the quantities from the `valueIn` connector; otherwise, `fixedValue` |
 | `nIn` | 1 | Number of quantities received from the model (4 at most) |
 | `fixedValue` | 0 | Value used when `valueIn` is not used |
+| `useValueOutput` | `true` | Shows the `valueOut` connector. Unchecked: the device returns nothing to the model |
 | `nOut` | 1 | Number of quantities returned to the model on `valueOut` (4 at most) |
 | `valueOutStart` | 0 | Value of `valueOut` before any capture |
 
@@ -114,6 +115,7 @@ On a mismatch, the device and the microcontroller keep the bytes received with a
 | Parameter | Default | Role |
 |---|---|---|
 | `useGroundPin` | `true` | Shows the `GND` pin. Unchecked: the pin disappears and the device is referenced to the simulation ground (0 V, common to every `Ground` block), nothing to wire |
+| `useTxPin` | `true` | Shows the `TX` pin. Unchecked, for a device that never transmits: the pin disappears, the output stage stays unconnected |
 | `useSupplyPin` | `false` | Shows the `VCC` pin: the device is then supplied by the circuit, its high levels follow `VCC` and it draws its quiescent current `IQ` from it. Unchecked: ideal internal supply `VOH`, nothing to wire |
 | `VOH` | 3.3 V | Ideal internal supply (without `VCC`): high level of the outputs and of the pull-ups |
 | `IQ` | 1 mA | Quiescent current drawn from `VCC` (with `useSupplyPin`) |

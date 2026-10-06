@@ -41,14 +41,17 @@ partial model PartialUartDevice "Base of the external serial devices: electrical
     Dialog(tab = "Inputs / outputs", group = "Inputs ({vN}, inserted into transmitted frames)", enable = useValueInput));
   parameter Real fixedValue = 0 "Value used when valueIn is not connected" annotation(
     Dialog(tab = "Inputs / outputs", group = "Inputs ({vN}, inserted into transmitted frames)", enable = not useValueInput));
+  parameter Boolean useValueOutput = true "Show the valueOut connector - unchecked for a device that returns nothing to the model" annotation(
+    Dialog(tab = "Inputs / outputs", group = "Outputs ({oN}, captured from received frames)"),
+    choices(checkBox = true));
   parameter Integer nOut(min = 1, max = Interfaces.UART_DEV_MAX_VALUES) = 1 "Number of quantities returned to the model - leave the connector unconnected if unused" annotation(
-    Dialog(tab = "Inputs / outputs", group = "Outputs ({oN}, captured from received frames)"));
+    Dialog(tab = "Inputs / outputs", group = "Outputs ({oN}, captured from received frames)", enable = useValueOutput));
   parameter Real valueOutStart = 0 "Value of valueOut before any capture" annotation(
-    Dialog(tab = "Inputs / outputs", group = "Outputs ({oN}, captured from received frames)"));
+    Dialog(tab = "Inputs / outputs", group = "Outputs ({oN}, captured from received frames)", enable = useValueOutput));
 
   Modelica.Blocks.Interfaces.RealInput valueIn[nIn] if useValueInput "Quantities supplied by the model, inserted into the transmitted frames by {v1}..{vN}" annotation(
     Placement(transformation(origin = {124, 34}, extent = {{10, -10}, {-10, 10}}), iconTransformation(origin = {110, 30}, extent = {{5, -5}, {-5, 5}})));
-  Modelica.Blocks.Interfaces.RealOutput valueOut[nOut] "Quantities extracted from the received frames by {o1}..{oN} - the device then becomes an actuator" annotation(
+  Modelica.Blocks.Interfaces.RealOutput valueOut[nOut] if useValueOutput "Quantities extracted from the received frames by {o1}..{oN} - the device then becomes an actuator" annotation(
     Placement(transformation(origin = {124, -34}, extent = {{-10, -10}, {10, 10}}), iconTransformation(origin = {110, -30}, extent = {{-5, -5}, {5, 5}})));
 
   // Public: protected variables do not appear in the simulation results
@@ -61,6 +64,7 @@ partial model PartialUartDevice "Base of the external serial devices: electrical
 protected
   constant Integer NV = Interfaces.UART_DEV_MAX_VALUES "Fixed size expected by the external C interface";
   Modelica.Blocks.Interfaces.RealInput valueIn_internal[nIn] "Internal connector: a conditional connector cannot be read directly in an equation (MSL idiom)";
+  Modelica.Blocks.Sources.RealExpression valueOutSource[nOut](y = vOut[1:nOut]) "Feeds the conditional connector valueOut, which cannot be assigned in an equation";
 
   discrete Real vOut[NV](each start = 0, each fixed = true) "Captured quantities, as published by the C code";
   Real vIn[NV] "Quantities passed to the C code, padded with fixedValue beyond nIn";
@@ -80,9 +84,7 @@ equation
   for k in 1:NV loop
     vIn[k] = if k <= nIn then valueIn_internal[k] else fixedValue;
   end for;
-  for k in 1:nOut loop
-    valueOut[k] = vOut[k];
-  end for;
+  connect(valueOutSource.y, valueOut);
 
   when {initial(), time >= pre(nextWakeTime), sample(0, tickPeriod), change(rxBoolIn)} then
     (vOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) = Internal.UartDevice_sync(dev, time, rxBoolIn, vIn);
@@ -91,7 +93,7 @@ equation
     Modelica.Utilities.Streams.print("[" + getInstanceName() + "] t=" + String(time) + " s - received: \"" + lastRx + "\" / sent: \"" + lastTx + "\"");
   end when;
   annotation(
-    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}, initialScale = 0.2), graphics = {Rectangle(fillColor = {70, 70, 85}, fillPattern = FillPattern.Solid, extent = {{-104, 56}, {104, -56}}), Text(textColor = {255, 255, 255}, extent = {{-56, 24}, {56, 2}}, textString = "UART", textStyle = {TextStyle.Bold}), Text(visible = parity == Interfaces.UartParity.None, textColor = {200, 200, 200}, extent = {{-90, -2}, {90, -20}}, textString = "%baudrate,N,%dataBits,%stopBits"), Text(visible = parity == Interfaces.UartParity.Even, textColor = {200, 200, 200}, extent = {{-90, -2}, {90, -20}}, textString = "%baudrate,E,%dataBits,%stopBits"), Text(visible = parity == Interfaces.UartParity.Odd, textColor = {200, 200, 200}, extent = {{-90, -2}, {90, -20}}, textString = "%baudrate,O,%dataBits,%stopBits"), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if txActive then {255, 180, 60} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-98, 38}, {-86, 26}}), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if rxBusy then {60, 210, 255} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-98, -26}, {-86, -38}}), Text(textColor = {255, 255, 255}, extent = {{-82, 38}, {-52, 24}}, textString = "TX", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-82, -24}, {-52, -38}}, textString = "RX", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{56, 38}, {98, 24}}, textString = "val", horizontalAlignment = TextAlignment.Right), Text(textColor = {255, 255, 255}, extent = {{56, -24}, {98, -38}}, textString = "out", horizontalAlignment = TextAlignment.Right), Text(visible = useGroundPin, extent = {{7, -56}, {47, -64}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {0, 0, 255}, extent = {{-150, 80}, {150, 60}}, textString = "%name")}),
+    Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}}, initialScale = 0.2), graphics = {Rectangle(fillColor = {70, 70, 85}, fillPattern = FillPattern.Solid, extent = {{-104, 56}, {104, -56}}), Text(textColor = {255, 255, 255}, extent = {{-56, 24}, {56, 2}}, textString = "UART", textStyle = {TextStyle.Bold}), Text(visible = parity == Interfaces.UartParity.None, textColor = {200, 200, 200}, extent = {{-90, -2}, {90, -20}}, textString = "%baudrate,N,%dataBits,%stopBits"), Text(visible = parity == Interfaces.UartParity.Even, textColor = {200, 200, 200}, extent = {{-90, -2}, {90, -20}}, textString = "%baudrate,E,%dataBits,%stopBits"), Text(visible = parity == Interfaces.UartParity.Odd, textColor = {200, 200, 200}, extent = {{-90, -2}, {90, -20}}, textString = "%baudrate,O,%dataBits,%stopBits"), Ellipse(visible = useTxPin, fillColor = DynamicSelect({60, 60, 60}, if txActive then {255, 180, 60} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-98, 38}, {-86, 26}}), Ellipse(fillColor = DynamicSelect({60, 60, 60}, if rxBusy then {60, 210, 255} else {60, 60, 60}), fillPattern = FillPattern.Solid, lineColor = {30, 30, 30}, extent = {{-98, -26}, {-86, -38}}), Text(visible = useTxPin, textColor = {255, 255, 255}, extent = {{-82, 38}, {-52, 24}}, textString = "TX", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{-82, -24}, {-52, -38}}, textString = "RX", horizontalAlignment = TextAlignment.Left), Text(textColor = {255, 255, 255}, extent = {{56, 38}, {98, 24}}, textString = "val", horizontalAlignment = TextAlignment.Right), Text(visible = useValueOutput, textColor = {255, 255, 255}, extent = {{56, -24}, {98, -38}}, textString = "out", horizontalAlignment = TextAlignment.Right), Text(visible = useGroundPin, extent = {{7, -56}, {47, -64}}, textString = "GND", horizontalAlignment = TextAlignment.Left), Text(textColor = {0, 0, 255}, extent = {{-150, 80}, {150, 60}}, textString = "%name")}),
     Diagram(coordinateSystem(preserveAspectRatio = true, extent = {{-100, -100}, {100, 100}})),
     Documentation(info = "<html>
 <p>Base class of the external serial devices. It cannot be instantiated directly: a concrete device extends it and sets its parameters — see <code>Peripherals.UartEchoDevice</code>, <code>UartTemperatureSensor</code>, <code>UartGpsModule</code>, <code>UartLcd20x2</code>, or <code>Peripherals.UartGenericDevice</code> for a device entirely described by its parameters.</p>

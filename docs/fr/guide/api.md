@@ -108,8 +108,8 @@ Une fois configuré, le créneau est généré **en continu côté Modelica** (e
 
 ```python
 from machine import Timer
-tim = Timer()
-tim.init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
+tim = Timer(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
+# ou en deux temps : tim = Timer() puis tim.init(period=500, ...)
 tim.deinit()
 ```
 
@@ -124,13 +124,13 @@ Minuteur logiciel : une fois armé, le callback continue de se déclencher **pen
 
 ### Constructeur
 
-`Timer(id=-1)` — `id` accepté pour compatibilité de signature avec MicroPython, ignoré (un pool fixe de 4 minuteurs logiciels partagé par tous les `Timer()`, cf. Limitations). Ne synchronise pas (pure allocation d'un emplacement dans le pool).
+`Timer(id=-1, **kwargs)` — `id` accepté pour compatibilité de signature avec MicroPython, ignoré (un pool fixe de 4 minuteurs logiciels partagé par tous les `Timer()`, cf. Limitations). Sans autre argument, ne synchronise pas (pure allocation d'un emplacement dans le pool). Comme sur MicroPython, les arguments nommés de `init()` passés au constructeur démarrent aussitôt le minuteur : `Timer(period=500, mode=Timer.PERIODIC, callback=f)` équivaut à `Timer()` suivi de `init(period=500, mode=Timer.PERIODIC, callback=f)`.
 
 ### Méthodes
 
 | Méthode | Signature | Comportement | Synchronise ? |
 |---|---|---|---|
-| `.init(period, mode, callback)` | `init(period=1000, mode=PERIODIC, callback=None)` | Arme (ou réarme) le minuteur : `period` en **millisecondes** (comme le vrai MicroPython), `mode` = `ONE_SHOT`/`PERIODIC`, `callback` reçoit l'objet `Timer` en argument (`callback(timer)`) | Oui |
+| `.init(period, mode, callback, freq)` | `init(period=1000, mode=PERIODIC, callback=None, freq=None)` | Arme (ou réarme) le minuteur : `period` en **millisecondes** (comme le vrai MicroPython), ou `freq` en hertz à la place (`freq=10` équivaut à `period=100`), `mode` = `ONE_SHOT`/`PERIODIC`, `callback` reçoit l'objet `Timer` en argument (`callback(timer)`) | Oui |
 | `.deinit()` | `deinit()` | Arrête et libère le minuteur (son emplacement redevient disponible pour un futur `Timer()`) | Oui |
 
 ## `machine.Display`
@@ -141,19 +141,33 @@ Minuteur logiciel : une fois armé, le callback continue de se déclencher **pen
 from machine import Display
 display = Display(0)
 display.write("Bonjour")        # vers un Peripherals.Display cable sur MCU.Display0
+display.write("T =", 21.5, "C") # comme print() : "T = 21.5 C"
 ```
 
 Liaison logique unique et **écriture seule** vers un périphérique d'affichage pédagogique (`Display0` côté `MCU`). Ce n'est pas un vrai protocole UART/Serial : pas de réception, pas d'adressage. Contrairement aux broches `GPx`, la liaison n'est pas électrique (`Modelica.Electrical.Analog`) mais un connecteur logique causal (`Interfaces.DisplayLinkOutput`/`DisplayLinkInput`) : le message est livré **instantanément** au point de synchro suivant, pas de simulation de bauds ni de forme d'onde série bit-à-bit — composant et câblage : [LED et afficheur](peripheriques/led-afficheur.md).
 
 ### Constructeur
 
-`Display(id=0, **kwargs)` — `id` : seul `0` est supporté (`ValueError` sinon). `**kwargs` accepté pour une signature volontairement souple mais sans effet. Ne synchronise pas.
+`Display(id=0, **kwargs)` — `id` : seul `0` est supporté (`ValueError` dès la construction sinon). `**kwargs` accepté pour une signature volontairement souple mais sans effet. Ne synchronise pas.
 
 ### Méthodes
 
 | Méthode | Signature | Comportement | Synchronise ? |
 |---|---|---|---|
-| `.write(text)` | `write(text)` | Transmet `text` (converti en `str` si nécessaire) au périphérique câblé sur `MCU.Display0` ; livraison instantanée, message entier d'un coup (pas de découpage octet par octet) | Oui |
+| `.write(*args, sep, end)` | `write(*args, sep=' ', end='\n')` | S'utilise comme `print()` : les arguments sont convertis par `str()`, joints par `sep` et suivis de `end`. Chaque saut de ligne envoie la ligne qui le précède, qui devient **un message** pour l'afficheur câblé sur `MCU.Display0` (une ligne de l'écran) ; livraison instantanée, message entier d'un coup. Un texte sans saut de ligne final (`end=''`) attend la suite d'un appel suivant | Oui, à chaque message envoyé |
+
+Exemples :
+
+```python
+display.write("Bonjour")              # un message : "Bonjour"
+display.write("T =", 25, "C")         # "T = 25 C"
+display.write("a", "b", sep="-")      # "a-b"
+display.write("T =", end="")          # rien n'est encore envoyé...
+display.write(25)                     # ... puis "T =25"
+display.write("Ligne 1\nLigne 2")    # deux messages, deux lignes de l'écran
+```
+
+Plusieurs messages écrits sans `sleep()` entre eux (ou un texte de plusieurs lignes) arrivent au même instant simulé : l'afficheur les reçoit tous, dans l'ordre, comme s'ils avaient été envoyés un par un. Un message écrit avant le premier `sleep()` du programme (à t = 0) est affiché lui aussi.
 
 ## `machine.UART`
 

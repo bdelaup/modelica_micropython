@@ -1,0 +1,54 @@
+// Scénario de vérification n°70 : message écrit à t = 0, Display.write() comme
+// print(), Timer(...) construit avec les arguments de init().
+// omc verify_70_display_write.mos   (depuis ce dossier)
+//
+// Ce que ce scénario vérifie :
+// - un write() avant le premier sleep() (t = 0, pendant l'initialisation) est
+//   affiché par le 20x2 ET par un grand écran, et figure au journal ;
+// - write(*args, sep, end) suit print() : arguments joints par sep, ligne
+//   construite en deux appels (end=''), deux lignes pour un texte contenant
+//   '\n' ; le 4x32 reçoit 5 messages et a défilé d'une ligne ;
+// - Timer(period=10, mode=PERIODIC, callback=...) démarre aussitôt (10 appels
+//   en 105 ms), Timer(mode=ONE_SHOT, freq=20, callback=...) aussi (1 appel).
+// Programme Verification/display_write.py. Modèle défini ici plutôt que dans
+// Examples.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model DisplayWrite
+  MicroPythonMCU.MCU mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/display_write.py\"));
+  MicroPythonMCU.Peripherals.Display display;
+  MicroPythonMCU.Peripherals.Display4x32 big(logReceived = false);
+  Modelica.Electrical.Analog.Basic.Ground ground;
+equation
+  connect(mcu.GND, ground.p);
+  connect(mcu.Display0, display.displayLink);
+  connect(mcu.Display0, big.displayLink);
+end DisplayWrite;"); getErrorString();
+
+buildModel(DisplayWrite, stopTime = 0.2, numberOfIntervals = 200, fileNamePrefix = "DisplayWrite");
+b := getErrorString();
+ret := system(".\\DisplayWrite.bat", "DisplayWrite_run.txt");
+log := readFile("DisplayWrite_run.txt");
+(nZero, m1) := regex(log, "t=0 s - display received: \"Zero\"", 1);
+(nJoin, m2) := regex(log, "display received: \"T = 25 C\"", 1);
+(nSep, m3) := regex(log, "display received: \"a-b\"", 1);
+(nL1, m4) := regex(log, "display received: \"L1\"", 1);
+(nL2, m5) := regex(log, "display received: \"L2\"", 1);
+(nTimer, m6) := regex(log, "timer ticks 10 shots 1", 1);
+
+// 'Z' = 90 sur les deux écrans avant le second message
+z20 := val(display.line1CharCode[1], 0.05, "DisplayWrite_res.mat");
+zBig := val(big.textCode[1], 0.05, "DisplayWrite_res.mat");
+// 4x32 en fin : "T = 25 C", "a-b", "L1", "L2" (la ligne "Zero" a défilé)
+big1 := val(big.textCode[1], 0.2, "DisplayWrite_res.mat");
+big4a := val(big.textCode[97], 0.2, "DisplayWrite_res.mat");
+big4b := val(big.textCode[98], 0.2, "DisplayWrite_res.mat");
+// 20x2 en fin : "L2" puis "L1"
+l1 := val(display.line1CharCode[2], 0.2, "DisplayWrite_res.mat");
+l2 := val(display.line2CharCode[2], 0.2, "DisplayWrite_res.mat");
+
+if ret == 0 and nZero >= 1 and nJoin >= 1 and nSep >= 1 and nL1 >= 1 and nL2 >= 1 and nTimer >= 1 and z20 == 90 and zBig == 90 and big1 == 84 and big4a == 76 and big4b == 50 and l1 == 50 and l2 == 49 then
+  print("PASS: verify_70_display_write (message de t = 0 affiche et journalise sur les deux ecrans ; write() : sep, end, '\\n' ; 4x32 defile ; Timer(period=...) 10 appels, Timer(freq=...) 1 appel)\n");
+else
+  print("FAIL: verify_70_display_write (code " + String(ret) + ", journal t=0 " + String(nZero) + ", T = 25 C " + String(nJoin) + ", a-b " + String(nSep) + ", L1 " + String(nL1) + ", L2 " + String(nL2) + ", minuteurs " + String(nTimer) + ", 20x2 'Z' " + String(z20) + ", 4x32 'Z' " + String(zBig) + ", 4x32 fin " + String(big1) + "/" + String(big4a) + "/" + String(big4b) + ", 20x2 fin " + String(l1) + "/" + String(l2) + ")\n" + b + "\n--- journal ---\n" + log);
+end if;

@@ -50,9 +50,19 @@ screen.write("It works")      # "Hello" moves down to line 2
 
 The component has no parameters.
 
+### Wiring
+
+A single wire, from the `DISPLAY` output of the microcontroller (`mcu.Display0`, above the `MCU` icon) to the input of the display (`displayLink`, on its left). No ground nor supply to wire for the display: the link is logical. The `MCU` keeps its own ground.
+
+![Diagram of Display.Demo: the DISPLAY output of the MCU wired to the input of the display, the GND pin of the MCU to the ground](../../images/display-cablage.png){ width="420" }
+
+As text, in the *Text* view of OMEdit: `connect(mcu.Display0, display.displayLink);`.
+
 ### Behaviour
 
 - Each message is shown on **line 1**; the previous message moves down to **line 2**.
+- A message is one line sent by `write()`, which is used like `print()` (see [the API](../api.md#machinedisplay)): `write("a\nb")` sends two messages. Several messages sent at the same instant (without `sleep()` in between) all arrive, in order: the display shows the last two.
+- A message written at the very start of the program, before the first `sleep()` (t = 0), is shown as well.
 - Beyond 20 characters, the message is cut on the icon, but appears in full in the simulation log (each message is printed there too).
 - Displayable characters: unaccented letters, digits, space and `! ' , - . ?`. Others are shown as spaces. Messages are limited to 128 characters.
 - The link is instantaneous: the message arrives at the very moment of the `write()`, with no transmission delay. Write-only: the display never answers.
@@ -81,6 +91,14 @@ for i in range(10):
 |---|---|
 | `displayLink` | To connect to `mcu.Display0`, as for `Display`. Several displays may be connected to the same `Display0`: they all receive every message |
 
+### Wiring
+
+As for `Display`: one wire from `mcu.Display0` to `displayLink`. To show the same messages on several displays, draw a wire from `mcu.Display0` to each of them; this is what `Display.Large` does, with a 20x2 (`display`), a 4x32 (`screen4`) and an 8x32 (`screen8`).
+
+![Diagram of Display.Large: the DISPLAY output of the MCU wired to the three displays](../../images/grands-ecrans-cablage.png){ width="440" }
+
+As text: `connect(mcu.Display0, screen4.displayLink);` and `connect(mcu.Display0, screen8.displayLink);`.
+
 ### Parameter
 
 | Parameter | Default | Role |
@@ -89,7 +107,8 @@ for i in range(10):
 
 ### Behaviour
 
-- The screen starts empty; the first message takes the top line.
+- The screen starts empty; the first message takes the top line, even when written at t = 0, before the first `sleep()`.
+- Several messages sent at the same instant (without `sleep()` in between, or `write()` of a text of several lines) are all written, one under the other, in order.
 - Beyond 32 characters, the message is cut on the icon; it stays complete in the log.
 - Displayable characters: unaccented letters, digits, space and `! " # & ' ( ) * + , - . / : < = > ? _`. Others are shown as spaces.
 - The text of the icon is stored in `textCode` (ASCII codes, line `i`, column `j` at index `(i - 1)*32 + j`) and the number of written lines in `filled`: both can be found in the results.

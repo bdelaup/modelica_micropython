@@ -54,9 +54,19 @@ ecran.write("Ca marche")      # "Bonjour" descend en ligne 2
 
 Le composant n'a pas de paramètre.
 
+### Câblage
+
+Un seul fil, de la sortie `DISPLAY` du microcontrôleur (`mcu.Display0`, au-dessus de l'icône du `MCU`) à l'entrée de l'afficheur (`displayLink`, à sa gauche). Pas de masse ni d'alimentation à câbler pour l'afficheur : la liaison est logique. Le `MCU`, lui, garde sa masse.
+
+![Schéma de Display.Demo : la sortie DISPLAY du MCU reliée à l'entrée de l'afficheur, la broche GND du MCU à la masse](../../images/display-cablage.png){ width="420" }
+
+En texte, dans la vue *Text* d'OMEdit : `connect(mcu.Display0, display.displayLink);`.
+
 ### Comportement
 
 - Chaque message s'affiche en **ligne 1** ; le message précédent descend en **ligne 2**.
+- Un message est une ligne envoyée par `write()`, qui s'utilise comme `print()` (voir [l'API](../api.md#machinedisplay)) : `write("a\nb")` envoie deux messages. Plusieurs messages envoyés au même instant (sans `sleep()` entre eux) arrivent tous, dans l'ordre : l'afficheur montre les deux derniers.
+- Un message écrit dès le début du programme, avant le premier `sleep()` (t = 0), s'affiche aussi.
 - Au-delà de 20 caractères, le message est coupé sur l'icône, mais apparaît en entier dans le journal de simulation (chaque message y est aussi imprimé).
 - Caractères affichables : lettres sans accent, chiffres, espace et `! ' , - . ?`. Les autres s'affichent comme des espaces. Message limité à 128 caractères.
 - La liaison est instantanée : le message arrive au moment même du `write()`, sans délai de transmission. Écriture seule : l'afficheur ne répond rien.
@@ -87,6 +97,14 @@ for i in range(10):
 |---|---|
 | `displayLink` | À relier à `mcu.Display0`, comme pour `Display`. Plusieurs afficheurs peuvent être reliés au même `Display0` : ils reçoivent tous chaque message |
 
+### Câblage
+
+Comme pour `Display` : un fil de `mcu.Display0` à `displayLink`. Pour montrer les mêmes messages sur plusieurs afficheurs, on tire un fil de `mcu.Display0` vers chacun d'eux ; c'est ce que fait `Display.Large`, avec un 20x2 (`display`), un 4x32 (`screen4`) et un 8x32 (`screen8`).
+
+![Schéma de Display.Large : la sortie DISPLAY du MCU reliée aux trois afficheurs](../../images/grands-ecrans-cablage.png){ width="440" }
+
+En texte : `connect(mcu.Display0, screen4.displayLink);` et `connect(mcu.Display0, screen8.displayLink);`.
+
 ### Paramètre
 
 | Paramètre | Défaut | Rôle |
@@ -95,7 +113,8 @@ for i in range(10):
 
 ### Comportement
 
-- L'écran démarre vide ; le premier message prend la ligne du haut.
+- L'écran démarre vide ; le premier message prend la ligne du haut, même s'il est écrit à t = 0, avant le premier `sleep()`.
+- Plusieurs messages envoyés au même instant (sans `sleep()` entre eux, ou `write()` d'un texte de plusieurs lignes) s'écrivent tous, l'un sous l'autre, dans l'ordre.
 - Au-delà de 32 caractères, le message est coupé sur l'icône ; il reste entier dans le journal.
 - Caractères affichables : lettres sans accent, chiffres, espace et `! " # & ' ( ) * + , - . / : < = > ? _`. Les autres s'affichent comme des espaces.
 - Le texte de l'icône est enregistré dans `textCode` (codes ASCII, ligne `i`, colonne `j` à l'indice `(i - 1)*32 + j`) et le nombre de lignes écrites dans `filled` : on les retrouve dans les résultats.

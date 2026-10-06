@@ -15,7 +15,11 @@ partial model PartialUartPins "Electrical side of a serial device: TX output and
   parameter Modelica.Units.SI.Resistance RPullUp = 1e6 "Pull-up of the RX input to the supply" annotation(
     Dialog(tab = "Electrical", group = "Impedances"));
 
-  Modelica.Electrical.Analog.Interfaces.PositivePin TX "Transmission of the device - to be connected to the receive pin of the microcontroller" annotation(
+  parameter Boolean useTxPin = true "Show the TX pin - unchecked for a device that never transmits (its output stage then stays unconnected)" annotation(
+    Dialog(tab = "Electrical", group = "Pins"),
+    choices(checkBox = true));
+
+  Modelica.Electrical.Analog.Interfaces.PositivePin TX if useTxPin "Transmission of the device - to be connected to the receive pin of the microcontroller - shown when useTxPin is checked" annotation(
     Placement(transformation(origin = {-124, 34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, 30}, extent = {{-5, -5}, {5, 5}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin RX "Reception of the device - to be connected to the transmit pin of the microcontroller" annotation(
     Placement(transformation(origin = {-124, -34}, extent = {{-7, -7}, {7, 7}}), iconTransformation(origin = {-110, -30}, extent = {{-5, -5}, {5, 5}})));
@@ -76,6 +80,6 @@ equation
   src.v = if txLevel then vRail else VOL "the line is actively held HIGH when idle between frames, like a real push-pull output; the high level is the supply voltage (VOH, or VCC with useSupplyPin)";
   annotation(
     Documentation(info = "<html>
-<p>Electrical side shared by the external serial devices (<code>Internal.PartialUartDevice</code>) and the radio modems (<code>Internal.PartialRadioModem</code>): <code>TX</code> is a push-pull output (voltage source at the supply voltage or <code>VOL</code>, behind <code>ROut</code>; supply: <code>Internal.PartialSupplyPin</code>, ideal <code>VOH</code> or the <code>VCC</code> pin), <code>RX</code> a high-impedance input with a weak pull-up and an input capacitance, read against the halfway threshold. The derived class assigns <code>txLevel</code> in its <code>when</code> and reacts to <code>change(rxBoolIn)</code>.</p>
+<p>Electrical side shared by the external serial devices (<code>Internal.PartialUartDevice</code>) and the radio modems (<code>Internal.PartialRadioModem</code>): <code>TX</code> is a push-pull output (voltage source at the supply voltage or <code>VOL</code>, behind <code>ROut</code>; supply: <code>Internal.PartialSupplyPin</code>, ideal <code>VOH</code> or the <code>VCC</code> pin), <code>RX</code> a high-impedance input with a weak pull-up and an input capacitance, read against the halfway threshold. <code>useTxPin</code> unchecked removes the <code>TX</code> pin (a device that never transmits, such as <code>Peripherals.UartLcd20x2</code>): the output stage then stays unconnected, nothing else changes. The derived class assigns <code>txLevel</code> in its <code>when</code> and reacts to <code>change(rxBoolIn)</code>.</p>
 </html>"));
 end PartialUartPins;

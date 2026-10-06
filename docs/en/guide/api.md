@@ -110,8 +110,8 @@ Once configured, the square wave is generated **continuously on the Modelica sid
 
 ```python
 from machine import Timer
-tim = Timer()
-tim.init(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
+tim = Timer(period=500, mode=Timer.PERIODIC, callback=lambda t: led.toggle())
+# or in two steps: tim = Timer() then tim.init(period=500, ...)
 tim.deinit()
 ```
 
@@ -126,13 +126,13 @@ Software timer: once armed, the callback keeps firing **during** a `sleep()` pen
 
 ### Constructor
 
-`Timer(id=-1)` — `id` accepted for signature compatibility, ignored (a fixed pool of 4 software timers is shared by all `Timer()`s, see Limitations). Does not synchronise.
+`Timer(id=-1, **kwargs)` — `id` accepted for signature compatibility, ignored (a fixed pool of 4 software timers is shared by all `Timer()`s, see Limitations). Without any other argument, does not synchronise. As in MicroPython, the keyword arguments of `init()` given to the constructor start the timer at once: `Timer(period=500, mode=Timer.PERIODIC, callback=f)` is the same as `Timer()` followed by `init(period=500, mode=Timer.PERIODIC, callback=f)`.
 
 ### Methods
 
 | Method | Signature | Behaviour | Synchronises? |
 |---|---|---|---|
-| `.init(period, mode, callback)` | `init(period=1000, mode=PERIODIC, callback=None)` | Arms (or re-arms) the timer: `period` in **milliseconds** (as in real MicroPython), `mode` = `ONE_SHOT`/`PERIODIC`, `callback` receives the `Timer` object (`callback(timer)`) | Yes |
+| `.init(period, mode, callback, freq)` | `init(period=1000, mode=PERIODIC, callback=None, freq=None)` | Arms (or re-arms) the timer: `period` in **milliseconds** (as in real MicroPython), or `freq` in hertz instead (`freq=10` is the same as `period=100`), `mode` = `ONE_SHOT`/`PERIODIC`, `callback` receives the `Timer` object (`callback(timer)`) | Yes |
 | `.deinit()` | `deinit()` | Stops and frees the timer | Yes |
 
 ## `machine.Display`
@@ -143,19 +143,33 @@ Software timer: once armed, the callback keeps firing **during** a `sleep()` pen
 from machine import Display
 display = Display(0)
 display.write("Hello")          # to a Peripherals.Display wired to MCU.Display0
+display.write("T =", 21.5, "C") # like print(): "T = 21.5 C"
 ```
 
 Single, **write-only** logical link to a teaching display (`Display0` on the `MCU`). Not a real UART/serial protocol: no reception, no addressing. Unlike the `GPx` pins, the link is not electrical: the message is delivered **instantly** at the next synchronisation point, with no simulated baud rate nor bit-level waveform — component and wiring: [LED and display](peripheriques/led-afficheur.md).
 
 ### Constructor
 
-`Display(id=0, **kwargs)` — `id`: only `0` is supported (`ValueError` otherwise). `**kwargs` accepted, with no effect. Does not synchronise.
+`Display(id=0, **kwargs)` — `id`: only `0` is supported (`ValueError` at construction otherwise). `**kwargs` accepted, with no effect. Does not synchronise.
 
 ### Methods
 
 | Method | Signature | Behaviour | Synchronises? |
 |---|---|---|---|
-| `.write(text)` | `write(text)` | Sends `text` (converted to `str` if needed) to the display wired to `MCU.Display0`; instant delivery of the whole message | Yes |
+| `.write(*args, sep, end)` | `write(*args, sep=' ', end='\n')` | Used like `print()`: the arguments are converted by `str()`, joined by `sep` and followed by `end`. Each line feed sends the line before it, which becomes **one message** for the display wired to `MCU.Display0` (one line of the screen); instant delivery of the whole message. A text without a final line feed (`end=''`) waits for the rest from a later call | Yes, at each message sent |
+
+Examples:
+
+```python
+display.write("Hello")                # one message: "Hello"
+display.write("T =", 25, "C")         # "T = 25 C"
+display.write("a", "b", sep="-")      # "a-b"
+display.write("T =", end="")          # nothing sent yet...
+display.write(25)                     # ... then "T =25"
+display.write("Line 1\nLine 2")       # two messages, two lines of the screen
+```
+
+Several messages written without `sleep()` in between (or a text of several lines) arrive at the same simulated instant: the display receives all of them, in order, as if they had been sent one by one. A message written before the first `sleep()` of the program (at t = 0) is shown as well.
 
 ## `machine.UART`
 

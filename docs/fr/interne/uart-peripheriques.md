@@ -136,7 +136,9 @@ Le test de réussite de la conception : chacun ne redéfinit que des **valeurs d
 | `UartEchoDevice` | `echoEnabled = true` | le partenaire minimal, qui remplace le bouclage artificiel |
 | `UartTemperatureSensor` | une table à trois commandes, `useValueInput` | requête/réponse **dans les deux sens** (`{v1}` et `{o1}`) |
 | `UartGpsModule` | `periodicEnabled`, `nIn = 3`, gabarit NMEA | l'émission spontanée, et le polling qu'elle impose au script |
-| `UartLcd20x2` | tout à `false`, plus `extends Internal.TwoLineTextIcon` | le pendant électrique de `Peripherals.Display` |
+| `UartLcd20x2` | tout figé par `final` sauf le format de la liaison (`useTxPin` et `useValueOutput` à `false` : ni broche `TX` ni connecteur `valueOut`), plus `extends Internal.TwoLineTextIcon` | le pendant électrique de `Peripherals.Display` |
+
+`TX` (`Internal.PartialUartPins`) et `valueOut` (`Internal.PartialUartDevice`) sont des connecteurs conditionnels (`useTxPin`, `useValueOutput`, `true` par défaut), sur le modèle de `valueIn` : sans `TX`, la résistance de sortie `rOut` reste en l'air ; `valueOut` ne pouvant pas figurer dans une équation, un `RealExpression` interne (`valueOutSource`) l'alimente par `connect()`.
 
 Deux exemples exploitent le port de **sortie** : `Examples.Uart.Sensor` montre la capture `{o1}` isolée, et `Examples.Uart.Regulation` referme une boucle de régulation complète — la commande capturée pilote un procédé du premier ordre dont la sortie revient sur l'entrée du même appareil, sans un fil de plus que les deux de la liaison série.
 

@@ -9,13 +9,10 @@ model Lcd "The microcontroller writes two lines to a 20x2 display through a real
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-24, -80}, extent = {{-10, -10}, {10, 10}})));
 equation
-// Serial link: GP5 (TX) goes down to RX, TX comes back up to GP4 (RX).
-// The display never transmits, but its TX pin stays connected - as on a
-// real serial module, where both wires are present even if one is unused.
+// Serial link: GP5 (TX) goes down to RX. The display never transmits, it has
+// no TX pin: GP4, the RX pin required by machine.UART, stays unconnected.
   connect(mcu.GP5, lcd.RX) annotation(
     Line(points = {{-78, 4}, {-34, 4}, {-34, -6}, {18, -6}}, color = {0, 0, 255}));
-  connect(lcd.TX, mcu.GP4) annotation(
-    Line(points = {{18, 6}, {-34, 6}, {-34, 10}, {-78, 10}}, color = {0, 0, 255}));
   connect(mcu.GND, ground.p) annotation(
     Line(points = {{-90, -14}, {-90, -66}, {-24, -66}, {-24, -70}}, color = {0, 0, 255}));
   connect(lcd.GND, ground.p) annotation(

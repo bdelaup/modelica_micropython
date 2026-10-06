@@ -781,9 +781,7 @@ static void publish_unpowered(struct PyRuntimeHandle* h, int* pinBoolOut, int* p
         pwmFreqOut[i] = 0;
         pwmDutyOut[i] = 0;
     }
-    *displaySeqOut = h->display_seq;
-    *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
-    strcpy((char*) *displayPayloadOut, h->display_payload);
+    publish_display(h, displaySeqOut, displayPayloadOut);
     *uartTxPinOut = 0;
     *uartTxLevelOut = 1;
     *nextWakeTime = 1.0e300;
@@ -869,9 +867,7 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
             pwmFreqOut[i] = h->pwm_freq[i];
             pwmDutyOut[i] = h->pwm_duty[i];
         }
-        *displaySeqOut = h->display_seq;
-        *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
-        strcpy((char*) *displayPayloadOut, h->display_payload);
+        publish_display(h, displaySeqOut, displayPayloadOut);
         /* Le script est fini mais l'UART, comme le PWM, continue de tourner en
            autonome : la file d'emission doit finir de se vider. Pas de verrou
            ici, le worker est mort (meme raison que le reste de cette branche). */
@@ -1022,9 +1018,7 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
         pwmFreqOut[i] = h->pwm_freq[i];
         pwmDutyOut[i] = h->pwm_duty[i];
     }
-    *displaySeqOut = h->display_seq;
-    *displayPayloadOut = ModelicaAllocateString(strlen(h->display_payload));
-    strcpy((char*) *displayPayloadOut, h->display_payload);
+    publish_display(h, displaySeqOut, displayPayloadOut);
     /* Publie apres le drain : le script a pu lancer une emission pendant celui-ci. */
     uart_publish(h, currentTime, uartTxPinOut, uartTxLevelOut);
     int done = h->script_done;
