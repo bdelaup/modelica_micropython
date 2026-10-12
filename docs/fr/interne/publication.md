@@ -1,6 +1,6 @@
 # Publier une version et la documentation
 
-La documentation est publiée automatiquement par GitLab. Les versions de la bibliothèque se livrent à la main, avec deux scripts du dépôt. Le **pourquoi** de ce partage est dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md), décision « Publication de la documentation et livraison des versions ».
+La documentation est publiée automatiquement par GitLab. Les versions de la bibliothèque se livrent à la main, avec deux scripts du dépôt. Le **pourquoi** de ce partage est dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md), décision « Publication de la documentation et livraison des versions ».
 
 ## La documentation
 
@@ -8,16 +8,16 @@ Le site est construit par [Zensical](https://zensical.org/) en deux langues, cha
 
 | Langue | Pages | Configuration | Adresse | Contenu |
 |---|---|---|---|---|
-| Français | `docs/fr/` | [`zensical.fr.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.fr.toml) | `/fr/` | Guide utilisateur et référence interne |
-| Anglais | `docs/en/` | [`zensical.en.toml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/zensical.en.toml) | `/en/` | Guide utilisateur seulement |
+| Français | `docs/fr/` | [`zensical.fr.toml`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/zensical.fr.toml) | `/fr/` | Guide utilisateur et référence interne |
+| Anglais | `docs/en/` | [`zensical.en.toml`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/zensical.en.toml) | `/en/` | Guide utilisateur seulement |
 
-[`make_docs.sh`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/tools/make_docs.sh) construit les deux dans `public/`, plus `public/index.html`, qui renvoie vers l'anglais, **langue par défaut** du site. À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/.gitlab-ci.yml) l'exécute et publie le résultat sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
+[`make_docs.sh`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/tools/make_docs.sh) construit les deux dans `public/`, plus `public/index.html`, qui renvoie vers l'anglais, **langue par défaut** du site. À chaque push sur `main`, le job `pages` de [`.gitlab-ci.yml`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/.gitlab-ci.yml) l'exécute et publie le résultat sur GitLab Pages, sur un runner partagé de GitLab : rien à installer ni à lancer.
 
-Adresse : <https://bdelaup.gitlab.io/modelica_micropython3/>
+Adresse : <https://bdelaup.gitlab.io/modelica_micropython/>
 
 ### Réglages GitLab (une seule fois)
 
-- *Deploy → Pages* : décocher **Use unique domain** (recommandé). Coché, GitLab publie le site à la racine d'une adresse générée (`https://modelica-micropython3-a705bd.gitlab.io/fr/`, sans le préfixe `/modelica_micropython3/`) et y redirige `bdelaup.gitlab.io/modelica_micropython3/…`. Le site fonctionne dans les deux cas, car les liens du sélecteur de langue sont relatifs (`../en/` dans `extra.alternate`) ; seules les adresses affichées diffèrent de `site_url`. Ne pas écrire de lien absolu commençant par `/modelica_micropython3/` : il casse sur le domaine unique.
+- *Deploy → Pages* : décocher **Use unique domain** (recommandé). Coché, GitLab publie le site à la racine d'une adresse générée (`https://modelica-micropython3-a705bd.gitlab.io/fr/`, sans le préfixe `/modelica_micropython/`) et y redirige `bdelaup.gitlab.io/modelica_micropython/…`. Le site fonctionne dans les deux cas, car les liens du sélecteur de langue sont relatifs (`../en/` dans `extra.alternate`) ; seules les adresses affichées diffèrent de `site_url`. Ne pas écrire de lien absolu commençant par `/modelica_micropython/` : il casse sur le domaine unique.
 - *Settings → General → Visibility, project features, permissions → Pages* : **Everyone** pour que le site soit public, même si le dépôt ne l'est pas.
 
 ### Écrire une page
@@ -25,10 +25,10 @@ Adresse : <https://bdelaup.gitlab.io/modelica_micropython3/>
 - Une nouvelle page se crée dans `docs/fr/`, puis s'ajoute à `nav` dans `zensical.fr.toml`, sinon elle n'apparaît pas dans le menu.
 - **Page du guide utilisateur** (`docs/fr/guide/`, `docs/fr/index.md`) : sa traduction va dans `docs/en/`, **au même chemin**, et s'ajoute à `nav` dans `zensical.en.toml`. Le sélecteur de langue retrouve la page correspondante par ce chemin (il lit le `sitemap.xml` de l'autre langue) ; sans traduction, il ramène à l'accueil de l'autre langue. La référence interne (`docs/fr/interne/`) n'est pas traduite.
 - **Images** : uniquement dans `docs/fr/images/`. `make_docs.sh` en fait une copie dans `docs/en/images/` (ignorée par git) avant de construire le site anglais : une page anglaise les référence donc par le même chemin relatif que son original.
-- Entre pages d'une même langue, liens relatifs ordinaires : `[Installation](../guide/installation.md)`. Une page anglaise qui renvoie vers la référence interne utilise une URL absolue (`https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/...`).
-- Vers un fichier du dépôt **hors de `docs/`**, lien absolu vers GitLab : `https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md`. Un lien relatif `../requirements.md` fonctionne dans GitLab, mais pas sur le site.
+- Entre pages d'une même langue, liens relatifs ordinaires : `[Installation](../guide/installation.md)`. Une page anglaise qui renvoie vers la référence interne utilise une URL absolue (`https://bdelaup.gitlab.io/modelica_micropython/fr/interne/...`).
+- Vers un fichier du dépôt **hors de `docs/`**, lien absolu vers GitLab : `https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md`. Un lien relatif `../requirements.md` fonctionne dans GitLab, mais pas sur le site.
 - La construction est stricte (`--strict`) : un lien cassé vers une page fait échouer le job `pages`, et le site en ligne reste alors celui d'avant.
-- Illustrations attendues et conventions (formats, tailles, nommage) : [`docs/ILLUSTRATIONS.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/docs/ILLUSTRATIONS.md). Les courbes de simulation sont générées par `python docs/figures/make_figures.py`, qui simule les exemples avec omc.
+- Illustrations attendues et conventions (formats, tailles, nommage) : [`docs/ILLUSTRATIONS.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/docs/ILLUSTRATIONS.md). Les courbes de simulation sont générées par `python docs/figures/make_figures.py`, qui simule les exemples avec omc.
 
 ### Aperçu local
 
@@ -75,7 +75,7 @@ Dans Git Bash, à la racine du dépôt :
     git push origin v1.3.0
     ```
 
-4. Vérifier : télécharger le zip du tag depuis la [page des tags](https://gitlab.com/bdelaup/modelica_micropython3/-/tags) et suivre [Installation](../guide/installation.md).
+4. Vérifier : télécharger le zip du tag depuis la [page des tags](https://gitlab.com/bdelaup/modelica_micropython/-/tags) et suivre [Installation](../guide/installation.md).
 
 Les notes de version, si on en veut, se rédigent dans le message du tag ou dans une *Release* GitLab créée sur ce tag, sans fichier joint.
 

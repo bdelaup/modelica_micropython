@@ -3,7 +3,7 @@
 !!! info "Référence interne"
     Cette page décrit le fonctionnement interne. Pour utiliser la sonde (câblage, réglage des voies, fichiers, PulseView) : [Analyseur logique](../guide/peripheriques/analyseurs.md).
 
-Cadrage et alternatives : décision « Analyseur logique » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md) (lot 3). Un seul instrument, la sonde `Peripherals.Analyzers.LogicAnalyzer` : la capture intégrée au `MCU` et les sondes décodantes `UartMonitor`/`I2cMonitor`, livrées en chemin, ont été retirées (détail dans `requirements-archive.md`).
+Cadrage et alternatives : décision « Analyseur logique » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md) (lot 3). Un seul instrument, la sonde `Peripherals.Analyzers.LogicAnalyzer` : la capture intégrée au `MCU` et les sondes décodantes `UartMonitor`/`I2cMonitor`, livrées en chemin, ont été retirées (détail dans `requirements-archive.md`).
 
 ## 1. Organisation
 

@@ -3,7 +3,7 @@
 !!! info "Référence interne"
     Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Périphériques I2C](../guide/peripheriques/i2c.md).
 
-Cette page décrit **comment** est construit le bus I2C : le maître côté microcontrôleur (`machine.I2C`), la classe de base des périphériques esclaves (`Internal.PartialI2cDevice`), le contrat des scripts Python qui décrivent ces périphériques, et l'écran Grove LCD RGB. Le **pourquoi** (alternatives écartées, restrictions) est dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md), décision « Bus I2C électrique en drain ouvert ».
+Cette page décrit **comment** est construit le bus I2C : le maître côté microcontrôleur (`machine.I2C`), la classe de base des périphériques esclaves (`Internal.PartialI2cDevice`), le contrat des scripts Python qui décrivent ces périphériques, et l'écran Grove LCD RGB. Le **pourquoi** (alternatives écartées, restrictions) est dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md), décision « Bus I2C électrique en drain ouvert ».
 
 ## 1. Un vrai bus électrique, en drain ouvert
 

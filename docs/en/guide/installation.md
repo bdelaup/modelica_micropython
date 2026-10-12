@@ -4,17 +4,17 @@
 
 ## Choosing a version
 
-Each version of the library is a **tag** of the repository, of the form `vX.Y.Z` (for example `v0.1.0`). The list of versions is on the [tags page](https://gitlab.com/bdelaup/modelica_micropython3/-/tags). Take the most recent one unless you have a reason not to.
+Each version of the library is a **tag** of the repository, of the form `vX.Y.Z` (for example `v0.1.0`). The list of versions is on the [tags page](https://gitlab.com/bdelaup/modelica_micropython/-/tags). Take the most recent one unless you have a reason not to.
 
 ## Downloading a version
 
-1. On the [tags page](https://gitlab.com/bdelaup/modelica_micropython3/-/tags), click the download button (arrow) of the version you want, then **zip**. Direct address, for `v0.1.0`:
+1. On the [tags page](https://gitlab.com/bdelaup/modelica_micropython/-/tags), click the download button (arrow) of the version you want, then **zip**. Direct address, for `v0.1.0`:
 
     ```
-    https://gitlab.com/bdelaup/modelica_micropython3/-/archive/v0.1.0/modelica_micropython3-v0.1.0.zip
+    https://gitlab.com/bdelaup/modelica_micropython/-/archive/v0.1.0/modelica_micropython-v0.1.0.zip
     ```
 
-    With git: `git clone --branch v0.1.0 https://gitlab.com/bdelaup/modelica_micropython3.git`
+    With git: `git clone --branch v0.1.0 https://gitlab.com/bdelaup/modelica_micropython.git`
 
 2. Unzip it, preferably outside a synchronised folder such as OneDrive. It contains the `MicroPythonMCU` folder, which is the library itself (it holds `package.mo`).
 
@@ -62,4 +62,4 @@ Registration of the library in OpenModelica's package index is under way. Once d
 
 ## Development version
 
-To try the current state between two versions: clone the [repository](https://gitlab.com/bdelaup/modelica_micropython3) without specifying a tag, or download it (*Code → zip*), then proceed as above.
+To try the current state between two versions: clone the [repository](https://gitlab.com/bdelaup/modelica_micropython) without specifying a tag, or download it (*Code → zip*), then proceed as above.

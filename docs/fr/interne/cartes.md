@@ -1,6 +1,6 @@
 # Cœur, `MCU` et carte `RPi_Pico`
 
-Depuis le 2026-10-04, le microcontrôleur programmable est un **composant**, `Internal.McuCore`, placé à l'intérieur de deux blocs posables : `MCU` (8 broches, alimentation idéale) et `RPi_Pico` (réplique de la carte et de son alimentation). Décision complète : « Carte Raspberry Pi Pico et alimentation » dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+Depuis le 2026-10-04, le microcontrôleur programmable est un **composant**, `Internal.McuCore`, placé à l'intérieur de deux blocs posables : `MCU` (8 broches, alimentation idéale) et `RPi_Pico` (réplique de la carte et de son alimentation). Décision complète : « Carte Raspberry Pi Pico et alimentation » dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
 
 ## Les classes
 

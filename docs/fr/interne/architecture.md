@@ -41,7 +41,7 @@ flowchart TB
 ## Arborescence commentée
 
 ```
-modelica_micropython3/
+modelica_micropython/
 ├── requirements.md                 -- besoin, décisions d'architecture, restrictions, TODO (source de vérité du "pourquoi")
 ├── CLAUDE.md                       -- guidance pour Claude Code dans ce dépôt
 ├── docs/                           -- ce site : fr/ (guide utilisateur + référence interne), en/ (guide utilisateur traduit, mêmes chemins), figures/make_figures.py (courbes de simulation), ILLUSTRATIONS.md (images attendues, non publié)

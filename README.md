@@ -1,6 +1,6 @@
 <p align="center"><strong>🇬🇧 English</strong> — <a href="#micropythonmcu-français">Plus bas en français ↓</a></p>
 
-<p align="center">📖 More info / Plus d'info : <a href="https://bdelaup.gitlab.io/modelica_micropython3/">bdelaup.gitlab.io/modelica_micropython3</a></p>
+<p align="center">📖 More info / Plus d'info : <a href="https://bdelaup.gitlab.io/modelica_micropython/">bdelaup.gitlab.io/modelica_micropython</a></p>
 
 ## MicroPythonMCU
 
@@ -16,12 +16,12 @@ Use case: test control code on the digital twin before deploying it to a real pr
 - **Peripherals to wire in**: serial devices (echo, temperature sensor, GPS, 20x2 display, generic), I2C devices (Grove LCD RGB display, echo, generic), HX711 weighing chain (converter, strain-gauge bridge, load cell), LED, pedagogical display.
 - **Debugging**: step-by-step debugging of the program with VS Code (breakpoints, variables); simulated time stays frozen during a pause.
 - **49 examples** (`MicroPythonMCU.Examples`), including a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
-- **Current limits**: Windows only, a single microcontroller per model, no SPI. Full list: [Limits and troubleshooting](https://bdelaup.gitlab.io/modelica_micropython3/en/guide/limites/).
+- **Current limits**: Windows only, a single microcontroller per model, no SPI. Full list: [Limits and troubleshooting](https://bdelaup.gitlab.io/modelica_micropython/en/guide/limites/).
 
 ## Installation
 
 - [OpenModelica](https://openmodelica.org/download/download-windows/) with OMEdit (tested with `1.27.1-64bit`) — nothing else to install: the Python runtime ships with the library.
-- Versions: one [tag](https://gitlab.com/bdelaup/modelica_micropython3/-/tags) per version (`vX.Y.Z`), instructions in the [installation guide](https://bdelaup.gitlab.io/modelica_micropython3/en/guide/installation/).
+- Versions: one [tag](https://gitlab.com/bdelaup/modelica_micropython/-/tags) per version (`vX.Y.Z`), instructions in the [installation guide](https://bdelaup.gitlab.io/modelica_micropython/en/guide/installation/).
 - From the repository: in OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
 
 ## Quick start
@@ -46,7 +46,7 @@ Use case: test control code on the digital twin before deploying it to a real pr
 
 ## Documentation
 
-The [user guide](https://bdelaup.gitlab.io/modelica_micropython3/en/) covers installation, getting started, the `MCU` block and its parameters, the `machine`/`time` API, each peripheral family with its parameters, and the examples. The maintainer reference (internals, verification suite, releases) and the architecture decisions ([`requirements.md`](requirements.md)) are in French.
+The [user guide](https://bdelaup.gitlab.io/modelica_micropython/en/) covers installation, getting started, the `MCU` block and its parameters, the `machine`/`time` API, each peripheral family with its parameters, and the examples. The maintainer reference (internals, verification suite, releases) and the architecture decisions ([`requirements.md`](requirements.md)) are in French.
 
 ## License
 
@@ -74,7 +74,7 @@ Project led by B. Delaup, teacher of *sciences de l'ingénieur* (engineering sci
 Partly developed with AI assistance.
 
 This GitHub repository is a "passive" mirror of a GitLab repository.
-Original active repository: https://gitlab.com/bdelaup/modelica_micropython3
+Original active repository: https://gitlab.com/bdelaup/modelica_micropython
 Please use the GitLab repository for communications and pull requests.
 
 ---
@@ -98,7 +98,7 @@ Usage : tester un code de pilotage sur le jumeau numérique avant de le déploye
 ## Installation
 
 - [OpenModelica](https://openmodelica.org/download/download-windows/) avec OMEdit (testé avec `1.27.1-64bit`) — rien d'autre à installer : le runtime Python est fourni avec la bibliothèque.
-- Versions : un [tag](https://gitlab.com/bdelaup/modelica_micropython3/-/tags) par version (`vX.Y.Z`), mode d'emploi dans le [guide d'installation](https://bdelaup.gitlab.io/modelica_micropython3/fr/guide/installation/).
+- Versions : un [tag](https://gitlab.com/bdelaup/modelica_micropython/-/tags) par version (`vX.Y.Z`), mode d'emploi dans le [guide d'installation](https://bdelaup.gitlab.io/modelica_micropython/fr/guide/installation/).
 - Depuis le dépôt : dans OMEdit, *File → Open Model/Library File(s)…* → `MicroPythonMCU/package.mo`.
 
 ## Démarrage rapide
@@ -123,7 +123,7 @@ Usage : tester un code de pilotage sur le jumeau numérique avant de le déploye
 
 ## Documentation
 
-Le [site de documentation](https://bdelaup.gitlab.io/modelica_micropython3/fr/) comporte un guide utilisateur (installation, premiers pas, bloc `MCU` et ses paramètres, API `machine`/`time`, périphériques et leurs paramètres, exemples), traduit en anglais, et une référence interne pour qui fait évoluer la bibliothèque (architecture, intégration de Python, suite de vérification, livraisons). Les décisions d'architecture et leurs alternatives sont dans [`requirements.md`](requirements.md).
+Le [site de documentation](https://bdelaup.gitlab.io/modelica_micropython/fr/) comporte un guide utilisateur (installation, premiers pas, bloc `MCU` et ses paramètres, API `machine`/`time`, périphériques et leurs paramètres, exemples), traduit en anglais, et une référence interne pour qui fait évoluer la bibliothèque (architecture, intégration de Python, suite de vérification, livraisons). Les décisions d'architecture et leurs alternatives sont dans [`requirements.md`](requirements.md).
 
 ## Licence
 
@@ -151,5 +151,5 @@ Projet porté par B. Delaup, enseignant en sciences de l'ingénieur. MicroPython
 En partie développé avec l'aide d'IA.
 
 Ce dépôt GitHub est un miroir « passif » d'un dépôt GitLab.
-Dépôt actif original : https://gitlab.com/bdelaup/modelica_micropython3
+Dépôt actif original : https://gitlab.com/bdelaup/modelica_micropython
 Merci d'utiliser le dépôt GitLab pour vos communications et pull requests.

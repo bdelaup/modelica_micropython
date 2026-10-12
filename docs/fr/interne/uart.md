@@ -5,7 +5,7 @@
 
 Cette page documente la liaison série `machine.UART` (cf. `requirements.md`, décision « UART électrique réel sur les broches GPIO »). Contrairement au périphérique d'affichage pédagogique ([peripherique-display.md](display.md)), qui porte un message logique livré d'un bloc, l'UART produit un **vrai signal électrique** sur deux broches `GPx` : un élève peut tracer `mcu.GP0.v` dans OMEdit et y lire une trame comme à l'oscilloscope.
 
-**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, format de trame comme le port `rp2` (5-8 bits, parité, 1-2 stops ; lot 3), 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.Uart.Loopback`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/MicroPythonMCU/Examples/Uart/Loopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](../guide/api.md) § `machine.UART`.
+**État** : implémenté et vérifié — un seul périphérique (`UART(0)`), broches TX/RX au choix parmi `GP0`-`GP7`, format de trame comme le port `rp2` (5-8 bits, parité, 1-2 stops ; lot 3), 50 à 115200 bauds (1200 par défaut), démontré par [`Examples.Uart.Loopback`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/MicroPythonMCU/Examples/Uart/Loopback.mo) et `verify_13_uart_loopback.mos`. Pour la référence de l'API côté script (signatures, ce qui synchronise), voir [api-machine.md](../guide/api.md) § `machine.UART`.
 
 ## 1. Pourquoi électrique ici, logique pour `Display`
 

@@ -1,7 +1,7 @@
 # La liaison radio (`Peripherals.Radio`)
 
 !!! info "Référence interne"
-    Cette page décrit le fonctionnement interne. Pour utiliser les modules (câblage, paramètres, exemples) : [Liaison radio](../guide/peripheriques/radio.md). Pour le *pourquoi* des choix, voir la décision « Liaison radio modulée » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+    Cette page décrit le fonctionnement interne. Pour utiliser les modules (câblage, paramètres, exemples) : [Liaison radio](../guide/peripheriques/radio.md). Pour le *pourquoi* des choix, voir la décision « Liaison radio modulée » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
 
 Un module radio est un **appareil série** côté microcontrôleur (mêmes broches, même pont électrique) et un **nœud d'un fil d'antenne** côté radio. Entre les deux, un moteur C sans Python ni thread fait passer les octets par deux files horodatées. Le signal modulé est calculé en Modelica, pour être tracé seulement.
 

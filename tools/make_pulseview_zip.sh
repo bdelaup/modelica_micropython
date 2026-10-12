@@ -32,7 +32,7 @@
 
 set -e
 NIGHTLY_URL="https://sigrok.org/download/binary/pulseview/pulseview-NIGHTLY-x86_64-release-installer.exe"
-PROJECT_API="https://gitlab.com/api/v4/projects/bdelaup%2Fmodelica_micropython3"
+PROJECT_API="https://gitlab.com/api/v4/projects/bdelaup%2Fmodelica_micropython"
 cd "$(dirname "$0")/.."   # racine du dépôt
 WINTAR="$(cygpath "$SYSTEMROOT")/System32/tar.exe"
 
@@ -126,7 +126,7 @@ FILE="pulseview-$VERSION-win64-portable.zip"
 #    et la version exacte de chaque bibliothèque
 {
   echo "PulseView $PV, Windows nightly build of $BUILD_DATE (sigrok project),"
-  echo "redistributed unchanged for MicroPythonMCU (https://gitlab.com/bdelaup/modelica_micropython3)."
+  echo "redistributed unchanged for MicroPythonMCU (https://gitlab.com/bdelaup/modelica_micropython)."
   echo "Files of the official installer $NIGHTLY_URL"
   echo "without the examples, the zadig USB driver tools and the uninstaller."
   echo

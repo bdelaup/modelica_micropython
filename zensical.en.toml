@@ -14,10 +14,10 @@
 site_name = "MicroPythonMCU"
 site_description = "Python-programmable microcontroller (MicroPython API) for OpenModelica"
 site_author = "Benoit Delaup"
-site_url = "https://bdelaup.gitlab.io/modelica_micropython3/en/"
+site_url = "https://bdelaup.gitlab.io/modelica_micropython/en/"
 copyright = "Copyright &copy; 2026 Benoit Delaup — MIT license"
-repo_url = "https://gitlab.com/bdelaup/modelica_micropython3"
-repo_name = "bdelaup/modelica_micropython3"
+repo_url = "https://gitlab.com/bdelaup/modelica_micropython"
+repo_name = "bdelaup/modelica_micropython"
 edit_uri = "-/edit/main/docs/en/"
 docs_dir = "docs/en"
 site_dir = "public/en"
@@ -42,7 +42,7 @@ nav = [
     { "Debugging with VS Code" = "guide/debogage.md" },
     { "Limits and troubleshooting" = "guide/limites.md" },
   ] },
-  { "Maintainer reference (FR)" = "https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/architecture/" },
+  { "Maintainer reference (FR)" = "https://bdelaup.gitlab.io/modelica_micropython/fr/interne/architecture/" },
 ]
 
 [project.extra]

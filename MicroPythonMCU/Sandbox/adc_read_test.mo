@@ -1,7 +1,7 @@
 within MicroPythonMCU.Sandbox;
 
 model adc_read_test
-  MCU mcu(scriptPath = "D:/benoit/OneDrive - LYCEE Jules Haag/modelica_micropython3/MicroPythonMCU/Sandbox/adc_read_test.py")  annotation(
+  MCU mcu(scriptPath = "D:/benoit/OneDrive - LYCEE Jules Haag/modelica_micropython/MicroPythonMCU/Sandbox/adc_read_test.py")  annotation(
     Placement(transformation(origin = {-21, 35}, extent = {{-31, -31}, {31, 31}})));
   Modelica.Electrical.Analog.Basic.Ground ground annotation(
     Placement(transformation(origin = {-32, -34}, extent = {{-10, -10}, {10, 10}})));

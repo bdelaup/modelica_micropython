@@ -22,7 +22,7 @@
 
     For those who develop the library: architecture, CPython integration, synchronisation protocol with the solver, serial and I2C engines, verification suite, releases.
 
-    [Architecture](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/architecture/) · [Life cycle](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/cycle-de-vie/) · [Tests](https://bdelaup.gitlab.io/modelica_micropython3/fr/interne/tests/)
+    [Architecture](https://bdelaup.gitlab.io/modelica_micropython/fr/interne/architecture/) · [Life cycle](https://bdelaup.gitlab.io/modelica_micropython/fr/interne/cycle-de-vie/) · [Tests](https://bdelaup.gitlab.io/modelica_micropython/fr/interne/tests/)
 
 </div>
 
@@ -51,6 +51,6 @@ Windows only, no SPI. A model can hold several microcontrollers, which talk thro
 
 ## Background
 
-Library designed by Benoit Delaup, an engineering science teacher, so that students can test their control code on the digital system before deploying it to a real prototype; it also fits an industrial embedded-software digital twin. Source code and issues: [GitLab repository](https://gitlab.com/bdelaup/modelica_micropython3). Architecture choices and their alternatives are recorded (in French) in [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+Library designed by Benoit Delaup, an engineering science teacher, so that students can test their control code on the digital system before deploying it to a real prototype; it also fits an industrial embedded-software digital twin. Source code and issues: [GitLab repository](https://gitlab.com/bdelaup/modelica_micropython). Architecture choices and their alternatives are recorded (in French) in [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
 
 The library (code, tests and documentation) was developed with the help of an AI, under the direction of the author, who set its choices and reviewed the result.

@@ -19,7 +19,7 @@ setlocal EnableExtensions
 set "PV_VERSION=0.5.0-e2fe9df-20261005"
 set "PV_SHA256=8340418ea49fdf21236e459c274edcf1a16e1c8dfbfa62917ae61b3c70c9c966"
 set "PV_FILE=pulseview-%PV_VERSION%-win64-portable.zip"
-set "PV_URL=https://gitlab.com/api/v4/projects/bdelaup%%2Fmodelica_micropython3/packages/generic/pulseview/%PV_VERSION%/%PV_FILE%"
+set "PV_URL=https://gitlab.com/api/v4/projects/bdelaup%%2Fmodelica_micropython/packages/generic/pulseview/%PV_VERSION%/%PV_FILE%"
 
 set "DEST=%~dp0PulseView"
 set "PART=%~dp0PulseView.part"

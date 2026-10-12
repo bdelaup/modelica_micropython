@@ -3,7 +3,7 @@
 !!! info "Référence interne"
     Cette page décrit le fonctionnement interne. Pour utiliser le composant (câblage, paramètres, exemples) : [Appareils série](../guide/peripheriques/uart.md).
 
-Cette page explique le **fonctionnement interne** des appareils qui se branchent à l'autre bout de la liaison série. Pour la liaison elle-même (format de trame, génération de la forme d'onde, décodage), voir [peripherique-uart.md](uart.md), dont celle-ci est la suite directe. Pour le *pourquoi* des choix, voir la décision « Périphériques UART externes connectables » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython3/-/blob/main/requirements.md).
+Cette page explique le **fonctionnement interne** des appareils qui se branchent à l'autre bout de la liaison série. Pour la liaison elle-même (format de trame, génération de la forme d'onde, décodage), voir [peripherique-uart.md](uart.md), dont celle-ci est la suite directe. Pour le *pourquoi* des choix, voir la décision « Périphériques UART externes connectables » de [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
 
 ## 1. Ce que ça remplace
 

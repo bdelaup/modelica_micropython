@@ -4,17 +4,17 @@
 
 ## Choisir une version
 
-Chaque version de la bibliothèque est un **tag** du dépôt, de la forme `vX.Y.Z` (par exemple `v0.1.0`). La liste des versions est sur la [page des tags](https://gitlab.com/bdelaup/modelica_micropython3/-/tags). Prendre la plus récente, sauf raison contraire.
+Chaque version de la bibliothèque est un **tag** du dépôt, de la forme `vX.Y.Z` (par exemple `v0.1.0`). La liste des versions est sur la [page des tags](https://gitlab.com/bdelaup/modelica_micropython/-/tags). Prendre la plus récente, sauf raison contraire.
 
 ## Télécharger une version
 
-1. Sur la [page des tags](https://gitlab.com/bdelaup/modelica_micropython3/-/tags), cliquer sur le bouton de téléchargement (flèche) de la version voulue, puis sur **zip**. Adresse directe, pour `v0.1.0` :
+1. Sur la [page des tags](https://gitlab.com/bdelaup/modelica_micropython/-/tags), cliquer sur le bouton de téléchargement (flèche) de la version voulue, puis sur **zip**. Adresse directe, pour `v0.1.0` :
 
     ```
-    https://gitlab.com/bdelaup/modelica_micropython3/-/archive/v0.1.0/modelica_micropython3-v0.1.0.zip
+    https://gitlab.com/bdelaup/modelica_micropython/-/archive/v0.1.0/modelica_micropython-v0.1.0.zip
     ```
 
-    Avec git : `git clone --branch v0.1.0 https://gitlab.com/bdelaup/modelica_micropython3.git`
+    Avec git : `git clone --branch v0.1.0 https://gitlab.com/bdelaup/modelica_micropython.git`
 
 2. Décompresser le zip, de préférence hors d'un dossier synchronisé comme OneDrive. Il contient le dossier `MicroPythonMCU`, qui est la bibliothèque proprement dite (il contient `package.mo`).
 
@@ -62,4 +62,4 @@ L'inscription de la bibliothèque à l'index d'OpenModelica est en cours. Une fo
 
 ## Version de développement
 
-Pour essayer l'état courant, entre deux versions : cloner le [dépôt](https://gitlab.com/bdelaup/modelica_micropython3) sans préciser de tag, ou le télécharger (*Code → zip*), puis procéder comme ci-dessus.
+Pour essayer l'état courant, entre deux versions : cloner le [dépôt](https://gitlab.com/bdelaup/modelica_micropython) sans préciser de tag, ou le télécharger (*Code → zip*), puis procéder comme ci-dessus.
