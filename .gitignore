@@ -23,7 +23,9 @@ __pycache__/
 *_external_functions.json
 *_records.c
 *_records.o
-*_JacLSJac*.bin
+# Jacobians de build : OM 1.27 génère *_JacNLSJac*.bin (le pattern couvre aussi
+# l'ancien nommage *_JacLSJac*.bin)
+*_Jac*Jac*.bin
 *_JacA.bin
 *_01exo.c
 *_02nls.c
@@ -49,6 +51,11 @@ __pycache__/
 *_18spd.c
 /MicroPythonMCU/MCU.c
 /MicroPythonMCU/Resources/Verification/*.c
+# Sortie capturée de la simulation de chaque test (system(".\X.bat", "X_run.txt"))
+/MicroPythonMCU/Resources/Verification/*_run.txt
+# Filet de sécurité : C généré par un omc lancé depuis la racine du dépôt —
+# les tests se lancent depuis Resources/Verification/, jamais depuis la racine
+/*.c
 # Fichiers de l'analyseur logique écrits par les simulations (VCD, texte décodé des scénarios)
 *.vcd
 /MicroPythonMCU/Resources/Verification/*.analyzer.txt

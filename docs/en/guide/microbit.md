@@ -57,10 +57,17 @@ it writes pixels that the driver scans. The 5 columns (`P3`, `P4`, `P6`,
 
 ### Buttons A and B
 
-Presses do not come from the keyboard: the `buttonA` and `buttonB` logical
-inputs of the component are wired from the diagram (a `BooleanPulse`, a
-sensor, an expression...). Pressing = pulling the pin (`P5`/`P11`) to
-ground, like a finger on the board.
+Presses do not come from the keyboard. Each button is driven by its **source
+dropdown** (`buttonASource`, `buttonBSource`, tab *Buttons*):
+
+- **Connector** (default): the `buttonA`/`buttonB` logical input is wired
+  from the diagram (a `BooleanPulse`, a sensor, an expression...). Pressing =
+  pulling the pin (`P5`/`P11`) to ground, like a finger on the board.
+- **Table**: internal time table, column 1 = time (s), column 2 = 0
+  (released) or 1 (pressed). Default table for A:
+  `{{0,0},{1,0},{2,1},{3,0},{4,0},{5,1},{6,0}}` — two presses at t=2 s
+  and t=5 s.
+- **Constant**: fixed state (`buttonAPressed`), nothing to wire.
 
 ```python
 if button_a.was_pressed():
@@ -71,12 +78,17 @@ while button_b.is_pressed():
 
 ### On-board sensors
 
-Each sensor has a **constant value** (tab *Sensors*) and, when enabled
-(`useAccelInput`, `useMagInput`, `useTempInput`, `useLightInput`), an
-**input connector** to wire that overrides it - the value can therefore vary
-during the simulation.
+Each sensor is driven by its own **source dropdown** (`accelXSource`...
+`lightSource`, tab *Sensors*): **Constant** (default) for a parameter value,
+**Table** for an internal (time, value) time table, or **Connector** for an
+input wired from the diagram - its **labelled port then appears on the
+matching edge of the icon**, turned towards the board (accelerometer on the
+right edge, compass on the left edge, temperature and light on the top edge),
+so the value can vary during the simulation. The example
+`Examples.MicroBit.SensorInputs` wires **all** the sensors and both buttons
+to `TimeTable`, `Constant` and `BooleanPulse` blocks.
 
-| Sensor | Sensors tab | API |
+| Sensor | Parameters (unit) | API |
 |---|---|---|
 | Accelerometer | `accelX`, `accelY`, `accelZ` (m/s^2, gravity on Z by default) | `accelerometer.get_x()` (milli-g), `get_values()`, gestures `current_gesture()` |
 | Compass | `magX`, `magY`, `magZ` (uT) | `compass.get_x()` (nano-tesla), `heading()` (instant calibration) |
@@ -96,6 +108,15 @@ pin12.set_pull(Pin.PULL_UP)
 Pull resistors as on the board: 10 MOhm to 3V on the P0/P1/P2 rings, 4.7
 kOhm on P19/P20 (I2C bus, `i2c.init()` defaults: `scl=pin19`, `sda=pin20`),
 10 kOhm on the buttons. There is no P17/P18 pin.
+
+### A complete scenario: sources in *Table* mode
+
+To simulate a complete scenario without wiring any external source, set the
+dropdown of each button and sensor to **Table** and fill the time tables
+(column 1 = time (s), column 2 = value in the sensor's unit, or 0/1 for the
+buttons). The example `Examples.MicroBit.Scenario` shows a complete
+scenario driven only by time tables (button presses, shake, temperature and
+light ramps).
 
 ### `uart`
 

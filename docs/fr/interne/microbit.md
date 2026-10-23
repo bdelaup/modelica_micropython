@@ -151,3 +151,80 @@ câblé sur l'UART ou l'implémenter au-dessus, décision en suspens), SPI (chan
 commun à toutes les cartes), logo tactile, micro/haut-parleur de la v2, USB HID.
 Le redémarrage logiciel (`microbit.reset()`) n'est pas simulé (cohérent avec
 l'absence de redémarrage sur perte d'alimentation) : le programme se termine.
+
+## Sources des boutons et capteurs (retravail du paramétrage, 2026-10-23)
+
+Chaque bouton et chaque capteur est piloté par un **menu déroulant de
+source** : l'énumération `InputSource` (déclarée dans `MicroBit_v2`) vaut
+`Constant` (paramètre), `Table` (table horaire interne `CombiTable1Ds` MSL)
+ou `Connector` (entrée câblée dans le schéma). Le composant est
+**régénéré intégralement** par `tools/make_microbit.py` (plus d'édition à la
+main : l'ancienne dérive générateur/modèle est résorbée) :
+
+- **Boutons** : `buttonASource`/`buttonBSource` (défaut `Connector`) +
+  `buttonATable`/`buttonBTable` (`Real[:,2]`, colonne 1 = temps en s,
+  colonne 2 = 0/1, mode Table) + `buttonAPressed`/`buttonBPressed` (état
+  fixe, mode Constant). En mode Table un `CombiTable1Ds` + un
+  `RealToBoolean` internes remplacent le connecteur dans l'équation de
+  câblage de l'interrupteur (`switchA.control`) ; le connecteur
+  `buttonA`/`buttonB` n'existe qu'en mode Connector.
+- **Capteurs** : `<capteur>Source` (défaut `Constant`, ex.
+  `accelXSource`) + valeur `accelX`... + table `<capteur>Table`. Le nœud
+  `internal_<capteur>` reçoit la table, le connecteur ou le bloc constant
+  selon le mode.
+
+Au passage : **bug corrigé** — les blocs constants internes utilisaient la
+valeur par défaut en dur (`const_temp(k = 27)`) au lieu du paramètre
+(`const_temp(k = temp)`), qui était donc ignoré. **Second bug corrigé** : les
+connecteurs `accelXIn`... étaient en section `protected`, donc impossibles à
+câbler depuis un modèle contenant (« Illegal access of protected element ») ;
+ils passent en section publique et, quand leur source vaut `Connector`,
+**apparaissent au bord correspondant de l'icône**, tournés vers la carte,
+avec une étiquette au-dessus de chacun (accéléromètre sur le bord droit,
+boussole sur le bord gauche, température et lumière sur le bord haut ;
+avant : `visible = false`,
+aucune entrée n'était câblable — c'était le paramétrage « connecteur » qui ne
+montrait rien à l'écran).
+
+**Icône (retravail du même jour)** : la puce nRF couvrait la rangée basse de
+la matrice LED et les textes étaient tronqués (« m… », « nRF… ») — la matrice
+est resserrée et remontée (pas u(3,9)), la puce abaissée (`chip_cy = -u(10,7)`)
+avec sa référence sur deux lignes (`nRF` / `52833`), le texte `micro:bit`
+élargi (±95, fs 24) et le nom d'instance déplacé sous la carte (le bord
+supérieur accueille les ports capteurs).
+
+**API casse** (lot 7 initial, remplacé par ce design) : les paramètres
+`useXxxTable`/`useXxxInput` (booléens) et `buttonTableA`/`buttonTableB`
+disparaissent au profit des `<nom>Source` + `<nom>Table`. Migration :
+`useTempTable = true` → `tempSource = InputSource.Table` (qualifier en
+`MicroPythonMCU.MicroBit_v2.InputSource.Table` hors du composant).
+
+Les tables par défaut (paramètres `<nom>Table`) sont pédagogiques : bouton A
+pressé à t=2 s et t=5 s, bouton B à t=3 s, secousse accelX à t=1 s, rampe de
+température 27→35 °C sur 10 s, rampe de lumière 200→50 sur 5 s.
+
+**Exemples** : `Examples.MicroBit.Scenario` (script
+`Resources/Scripts/MCU/microbit_scenario.py`) — scénario complet piloté
+uniquement par les sources en mode Table ; `Examples.MicroBit.SensorInputs` —
+même script, mais **toutes** les entrées câblées depuis le schéma : chaque
+famille de sources fait face à ses ports, **sorties tournées vers la carte**
+(boussole colonne à gauche, accéléromètre colonne à droite en miroir,
+température et lumière empilées au-dessus pivotées vers le bas, boutons en
+face de leur connecteur — fils rectilignes ; blocs espacés de 15 unités),
+`TimeTable` pour la secousse et les rampes, `Constant` pour
+les niveaux fixes. Schéma vérifié par script : aucun chevauchement de
+composants, aucun croisement ni superposition de fils, aucun fil sur la
+carte dessinée, et chaque fil démarre exactement sur la sortie réelle de son
+bloc (contrôle géométrique sur les boîtes et segments) ; ports
+confirmés par le serveur MCP d'OMEdit (`getComponentPlacement`,
+`listShapes`, `checkModel`).
+
+**Vérification** : `verify_77_microbit_tables.mos` (script
+`Resources/Verification/microbit_tables.py`) — modèle inline `MicroBitTables`
+héritant de `MicroBit_v2` avec des tables de test contrôlées (appuis à
+t=0,2/0,5 s, secousse à t=0,1 s, rampe température 20→30 °C, rampe lumière
+200→50). Vérifie les marqueurs du script Python. `Examples.MicroBit.SensorInputs`
+vérifié par simulation (omc) : les entrées câblées pilotent bien les capteurs
+(accéléromètre à 5 m/s² à t=1 s, température 27→35 °C, lumière 200→50 puis
+maintenue — la `TimeTable` MSL extrapole linéairement, d'où le point final de
+maintien dans l'exemple).

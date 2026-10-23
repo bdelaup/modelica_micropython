@@ -4,8 +4,9 @@
 # lateraux, USB en haut a gauche, matrice LED 5x5 animee sur les courants
 # reels, nRF52833 sous la matrice), schema interne lisible (coeur
 # Internal.McuCore, matrice de 25 Peripherals.LED multiplexee sur 10 GPIO,
-# boutons A/B cableables, tirages edge, capteurs integres parametre ou
-# connecteur, alimentation USB -> RT6150 -> rail 3,0 V). A relancer apres toute
+# boutons A/B, tirages edge, capteurs integres et boutons pilotes chacun par
+# un menu deroulant InputSource (constante / table horaire / connecteur),
+# alimentation USB -> RT6150 -> rail 3,0 V). A relancer apres toute
 # modification ici ; ne pas editer MicroBit_v2.mo a la main.
 #
 #   python tools/make_microbit.py
@@ -27,8 +28,8 @@ DOC = '''<html>
 <p>Like the real board: 25 LEDs on <b>10 GPIO</b> (5 rows, 5 columns), scanned at 60 Hz row by row by the display driver - a LED is on while its row is high and its column low, for a fraction of the row slot set by the pixel brightness (0-9). The 5 <b>columns</b> (<code>P3</code>, <code>P4</code>, <code>P6</code>, <code>P7</code>, <code>P10</code>) are shared with the edge connector: while the display is on they belong to the driver, and <code>display.off()</code> releases them. The 25 LED currents are computed by the solver: the dots of the icon light up accordingly during the animated replay of a result.</p>
 <h4>Buttons and sensors</h4>
 <ul>
-<li><code>buttonA</code>/<code>buttonB</code> (blue inputs on the left and right edges of the icon): logical inputs to wire (boolean signal or source); pressed = pin pulled to GND through the button, 10 kOhm pull-up otherwise - like the real board (<code>button_a.is_pressed()</code>, <code>was_pressed()</code>, <code>get_presses()</code>).</li>
-<li>Integrated sensors: each has a <b>constant parameter</b> and, if enabled (<code>useAccelInput</code>... <code>useLightInput</code>), a <b>connector</b> that overrides it - accelerometer (m/s^2, default gravity on Z), compass (uT), temperature (degC, read by <code>temperature()</code>), light level (0-255, read by <code>display.read_light_level()</code>).</li>
+<li><code>buttonA</code>/<code>buttonB</code>: each button is driven by a <b>source dropdown</b> (<code>buttonASource</code>, <code>buttonBSource</code>). <b>Connector</b> (default): logical input to wire (boolean signal or source; blue pin on the icon edge); pressed = pin pulled to GND through the button, 10 kOhm pull-up otherwise - like the real board (<code>button_a.is_pressed()</code>, <code>was_pressed()</code>, <code>get_presses()</code>). <b>Table</b>: (time, 0 released / 1 pressed) time table. <b>Constant</b>: fixed state (<code>buttonAPressed</code>).</li>
+<li>Integrated sensors: each is driven by its own <b>source dropdown</b> (<code>accelXSource</code>... <code>lightSource</code>) - <b>Constant</b> (default): parameter value; <b>Table</b>: (time, value) time table; <b>Connector</b>: input to wire from the diagram - its labelled port then appears on the edge of the icon (accelerometer on the right edge, compass on the left edge, temperature and light on the top edge). Accelerometer (m/s^2, default gravity on Z), compass (uT), temperature (degC, read by <code>temperature()</code>), light level (0-255, read by <code>display.read_light_level()</code>).</li>
 </ul>
 <h4>Power supply</h4>
 <p><code>usbConnected</code> (true by default): the USB cable supplies 5 V to the buck-boost regulator, which makes the <b>3.0 V rail</b> (<code>3V</code> pin, sensor reference). The nRF52833 draws <code>ICore</code>; the program starts the first time the rail rises above <code>VPowerOn</code> and stops for good if it falls below <code>VPowerOff</code> (no restart simulated).</p>
@@ -84,16 +85,24 @@ PAD_Y = -HALF_L + u(2.1)                    # centre des pads (broches icone)
 PAD_BOT, PAD_TOP = -HALF_L + u(0.4), -HALF_L + u(4)   # bas/haut de la bande de pads
 
 # ---------------------------------------------------------------- capteurs
-# (nom, unite affichee, valeur par defaut, formule v = vRail * f(valeur))
+# (nom, unite affichee, valeur par defaut, formule v = vRail * f(valeur),
+#  description, groupe du dialogue, table horaire par defaut)
 SENSORS = [
-    ('accelX', 'm/s2', '0', '(0.5 + v/39.24)', 'X axis of the accelerometer'),
-    ('accelY', 'm/s2', '0', '(0.5 + v/39.24)', 'Y axis of the accelerometer'),
-    ('accelZ', 'm/s2', '-9.81', '(0.5 + v/39.24)', 'Z axis of the accelerometer (default: gravity, board lying display up)'),
-    ('magX', 'uT', '0', '(0.5 + v/400)', 'X axis of the magnetometer/compass'),
-    ('magY', 'uT', '50', '(0.5 + v/400)', 'Y axis of the magnetometer/compass (default: field pointing along +Y)'),
-    ('magZ', 'uT', '0', '(0.5 + v/400)', 'Z axis of the magnetometer/compass'),
-    ('temp', 'degC', '27', '((v + 20)/100)', 'Temperature read by microbit.temperature()'),
-    ('light', '1', '100', '(v/255)', 'Light level 0-255 read by display.read_light_level()'),
+    ('accelX', 'm/s2', '0', '(0.5 + v/39.24)', 'X axis of the accelerometer', 'Accelerometer', '{{0, 0}, {0.5, 0}, {1, 5}, {1.5, 0}, {5, 0}}'),
+    ('accelY', 'm/s2', '0', '(0.5 + v/39.24)', 'Y axis of the accelerometer', 'Accelerometer', '{{0, 0}}'),
+    ('accelZ', 'm/s2', '-9.81', '(0.5 + v/39.24)', 'Z axis of the accelerometer (default: gravity, board lying display up)', 'Accelerometer', '{{0, -9.81}}'),
+    ('magX', 'uT', '0', '(0.5 + v/400)', 'X axis of the magnetometer/compass', 'Magnetometer/compass', '{{0, 0}}'),
+    ('magY', 'uT', '50', '(0.5 + v/400)', 'Y axis of the magnetometer/compass (default: field pointing along +Y)', 'Magnetometer/compass', '{{0, 50}}'),
+    ('magZ', 'uT', '0', '(0.5 + v/400)', 'Z axis of the magnetometer/compass', 'Magnetometer/compass', '{{0, 0}}'),
+    ('temp', 'degC', '27', '((v + 20)/100)', 'Temperature read by microbit.temperature()', 'Temperature', '{{0, 27}, {10, 35}}'),
+    ('light', '1', '100', '(v/255)', 'Light level 0-255 read by display.read_light_level()', 'Light', '{{0, 200}, {5, 50}}'),
+]
+
+# ---------------------------------------------------------------- boutons
+# (nom du bouton, broche, table horaire par defaut)
+BUTTONS = [
+    ('buttonA', 'P5', '{{0, 0}, {1, 0}, {2, 1}, {3, 0}, {4, 0}, {5, 1}, {6, 0}}'),
+    ('buttonB', 'P11', '{{0, 0}, {2.5, 0}, {3, 1}, {4, 0}}'),
 ]
 
 # ---------------------------------------------------------------- points du schema
@@ -183,7 +192,7 @@ place('pullRing1', (-230, 120), 90)
 place('pullRing2', (-230, 80), 90)
 # Capteurs : SignalVoltage en colonne a droite du coeur
 SENS_X = 260
-for k, (name, _u, _d, _f, _doc) in enumerate(SENSORS):
+for k, (name, _u, _d, _f, _doc, _g, _t) in enumerate(SENSORS):
     place('sensor_%s' % name, (SENS_X, -60 - 40 * k), 0)
 # Alimentation : USB -> regulateur -> rail
 place('usbSupply', (200, 240), 270)
@@ -218,7 +227,6 @@ for btn, pin, sw in (('buttonA', 'P5', 'A'), ('buttonB', 'P11', 'B')):
     sb, snsw = comp['switch%s' % sw]
     wires.append(wire('P_3V', 'pullBtn%s.p' % sw, '{{%g, %g}, {%g, %g}, {%g, %g}}' % (D['P_3V'][0], D['P_3V'][1], pb[0], D['P_3V'][1], pb[0], pb[1]), RAIL_COLOR))
     wires.append(wire('pullBtn%s.n' % sw, pin, '{{%g, %g}, {%g, %g}, {%g, %g}}' % (pb[0], pb[1], D[pin][0], pb[1], D[pin][0], D[pin][1])))
-    wires.append(wire('button%s' % sw, 'switch%s.control' % sw, '{{%g, %g}, {%g, %g}, {%g, %g}}' % (D['button%s' % sw][0], D['button%s' % sw][1], sb[0], D['button%s' % sw][1], sb[0], sb[1] + 20), '{150, 0, 200}'))
     wires.append(wire('switch%s.p' % sw, pin, '{{%g, %g}, {%g, %g}, {%g, %g}}' % (sb[0], sb[1], D[pin][0], sb[1], D[pin][0], D[pin][1])))
     wires.append(wire('switch%s.n' % sw, 'core.gnd', '{{%g, %g}, {%g, %g}, {%g, %g}}' % (snsw[0], snsw[1], snsw[0], GND_RAIL, CORE['gnd'][0], GND_RAIL)))
 # Tirages I2C (P19/P20) et anneaux (P0/P1/P2)
@@ -231,7 +239,7 @@ for res, pin in (('pullRing0', 'P0'), ('pullRing1', 'P1'), ('pullRing2', 'P2')):
     wires.append(wire('P_3V', '%s.p' % res, '{{%g, %g}, {%g, %g}, {%g, %g}}' % (D['P_3V'][0], D['P_3V'][1], pp[0], D['P_3V'][1], pp[0], pp[1]), RAIL_COLOR))
     wires.append(wire('%s.n' % res, pin, '{{%g, %g}, {%g, %g}, {%g, %g}}' % (pn[0], pn[1], D[pin][0], pn[1], D[pin][0], D[pin][1])))
 # Capteurs : sortie SignalVoltage -> pseudo-broche, masse -> gnd
-for k, (name, _u, _d, _f, _doc) in enumerate(SENSORS):
+for k, (name, _u, _d, _f, _doc, _g, _t) in enumerate(SENSORS):
     sp2, sn2 = comp['sensor_%s' % name]
     wires.append(wire('sensor_%s.p' % name, 'core.pin[%d]' % SENS_PIN[k],
                       '{{%g, %g}, {%g, %g}, {%g, %g}}' % (sp2[0], sp2[1], -200 + 30 * k, sp2[1], CORE['pin'][0], CORE['pin'][1]), '{0, 150, 0}'))
@@ -246,13 +254,21 @@ for n in EDGE:
                  % (n, n[1:], n[1:], analog, x, y, edge_x(ICX[n]), PAD_Y))
 conns.append('  Modelica.Electrical.Analog.Interfaces.PositivePin P_3V "3V supply of the edge connector: output of the on-board regulator (3.0 V rail)" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-4, -4}, {4, 4}})));' % (D['P_3V'][0], D['P_3V'][1], edge_x(ICX['P_3V']), PAD_Y))
 conns.append('  Modelica.Electrical.Analog.Interfaces.NegativePin GND if useGroundPin "Common reference (ground) - shown when useGroundPin is checked, otherwise the board is referenced to the simulation ground (0 V)" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-4, -4}, {4, 4}})));' % (D['GND'][0], D['GND'][1], edge_x(ICX['GND']), PAD_Y))
-conns.append('  Modelica.Blocks.Interfaces.BooleanInput buttonA "Button A (P5): true while pressed - wire a boolean signal or source; pressed = pin to GND, 10 kOhm pull-up otherwise" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}})));' % (D['buttonA'][0], D['buttonA'][1], -HALF_W - 12, 0))
-conns.append('  Modelica.Blocks.Interfaces.BooleanInput buttonB "Button B (P11): true while pressed - same as buttonA" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}}, rotation = 180)));' % (D['buttonB'][0], D['buttonB'][1], HALF_W + 12, 0))
+conns.append('  Modelica.Blocks.Interfaces.BooleanInput buttonA if buttonASource == InputSource.Connector "Button A (P5): true while pressed - wire a boolean signal or source; pressed = pin to GND, 10 kOhm pull-up otherwise" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}})));' % (D['buttonA'][0], D['buttonA'][1], -HALF_W - 12, 0))
+conns.append('  Modelica.Blocks.Interfaces.BooleanInput buttonB if buttonBSource == InputSource.Connector "Button B (P11): true while pressed - same as buttonA" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}}, rotation = 180)));' % (D['buttonB'][0], D['buttonB'][1], HALF_W + 12, 0))
 
 sensor_params = []
-for name, unit, default, formula, doc in SENSORS:
-    sensor_params.append('  parameter Real %s = %s "%s (default value when no connector is wired)" annotation(\n    Dialog(tab = "Sensors", group = "Values"));' % (name, default, doc))
-    sensor_params.append('  parameter Boolean use%sInput = false "Wire a %sIn connector to drive %s from the diagram" annotation(\n    Dialog(tab = "Sensors", group = "Connectors"),\n    choices(checkBox = true));' % (name[0].upper() + name[1:], name, name))
+for name, unit, default, formula, doc, group, tbl in SENSORS:
+    sensor_params.append('  parameter InputSource %sSource = InputSource.Constant "How %s is driven: constant parameter, time table, or connector wired from the diagram" annotation(\n    Dialog(tab = "Sensors", group = "%s"));' % (name, name, group))
+    sensor_params.append('  parameter Real %s = %s "%s, constant value (%s)" annotation(\n    Dialog(tab = "Sensors", group = "%s", enable = %sSource == InputSource.Constant));' % (name, default, doc, unit, group, name))
+    sensor_params.append('  parameter Real %sTable[:, 2] = %s "Time table of %s (column 1 = time in s, column 2 = value in %s)" annotation(\n    Dialog(tab = "Sensors", group = "%s", enable = %sSource == InputSource.Table));' % (name, tbl, name, unit, group, name))
+
+button_params = []
+for btn, pin, tbl in BUTTONS:
+    sw = btn[-1]
+    button_params.append('  parameter InputSource %sSource = InputSource.Connector "How button %s is driven: connector wired from the diagram, time table, or constant state" annotation(\n    Dialog(tab = "Buttons", group = "Button %s"));' % (btn, sw, sw))
+    button_params.append('  parameter Boolean %sPressed = false "State of button %s in constant mode (true = pressed)" annotation(\n    Dialog(tab = "Buttons", group = "Button %s", enable = %sSource == InputSource.Constant),\n    choices(checkBox = true));' % (btn, sw, sw, btn))
+    button_params.append('  parameter Real %sTable[:, 2] = %s "Time table of button %s (column 1 = time in s, column 2 = 0 released / 1 pressed)" annotation(\n    Dialog(tab = "Buttons", group = "Button %s", enable = %sSource == InputSource.Table));' % (btn, tbl, sw, sw, btn))
 
 
 def comp_decl(cls, name, mods, doc, extra=''):
@@ -275,17 +291,35 @@ decls.append(comp_decl('Modelica.Electrical.Analog.Basic.Resistor', 'pullI2cScl'
 decls.append(comp_decl('Modelica.Electrical.Analog.Basic.Resistor', 'pullI2cSda', '(R = 4700)', 'External 4.7 kOhm pull-up of P20 (I2C SDA)'))
 for ring, pin in (('0', 'P0'), ('1', 'P1'), ('2', 'P2')):
     decls.append(comp_decl('Modelica.Electrical.Analog.Basic.Resistor', 'pullRing%s' % ring, '(R = 10e6)', 'External 10 MOhm pull-up of %s (touch ring)' % pin))
-for name, unit, default, formula, doc in SENSORS:
+for name, unit, default, formula, doc, group, tbl in SENSORS:
     decls.append(comp_decl('Modelica.Electrical.Analog.Sources.SignalVoltage', 'sensor_%s' % name, '', 'Integrated sensor %s, as seen by the ADC' % doc))
-    decls.append('  Modelica.Blocks.Sources.Constant const_%s(k = %s) if not use%sInput "Constant value of the sensor when no connector is wired" annotation(\n    Placement(visible = false));' % (name, default, name[0].upper() + name[1:]))
-    decls.append('  Modelica.Blocks.Interfaces.RealInput internal_%s "%s internal node" annotation(\n    Placement(visible = false));' % (name, name))
+    decls.append('  Modelica.Blocks.Sources.Constant const_%s(k = %s) if %sSource == InputSource.Constant "Constant value of the sensor in constant mode" annotation(\n    Placement(visible = false));' % (name, name, name))
+    decls.append('  Modelica.Blocks.Tables.CombiTable1Ds table_%s(table = %sTable, extrapolation = Modelica.Blocks.Types.Extrapolation.HoldLastPoint) if %sSource == InputSource.Table "Time table of %s" annotation(\n    Placement(visible = false));' % (name, name, name, name))
+    decls.append('  Real internal_%s "%s internal node";' % (name, name))
+
+for btn, pin, tbl in BUTTONS:
+    sw = btn[-1]
+    decls.append('  Modelica.Blocks.Sources.BooleanConstant constButton%s(k = %sPressed) if %sSource == InputSource.Constant "Constant state of button %s in constant mode" annotation(\n    Placement(visible = false));' % (sw, btn, btn, sw))
+    decls.append('  Modelica.Blocks.Tables.CombiTable1Ds tableButton%s(table = %sTable, extrapolation = Modelica.Blocks.Types.Extrapolation.HoldLastPoint) if %sSource == InputSource.Table "Time table of button %s presses" annotation(\n    Placement(visible = false));' % (sw, btn, btn, sw))
+    decls.append('  Modelica.Blocks.Math.RealToBoolean convButton%s(threshold = 0.5) if %sSource == InputSource.Table "Convert the button %s table output to boolean" annotation(\n    Placement(visible = false));' % (sw, btn, sw))
+decls.append('  Modelica.Blocks.Sources.RealExpression timeSource(y = time) "Source of simulation time for the tables" annotation(\n    Placement(visible = false));')
 
 sensor_eqs = []
-for k, (name, unit, default, formula, doc) in enumerate(SENSORS):
-    cap = name[0].upper() + name[1:]
-    sensor_eqs.append('  if use%sInput then\n    connect(%sIn, internal_%s);\n  else\n    connect(const_%s.y, internal_%s);\n  end if;' % (cap, name, name, name, name))
-    # MSL 4 : RealInput est un alias de input Real - le connecteur EST la valeur
+for name, unit, default, formula, doc, group, tbl in SENSORS:
+    sensor_eqs.append('  if %sSource == InputSource.Table then\n    connect(timeSource.y, table_%s.u);\n  end if;' % (name, name))
+    sensor_eqs.append('  if %sSource == InputSource.Table then\n    internal_%s = table_%s.y[1];\n  elseif %sSource == InputSource.Connector then\n    internal_%s = %sIn;\n  else\n    internal_%s = const_%s.y;\n  end if;' % ((name,) * 8))
     sensor_eqs.append('  sensor_%s.v = vRail*%s;' % (name, formula.replace('v', 'internal_%s' % name)))
+
+# Commande des interrupteurs de boutons selon le mode (le fil du connecteur
+# garde son trace ; les autres modes passent par des composants invisibles)
+button_eqs = []
+for btn, pin, tbl in BUTTONS:
+    sw = btn[-1]
+    sb, _ = comp['switch%s' % sw]
+    btn_pts = '{{%g, %g}, {%g, %g}, {%g, %g}}' % (D[btn][0], D[btn][1], sb[0], D[btn][1], sb[0], sb[1] + 20)
+    button_eqs.append('  if %(b)sSource == InputSource.Connector then\n    connect(%(b)s, switch%(s)s.control) annotation(\n    Line(points = %(pts)s, color = {150, 0, 200}));\n  elseif %(b)sSource == InputSource.Table then\n    connect(convButton%(s)s.y, switch%(s)s.control);\n  else\n    connect(constButton%(s)s.y, switch%(s)s.control);\n  end if;' % dict(b=btn, s=sw, pts=btn_pts))
+    button_eqs.append('  if %sSource == InputSource.Table then\n    connect(timeSource.y, tableButton%s.u);\n    convButton%s.u = tableButton%s.y[1];\n  end if;' % ((btn,) + (sw,) * 3))
+
 
 # ---------------------------------------------------------------- icone
 icon = []
@@ -320,7 +354,7 @@ by0 = HALF_L - u(1.8)
 icon.append('Polygon(visible = usbConnected, lineColor = {200, 140, 0}, fillColor = {255, 210, 0}, fillPattern = FillPattern.Solid, points = {%s})' % ', '.join('{%g, %g}' % (usb_cx + x, by0 + y) for x, y in bolt))
 # Matrice LED 5x5 (centree, entre les boutons) : pastille noire et LED rouge,
 # points allumes par le courant reel
-MX0, MY0, MST = -u(8.4), u(9.4), u(4.2)
+MX0, MY0, MST = -u(7.8), u(10.4), u(3.9)
 for x in range(5):
     for y in range(5):
         cx, cy, r = MX0 + x * MST, MY0 - y * MST, u(1.3)
@@ -336,15 +370,17 @@ for sx, lbl in ((-1, 'A'), (1, 'B')):
     icon.append('Ellipse(lineColor = {255, 255, 255}, fillColor = {255, 255, 255}, fillPattern = FillPattern.Solid, extent = {{%g, %g}, {%g, %g}})' % (cx - btn_r - u(0.5), BTN_Y + btn_r + u(0.5), cx + btn_r + u(0.5), BTN_Y - btn_r - u(0.5)))
     icon.append('Ellipse(lineColor = {30, 30, 30}, fillColor = {180, 180, 180}, fillPattern = FillPattern.Solid, extent = {{%g, %g}, {%g, %g}})' % (cx - btn_r, BTN_Y + btn_r, cx + btn_r, BTN_Y - btn_r))
     icon.append('Text(textColor = {0, 0, 0}, extent = {{%g, %g}, {%g, %g}}, textString = "%s", fontSize = 18)' % (cx - 10, BTN_Y + 10, cx + 10, BTN_Y - 10, lbl))
-# nRF52833 (au centre sous la matrice) et bouton reset (en haut a droite)
+# nRF52833 (sous la matrice, assez bas pour ne couvrir aucune LED) et bouton
+# reset (en haut a droite) ; reference en deux lignes, lisible dans la puce
 chip_h = u(7) / 2
-chip_cy = -u(10.5)
+chip_cy = -u(10.7)
 icon.append('Rectangle(lineColor = {20, 20, 20}, fillColor = {40, 40, 40}, fillPattern = FillPattern.Solid, extent = {{%g, %g}, {%g, %g}})' % (-chip_h, chip_cy + chip_h, chip_h, chip_cy - chip_h))
-icon.append('Text(textColor = {220, 220, 220}, extent = {{%g, %g}, {%g, %g}}, textString = "nRF52833")' % (-chip_h + 4, chip_cy + 8, chip_h - 4, chip_cy - 8))
+icon.append('Text(textColor = {220, 220, 220}, extent = {{%g, %g}, {%g, %g}}, textString = "nRF", fontSize = 11)' % (-chip_h + 4, chip_cy + chip_h - 4, chip_h - 4, chip_cy + 3))
+icon.append('Text(textColor = {220, 220, 220}, extent = {{%g, %g}, {%g, %g}}, textString = "52833", fontSize = 9)' % (-chip_h + 4, chip_cy - 3, chip_h - 4, chip_cy - chip_h + 4))
 icon.append('Ellipse(lineColor = {60, 60, 60}, fillColor = {200, 200, 200}, fillPattern = FillPattern.Solid, extent = {{%g, %g}, {%g, %g}})' % (u(19) - u(1.2), HALF_L - u(2.5) + u(1.2), u(19) + u(1.2), HALF_L - u(2.5) - u(1.2)))
-icon.append('Text(textColor = {230, 190, 60}, extent = {{-40, %g}, {40, %g}}, textString = "micro:bit", fontSize = 22, textStyle = {TextStyle.Bold})' % (HALF_L - 30, HALF_L - 56))
+icon.append('Text(textColor = {230, 190, 60}, extent = {{-95, %g}, {95, %g}}, textString = "micro:bit", fontSize = 24, textStyle = {TextStyle.Bold})' % (HALF_L - 28, HALF_L - 54))
 icon.append('Text(textColor = {28, 108, 200}, extent = {{-30, %g}, {30, %g}}, textString = "v2")' % (HALF_L - 58, HALF_L - 72))
-icon.append('Text(textColor = {0, 0, 255}, extent = {{-150, %g}, {150, %g}}, textString = "%%name")' % (HALF_L + 22, HALF_L + 4))
+icon.append('Text(textColor = {0, 0, 255}, extent = {{-150, %g}, {150, %g}}, textString = "%%name")' % (-HALF_L - 4, -HALF_L - 22))
 
 # ---------------------------------------------------------------- zones du schema
 ZONES = [
@@ -376,6 +412,10 @@ src = '''within MicroPythonMCU;
 
 model MicroBit_v2 "BBC micro:bit v2 board: nRF52833 programmable in MicroPython, real pinout and dimensions, multiplexed 5x5 LED matrix, buttons A/B, integrated sensors and USB power supply"
   extends Internal.PartialMcuSettings;
+  type InputSource = enumeration(
+    Constant "Constant parameter value",
+    Table "Time table (column 1 = time in s, column 2 = value)",
+    Connector "Connector wired from the diagram") "Source of each button and integrated sensor value";
   parameter Boolean usbConnected = true "USB cable plugged in: 5 V through the regulator (the board runs without any wiring) - false to supply the board through the 3V pin" annotation(
     Dialog(tab = "Power supply", group = "USB"),
     choices(checkBox = true));
@@ -394,10 +434,12 @@ model MicroBit_v2 "BBC micro:bit v2 board: nRF52833 programmable in MicroPython,
   parameter Modelica.Units.SI.Voltage VPowerOff = 1.6 "3V rail voltage below which a running board stops for good (brown-out)" annotation(
     Dialog(tab = "Power supply", group = "Power-on"));
   parameter Boolean useGroundPin = true "Show the GND pin - unchecked: the board is referenced to the simulation ground (0 V), nothing to wire" annotation(
-    Dialog(tab = "Electrical", group = "Supply"),
+    Dialog(tab = "Pins", group = "Supply"),
     choices(checkBox = true));
 %(sensor_params)s
+%(button_params)s
 %(conns)s
+%(sensor_inputs_decl)s
   Internal.McuCore core(%(core_mods)s) "The nRF52833: pin[1..19] = P0-P16, P19, P20 (edge), pin[20..24] = matrix rows ROW1-ROW5 (internal), pin[25..32] = accelerometer X/Y/Z, compass X/Y/Z, temperature, light (internal)" annotation(
     Placement(transformation(origin = {%(cx)g, %(cy)g}, extent = {{-70, -70}, {70, 70}})));
   Internal.Rt6150 regulator(VOut = VTgt, eta = eta) "Buck-boost regulator USB -> 3V rail (RT6150)" annotation(
@@ -410,10 +452,10 @@ model MicroBit_v2 "BBC micro:bit v2 board: nRF52833 programmable in MicroPython,
 %(public_decls)s
 protected
   final parameter String boardName = getInstanceName() "Instance name of the board, given to the core (log prefix, name of the copy of the flash)";
-%(sensor_inputs_decl)s
 %(decls)s
 equation
 %(wires)s
+%(button_eqs)s
 %(sensor_eqs)s
   annotation(
     Icon(coordinateSystem(preserveAspectRatio = true, extent = {{-230, -210}, {230, 210}}, initialScale = 0.2), graphics = {%(graphics)s}),
@@ -422,21 +464,38 @@ equation
 end MicroBit_v2;
 '''
 
-# Les entrees logiques de capteurs : bloquees en protected, placees hors schema
+# Les entrees logiques de capteurs : publiques (cablables depuis le modele
+# contenant), affichees sur l'icone seulement quand leur source vaut Connector
+# (accelerometre sur le bord droit, magnetometre sur le bord gauche,
+# temperature et lumiere sur le bord haut), tournees vers le centre de la
+# carte, avec une etiquette au-dessus de chaque port ; placees hors schema
+# dans le diagramme interne
+SENSOR_PORT = {
+    'accelX': (HALF_W + 8, 125, 180),
+    'accelY': (HALF_W + 8, 90, 180),
+    'accelZ': (HALF_W + 8, 55, 180),
+    'magX': (-HALF_W - 8, 125, 0),
+    'magY': (-HALF_W - 8, 90, 0),
+    'magZ': (-HALF_W - 8, 55, 0),
+    'temp': (-35, HALF_L + 14, 270),
+    'light': (35, HALF_L + 14, 270),
+}
 sensor_inputs_decl = []
-for k, (name, unit, default, formula, doc) in enumerate(SENSORS):
-    cap = name[0].upper() + name[1:]
+for k, (name, unit, default, formula, doc, group, tbl) in enumerate(SENSORS):
+    px, py, rot = SENSOR_PORT[name]
     u_mod = '(unit = "%s")' % unit if unit != '1' else ''
-    sensor_inputs_decl.append('  Modelica.Blocks.Interfaces.RealInput %sIn%s if use%sInput "%s from the diagram (overrides the parameter)" annotation('
-                              '\n    Placement(transformation(origin = {330, %d}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {0, 0}, extent = {{-5, -5}, {5, 5}}, visible = false)));'
-                              % (name, u_mod, cap, doc, -60 - 40 * k))
+    rot_s = ', rotation = %d' % rot if rot else ''
+    sensor_inputs_decl.append('  Modelica.Blocks.Interfaces.RealInput %sIn%s if %sSource == InputSource.Connector "%s from the diagram" annotation('
+                              '\n    Placement(transformation(origin = {330, %d}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-10, -10}, {10, 10}}%s)));'
+                              % (name, u_mod, name, doc, -60 - 40 * k, px, py, rot_s))
+    icon.append('Text(textColor = {70, 70, 70}, extent = {{%g, %g}, {%g, %g}}, textString = "%s", fontSize = 8)' % (px - 17, py + 21, px + 17, py + 11.5, name))
 
-src = src % dict(sensor_params='\n'.join(sensor_params), conns='\n'.join(conns), core_mods=core_mods,
+src = src % dict(sensor_params='\n'.join(sensor_params), button_params='\n'.join(button_params), conns='\n'.join(conns), core_mods=core_mods,
                  cx=CORE_O[0], cy=CORE_O[1], rx=P['regulator'][0][0], ry=P['regulator'][0][1],
                  ux=P['usbSupply'][0][0], uy=P['usbSupply'][0][1], wx=P['usbCable'][0][0], wy=P['usbCable'][0][1],
                  public_decls='\n'.join(public_decls),
                  sensor_inputs_decl='\n'.join(sensor_inputs_decl), decls='\n'.join(decls),
-                 wires='\n'.join(wires), sensor_eqs='\n'.join(sensor_eqs),
+                 wires='\n'.join(wires), button_eqs='\n'.join(button_eqs), sensor_eqs='\n'.join(sensor_eqs),
                  graphics=', '.join(icon), zones=', '.join(zone_g), doc=doc)
 open(os.path.join(ROOT, 'MicroBit_v2.mo'), 'w', encoding='utf-8').write(src)
 print('ok', len(src))

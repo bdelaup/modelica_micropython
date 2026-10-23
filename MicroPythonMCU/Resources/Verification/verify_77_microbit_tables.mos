@@ -1,0 +1,57 @@
+// Scenario de verification n°77 : tables horaires boutons/capteurs (Lot 7).
+// omc verify_77_microbit_tables.mos
+//
+// MicroBit_v2 avec les sources Table du menu deroulant InputSource :
+// - Bouton A : appuis vers t=0,175 s et t=0,475 s (rampe 0->1 de la table,
+//   seuil du RealToBoolean franchi a mi-rampe)
+// - Bouton B : appui vers t=0,275 s
+// - accelX : secousse vers t=0,1 s, pic a 5 m/s^2 (~510 mg lu par le script)
+// - temperature : rampe 20 -> 30 degC sur 1 s
+// - light : rampe 200 -> 50 sur 0,5 s
+// Le programme (Verification/microbit_tables.py) verifie chaque evenement
+// et imprime des marqueurs lus par le script .mos.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+loadString("model MicroBitTables
+  extends MicroPythonMCU.MicroBit_v2(
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/microbit_tables.py\"),
+    buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Table,
+    buttonATable = {{0, 0}, {0.15, 0}, {0.2, 1}, {0.25, 0}, {0.45, 0}, {0.5, 1}, {0.55, 0}},
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Table,
+    buttonBTable = {{0, 0}, {0.25, 0}, {0.3, 1}, {0.35, 0}},
+    accelXSource = MicroPythonMCU.MicroBit_v2.InputSource.Table,
+    accelXTable = {{0, 0}, {0.05, 0}, {0.1, 5}, {0.15, 0}},
+    tempSource = MicroPythonMCU.MicroBit_v2.InputSource.Table,
+    tempTable = {{0, 20}, {1.0, 30}},
+    lightSource = MicroPythonMCU.MicroBit_v2.InputSource.Table,
+    lightTable = {{0, 200}, {0.5, 50}});
+  Modelica.Electrical.Analog.Basic.Ground ground;
+equation
+  connect(GND, ground.p);
+end MicroBitTables;"); getErrorString();
+
+buildModel(MicroBitTables, stopTime = 1.5, numberOfIntervals = 150, fileNamePrefix = "MicroBitTables");
+b := getErrorString();
+ret := system(".\\MicroBitTables.bat", "MicroBitTables_run.txt");
+log := readFile("MicroBitTables_run.txt");
+
+// Marqueurs du script Python
+(n1, m) := regex(log, "PRESS_A 1", 1);
+(n2, m) := regex(log, "PRESS_A 2", 1);
+(n3, m) := regex(log, "PRESS_B 1", 1);
+(n4, m) := regex(log, "SHAKE ax=", 1);
+(n5, m) := regex(log, "COUNTS a=2 b=1", 1);
+(n6, m) := regex(log, "SHAKE_DONE True", 1);
+(n7, m) := regex(log, "TEMP_RAMP ok", 1);
+(n8, m) := regex(log, "LIGHT_RAMP ok", 1);
+(n9, m) := regex(log, "TABLES_DONE", 1);
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0 and n5 > 0 and n6 > 0 and n7 > 0 and n8 > 0 and n9 > 0 then
+  print("PASS: verify_77_microbit_tables (2 appuis A, 1 appui B, secousse, rampe temp, rampe lumiere)\n");
+else
+  print("FAIL: verify_77_microbit_tables (pressA1=" + String(n1) + ", pressA2=" + String(n2)
+        + ", pressB=" + String(n3) + ", shake=" + String(n4) + ", counts=" + String(n5)
+        + ", shakeDone=" + String(n6) + ", tempRamp=" + String(n7) + ", lightRamp=" + String(n8)
+        + ", done=" + String(n9) + ")\n" + b);
+end if;

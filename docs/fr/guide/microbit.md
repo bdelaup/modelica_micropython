@@ -58,10 +58,19 @@ sorties, elle écrit des pixels que le driver balaie. Les 5 colonnes
 
 ### Boutons A et B
 
-Les appuis ne viennent pas du clavier : les entrées logiques `buttonA` et
-`buttonB` du composant se câblent dans le schéma (un `BooleanPulse`, un
-capteur, une expression...). Appuyer = tirer la broche (`P5`/`P11`) à la
-masse, comme un doigt sur la carte.
+Les appuis ne viennent pas du clavier. Chaque bouton est piloté par son
+**menu déroulant de source** (`buttonASource`, `buttonBSource`, onglet
+*Buttons*) :
+
+- **Connector** (défaut) : l'entrée logique `buttonA`/`buttonB` se câble
+  dans le schéma (un `BooleanPulse`, un capteur, une expression...).
+  Appuyer = tirer la broche (`P5`/`P11`) à la masse, comme un doigt sur la
+  carte.
+- **Table** : table horaire interne, colonne 1 = temps (s), colonne 2 = 0
+  (relâché) ou 1 (pressé). Exemple de table par défaut pour A :
+  `{{0,0},{1,0},{2,1},{3,0},{4,0},{5,1},{6,0}}` — deux appuis à t=2 s et
+  t=5 s.
+- **Constant** : état fixe (`buttonAPressed`), rien à câbler.
 
 ```python
 if button_a.was_pressed():
@@ -72,12 +81,18 @@ while button_b.is_pressed():
 
 ### Capteurs intégrés
 
-Chaque capteur a une **valeur constante** (onglet *Sensors*) et, si activé
-(`useAccelInput`, `useMagInput`, `useTempInput`, `useLightInput`), un
-**connecteur d'entrée** câblable qui la remplace — la valeur peut donc varier
-pendant la simulation.
+Chaque capteur est piloté par son propre **menu déroulant de source**
+(`accelXSource`... `lightSource`, onglet *Sensors*) : **Constant** (défaut)
+pour une valeur de paramètre, **Table** pour une table horaire interne
+(temps, valeur), ou **Connector** pour une entrée câblée dans le schéma —
+son port **étiqueté apparaît alors au bord correspondant de l'icône**,
+tourné vers la carte (accéléromètre sur le bord droit, boussole sur le bord
+gauche, température et lumière sur le bord haut) — la valeur peut donc varier
+pendant la simulation. L'exemple `Examples.MicroBit.SensorInputs` câble
+**tous** les capteurs et les deux boutons sur des blocs `TimeTable`,
+`Constant` et `BooleanPulse`.
 
-| Capteur | Onglet Sensors | API |
+| Capteur | Paramètres (unité) | API |
 |---|---|---|
 | Accéléromètre | `accelX`, `accelY`, `accelZ` (m/s², gravité sur Z par défaut) | `accelerometer.get_x()` (milli-g), `get_values()`, gestes `current_gesture()` |
 | Boussole | `magX`, `magY`, `magZ` (µT) | `compass.get_x()` (nano-tesla), `heading()` (calibration instantanée) |
@@ -97,6 +112,15 @@ pin12.set_pull(Pin.PULL_UP)
 Tirages présents sur la carte : 10 MΩ vers 3V sur les anneaux P0/P1/P2,
 4,7 kΩ sur P19/P20 (bus I2C, `i2c.init()` par défaut : `scl=pin19`,
 `sda=pin20`), 10 kΩ sur les boutons. Il n'y a pas de broche P17/P18.
+
+### Un scénario complet : sources en mode *Table*
+
+Pour simuler un scénario complet sans câbler de source externe, passer le
+menu déroulant de chaque bouton et capteur sur **Table** et remplir les
+tables horaires (colonne 1 = temps (s), colonne 2 = valeur dans l'unité du
+capteur, ou 0/1 pour les boutons). L'exemple `Examples.MicroBit.Scenario`
+montre un scénario complet piloté uniquement par les tables horaires (appuis
+boutons, secousse, rampe de température et de lumière).
 
 ### `uart`
 
