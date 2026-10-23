@@ -67,6 +67,9 @@ Détail fonction par fonction : [API, limitations](api.md#limitations-connues).
 ??? question "Message « Chattering detected » dans le journal"
     Information bénigne d'OpenModelica : beaucoup d'événements dans un seul pas de sortie, typiquement sur un bus I2C. Réduire l'intervalle de sortie (*Interval*) le fait disparaître ; les résultats sont justes dans les deux cas.
 
+??? question "Message « Homotopy solver total pivot: Matrix (nearly) singular at initialization » dans le journal"
+    Avertissement bénin d'OpenModelica, attendu avec la [micro:bit](microbit.md) : à l'initialisation la carte est encore hors tension, chaque nœud n'est tenu que par les fuites de haute impédance du modèle, et le solveur signale une direction presque indéterminée avant de régulariser son point de départ. Les messages suivants — « The initialization finished successfully without homotopy method » puis « The simulation finished successfully » — confirment que tout s'est bien passé ; les résultats sont justes. Ne pas changer le solveur non linéaire pour le faire taire : Newton pur (`-nls=newton`) fait échouer l'initialisation, le solveur par défaut est précisément ce qui la réussit.
+
 ??? question "La simulation est lente"
     Chaque front sur une broche est un événement pour le solveur. Une liaison série rapide, un bus I2C, une attente active (`while not bouton(): pass`, un événement par accès à la broche) ou un `sleep_ms(1)` en boucle en produisent beaucoup. Préférer `time.sleep()` ou `Pin.irq()` à l'attente active, et ne simuler que la durée utile.
 

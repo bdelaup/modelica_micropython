@@ -1016,3 +1016,94 @@ Document vivant décrivant le besoin, les choix d'architecture, le périmètre a
   - **Broche conditionnelle** : connecteur `CHn` affiché seulement si la voie est active (`if chnKind <> Interfaces.ChannelKind.Off`, comme `GND if useGroundPin`) ; les équations internes (`sns[i]`, `level[i]`) à adapter à une broche absente.
   - **Nom de la voie en vert si active** sur l'icône (texte `CHn` aujourd'hui blanc pour toutes) ; couleur dépendant d'un paramètre dans l'annotation, prise en charge par OMEdit à vérifier (sinon deux `Text` superposés à `visible` complémentaires).
   - Rupture légère : un modèle qui utilise `CH4`-`CH7` sans régler leur type doit désormais les passer en `Logic` ; relire les exemples `Analyzer.*` (qui mettent déjà les voies inutilisées à `Off`), mettre à jour la page de paramètres du guide (FR et EN) et la documentation de la classe.
+
+### Décision : MCU micro:bit v2
+
+- **Contexte** : demande de l'utilisateur (2026-10-20) d'ajouter un modèle de microcontrôleur compatible micro:bit v2 (carte BBC micro:bit basée sur nRF52833) à la bibliothèque, pour élargir le support des cartes éducatives et offrir une alternative à la Raspberry Pi Pico. La micro:bit v2 est largement utilisée en milieu pédagogique pour son accessibilité et ses nombreux capteurs intégrés.
+- **Choix retenu** :
+  - **Modèle `MicroBit_v2`** dans `MicroPythonMCU/` (au même niveau que `MCU.mo` et `RPi_Pico.mo`), basés sur le même cœur `Internal.McuCore` par héritage/extension, avec des composants internes dans `Internal/` si nécessaire (ex : `MicroBit_v2Core`).
+  - **Cible matérielle** : micro:bit v2 (nRF52833), plus récente et plus performante que la v1.
+  - **API Python de référence** : MicroPython officiel pour micro:bit (`microbit` module), pour garantir la compatibilité avec les ressources pédagogiques existantes.
+  - **Niveau de compatibilité** : l'essentiel de l'API doit rester compatible avec le vrai micro:bit — ce qui s'écrit en simulation doit marcher en vrai sur une carte physique. Certaines parties optionnelles de l'API peuvent ne pas être entièrement implémentées (paramètres optionnels inopérants, par exemple), mais ces limitations doivent être clairement documentées.
+  - **Brochage** : les **19 broches utilisables** (P0-P20, sauf P17 qui n'existe pas sur la carte) sont exposées côté Modelica avec la nomenclature `P0`, `P1`, ..., `P20` (cohérence avec le nRF52 sous-jacent), tandis que l'API Python côté script respecte la convention micro:bit (`pin0`, `pin1`, ..., `pin20`).
+  - **Héritage** : `MicroBit_v2` hérite, étend et utilise `Internal.McuCore` pour réutiliser le runtime Python, le mécanisme de synchronisation, et la logique de compression temporelle déjà éprouvés.
+  - **Génération du schéma** : comme pour `RPi_Pico.mo`, un script `tools/make_microbit.py` génère `MicroBit_v2.mo` (icône aux cotes réelles, schéma interne routé avec fils colorés) — à relancer après toute modification du brochage ou de l'arbre d'alimentation.
+  - **Temps d'exécution GPIO** : même valeur que le Pico (5 µs par défaut, paramètre `gpioOpTime` dans l'onglet *Execution time*), pour rester cohérent avec le reste de la bibliothèque.
+  - **Démarrage** : à la mise sous tension comme la Pico (`powerGood`/`supplyOk`/`runHigh`), sans implémentation du *reset* logiciel pour l'instant.
+  
+- **Périphériques Phase 1 (à implémenter)** :
+  - **GPIO** : entrées/sorties numériques sur toutes les broches, avec tirages internes optionnels (comme `MCU`)
+  - **ADC** : entrées analogiques sur les broches supportées (P0-P4, P10 sur v2)
+  - **PWM** : sorties modulées sur les broches supportées
+  - **I2C** : bus I2C (pins 19/20 par défaut, comme sur v2)
+  - **UART** : liaison série (pins 0/1 par défaut, format de trame paramétrable)
+  - **LED 5x5** : matrice de 25 LED modélisée **comme sur le hardware réel** — multiplexée sur **10 GPIO** (5 lignes + 5 colonnes), balayée ligne par ligne (persistance rétinienne). Chaque LED est un vrai composant électrique (`Peripherals.LED`) câblé entre une ligne et une colonne : **anode côté ligne, cathode côté colonne** ; une LED est allumée quand sa ligne est HIGH (source) ET sa colonne LOW (sink). Mapping vérifié contre le schéma officiel micro:bit v2 et le driver CODAL `NRF52LedMatrix` (correction du 2026-10-20 : la spec initiale plaçait les lignes sur P13-P15, qui sont en réalité SCK/MISO/MOSI externes) :
+    - **Lignes** (source, HIGH pendant son créneau) : `ROW1` = P0.21, `ROW2` = P0.22, `ROW3` = P0.15, `ROW4` = P0.24, `ROW5` = P0.19 — pins nRF **internes à la carte, pas exposées** sur le connecteur edge (comme GP25 sur la Pico).
+    - **Colonnes** (sink, LOW = LED allumée) : `COL1` = P4 (P0.28), `COL2` = P7 (P0.11), `COL3` = P3 (P0.31), `COL4` = P6 (P1.05), `COL5` = P10 (P0.30) — pins edge **partagées** avec le connecteur.
+    - **Balayage** : trame à **60 Hz** (constante `NRF52_LED_MATRIX_FREQUENCY` du driver CODAL), 5 créneaux de ~3,33 ms — un par ligne. Pendant le créneau de la ligne i, la ligne i est HIGH, et chaque colonne reste LOW pendant une durée proportionnelle à la luminosité du pixel (x, i) (`quantum` CODAL), puis repasse HIGH. En simulation, le balayage est reproduit dans le shim : il pilote les 10 GPIO sous-jacents via `machine` et le solveur calcule les courants réels dans chaque LED.
+    - **Quantification de la luminosité** : le vrai driver utilise une comparaison continue (GPIOTE/PPI) ; la simulation quantifie la durée colonne basse en 9 sous-créneaux par créneau ligne (les niveaux `set_pixel` 0-9), comportement visuellement identique à 60 Hz — simplification documentée.
+    - **Broches partagées** : les 5 colonnes (P3, P4, P6, P7, P10) sont **aussi** sur le connecteur edge. Quand l'affichage est actif, le driver les pilote et elles ne sont plus utilisables comme GPIO libres — comme sur la vraie carte, où `display.off()` les libère en haute impédance (comportement `disable()` de CODAL). Les lignes, elles, ne sortent pas de la carte.
+    - **Capteur de lumière** : en vrai, `display.read_light_level()` mesure la décharge de la matrice LED dans un créneau supplémentaire ; en simulation, simplification : la valeur vient du capteur de lumière du modèle (paramètre/entrée), sans créneau dédié.
+    - **Icône** : la matrice 5x5 est visible sur l'icône de la carte (25 points en grille), chaque point s'allumant selon le courant réel dans la LED correspondante (comme la LED embarquée de `RPi_Pico`, mais pour 25 LED).
+    - **API Python** : support des méthodes `display.show()`, `display.scroll()`, `display.clear()`, `display.set_pixel()`, `display.get_pixel()`, `display.on()`, `display.off()`, `display.is_on()`, `display.read_light_level()` du module `microbit` — le shim traduit ces appels en pilotage des 10 GPIO sous-jacentes.
+  - **Boutons A/B** : boutons intégrés (broche P5 pour A, P11 pour B sur v2). L'appui relie la broche à la masse, comme en vrai : chacun est modélisé par une **entrée logique à câbler dans le schéma** (`Modelica.Blocks.Interfaces.BooleanInput`, l'utilisateur la pilote par un signal quelconque — table, source, contact). Arbitrage du 2026-10-20 : table horaire optionnelle en TODO.
+  - **Capteurs intégrés** (accéléromètre, boussole, thermomètre, lumière) : chacun a une **valeur constante en paramètre** ET un **connecteur d'entrée physique optionnel** — le connecteur n'apparaît pas sur le schéma quand il est désactivé (même mécanique que `useSupplyPin` des périphériques), et le câbler prend le pas sur le paramètre. Arbitrage du 2026-10-20 : tables horaires optionnelles en TODO.
+    - **Accéléromètre** (LSM303AGR sur v2) : 3 axes X/Y/Z en m/s² (gravité 9,81 m/s² par défaut), valeur constante ou connecteur
+    - **Boussole/Magnétomètre** (LSM303AGR sur v2) : champ magnétique 3 axes en µT, valeur constante ou connecteur
+    - **Thermomètre** (intégré au nRF52833) : température en °C, valeur constante ou connecteur
+    - **Capteur de lumière** : intensité lumineuse (0-255 comme l'API micro:bit), valeur constante ou connecteur
+  - **Radio 2.4GHz (BLE)** : réutilisation du module **générique existant** `Peripherals.Radio.RadioModem` (pas de composant dédié, configuration par défaut inspirée des modules du commerce comme NRF52)
+  
+- **Périphériques Phase 2 (TODO)** :
+  - SPI (bus MO/MI/SCK/CS) — arbitrage du 2026-10-20 : **reporté**. La bibliothèque n'a pas de SPI aujourd'hui (ni `MCU`, ni `RPi_Pico`, cf. Restrictions) ; en implémenter un ne serait cohérent que comme chantier commun à toutes les cartes, pas spécifique à la micro:bit.
+  - Microphone (intégré sur v2)
+  - Haut-parleur (intégré sur v2)
+  - USB HID (clavier/souris)
+  
+- **Périphériques non supportés (hors périmètre)** :
+  - Affichage LED externe (déjà couverts par `Peripherals.Display*`)
+  - Capteurs externes non standards (à ajouter via les bus I2C/UART/SPI)
+  
+- **Alimentation** : comme `RPi_Pico`, alimentation par USB (`VBUS`/`VSYS`/régulateur/3V3(OUT)), démarrage à la mise sous tension, arrêt sur perte d'alimentation. La broche `VCC` des périphériques est conditionnelle (`useSupplyPin`), la masse `GND` aussi (`useGroundPin`).
+  
+- **Exemples** : créés dans `Examples/MicroBit/` — au moins un exemple de base avec **LED + Boutons A/B + GPIO** (clignotement, réaction aux boutons, lecture d'entrée).
+  
+- **Documentation** : à ajouter dans `docs/fr/guide/` et `docs/en/guide/` (section dédiée micro:bit, API spécifique, exemples).
+
+- **Piège (2026-10-23) : avertissement bénin « Homotopy solver total pivot: Matrix (nearly) singular at initialization » à chaque simulation d'un exemple micro:bit** : au point de départ de l'initialisation la carte est hors tension (`powerGood`/`running` à `start=false`, aucune broche configurée), donc les 25 tensions du système non linéaire d'initialisation (19 broches edge, 5 lignes internes de la matrice, `vRail`) ne tiennent qu'aux fuites de haute impédance : `GOff` = 1e-9 S des `PinBridge` et du régulateur arrêté, pente des diodes à 0 V ≈ 1,8e-9 S ; les seules conductances fortes (tirages edge 4,7/10 kΩ, 10 MΩ des bagues tactiles) relient des inconnues entre elles, pas un potentiel fixe. Le mode commun du réseau n'est alors déterminé que par les fuites → jacobienne de rang 24/25 au pivot total → avertissement, puis le solveur « Mixed (Newton/Homotopy) » régularise son point de départ et Newton converge (« The initialization finished successfully without homotopy method »). C'est la réapparition attendue de la singularité du piège 3a (décision « Domaine électrique vs logique pur »), rendue non bloquante par les conductances jamais nulles. **Ne pas « corriger »** : testé, `-nls=newton` (Newton pur, sans la régularisation du point de départ) fait échouer l'initialisation — le couple `-s=dassl` + solveur mixed par défaut est celui qui fonctionne. Diagnostic complet par relance avec `-lv LOG_NLS_V,LOG_INIT_HOMOTOPY` (système n° 1804, 25 inconnues) ; les valeurs de la solution confirment la lecture par les fuites (P19/P20 = 3 V − 4,7 kΩ × 3 nA, P5 = 3 V − 10 kΩ × 6 nA, P0-P2 = pont 10 MΩ/1 GΩ). Documenté pour l'utilisateur dans le Dépannage du guide (`limites.md`, FR et EN). Les exemples Pico ne sont pas concernés (leurs nœuds sont ancrés par des charges externes).
+
+- **Alternatives envisagées** :
+  - Créer un sous-package `MicroPythonMCU/Boards/` pour toutes les cartes — écarté au profit de la simplicité : les cartes sont placées au même niveau que le modèle générique `MCU`, comme `RPi_Pico` déjà.
+  - Ne pas supporter la v1 — retenu : la v2 est plus récente et plus utilisée en pédagogie actuellement.
+  - Implémenter tous les périphériques en une seule fois — écarté au profit d'une approche progressive (Phase 1 = fonctionnalités de base, Phase 2 = périphériques avancés).
+  - **Afficheur logique** (connecteur causal unique, sans multiplexage ni broches GPIO) — écarté au profit de la **matrice multiplexée sur broches GPIO**, fidèle au hardware réel de la micro:bit v2. L'afficheur logique ne reproduit pas le comportement électrique réel (pas de balayage, pas de partage des broches avec le connecteur edge, pas de contrainte sur le duty cycle), ce qui empêcherait de simuler des montages où les broches LED sont aussi utilisées comme GPIO — un cas pédagogique courant sur micro:bit.
+  - **Modéliser les 25 LED comme 25 composants `Peripherals.LED` indépendants sans multiplexage** (chaque LED sur sa propre broche) — écarté : la vraie micro:bit n'a que 8 broches pour 25 LED, ce n'est pas fidèle au hardware et occuperait 25 broches au lieu de 8.
+  - Utiliser une API maison plutôt que MicroPython — écarté : casserait la contrainte de portabilité du code vers un micro:bit réel.
+  - Implémenter un module Radio spécifique à micro:bit — écarté : le module générique `RadioModem` suffit pour les besoins pédagogiques initiaux.
+  
+- **Notes pour plus tard** :
+  - La micro:bit v2 a **25 broches au total** (P0-P20 + 3V/3V(OUT)/GND), mais seules 19 sont utilisables comme GPIO — P17 n'existe pas (réservée), 3V et GND sont des broches d'alimentation.
+  - **Matrice LED multiplexée** : seules les 5 **colonnes** (P3, P4, P6, P7, P10) sont partagées avec le connecteur edge — les 5 **lignes** (P0.21/22/15/24/19) sont internes à la carte, comme GP25 sur la Pico. Quand `display.on()` est actif, les colonnes sont pilotées par le driver d'affichage et ne peuvent pas être utilisées comme GPIO libres ; `display.off()` les remet en haute impédance. Le modèle gère cette exclusivité côté colonnes.
+  - **Luminosité par duty cycle** : en balayage multiplexé, chaque LED n'est allumée qu'une fraction du temps (1/5 si les 5 lignes actives à parts égales, pondérée par le niveau 0-9 du pixel). Le modèle électrique calcule le courant réel dans chaque LED à chaque instant ; l'icône affiche l'état logique (allumée si courant > seuil).
+  - **Fréquence de balayage** : trame à 60 Hz, valeur du firmware CODAL (`NRF52_LED_MATRIX_FREQUENCY`), fixe comme en vrai (pas de paramètre) ; 5 créneaux de ~3,33 ms par trame, 9 sous-créneaux de quantification par créneau → ~2 700 événements de simulation par seconde quand l'affichage est actif, ordre de grandeur d'une liaison UART à 1 200 bauds (déjà le cas dans la bibliothèque).
+  - Le **nRF52833** a des limitations matérielles : pas de DAC, SPI partagé avec certains périphériques, etc. — à documenter dans la section *Limites* du guide utilisateur.
+  - La **radio BLE** pourrait être étendue pour supporter des protocoles spécifiques (ex : communication entre plusieurs micro:bit dans un même modèle, cf. `Examples.MultiMcu` pour inspiration).
+  - Les capteurs intégrés (accéléromètre, boussole, etc.) pourraient être **désactivables individuellement** pour les modèles qui n'en ont pas besoin, réduisant ainsi le coût de simulation.
+  - Un **modèle simplifié** (moins de broches, moins de capteurs) pourrait être créé pour les débutants, mais la micro:bit v2 complète est la cible principale.
+  - Le **script de génération** `make_microbit.py` devra être inspiré de `make_pico.py` mais adapté au brochage spécifique de la micro:bit (connecteurs en bordure, pas de trous de montage, matrice LED 5x5 sur l'icône, etc.).
+  - **Priorité** : à définir par l'utilisateur (« quand je décide »).
+  - **Première fonctionnalité à implémenter** : matrice LED 5x5 multiplexée + Boutons A/B + GPIO (pour un exemple minimal fonctionnel).
+
+- **Jalons** :
+  - [x] Décision architecturale validée avec l'utilisateur (arbitrages du 2026-10-20 : SPI reporté, boutons en entrées logiques, capteurs paramètre + connecteur masquable)
+  - [x] Spécification détaillée des périphériques Phase 1 (matrice LED multiplexée, boutons, capteurs)
+  - [x] Création du script `tools/make_microbit.py` (avec matrice LED 5x5 sur l'icône)
+  - [x] Implémentation du modèle `MicroBit_v2.mo` (brochage, matrice LED multiplexée sur 10 GPIO — moteur C `pyruntime_matrix.c`, cf. `docs/fr/interne/microbit.md`)
+  - [x] Implémentation du shim : module `microbit` complet (display, Image, pins, boutons, capteurs, uart, i2c) dans `machine_time_shim.py`
+  - [x] Implémentation des périphériques Phase 1 (GPIO, ADC, PWM, I2C, UART, boutons, capteurs — SPI reporté)
+  - [x] Création des exemples de base (`Examples.MicroBit/` : Heart, Buttons, GpioEdge)
+  - [x] Vérification et tests (`verify_72` à `verify_76`, tous PASS hors OneDrive)
+  - [x] Documentation utilisateur (`docs/fr/guide/microbit.md` + `docs/en/guide/microbit.md` + nav) et interne (`docs/fr/interne/microbit.md`)
+  - [ ] Publication dans un tag
+
+- [x] **MCU micro:bit v2** : modèle de microcontrôleur compatible micro:bit v2 (nRF52833), basé sur `Internal.McuCore`, avec 19 broches GPIO, **matrice LED 5x5 multiplexée sur 10 GPIO** (5 lignes internes P0.21/22/15/24/19 + 5 colonnes edge P3/P4/P6/P7/P10, trame 60 Hz, anode ligne / cathode colonne, broches colonnes partagées avec l'edge), boutons A/B (P5/P11, entrées logiques à câbler), capteurs intégrés (paramètre + connecteur optionnel masquable : accéléromètre, boussole, thermomètre, lumière), et périphériques (ADC, PWM, I2C, UART, Radio BLE par réutilisation du module générique `RadioModem`). **Implémenté le 2026-10-20** (Phase 1, SPI reporté) : `MicroBit_v2.mo` (généré par `tools/make_microbit.py`), moteur de matrice C `pyruntime_matrix.c`, module `microbit` du shim, `Examples/MicroBit/` (Heart, Buttons, GpioEdge), `verify_72` à `verify_76` PASS, docs guide FR/EN + interne. Phase 2 (TODO) : SPI (chantier commun à toutes les cartes), tables horaires boutons/capteurs, `microbit.radio`, Microphone, Haut-parleur, USB HID. Cf. décision « MCU micro:bit v2 » et `docs/fr/interne/microbit.md`.

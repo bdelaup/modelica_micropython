@@ -67,6 +67,9 @@ Function-by-function details: [API, limitations](api.md#known-limitations).
 ??? question "« Chattering detected » message in the log"
     Harmless OpenModelica information: many events within a single output step, typically on an I2C bus. Reducing the output interval (*Interval*) makes it go away; results are correct either way.
 
+??? question "« Homotopy solver total pivot: Matrix (nearly) singular at initialization » message in the log"
+    Harmless OpenModelica warning, expected with the [micro:bit](microbit.md): at initialization the board is still unpowered, every node is held only by the model's high-impedance leakages, and the solver reports an almost undetermined direction before regularising its starting point. The following messages — "The initialization finished successfully without homotopy method" then "The simulation finished successfully" — confirm that all went well; results are correct. Do not switch the non-linear solver to silence it: pure Newton (`-nls=newton`) makes initialization fail, the default solver is precisely what makes it succeed.
+
 ??? question "The simulation is slow"
     Each edge on a pin is an event for the solver. A fast serial link, an I2C bus, a busy-wait (`while not button(): pass`, one event per pin access) or a `sleep_ms(1)` in a loop produce many of them. Prefer `time.sleep()` or `Pin.irq()` to busy-waiting, and simulate only the useful duration.
 

@@ -1,0 +1,70 @@
+// Scenario de verification n°74 : boutons A/B de la micro:bit.
+// omc verify_74_microbit_buttons.mos
+//
+// Cable comme sur la carte : tirage externe 10 k vers 3V sur P5 (A) et P11
+// (B), bouton = interrupteur ideal vers la masse, commande par deux pulses
+// booleennes (A sur [0,05 ; 0,15] s, B sur [0,25 ; 0,35] s). Le programme
+// (Verification/microbit_buttons.py) echantillonne is_pressed() pendant et
+// apres les appuis, et les compteurs was_pressed()/get_presses() :
+// - is_pressed() vrai pendant l'appui, faux au repos ;
+// - un appui bref entre deux appels n'est pas perdu (IRQ interne du shim sur
+//   les deux fronts) ;
+// - was_pressed() et get_presses() ont des compteurs independants.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model MicroBitButtons
+  parameter Integer ids[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33};
+  parameter Integer caps[32] = {7,7,7,7,7,3,3,3,3,3,7,3,3,3,3,3,3,3,3,1,1,1,1,1,4,4,4,4,4,4,4,4};
+  MicroPythonMCU.Internal.McuCore core(nPins = 32, pinIds = ids, pinCaps = caps, boardProfile = \"microbit\",
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/microbit_buttons.py\"));
+  Modelica.Electrical.Analog.Basic.Ground ground;
+  Modelica.Electrical.Analog.Sources.ConstantVoltage supply(V = 3.3);
+  // Bouton A : P5 (pin[6]) tire a 3V par 10 k, interrupteur vers la masse
+  Modelica.Electrical.Analog.Basic.Resistor pullA(R = 10000);
+  Modelica.Electrical.Analog.Ideal.IdealClosingSwitch buttonA(Goff = 1e-9);
+  Modelica.Blocks.Sources.BooleanPulse pressA(width = 10, period = 1, startTime = 0.05);
+  // Bouton B : P11 (pin[12]), meme cablage, appui a 0,25 s
+  Modelica.Electrical.Analog.Basic.Resistor pullB(R = 10000);
+  Modelica.Electrical.Analog.Ideal.IdealClosingSwitch buttonB(Goff = 1e-9);
+  Modelica.Blocks.Sources.BooleanPulse pressB(width = 10, period = 1, startTime = 0.25);
+equation
+  connect(supply.p, core.vdd);
+  connect(supply.n, ground.p);
+  connect(core.gnd, ground.p);
+  connect(core.vref, core.vdd);
+  connect(pullA.p, core.vdd); connect(pullA.n, core.pin[6]);
+  connect(buttonA.p, core.pin[6]); connect(buttonA.n, ground.p);
+  connect(pressA.y, buttonA.control);
+  connect(pullB.p, core.vdd); connect(pullB.n, core.pin[12]);
+  connect(buttonB.p, core.pin[12]); connect(buttonB.n, ground.p);
+  connect(pressB.y, buttonB.control);
+end MicroBitButtons;"); getErrorString();
+
+buildModel(MicroBitButtons, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "MicroBitButtons");
+b := getErrorString();
+ret := system(".\\MicroBitButtons.bat", "MicroBitButtons_run.txt");
+log := readFile("MicroBitButtons_run.txt");
+
+(n1, m) := regex(log, "start False False", 1);
+(n2, m) := regex(log, "during a True", 1);
+(n3, m) := regex(log, "after a False True False", 1);
+(n4, m) := regex(log, "presses a b 1 0", 1);
+(n5, m) := regex(log, "during b True", 1);
+(n6, m) := regex(log, "after b True False", 1);
+(n7, m) := regex(log, "presses2 a b 0 1", 1);
+(n8, m) := regex(log, "buttons done", 1);
+// Broche P5 : 3,3 V au repos (tirage), 0 V pendant l'appui [0,05 ; 0,15] s
+p5_idle := val(core.pin[6].v, 0.02, "MicroBitButtons_res.mat");
+p5_press := val(core.pin[6].v, 0.1, "MicroBitButtons_res.mat");
+p11_press := val(core.pin[12].v, 0.3, "MicroBitButtons_res.mat");
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0 and n5 > 0 and n6 > 0 and n7 > 0 and n8 > 0
+   and p5_idle > 2.5 and p5_press < 0.5 and p11_press < 0.5 then
+  print("PASS: verify_74_microbit_buttons (P5 " + String(p5_idle) + " V au repos, "
+        + String(p5_press) + " V appuye, P11 " + String(p11_press) + " V appuye)\n");
+else
+  print("FAIL: verify_74_microbit_buttons (start=" + String(n1) + ", duringA=" + String(n2)
+        + ", afterA=" + String(n3) + ", presses=" + String(n4) + ", duringB=" + String(n5)
+        + ", afterB=" + String(n6) + ", presses2=" + String(n7) + ", done=" + String(n8)
+        + ", P5=" + String(p5_idle) + "/" + String(p5_press) + ", P11=" + String(p11_press) + ")\n" + b);
+end if;

@@ -50,5 +50,6 @@
 #include "pyruntime/pyruntime_i2c.c"       /* machine.I2C (maitre, drain ouvert) */
 #include "pyruntime/pyruntime_i2ctarget.c" /* machine.I2CTarget (cible, drain ouvert) - apres pyruntime_i2c.c, dont il reprend i2c_drive */
 #include "pyruntime/pyruntime_timer.c"     /* machine.Timer */
+#include "pyruntime/pyruntime_matrix.c"   /* microbit.display : moteur de la matrice LED (apres pyruntime_pin.c pour require_pin) */
 #include "pyruntime/pyruntime_fs.c"        /* systeme de fichiers : liaison shim <-> handle */
 #include "pyruntime/pyruntime_module.c"    /* module natif, thread worker, API exportee */

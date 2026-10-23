@@ -29,6 +29,7 @@ nav = [
     { "Getting started" = "guide/premiers-pas.md" },
     { "The MCU block" = "guide/mcu.md" },
     { "The Raspberry Pi Pico board" = "guide/pico.md" },
+    { "The micro:bit board" = "guide/microbit.md" },
     { "machine / time API" = "guide/api.md" },
     { "Peripherals" = [
       { "LED and displays" = "guide/peripheriques/led-afficheur.md" },

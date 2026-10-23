@@ -1,0 +1,52 @@
+// Scenario de verification n°73 : quantum de luminosite du balayage de la
+// matrice LED micro:bit. omc verify_73_microbit_matrix_quantum.mos
+//
+// Le moteur C tient chaque colonne basse pendant creneau_ligne * niveau / 9 du
+// creneau de sa ligne (comportement du driver CODAL), ancre au premier point de
+// synchro alimente (t = 0 : tous les instants sont deterministes) :
+//   pixel (0, 0) = 9 -> P4 basse sur TOUT le creneau de la ligne 0
+//     [0, 3,333 ms), haute ailleurs : basse a 1,667 ms, haute a 5 ms ;
+//   pixel (1, 1) = 4 -> P7 basse jusqu'a 3,333 + 4/9*3,333 = 4,815 ms :
+//     basse a 4 ms, haute a 5,5 ms ;
+//   pixel (2, 2) = 1 -> P3 basse jusqu'a 6,667 + 1/9*3,333 = 7,037 ms :
+//     basse a 6,8 ms, haute a 8 ms.
+// Modele defini ici plutot que dans Examples (meme squelette que verify_72).
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model MicroBitQuantum
+  parameter Integer ids[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33};
+  parameter Integer caps[32] = {7,7,7,7,7,3,3,3,3,3,7,3,3,3,3,3,3,3,3,1,1,1,1,1,4,4,4,4,4,4,4,4};
+  MicroPythonMCU.Internal.McuCore core(nPins = 32, pinIds = ids, pinCaps = caps, boardProfile = \"microbit\",
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/microbit_matrix_quantum.py\"));
+  Modelica.Electrical.Analog.Basic.Ground ground;
+  Modelica.Electrical.Analog.Sources.ConstantVoltage supply(V = 3.3);
+equation
+  connect(supply.p, core.vdd);
+  connect(supply.n, ground.p);
+  connect(core.gnd, ground.p);
+  connect(core.vref, core.vdd);
+end MicroBitQuantum;"); getErrorString();
+
+buildModel(MicroBitQuantum, stopTime = 0.25, numberOfIntervals = 250, fileNamePrefix = "MicroBitQuantum");
+b := getErrorString();
+ret := system(".\\MicroBitQuantum.bat", "MicroBitQuantum_run.txt");
+log := readFile("MicroBitQuantum_run.txt");
+(n1, m) := regex(log, "quantum done", 1);
+
+// P4 = pin[5], P7 = pin[8], P3 = pin[4]
+p4_low := val(core.pin[5].v, 0.0016667, "MicroBitQuantum_res.mat");
+p4_high := val(core.pin[5].v, 0.005, "MicroBitQuantum_res.mat");
+p7_low := val(core.pin[8].v, 0.004, "MicroBitQuantum_res.mat");
+p7_high := val(core.pin[8].v, 0.0055, "MicroBitQuantum_res.mat");
+p3_low := val(core.pin[4].v, 0.0068, "MicroBitQuantum_res.mat");
+p3_high := val(core.pin[4].v, 0.008, "MicroBitQuantum_res.mat");
+
+if n1 > 0 and p4_low < 0.5 and p4_high > 2.5 and p7_low < 0.5 and p7_high > 2.5
+   and p3_low < 0.5 and p3_high > 2.5 then
+  print("PASS: verify_73_microbit_matrix_quantum (P4 " + String(p4_low) + "/" + String(p4_high)
+        + " V, P7 " + String(p7_low) + "/" + String(p7_high) + " V, P3 " + String(p3_low) + "/" + String(p3_high) + " V)\n");
+else
+  print("FAIL: verify_73_microbit_matrix_quantum (done=" + String(n1)
+        + ", P4 " + String(p4_low) + "/" + String(p4_high) + " V, P7 " + String(p7_low) + "/" + String(p7_high)
+        + " V, P3 " + String(p3_low) + "/" + String(p3_high) + " V)\n" + b);
+end if;

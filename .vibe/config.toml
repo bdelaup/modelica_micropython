@@ -1,0 +1,11 @@
+[[models]]
+name = "mistral-large-4"
+provider = "mistral"
+alias = "ML4"
+temperature = 0.3
+
+[[models]]
+name = "zai-glm-5-3"
+provider = "mistral"
+alias = "GLM-5.3"
+temperature = 0.3

@@ -1,0 +1,38 @@
+// Scenario de verification n°76 : l'exemple Examples.MicroBit.Buttons sur la
+// carte MicroBit_v2. omc verify_76_microbit_example_buttons.mos
+//
+// L'exemple cable un BooleanPulse sur l'entree buttonA (appuis de 100 ms a
+// 1,5 s, 2,5 s, 3,5 s, 4,5 s) : le programme compte les appuis et defile le
+// compteur. Verifie :
+// - la broche P5 : 3 V au repos (tirage 10 k), 0 V pendant chaque appui,
+// - le compteur : count 1..4 dans le journal, un appui n'est jamais manque ;
+// - le rail 3,0 V pendant toute la simulation.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.MicroBit.Buttons, stopTime = 5, numberOfIntervals = 500, fileNamePrefix = "MicroBitButtonsEx");
+b := getErrorString();
+ret := system(".\\MicroBitButtonsEx.bat", "MicroBitButtonsEx_run.txt");
+log := readFile("MicroBitButtonsEx_run.txt");
+
+(n1, m) := regex(log, "count 1", 1);
+(n2, m) := regex(log, "count 2", 1);
+(n3, m) := regex(log, "count 3", 1);
+(n4, m) := regex(log, "count 4", 1);
+
+p5_idle := val(mb.P5.v, 1.2, "MicroBitButtonsEx_res.mat");
+p5_press := val(mb.P5.v, 1.55, "MicroBitButtonsEx_res.mat");
+p5_idle2 := val(mb.P5.v, 2.05, "MicroBitButtonsEx_res.mat");
+p5_press2 := val(mb.P5.v, 4.55, "MicroBitButtonsEx_res.mat");
+rail := val(mb.vRail, 4.9, "MicroBitButtonsEx_res.mat");
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0
+   and p5_idle > 2.5 and p5_press < 0.5 and p5_idle2 > 2.5 and p5_press2 < 0.5
+   and abs(rail - 3.0) < 0.2 then
+  print("PASS: verify_76_microbit_example_buttons (P5 " + String(p5_idle) + "/" + String(p5_press) + "/"
+        + String(p5_idle2) + "/" + String(p5_press2) + " V, vRail=" + String(rail) + " V)\n");
+else
+  print("FAIL: verify_76_microbit_example_buttons (c1=" + String(n1) + ", c2=" + String(n2) + ", c3=" + String(n3)
+        + ", c4=" + String(n4) + ", P5=" + String(p5_idle) + "/" + String(p5_press) + "/" + String(p5_idle2) + "/"
+        + String(p5_press2) + ", vRail=" + String(rail) + ")\n" + b);
+end if;

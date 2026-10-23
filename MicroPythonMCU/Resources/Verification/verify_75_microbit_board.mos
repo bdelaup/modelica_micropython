@@ -1,0 +1,56 @@
+// Scenario de verification n°75 : la carte MicroBit_v2 complete.
+// omc verify_75_microbit_board.mos
+//
+// Meme programme que verify_72 (microbit_smoke.py), execute par la carte
+// veritable : alimentation USB -> regulateur -> rail 3,0 V, capteurs integres
+// par defaut (gravite sur Z, 50 uT sur Y, 27 degres, lumiere 100), matrice LED
+// multiplexee avec 25 vraies Peripherals.LED :
+// - vRail = 3,0 V ;
+// - sous Image.HEART : le courant moyen d'une LED allumee (colonne 2, ligne 2)
+//   est notable (creneau de sa ligne, ~12 mA de crete), celle d'une LED eteinte
+//   (colonne 0, ligne 0) est nulle ;
+// - display.off() coupe tout courant dans les LED ;
+// - les broches edge P3 (colonne de matrice) restent utilisables en lecture.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model MicroBitBoard
+  MicroPythonMCU.MicroBit_v2 mb(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/microbit_smoke.py\"));
+  Modelica.Electrical.Analog.Basic.Ground ground;
+  Modelica.Blocks.Sources.BooleanConstant btnA(k = false) \"bouton A au repos\";
+  Modelica.Blocks.Sources.BooleanConstant btnB(k = false) \"bouton B au repos\";
+equation
+  connect(mb.GND, ground.p);
+  connect(btnA.y, mb.buttonA);
+  connect(btnB.y, mb.buttonB);
+end MicroBitBoard;"); getErrorString();
+
+buildModel(MicroBitBoard, stopTime = 1.5, numberOfIntervals = 150, fileNamePrefix = "MicroBitBoard");
+b := getErrorString();
+ret := system(".\\MicroBitBoard.bat", "MicroBitBoard_run.txt");
+log := readFile("MicroBitBoard_run.txt");
+
+(n1, m) := regex(log, "boot is_on True", 1);
+(n2, m) := regex(log, "accel 0 0 -1000", 1);
+(n3, m) := regex(log, "gesture face up", 1);
+(n4, m) := regex(log, "temp 27", 1);
+(n5, m) := regex(log, "light 100", 1);
+(n6, m) := regex(log, "pixel22 9", 1);
+(n7, m) := regex(log, "after off is_on False", 1);
+(n8, m) := regex(log, "done", 1);
+
+rail := val(mb.vRail, 0.5, "MicroBitBoard_res.mat");
+ledOn := val(mb.led_2_2.mean.y, 0.5, "MicroBitBoard_res.mat");
+ledOff := val(mb.led_0_0.mean.y, 0.5, "MicroBitBoard_res.mat");
+ledAfterOff := val(mb.led_2_2.mean.y, 1.15, "MicroBitBoard_res.mat");
+p3 := val(mb.P3.v, 0.5, "MicroBitBoard_res.mat");
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0 and n5 > 0 and n6 > 0 and n7 > 0 and n8 > 0
+   and abs(rail - 3.0) < 0.2 and ledOn > 0.0002 and ledOff < 0.00002 and ledAfterOff < 0.00005 then
+  print("PASS: verify_75_microbit_board (vRail=" + String(rail) + " V, LED(2,2)=" + String(ledOn)
+        + " A, LED(0,0)=" + String(ledOff) + " A, apres off=" + String(ledAfterOff) + " A, P3=" + String(p3) + " V)\n");
+else
+  print("FAIL: verify_75_microbit_board (boot=" + String(n1) + ", accel=" + String(n2) + ", gesture=" + String(n3)
+        + ", temp=" + String(n4) + ", light=" + String(n5) + ", pixel=" + String(n6) + ", off=" + String(n7)
+        + ", done=" + String(n8) + ", vRail=" + String(rail) + ", LEDon=" + String(ledOn) + ", LEDoff=" + String(ledOff)
+        + ", apresOff=" + String(ledAfterOff) + ", P3=" + String(p3) + ")\n" + b);
+end if;

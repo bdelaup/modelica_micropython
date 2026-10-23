@@ -43,6 +43,9 @@ static PyMethodDef native_methods[] = {
     {"timer_new", native_timer_new, METH_VARARGS, "Allocates a Timer() slot in the fixed pool"},
     {"timer_init", native_timer_init, METH_VARARGS, "Arms a Timer (period, mode, callback)"},
     {"timer_deinit", native_timer_deinit, METH_VARARGS, "Stops and releases a Timer"},
+    {"matrix_enable", native_matrix_enable, METH_VARARGS, "microbit.display.on(): takes over the 10 LED matrix pins (5 row ids then 5 column ids) and starts the 60 Hz scan"},
+    {"matrix_disable", native_matrix_disable, METH_VARARGS, "microbit.display.off(): releases the LED matrix pins (high impedance)"},
+    {"matrix_set_pixels", native_matrix_set_pixels, METH_VARARGS, "Full 5x5 pixel buffer of the LED matrix (25 levels 0-9, row-major)"},
     {"sleep", native_sleep, METH_VARARGS, "Waits N seconds of simulated time"},
     {"idle", native_idle, METH_VARARGS, "Waits for the next whole millisecond (or an input transition)"},
     {"disable_irq", native_disable_irq, METH_VARARGS, "Masks the IRQ/Timer callbacks, returns the previous state"},
@@ -52,7 +55,7 @@ static PyMethodDef native_methods[] = {
     {"fs_config", native_fs_config, METH_VARARGS, "File system configuration (source, workspace, instance, pythonHome)"},
     {"fs_set_root", native_fs_set_root, METH_VARARGS, "Records the root of the timestamped copy (host folder)"},
     {"on_worker", native_on_worker, METH_VARARGS, "True if the caller is the microcontroller thread"},
-    {"board", native_board, METH_VARARGS, "Board profile: 'generic' (MCU) or 'pico' (Raspberry Pi Pico)"},
+    {"board", native_board, METH_VARARGS, "Board profile: 'generic' (MCU), 'pico' (Raspberry Pi Pico) or 'microbit' (micro:bit v2)"},
     {NULL, NULL, 0, NULL}
 };
 
@@ -817,6 +820,7 @@ static void power_loss(struct PyRuntimeHandle* h, double currentTime) {
     for (i = 0; i < MAX_TIMERS; i++) {
         h->timer_active[i] = 0;
     }
+    h->matrix.enabled = 0;   /* matrice LED micro:bit : broches relachees avec les autres */
 }
 
 void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
@@ -848,6 +852,12 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
         EnterCriticalSection(&h->cs);
         h->started = 1;
         h->boot_time = currentTime;
+        /* micro:bit : le firmware active son driver d'affichage au boot, avant
+           le programme (le shim ne peut pas : aucune native avec yield pendant
+           l'init, cf. matrix_boot_enable). */
+        if (strcmp(h->board_profile, "microbit") == 0 && !h->matrix.enabled) {
+            matrix_boot_enable(h, currentTime);
+        }
         LeaveCriticalSection(&h->cs);
     } else if (!powerGood) {
         EnterCriticalSection(&h->cs);
@@ -878,19 +888,33 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
            sans memoire, plus de gestionnaire pour fournir les octets (0xFF). */
         i2ct_step(h, pinBoolIn);
         i2ct_finish(h);
+        /* Matrice LED micro:bit : le vrai balayage est materiel (timer + PPI),
+           il continue apres la fin du programme, comme l'UART vide sa file. */
+        matrix_step(h, currentTime);
         for (i = 0; i < h->num_pins; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
             pinIsOutput[i] = h->pin_is_output[i];
         }
-        /* Seule une echeance UART peut encore demander un reveil apres la fin
-           du script (prochain front a emettre, octet recu a clore). */
+        /* Une echeance UART (prochain front a emettre, octet recu a clore) ou
+           de matrice (prochaine transition du balayage) peut encore demander
+           un reveil apres la fin du script. */
         *nextWakeTime = earliest_uart_deadline(h, currentTime);
+        {
+            double next_matrix = earliest_matrix_deadline(h);
+            if (next_matrix < *nextWakeTime) {
+                *nextWakeTime = next_matrix;
+            }
+        }
         return;
     }
 
     EnterCriticalSection(&h->cs);
     h->sim_time = currentTime;
     h->adc_ref = adcRef;
+
+    /* Matrice LED micro:bit avant la boucle ci-dessous : ses broches sont des
+       sorties pendant le balayage, leurs transitions ne sont pas des entrees. */
+    matrix_step(h, currentTime);
 
     /* Une vraie transition d'une broche actuellement en ENTREE justifie de
        reveiller le worker avant l'heure demandee par son sleep() (cf.
@@ -905,6 +929,15 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     for (i = 0; i < h->num_pins; i++) {
         int old_val = h->pin_sensed_value[i];
         int new_val = pinBoolIn[i];
+        /* Broche que la matrice LED vient de liberer (display.off()) : sa
+           premiere transition est l'etablissement de son niveau apres la
+           haute impedance, pas une vraie entree - elle ne reveille pas le
+           script (une broche du driver d'affichage ne genere pas d'IRQ, et
+           off() n'en produit pas non plus). */
+        if (h->matrix_pin_released[i]) {
+            h->matrix_pin_released[i] = 0;
+            old_val = new_val;
+        }
         /* Une broche affectee a la reception UART est exclue : ses fronts
            appartiennent au peripherique serie, pas au script. Sans cette
            exclusion, chaque front de bit recu rendrait le reveil "authentique"
@@ -1011,6 +1044,11 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     /* Octet differe par IRQ_READ_REQ : le gestionnaire a eu son tour. */
     i2ct_finish(h);
 
+    /* Matrice LED micro:bit, second appel : le worker a pu activer, eteindre
+       ou redessiner l'affichage pendant le drain, les niveaux publies doivent
+       refleter son dernier etat a cet instant. */
+    matrix_step(h, currentTime);
+
     for (i = 0; i < h->num_pins; i++) {
         pinBoolOut[i] = h->pin_driven_value[i];
         pinIsOutput[i] = h->pin_is_output[i];
@@ -1039,6 +1077,12 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     double next_i2c = earliest_i2c_deadline(h);
     if (next_i2c < wake_at) {
         wake_at = next_i2c;
+    }
+    /* Meme raison : display.on()/off() ou un nouveau dessin pendant le drain,
+       la prochaine transition du balayage peut avoir bouge. */
+    double next_matrix = earliest_matrix_deadline(h);
+    if (next_matrix < wake_at) {
+        wake_at = next_matrix;
     }
     LeaveCriticalSection(&h->cs);
 

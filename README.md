@@ -16,6 +16,7 @@ Use case: test control code on the digital twin before deploying it to a real pr
 - **Peripherals to wire in**: serial devices (echo, temperature sensor, GPS, 20x2 display, generic), I2C devices (Grove LCD RGB display, echo, generic), HX711 weighing chain (converter, strain-gauge bridge, load cell), LED, pedagogical display.
 - **Debugging**: step-by-step debugging of the program with VS Code (breakpoints, variables); simulated time stays frozen during a pause.
 - **49 examples** (`MicroPythonMCU.Examples`), including a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
+- **Two board replicas**: `RPi_Pico` (Raspberry Pi Pico) and `MicroBit_v2` (BBC micro:bit v2, official `microbit` module API, multiplexed 5x5 LED matrix, A/B buttons, on-board sensors).
 - **Current limits**: Windows only, a single microcontroller per model, no SPI. Full list: [Limits and troubleshooting](https://bdelaup.gitlab.io/modelica_micropython/en/guide/limites/).
 
 ## Installation
@@ -93,6 +94,7 @@ Usage : tester un code de pilotage sur le jumeau numérique avant de le déploye
 - **Périphériques à brancher** : appareils série (écho, capteur de température, GPS, afficheur 20x2, générique), appareils I2C (écran Grove LCD RGB, écho, générique), chaîne de pesée HX711 (convertisseur, pont de jauges, corps d'épreuve), LED, afficheur pédagogique.
 - **Débogage** : le programme se débogue pas à pas avec VS Code (points d'arrêt, variables) ; le temps simulé reste figé pendant une pause.
 - **49 exemples** (`MicroPythonMCU.Examples`), dont une balance de cuisine qui exécute tels quels des drivers MicroPython du commerce.
+- **Deux répliques de cartes** : `RPi_Pico` (Raspberry Pi Pico) et `MicroBit_v2` (BBC micro:bit v2, API du module `microbit` du portage officiel, matrice LED 5x5 multiplexée, boutons A/B, capteurs intégrés).
 - **Limites actuelles** : Windows uniquement, un seul microcontrôleur par modèle, pas de SPI. Liste complète : [`requirements.md`](requirements.md#todo-vers-une-version-exhaustive).
 
 ## Installation

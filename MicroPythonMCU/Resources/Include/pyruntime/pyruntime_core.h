@@ -8,10 +8,11 @@
 
 /* Broches : la table (numero GPIO et capacites de chaque index) est fournie
    par le modele a la construction (PyRuntime_new) - 9 entrees pour MCU (GP0-GP7
-   + LED GP25), 31 pour Boards.RaspberryPiPico. Les tableaux du handle sont
-   dimensionnes au maximum. Cf. requirements.md, decision "Carte Raspberry Pi
-   Pico et alimentation". */
-#define MAX_PINS 32
+   + LED GP25), 31 pour Boards.RaspberryPiPico, 34 pour MicroBit_v2 (19 broches
+   edge + 5 lignes de la matrice LED + 8 capteurs integres). Les tableaux du
+   handle sont dimensionnes au maximum. Cf. requirements.md, decisions
+   "Carte Raspberry Pi Pico et alimentation" et "MCU micro:bit v2". */
+#define MAX_PINS 40
 #define PIN_CAP_DIGITAL 1   /* Pin(), PWM : broche numerique */
 #define PIN_CAP_EXTERNAL 2  /* reliee a un connecteur : UART, I2C, I2CTarget possibles */
 #define PIN_CAP_ADC 4       /* lisible par machine.ADC */
@@ -24,6 +25,21 @@
 
 #define MAX_TIMERS 4                 /* pool fixe de machine.Timer, meme esprit que les 8 broches GPIO de MCU plutot que 29 */
 #define TIMER_MIN_PERIOD 0.001       /* plancher (1 ms) : evite une tempete d'evenements Modelica a duree simulee nulle si period<=0, cf. requirements.md */
+
+/* Matrice LED 5x5 de la micro:bit (profil "microbit" uniquement, cf.
+   requirements.md decision "MCU micro:bit v2") : moteur cadence cote C comme
+   l'UART l'est pour ses bits (TIMER_MIN_PERIOD et MAX_TIMERS interdisent un
+   balayage 60 Hz x 5 lignes en callbacks Python). Valeurs du firmware CODAL
+   (NRF52LedMatrix) : trame de 60 Hz, un creneau par ligne, LED allumee quand
+   sa ligne est HIGH (source, anode) et sa colonne LOW (sink, cathode), la
+   colonne restant basse une fraction du creneau proportionnelle au niveau du
+   pixel (quantum), puis relachee. Le moteur pilote les 10 broches par la table
+   pin_*[] habituelle et demande un reveil a chaque transition reelle - pas de
+   quantification, pas de timer Python. */
+#define MATRIX_ROWS 5
+#define MATRIX_COLS 5
+#define MATRIX_FRAME_RATE 60.0       /* Hz, NRF52_LED_MATRIX_FREQUENCY de CODAL */
+#define MATRIX_MAX_LEVEL 9          /* niveaux de display.set_pixel() de MicroPython */
 #define IRQ_TRIGGER_RISING 1
 #define IRQ_TRIGGER_FALLING 2
 #define PIN_MODE_KEEP (-1)           /* native_pin_init : ne pas toucher a la direction (Pin(n, pull=...)) */
@@ -115,6 +131,16 @@ struct I2cTargetSide {
     int irq_trigger;
     int irq_pending;                 /* evenements survenus, pas encore remis au gestionnaire */
     int irq_flags;                   /* evenements remis au dernier appel (irq().flags()) */
+};
+
+/* Matrice LED de la micro:bit (profil "microbit") : moteur de balayage ligne par
+   ligne, cf. pyruntime_matrix.c. */
+struct MatrixEngine {
+    int enabled;                             /* display.is_on() : le moteur possede les 10 broches */
+    int row_idx[MATRIX_ROWS];                /* index interne (table pin_*) de chaque ligne, -1 tant que non configure */
+    int col_idx[MATRIX_COLS];                /* idem colonnes */
+    unsigned char pixels[MATRIX_ROWS][MATRIX_COLS];  /* niveaux 0-9, pixels[ligne][colonne] */
+    double t0;                               /* ancre des trames (instant d'activation, phase arbitraire) */
 };
 
 struct PyRuntimeHandle {
@@ -241,6 +267,18 @@ struct PyRuntimeHandle {
     int i2c_done_wake;
     struct I2cMaster i2cm;
     struct I2cTargetSide i2ct;   /* machine.I2CTarget, cf. pyruntime_i2ctarget.c */
+
+    /* microbit.display (profil "microbit") : moteur de la matrice LED, cf.
+       pyruntime_matrix.c. Ecrit par les natives matrix_* (worker) et par
+       matrix_step (PyRuntime_sync), comme l'UART des deux cotes.
+       matrix_pin_released : une broche de la matrice que matrix_disable vient
+       de liberer - sa PREMIERE transition ensuite (l'etablissement de son
+       niveau apres la haute impedance) ne reveille pas le script : ce n'est
+       pas une vraie transition d'entree, juste l'artifact de la liberation
+       (une interruption GPIO est masquee tant que la broche appartient au
+       driver d'affichage, et display.off() n'en genere pas). */
+    struct MatrixEngine matrix;
+    int matrix_pin_released[MAX_PINS];
 
     int script_done;
     int script_error;
