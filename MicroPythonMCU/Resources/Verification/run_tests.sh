@@ -4,6 +4,9 @@
 # terminal), puis affiche un récapitulatif PASS/FAIL avec la durée de chaque
 # script. Voir docs/fr/interne/tests.md.
 #
+# Sauf -k, les artefacts générés sont supprimés avant le lancement (restes
+# d'une exécution interrompue) et à la fin de la suite, y compris sur Ctrl-C.
+#
 #   ./run_tests.sh                       # toute la suite, 4 exécutions simultanées
 #   ./run_tests.sh -j 2                  # 2 exécutions simultanées
 #   ./run_tests.sh verify_08_pwm.mos ... # seulement ces scripts
@@ -86,6 +89,25 @@ fi
 
 if [ $# -gt 0 ]; then TESTS=("$@"); else TESTS=(verify_*.mos); fi
 
+# Artefacts de compilation et de simulation : tous nommés d'après le
+# fileNamePrefix du script (Prefix.exe, Prefix_res.mat, Prefix_01exo.c...),
+# plus les copies de système de fichiers et la liste des copies.
+cleanup_artifacts() {  # cleanup_artifacts script.mos...
+  local t p
+  for t in "$@"; do
+    for p in $(grep -o 'fileNamePrefix = "[A-Za-z0-9_]*"' "$t" | cut -d'"' -f2 | sort -u); do
+      rm -rf "$p".* "$p"_*
+    done
+  done
+  rm -rf fs_copies.txt mcu_datalogger_*
+}
+
+# Une exécution interrompue (plantage, terminal fermé, kill) laisse ses artefacts
+# dans ce dossier : repartir d'un dossier propre, avec les mêmes motifs qu'à la
+# fin de la suite. Tout verify_*.mos, pas seulement ceux demandés : les restes
+# viennent peut-être d'un lancement précédent plus large.
+[ $KEEP -eq 0 ] && cleanup_artifacts verify_*.mos
+
 # Clé de chaîne : "fs" pour les scripts qui touchent aux copies de système de
 # fichiers, sinon le premier fileNamePrefix du script.
 chain_key() {
@@ -104,6 +126,30 @@ for t in "${TESTS[@]}"; do
 done
 
 LOGS=$(mktemp -d)
+PROGRESS=""
+PIDS=()
+
+# Ctrl-C : tuer les omc en cours (chaînes et leur arborescence de compilation)
+# et ne rien laisser traîner. Un kill brutal du terminal ne passe pas par ici :
+# le nettoyage de démarrage s'en chargera au prochain lancement.
+on_interrupt() {
+  trap - INT TERM
+  [ -n "$PROGRESS" ] && kill "$PROGRESS" 2>/dev/null
+  local pid w
+  for pid in "${PIDS[@]}"; do
+    w=$(cat /proc/$pid/winpid 2>/dev/null)
+    if [ -n "$w" ]; then taskkill //F //T //PID "$w" >/dev/null 2>&1; else kill "$pid" 2>/dev/null; fi
+  done
+  if [ $KEEP -eq 0 ]; then
+    cleanup_artifacts "${TESTS[@]}"
+    rm -rf "$LOGS"
+    echo "Interrompu : processus tués, artefacts et journaux nettoyés (lancer avec -k pour les conserver)." >&2
+  else
+    echo "Interrompu : processus tués, artefacts laissés sur place, journaux conservés dans $LOGS." >&2
+  fi
+  exit 130
+}
+trap on_interrupt INT TERM
 
 run_chain() {
   local t s e status
@@ -156,7 +202,6 @@ echo "${#TESTS[@]} script(s), ${#ORDER[@]} chaîne(s), $JOBS en parallèle..."
 progress "${#TESTS[@]}" &
 PROGRESS=$!
 running=0
-PIDS=()
 for k in "${ORDER[@]}"; do
   if [ $running -ge "$JOBS" ]; then wait -n; running=$((running - 1)); fi
   run_chain "${CHAINS[$k]}" &
@@ -186,14 +231,8 @@ done
 if [ $KEEP -eq 1 ]; then
   echo; echo "Journaux conservés dans $LOGS ; artefacts laissés dans ce dossier."
 else
-  # Artefacts de compilation et de simulation : tous nommés d'après le
-  # fileNamePrefix du script (Prefix.exe, Prefix_res.mat, Prefix_01exo.c...).
-  for t in "${TESTS[@]}"; do
-    for p in $(grep -o 'fileNamePrefix = "[A-Za-z0-9_]*"' "$t" | cut -d'"' -f2 | sort -u); do
-      rm -rf "$p".* "$p"_*
-    done
-  done
-  rm -rf fs_copies.txt mcu_datalogger_* "$LOGS"
+  cleanup_artifacts "${TESTS[@]}"
+  rm -rf "$LOGS"
 fi
 
 [ $failed -eq 0 ]
