@@ -1,6 +1,8 @@
 #ifndef PYRUNTIMEIMPL_H
 #define PYRUNTIMEIMPL_H
 
+#include <stddef.h>   /* size_t : ce fichier est aussi compile seul par tools/make_pyimports.sh */
+
 /* Jalon M5 : thread worker + condition variable, interception de sleep()/des
    appels au shim comme points de synchro (cf. requirements.md). */
 
@@ -78,6 +80,7 @@ void PyRuntime_sync(void* handle, double currentTime, size_t nPins, const int* p
                      int* displaySeqOut, const char** displayPayloadOut,
                      int* uartTxPinOut, int* uartTxLevelOut,
                      int powerGood, double adcRef,
+                     int radioNetwork,
                      double* nextWakeTime);
 
 #endif

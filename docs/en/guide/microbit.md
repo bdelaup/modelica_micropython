@@ -136,11 +136,33 @@ uart.any(); uart.read()
 `VPowerOn` and stops for good if it falls below `VPowerOff` (no restart
 simulated). The `3V` pin also supplies external circuits.
 
+## Radio: `microbit.radio`
+
+The on-board 2.4 GHz radio is simulated **as packets**. Check `useRadio`
+(tab *Pins*) to show the **Antenna** port of the board: wire the antennas of
+the boards that must hear each other to the antenna of one
+`Peripherals.Radio.RadioAir` - boards wired to two different `RadioAir`
+never hear each other, the diagram shows who is on the air.
+
+```python
+import radio
+radio.on()                     # explicit error while the antenna is unwired
+radio.config(channel=7, group=0, power=6)   # channel/group/address filtering,
+                                            # receive queue (default 3)
+radio.send('PING 1')            # or send_bytes(b'...'), at most length bytes
+msg = radio.receive()           # str or None (receive_bytes(): bytes or None)
+```
+
+A packet is delivered after the **air time of its frame** (payload + 6
+header bytes at `data_rate`, 1 or 2 Mbit/s); the firmware semantics apply
+(filtering, queue, truncation to `length`), `power` is accepted but has no
+effect (no range simulated). No modulated signal is plotted - a 1 Mbit/s
+frame would cost thousands of sync points; the `RadioModem` remains the tool
+for modulations. The example `Examples.MicroBit.RadioChat` makes two boards
+talk.
+
 ## micro:bit specific limits
 
-- `microbit.radio` is not simulated: for a wireless link, wire a
-  `Peripherals.Radio.RadioModem` on the UART (`machine.UART`), as with the
-  other boards.
 - No SPI (no board of the library has it), no touch logo, microphone or
   speaker (v2), no software `reset()` (the program stops; consistent with
   the absence of restart on power loss).

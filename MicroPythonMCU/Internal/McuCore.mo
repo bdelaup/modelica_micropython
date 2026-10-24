@@ -13,6 +13,7 @@ model McuCore "Programmable core (RP2040 reference): Python program, sync point,
   parameter Modelica.Units.SI.Voltage VPowerOff = 1.6 "Voltage of vdd below which a running core stops for good (brown-out)";
   parameter Modelica.Units.SI.Resistance RRunPullUp = 50e3 "Internal pull-up of the RUN pin to vdd";
   parameter String instanceName = getInstanceName() "Name shown in the log and given to the copy of the flash: that of the board containing the core (MCU, RPi_Pico), set by it";
+  parameter Boolean useRadio = false "On-board 2.4 GHz radio (microbit profile, microbit.radio): shows the AntennaIn port, to wire to the antenna of a Peripherals.Radio.RadioAir - the boards sharing the same air hear each other";
   Modelica.Electrical.Analog.Interfaces.PositivePin pin[nPins] "Pins of the core, in the order of pinIds" annotation(
     Placement(transformation(origin = {-110, 0}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin vdd "Supply of the core and of its pins (IOVDD): high level of the outputs, pull-ups, consumption ICore" annotation(
@@ -25,6 +26,8 @@ model McuCore "Programmable core (RP2040 reference): Python program, sync point,
     Placement(transformation(origin = {110, -60}, extent = {{-10, -10}, {10, 10}})));
   Interfaces.DisplayLinkOutput Display0 "Logical link to an educational display peripheral (machine.Display(0).write())" annotation(
     Placement(transformation(origin = {110, 60}, extent = {{-10, -10}, {10, 10}})));
+  Interfaces.RadioAirInput AntennaIn if useRadio "Radio air link (microbit.radio): network id carried by the antenna of the Peripherals.Radio.RadioAir the board is wired to - no radio when unwired (id -1, radio.on() then raises an explicit error)" annotation(
+    Placement(transformation(origin = {110, 20}, extent = {{-10, -10}, {10, 10}})));
   // Public: plotted, and protected variables are missing from the simulation results
   Boolean powerGood(start = false, fixed = true) "The core is supplied (vdd above the power-on threshold, RUN high): its program starts the first time this becomes true and stops for good when it falls back. start = false: pins in high impedance during the initialization, where they are all inputs anyway (see pre(powerGood) below)";
   Boolean supplyOk(start = false, fixed = true) "vdd above the power-on threshold, with hysteresis";
@@ -51,6 +54,7 @@ protected
   discrete Integer uartTxPin(start = 0, fixed = true) "Pin index assigned to serial transmission (0 = none); once assigned it stays so, even between frames, because the idle line must be HIGH - see machine.UART";
   discrete Boolean uartTxLevel(start = true, fixed = true) "Logic level to hold on the transmit pin (idle = high), published by the C code: the next sync point falls on the next level CHANGE of the frame, so consecutive identical bits cost no event";
   discrete Modelica.Units.SI.Time nextWakeTime(start = 0, fixed = true) "Next wake-up requested by the script (sleep), or +inf once finished";
+  Integer radioNetworkC "Network id of the radio air link (-1: no radio, antenna unwired), passed to PyRuntime_sync";
   Internal.PyRuntime rt = Internal.PyRuntime(scriptPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime"), addScriptDirToPath, libraryPath, Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/_shim/machine_time_shim.py"), fsEnabled, Internal.ResolvePath(fsSource), Internal.ResolvePath(fsWorkspace), fsOpenExplorer, instanceName, gpioOpTime, hangWarningTime, debugEnabled, debugPort, allIds, allCaps, boardProfile) "Embedded Python interpreter running the user script" annotation(
     Placement(visible = false, transformation(extent = {{-20, 75}, {20, 95}})));
   Internal.PinBridge bridge[nAll](each VOL = VOL, each ROut = ROut, each RPullUp = RPullUp, each RPullDown = RPullDown, each GOff = GOff) "Electrical stage of each pin, fed by vdd" annotation(
@@ -80,6 +84,12 @@ equation
   powerGood = supplyOk and runHigh;
   adcRef = vref.v - gnd.v;
   vref.i = 0 "infinite input impedance";
+  // Antenne radio : conditionnel (useRadio), la reference reste legale car gardee par la meme condition
+  if useRadio then
+    radioNetworkC = AntennaIn.networkId;
+  else
+    radioNetworkC = -1;
+  end if;
   for i in 1:nAll loop
     connect(bridge[i].vdd, vdd);
     connect(bridge[i].gnd, gnd);
@@ -97,10 +107,10 @@ equation
   // vector of conditions is built with cat() to cover any number of pins, hence the
   // separate initial branch.
   when initial() then
-    (pinBoolOutC, pinIsOutputC, pinPullC, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage, powerGood, adcRef);
+    (pinBoolOutC, pinIsOutputC, pinPullC, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage, powerGood, adcRef, radioNetworkC);
     Display0.charCode = Internal.StringToCharCodes(Internal.DisplayMessage(Display0.payload, Internal.DisplayMessageCount(Display0.payload)), Interfaces.DISPLAY_COLS) "ASCII codes of the last message of Display0.payload (a String, which cannot be stored in the results), so that the connected display peripheral can animate the text actually received on its icon - see Internal.StringToCharCodes";
   elsewhen cat(1, {time >= pre(nextWakeTime), sample(0, tickPeriod), change(powerGood)}, {change(pinBoolIn[i]) and not pre(pinIsOutputD[i]) for i in 1:nAll}) then
-    (pinBoolOutC, pinIsOutputC, pinPullC, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage, powerGood, adcRef);
+    (pinBoolOutC, pinIsOutputC, pinPullC, pwmFreq, pwmDuty, Display0.seq, Display0.payload, uartTxPin, uartTxLevel, nextWakeTime) = Internal.PyRuntime_sync(rt, time, pinBoolInC, pinNodeVoltage, powerGood, adcRef, radioNetworkC);
     Display0.charCode = Internal.StringToCharCodes(Internal.DisplayMessage(Display0.payload, Internal.DisplayMessageCount(Display0.payload)), Interfaces.DISPLAY_COLS);
   end when;
   annotation(

@@ -140,11 +140,33 @@ uart.any(); uart.read()
 et s'arrête définitivement s'il passe sous `VPowerOff` (pas de redémarrage
 simulé). La broche `3V` alimente aussi le 3V de la carte.
 
+## Radio : `microbit.radio`
+
+La radio 2,4 GHz embarquée est simulée **par paquets**. Cocher `useRadio`
+(onglet *Pins*) fait apparaître le port **Antenna** de la carte : câblez les
+antennes des cartes qui doivent s'entendre à l'antenne d'un même
+`Peripherals.Radio.RadioAir` — deux cartes câblées à deux `RadioAir`
+différents ne s'entendent jamais, le schéma montre qui est sur l'air.
+
+```python
+import radio
+radio.on()                     # erreur explicite tant que l'antenne n'est pas câblée
+radio.config(channel=7, group=0, power=6)   # filtrage channel/group/address,
+                                            # file de réception queue (défaut 3)
+radio.send('PING 1')            # ou send_bytes(b'...'), au plus length octets
+msg = radio.receive()           # str ou None (receive_bytes() : bytes ou None)
+```
+
+Un paquet est livré après le **temps de trame à l'air** (contenu + 6 octets
+d'en-tête au débit `data_rate`, 1 ou 2 Mbit/s) ; les mêmes sémantiques que le
+firmware (filtrage, file, troncation à `length`) s'appliquent, `power` est
+accepté mais sans effet (pas de portée simulée). Aucun signal modulé n'est
+tracé — une trame à 1 Mbit/s coûterait des milliers de points de synchro ;
+le `RadioModem` reste l'outil pour les modulations. L'exemple
+`Examples.MicroBit.RadioChat` fait dialoguer deux cartes.
+
 ## Limites spécifiques à la micro:bit
 
-- `microbit.radio` n'est pas simulé : pour une liaison sans fil, câbler un
-  `Peripherals.Radio.RadioModem` sur l'UART (`machine.UART`), comme pour les
-  autres cartes.
 - Pas de SPI (aucune carte de la bibliothèque n'en a), pas de logo tactile,
   microphone ni haut-parleur (v2), pas de `reset()` logiciel (le programme
   s'arrête ; cohérent avec l'absence de redémarrage sur perte

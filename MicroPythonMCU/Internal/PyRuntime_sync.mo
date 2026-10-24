@@ -10,6 +10,7 @@ impure function PyRuntime_sync "Sync point between the Python script and the sim
   input Real pinAnalogIn[size(pinBoolIn, 1)] "raw voltage (V) measured on each pin, aligned with pinBoolIn - read by machine.ADC on the ADC-capable pins";
   input Boolean powerGood "the board is supplied: the program starts at the first supplied sync point and stops for good at the first supply loss";
   input Real adcRef "reference voltage of the ADC (V): read_u16() = 65535 at this voltage";
+  input Integer radioNetwork "id of the radio air network the board is wired to (microbit.radio), -1 = no radio (antenna unwired) - see Peripherals.Radio.RadioAir";
   output Integer pinBoolOut[size(pinBoolIn, 1)] "level driven on each pin (0/1)";
   output Integer pinIsOutput[size(pinBoolIn, 1)] "direction of each pin (1 = output)";
   output Integer pinPull[size(pinBoolIn, 1)] "internal pull resistor of each pin (0 = none, 1 = Pin.PULL_UP, 2 = Pin.PULL_DOWN)";
@@ -23,7 +24,7 @@ impure function PyRuntime_sync "Sync point between the Python script and the sim
   // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
   // the simulation under OpenModelica/Windows (see requirements.md, decision
   // "Comportement en cas d'exception non geree dans le script").
-  external "C" PyRuntime_sync(handle, currentTime, size(pinBoolIn, 1), pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pinPull, pwmFreq, pwmDuty, displaySeq, displayPayload, uartTxPin, uartTxLevel, powerGood, adcRef, nextWakeTime) annotation(
+  external "C" PyRuntime_sync(handle, currentTime, size(pinBoolIn, 1), pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput, pinPull, pwmFreq, pwmDuty, displaySeq, displayPayload, uartTxPin, uartTxLevel, powerGood, adcRef, radioNetwork, nextWakeTime) annotation(
     Include = "#include \"PyRuntimeImpl.c\"",
     Library = "-lwinpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");

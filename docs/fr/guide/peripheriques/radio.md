@@ -2,6 +2,12 @@
 
 `Peripherals.Radio` fournit des **modules radio transparents**. Chacun se branche sur l'UART d'un microcontrôleur, et un **seul fil**, d'antenne à antenne, relie les modules qui s'entendent. Ce qu'un programme écrit avec `machine.UART` ressort de l'UART de l'autre microcontrôleur, après être passé par les tampons du module, un délai fixe et une trame radio au débit de l'air. Le signal modulé (OOK, ASK, FSK ou BPSK) est tracé pour l'enseignement.
 
+Le paquetage contient aussi **`RadioAir`**, l'air de la radio **intégrée** de la
+micro:bit (`microbit.radio`) : pas de module à brancher ni de signal tracé —
+les paquets voyagent entre les moteurs radio des cartes, et c'est le composant
+qui matérialise qui s'entend (antennes câblées au même `RadioAir`). Cf. le
+[guide micro:bit](../microbit.md#radio-microbitradio).
+
 ![Le caractère 'U' en OOK, ASK, FSK et BPSK](../../images/sim/radio-modulations.svg)
 
 *Le caractère `U` (`0x55`) envoyé par les quatre émetteurs de l'exemple `Radio.Modulations`, à 1200 bit/s, avec une porteuse tracée à 4800 Hz. Au-dessus : les bits de la trame radio (start, 8 bits de poids faible en tête, stop).*

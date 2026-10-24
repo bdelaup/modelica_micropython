@@ -24,6 +24,7 @@
     X(PyErr_SetNone) \
     X(PyErr_SetObject) \
     X(PyErr_SetString) \
+    X(PyErr_WarnEx) \
     X(PyEval_EvalCode) \
     X(PyEval_GetBuiltins) \
     X(PyEval_RestoreThread) \

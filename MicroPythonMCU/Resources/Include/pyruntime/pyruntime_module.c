@@ -37,6 +37,12 @@ static PyMethodDef native_methods[] = {
     {"i2ct_deinit", native_i2ct_deinit, METH_VARARGS, "Releases the I2C target and its pins"},
     {"i2ct_irq", native_i2ct_irq, METH_VARARGS, "Registers/clears the IRQ handler of the I2C target"},
     {"i2ct_flags", native_i2ct_flags, METH_VARARGS, "Events handed to the last call of the I2C target handler"},
+    {"radio_on", native_radio_on, METH_VARARGS, "Turns the on-board radio on (micro:bit profile)"},
+    {"radio_off", native_radio_off, METH_VARARGS, "Turns the radio off and empties the receive queue"},
+    {"radio_config", native_radio_config, METH_VARARGS, "Sets the radio configuration (length, queue, channel, power, address, group, data_rate)"},
+    {"radio_send_bytes", native_radio_send_bytes, METH_VARARGS, "Puts a packet on the air (bytes), delivered after the frame duration"},
+    {"radio_any", native_radio_any, METH_VARARGS, "Number of packets waiting in the receive queue"},
+    {"radio_read_bytes", native_radio_read_bytes, METH_VARARGS, "Reads the oldest received packet (bytes), None if nothing"},
     {"i2ct_memaddr", native_i2ct_memaddr, METH_VARARGS, "Current memory address of the I2C target"},
     {"i2ct_readinto", native_i2ct_readinto, METH_VARARGS, "Copies the bytes received from the controller into a buffer, returns their number"},
     {"i2ct_write", native_i2ct_write, METH_VARARGS, "Queues bytes for the next reads of the controller, returns the number accepted"},
@@ -606,6 +612,11 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     handle->i2ct.sda_pin = -1;
     handle->init_state = INIT_PENDING;
 
+    /* Radio micro:bit : defauts du firmware puis enregistrement au registre
+       du process (l'emetteur d'un autre moteur y cherche ses auditeurs). */
+    radio_engine_init(handle);
+    radio_registry_add(handle);
+
     /* Journal : a partir du deuxieme microcontroleur, toutes les lignes des MCU
        sont prefixees par leur nom d'instance (cf. g_mcu_prefix_on). */
     handle->relay.prefix = handle->instanceName;
@@ -736,6 +747,8 @@ void PyRuntime_destroy(void* handle_) {
         pyhost_abandon();
     }
     uart_report_errors(h);
+    radio_report(h);
+    radio_registry_remove(h);
     fs_at_exit(h);
     pyhost_release();
 }
@@ -830,6 +843,7 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
                      int* displaySeqOut, const char** displayPayloadOut,
                      int* uartTxPinOut, int* uartTxLevelOut,
                      int powerGood, double adcRef,
+                     int radioNetwork,
                      double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
@@ -839,6 +853,10 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
                             h->instanceName, (int) nPins, h->num_pins);
         return;
     }
+    /* Antenne radio (microbit.radio) : identifiant du reseau porte par le
+       schema, -1 si l'antenne n'est pas cablee (radio.on() le signale).
+       Stocke avant tout traitement : la valeur ne depend que du modele. */
+    h->radio.network_id = radioNetwork;
 
     /* Alimentation : le programme demarre a la premiere synchro alimentee
        (ticks_ms() compte depuis cet instant), une perte d'alimentation ensuite
@@ -891,6 +909,9 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
         /* Matrice LED micro:bit : le vrai balayage est materiel (timer + PPI),
            il continue apres la fin du programme, comme l'UART vide sa file. */
         matrix_step(h, currentTime);
+        /* Radio : les paquets restants sont livres aux compteurs (avertissements
+           de pertes), plus personne ne les lit - le programme est fini. */
+        radio_step(h, currentTime);
         for (i = 0; i < h->num_pins; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
             pinIsOutput[i] = h->pin_is_output[i];
@@ -915,6 +936,13 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     /* Matrice LED micro:bit avant la boucle ci-dessous : ses broches sont des
        sorties pendant le balayage, leurs transitions ne sont pas des entrees. */
     matrix_step(h, currentTime);
+
+    /* Radio micro:bit : livre a la file de reception les paquets dont l'air
+       a termine la livraison (arrivee <= maintenant), filtres par la config
+       du RECEPTEUR - avant le worker, pour que le programme les voie a ce
+       point de synchro. Les envois d'autres moteurs ne peuvent pas arriver
+       pendant CETTE synchro (un seul worker a la fois, cf. pyruntime_core.h). */
+    radio_step(h, currentTime);
 
     /* Une vraie transition d'une broche actuellement en ENTREE justifie de
        reveiller le worker avant l'heure demandee par son sleep() (cf.
@@ -1083,6 +1111,12 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     double next_matrix = earliest_matrix_deadline(h);
     if (next_matrix < wake_at) {
         wake_at = next_matrix;
+    }
+    /* Meme raison pour la radio : un paquet peut voler vers ce moteur (pose
+       par un emetteur lors d'une synchro anterieure), reveil a son arrivee. */
+    double next_radio = earliest_radio_deadline(h);
+    if (next_radio < wake_at) {
+        wake_at = next_radio;
     }
     LeaveCriticalSection(&h->cs);
 

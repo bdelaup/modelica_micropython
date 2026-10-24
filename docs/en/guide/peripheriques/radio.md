@@ -2,6 +2,8 @@
 
 `Peripherals.Radio` provides **transparent radio modules**. Each one plugs into the UART of a microcontroller, and **one wire**, from antenna to antenna, joins the modules that can hear each other. What a program writes with `machine.UART` comes out of the UART of the other microcontroller, after going through the module's buffers, a fixed delay and a radio frame at the air data rate. The modulated signal (OOK, ASK, FSK or BPSK) is drawn for teaching purposes.
 
+The package also contains **`RadioAir`**, the air of the micro:bit's **on-board** radio (`microbit.radio`): no module to plug, no signal drawn - the packets travel between the radio engines of the boards, and the component materializes who hears whom (antennas wired to the same `RadioAir`). See the [micro:bit guide](../microbit.md#radio-microbitradio).
+
 ![The character 'U' in OOK, ASK, FSK and BPSK](../../images/sim/radio-modulations.svg)
 
 *The character `U` (`0x55`) sent by the four transmitters of the `Radio.Modulations` example, at 1200 bit/s, with a carrier drawn at 4800 Hz. Above: the bits of the radio frame (start, 8 bits least significant first, stop). Figure labels in French.*

@@ -1,0 +1,52 @@
+// Scenario de verification n°78 : radio micro:bit (microbit.radio, Lot 8).
+// omc verify_78_microbit_radio.mos
+//
+// Deux MicroBit_v2 partageant le meme air (une Peripherals.Radio.RadioAir) :
+// - carte a : microbit_radio_tx.py, envoie PING 1..5, une par seconde
+// - carte b : microbit_radio_rx.py, ecoute et compte
+// Le programme emetteur imprime TX n / TX_DONE, le recepteur RX PING n /
+// RX_DONE 5 : marqueurs lus par le script .mos.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+loadString("model MicroBitRadio
+  MicroPythonMCU.MicroBit_v2 a(
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/microbit_radio_tx.py\"),
+    buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
+    useRadio = true);
+  MicroPythonMCU.MicroBit_v2 b(
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/microbit_radio_rx.py\"),
+    buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
+    useRadio = true);
+  MicroPythonMCU.Peripherals.Radio.RadioAir air;
+  Modelica.Electrical.Analog.Basic.Ground ga;
+  Modelica.Electrical.Analog.Basic.Ground gb;
+equation
+  connect(a.Antenna, air.antenna);
+  connect(b.Antenna, air.antenna);
+  connect(a.GND, ga.p);
+  connect(b.GND, gb.p);
+end MicroBitRadio;"); getErrorString();
+
+buildModel(MicroBitRadio, stopTime = 15, numberOfIntervals = 150, fileNamePrefix = "MicroBitRadio");
+b := getErrorString();
+ret := system(".\\MicroBitRadio.bat", "MicroBitRadio_run.txt");
+log := readFile("MicroBitRadio_run.txt");
+
+// Marqueurs des scripts Python
+(n1, m) := regex(log, "TX 1", 1);
+(n2, m) := regex(log, "TX 5", 1);
+(n3, m) := regex(log, "TX_DONE", 1);
+(n4, m) := regex(log, "RX PING 1", 1);
+(n5, m) := regex(log, "RX PING 5", 1);
+(n6, m) := regex(log, "RX_DONE 5", 1);
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0 and n5 > 0 and n6 > 0 then
+  print("PASS: verify_78_microbit_radio (5 PING emis, 5 recus sur le meme air)\n");
+else
+  print("FAIL: verify_78_microbit_radio (tx1=" + String(n1) + ", tx5=" + String(n2)
+        + ", txDone=" + String(n3) + ", rx1=" + String(n4) + ", rx5=" + String(n5)
+        + ", rxDone=" + String(n6) + ")\n" + b);
+end if;

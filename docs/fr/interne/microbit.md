@@ -146,11 +146,52 @@ ce courant-là).
 
 ## Ce qui n'est pas simulé (Phase 2)
 
-`microbit.radio` (protocole paquets — réutiliser un `Peripherals.Radio.RadioModem`
-câblé sur l'UART ou l'implémenter au-dessus, décision en suspens), SPI (chantier
-commun à toutes les cartes), logo tactile, micro/haut-parleur de la v2, USB HID.
-Le redémarrage logiciel (`microbit.reset()`) n'est pas simulé (cohérent avec
-l'absence de redémarrage sur perte d'alimentation) : le programme se termine.
+SPI (chantier commun à toutes les cartes), logo tactile, micro/haut-parleur
+de la v2, USB HID. Le redémarrage logiciel (`microbit.reset()`) n'est pas
+simulé (cohérent avec l'absence de redémarrage sur perte d'alimentation) :
+le programme se termine.
+
+## Radio `microbit.radio` (Lot 8, 2026-10-23)
+
+Décision « Radios micro:bit » de `requirements.md` : **moteur de paquets
+dédié côté C** (comme la matrice LED l'est pour le balayage), pas un
+`RadioModem` sur l'UART — la radio de la micro:bit n'est pas sur un UART,
+l'API est par paquets (file `queue`, filtrage `channel`/`group`/`address`,
+troncation `length`) et une trame électrique à 1 ou 2 Mbit/s coûterait des
+milliers de points de synchro par paquet.
+
+- **Topologie** : le port **Antenna** de la carte (paramètre `useRadio`)
+  porte une liaison logique `Interfaces.RadioAirInput` vers un
+  `Peripherals.Radio.RadioAir`, qui donne son identifiant de réseau à
+  toutes les antennes câblées à lui (`networkId` explicite, sinon un hash
+  du nom d'instance, `Internal.StringHash`). Deux moteurs s'entendent
+  s'ils partagent l'identifiant ; `radio.on()` lève une erreur explicite
+  tant que l'antenne n'est pas câblée. L'identifiant transite par un
+  nouvel entrée de `PyRuntime_sync` (`radioNetwork`, -1 = pas d'antenne),
+  plomberie dans `Internal.McuCore` (connecteur conditionnel `AntennaIn`,
+  `useRadio`).
+- **Moteur** (`pyruntime_radio.c`, inclus par le chapeau) : registre global
+  des moteurs du process (tous les MCU d'un modèle partagent l'exe) ;
+  `radio_send` pose le paquet dans la file d'arrivee de chaque auditeur du
+  meme réseau avec `arrival = t + (len + 6)*8/data_rate`, `radio_step`
+  (chaque synchro) livre les paquets arrivés, filtres par la config du
+  RECEPTEUR, dans sa file `queue` (les plus vieux partent en premier,
+  file pleine = paquet perdu, avertissements plafonnés côté thread
+  Modelica). Verrou global `g_radio_cs` pour l'inbox/registre (aucun cycle :
+  l'emetteur ne prend jamais le cs d'un autre handle) ; `earliest_radio_deadline`
+  entre dans le calcul du prochain réveil (livraison exacte à l'arrivée).
+- **Natives** : `radio_on/off/config/send_bytes/any/read_bytes` (table du
+  module natif ; `pyimports.h` régénéré par `tools/make_pyimports.sh` pour
+  `PyErr_WarnEx`).
+- **Shim** : module `radio` autonome (`import radio`, aussi attaché à
+  `microbit.radio`), config gardée côté Python (les sept valeurs
+  repassées à chaque `config()`), `send`/`receive` encodent/décodent en
+  UTF-8, `receive_bytes_into` vérifie la taille du tampon. `power` accepté,
+  sans effet (pas de portée).
+- **Exemple** : `Examples.MicroBit.RadioChat` (scripts
+  `microbit_radio_tx.py` / `microbit_radio_rx.py`).
+- **Vérification** : `verify_78_microbit_radio.mos` — deux cartes sur le
+  même air, 5 PING émis/reçus, marqueurs TX/RX.
 
 ## Sources des boutons et capteurs (retravail du paramétrage, 2026-10-23)
 

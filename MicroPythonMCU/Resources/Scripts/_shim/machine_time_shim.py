@@ -1265,6 +1265,78 @@ if _MBIT:
             return int(round(out))
         return out
 
+    # radio : le module du portage micro:bit, autonome (import radio) et
+    # aussi attache a microbit (microbit.radio) par commodite. Le protocole
+    # par paquets vit cote C (pyruntime_radio.c) : filtrage
+    # channel/group/address, file de reception de profondeur queue, duree de
+    # trame a l'air au debit data_rate. La config garde ici l'etat courant
+    # (meme defauts que le firmware) et repasse les SEPT valeurs a chaque
+    # radio.config() - la native n'a pas a se souvenir d'un "None veut dire
+    # inchange".
+    _radio_cfg = dict(length=32, queue=3, channel=7, power=6,
+                      address=0x75626974, group=0, data_rate=1)
+
+    def _radio_on():
+        _native.radio_on()
+
+    def _radio_off():
+        _native.radio_off()           # le firmware vide la file, la config est conservee
+
+    def _radio_config(length=None, queue=None, channel=None, power=None,
+                      address=None, group=None, data_rate=None):
+        checks = (
+            (length, 'length', 1, 251),
+            (queue, 'queue', 0, 32),
+            (channel, 'channel', 0, 100),
+            (power, 'power', 0, 7),
+            (group, 'group', 0, 255),
+            (data_rate, 'data_rate', 1, 2),
+        )
+        for value, name, lo, hi in checks:
+            if value is not None and not (lo <= value <= hi):
+                raise ValueError('invalid %s %r (%d-%d expected)' % (name, value, lo, hi))
+        if address is not None and not (0 <= address <= 2147483647):
+            raise ValueError('invalid address %r (0-2147483647 expected)' % (address,))
+        if length is not None:
+            _radio_cfg['length'] = int(length)
+        if queue is not None:
+            _radio_cfg['queue'] = int(queue)
+        if channel is not None:
+            _radio_cfg['channel'] = int(channel)
+        if power is not None:
+            _radio_cfg['power'] = int(power)       # accepte, pas simule (pas de portee)
+        if address is not None:
+            _radio_cfg['address'] = int(address)
+        if group is not None:
+            _radio_cfg['group'] = int(group)
+        if data_rate is not None:
+            _radio_cfg['data_rate'] = int(data_rate)
+        _native.radio_config(_radio_cfg['length'], _radio_cfg['queue'],
+                             _radio_cfg['channel'], _radio_cfg['power'],
+                             _radio_cfg['address'], _radio_cfg['group'],
+                             _radio_cfg['data_rate'])
+
+    def _radio_send_bytes(message):
+        _native.radio_send_bytes(bytes(message))
+
+    def _radio_receive_bytes():
+        return _native.radio_read_bytes()         # bytes, ou None
+
+    def _radio_receive_bytes_into(buffer):
+        b = _radio_receive_bytes()
+        if b is None:
+            return None
+        if len(buffer) < len(b):
+            raise ValueError('buffer too small (%d bytes, %d received)' % (len(buffer), len(b)))
+        buffer[:len(b)] = b
+
+    def _radio_send(message):
+        _radio_send_bytes(message.encode('utf-8') if isinstance(message, str) else bytes(message))
+
+    def _radio_receive():
+        b = _radio_receive_bytes()
+        return None if b is None else b.decode('utf-8')
+
     _mbit_display = _MicroBitDisplay()
     _microbit = types.ModuleType('microbit')
     _microbit.display = _mbit_display
@@ -1284,6 +1356,19 @@ if _MBIT:
     for _n in _MBIT_PINS:
         setattr(_microbit, 'pin%d' % (_n,), _MicroBitPin(_n))
     sys.modules['microbit'] = _microbit
+    _mbit_radio = types.ModuleType('radio')
+    _mbit_radio.RATE_1MBIT = 1
+    _mbit_radio.RATE_2MBIT = 2
+    _mbit_radio.on = _radio_on
+    _mbit_radio.off = _radio_off
+    _mbit_radio.config = _radio_config
+    _mbit_radio.send_bytes = _radio_send_bytes
+    _mbit_radio.receive_bytes = _radio_receive_bytes
+    _mbit_radio.receive_bytes_into = _radio_receive_bytes_into
+    _mbit_radio.send = _radio_send
+    _mbit_radio.receive = _radio_receive
+    sys.modules['radio'] = _mbit_radio
+    _microbit.radio = _mbit_radio
 
 # --- Systeme de fichiers (flash simulee) ---
 #
