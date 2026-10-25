@@ -9,9 +9,8 @@ Depuis le 2026-10-04, le microcontrôleur programmable est un **composant** plac
 | `Internal.PartialMcuSettings` | Paramètres réglés par l'utilisateur (programme, flash, temps d'exécution, débogage, étages électriques), avec leurs onglets. Étendu par `MCU`, `RPi_Pico` **et** `McuCore` : chaque carte transmet tous ses paramètres au cœur par des modificateurs `final`. Ainsi, chaque paramètre n'est écrit qu'une fois |
 | `Internal.PartialBoard` | Socle commun des trois cartes : étend `PartialMcuSettings`, porte `boardName`, `ICore`/`VPowerOn`/`VPowerOff` et le cœur `replaceable` avec le contrat carte-cœur (`final`) écrit une seule fois ; chaque carte redeclare le cœur et sa table de broches dans le modificateur de son `extends` |
 | `Internal.PartialUsbBoard` | Socle des cartes USB (`RPi_Pico`, `MicroBit_v2`) : ajoute les paramètres `usbConnected`/`VUsb`/`RUsb`/`eta` ; les composants et le câblage restent dans chaque carte |
-| `Internal.PartialMcuCore` | Le cœur sans sa synchro ni sa radio : `PyRuntime`, un `PinBridge` par broche, la mise sous tension. Connecteurs : `pin[nPins]`, `vdd`, `gnd`, `vref`, `run`, `Display0` |
-| `Internal.McuCore` | `PartialMcuCore` + le grand `when` de synchro (`PyRuntime_sync`, réseau radio -1 : pas de radio). Placé dans `MCU` et `RPi_Pico` |
-| `Internal.McuCoreRadio` | `PartialMcuCore` + le `when` de synchro et la radio 2,4 GHz (`useRadio`, port conditionnel `AntennaIn`, identifiant du réseau passé à `PyRuntime_sync`). Placé dans `MicroBit_v2` (redeclare) |
+| `Internal.PartialMcuCore` | Le cœur sans sa synchro : `PyRuntime`, un `PinBridge` par broche, la mise sous tension. Connecteurs : `pin[nPins]`, `vdd`, `gnd`, `vref`, `run`, `Display0` |
+| `Internal.McuCore` | `PartialMcuCore` + le grand `when` de synchro (`PyRuntime_sync`). Placé dans les trois cartes |
 | `Internal.SensorSource` / `Internal.ButtonSource` | Blocs sources paramétrables (constante / table horaire / connecteur, énumération `Interfaces.InputSource`) : un par capteur et par bouton de la micro:bit |
 | `Internal.PinBridge` | Étage électrique d'une broche, en équations : sortie push-pull par deux conductances (`1/ROut` de `vdd` vers la broche, ou de la broche vers `VOL`), tirages, fuite `GOff` |
 | `MCU` | Le cœur + une `ConstantVoltage(VOH)` sur `vdd` et `vref` + la LED embarquée sur `pin[9]`. `run` reste en l'air (tirage interne) |
@@ -23,7 +22,7 @@ Les connecteurs restent dans la classe qui porte l'icône (`MCU`, `RPi_Pico`) : 
 
 ## Diagramme des classes
 
-L'héritage (`extends`) est la flèche pleine ; le losange `o--` est le **slot `replaceable`** ouvert par `PartialBoard` ; la flèche pointillée `redeclare` donne le **type effectif** choisi par chaque carte ; les liens pleins `*--` sont les composants internes. Le contrat carte-cœur (les ~25 modificateurs `final`) est écrit une seule fois dans `PartialBoard` ; la radio n'existe que dans la branche `McuCoreRadio` — décision « Refactoring du socle des cartes » de `requirements.md`.
+L'héritage (`extends`) est la flèche pleine ; le losange `o--` est le **slot `replaceable`** ouvert par `PartialBoard` ; la flèche pointillée `redeclare` donne le **type effectif** choisi par chaque carte ; les liens pleins `*--` sont les composants internes. Le contrat carte-cœur (les ~25 modificateurs `final`) est écrit une seule fois dans `PartialBoard` ; la radio embarquée de la micro:bit est un composant de la carte (`Internal.OnBoardRadioModem` sur deux broches internes du cœur), plus aucun cœur dédié — décisions « Refactoring du socle des cartes » et « Radios micro:bit » de `requirements.md`.
 
 ```mermaid
 classDiagram
@@ -71,18 +70,9 @@ classDiagram
     PartialMcuSettings <|-- PartialMcuCore
 
     class McuCore {
-        <<sans radio>>
-        when : PyRuntime_sync(... réseau radio = -1)
+        when : PyRuntime_sync(...)
     }
     PartialMcuCore <|-- McuCore
-
-    class McuCoreRadio {
-        <<avec radio 2,4 GHz>>
-        +useRadio
-        +AntennaIn (si useRadio)
-        when : PyRuntime_syncBoard(... radioNetworkC)
-    }
-    PartialMcuCore <|-- McuCoreRadio
 
     PartialBoard o-- PartialMcuCore : slot replaceable
 
@@ -105,7 +95,7 @@ classDiagram
     RPi_Pico ..> McuCore : redeclare core
 
     class MicroBit_v2 {
-        VTgt · useGroundPin · useRadio
+        VTgt · useGroundPin
         P0..P20 · P_3V · GND · Antenna
         led_0_0..led_4_4 (matrice 5×5)
         switchA/B · pullBtnA/B · pullI2c · pullRing
@@ -114,7 +104,7 @@ classDiagram
         usbSupply · usbCable
     }
     PartialUsbBoard <|-- MicroBit_v2
-    MicroBit_v2 ..> McuCoreRadio : redeclare core
+    MicroBit_v2 ..> McuCore : redeclare core
 
     class SensorSource {
         source InputSource
@@ -143,11 +133,12 @@ classDiagram
     RPi_Pico *-- "1" Rt6150 : regulator
     MicroBit_v2 *-- "1" Rt6150 : regulator
 
-    class RadioAir {
-        <<Peripherals.Radio>>
-        networkId
+    class OnBoardRadioModem {
+        <<Internal, toujours la>>
+        modem embarque sur pin[33]/[34]
+        +antenna
     }
-    McuCoreRadio ..> RadioAir : AntennaIn (liaison logique)
+    MicroBit_v2 *-- "0..1" OnBoardRadioModem : radioModem
 ```
 
 ## Table des broches

@@ -23,6 +23,7 @@
 #define RADIO_WARN_MAX 10            /* avertissements au journal, ensuite bilan en fin de simulation */
 #define RADIO_MAX_INSTANCES 48       /* identifiants 1..48 : deux emetteurs simultanes gardent une variance relative des identifiants >= 1e-4, loin de la tolerance 1e-6 du test cote Modelica */
 #define RADIO_AIR_DATA_BITS 8        /* trame radio : 8N1, quel que soit le format cote UART */
+#define RADIO_MAX_AIR_BAUD 2000000   /* plafond du debit AIR, plus haut que celui (115200) du cote UART : la micro:bit emit a 1 Mbit/s, et le nombre d'evenements par octet ne depend pas du debit (un par changement de niveau) - seul leur espacement temporel change ; le cote serie garde la garde-fou UART_MAX_BAUD contre les tempetes d'evenements */
 
 /* File d'octets horodatee : chaque octet porte l'instant a partir duquel il
    peut repartir (fin de reception + delai fixe). */

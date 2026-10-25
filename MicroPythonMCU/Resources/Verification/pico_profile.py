@@ -18,7 +18,8 @@ check("pin30", lambda: Pin(30, Pin.OUT))                             # pas de GP
 check("uart2", lambda: UART(2))
 
 u = UART(0, baudrate=9600)        # broches par defaut : TX GP0, RX GP1
-check("uart1_busy", lambda: UART(1))
+u2 = UART(1, baudrate=9600)       # deux moteurs : UART(1) s'ouvre a cote de UART(0)
+print("uart1_ok", u2)
 time.sleep_ms(2)                  # ligne au repos (haute) avant la premiere trame
 u.write(b"hi")
 time.sleep_ms(10)

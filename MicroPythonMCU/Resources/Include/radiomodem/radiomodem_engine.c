@@ -94,8 +94,8 @@ void* RadioModem_new(double baudrate, int dataBits, int parity, int stopBits,
         ModelicaFormatError("RadioModem: baudrate %g out of range (%d-%d)", baudrate, UART_MIN_BAUD, UART_MAX_BAUD);
         return NULL;
     }
-    if (airBaudrate < UART_MIN_BAUD || airBaudrate > UART_MAX_BAUD) {
-        ModelicaFormatError("RadioModem: airBaudrate %g out of range (%d-%d)", airBaudrate, UART_MIN_BAUD, UART_MAX_BAUD);
+    if (airBaudrate < UART_MIN_BAUD || airBaudrate > RADIO_MAX_AIR_BAUD) {
+        ModelicaFormatError("RadioModem: airBaudrate %g out of range (%d-%d)", airBaudrate, UART_MIN_BAUD, RADIO_MAX_AIR_BAUD);
         return NULL;
     }
     if (dataBits < UART_MIN_DATA_BITS || dataBits > UART_MAX_DATA_BITS) {

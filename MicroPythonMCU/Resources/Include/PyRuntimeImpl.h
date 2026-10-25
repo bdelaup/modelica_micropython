@@ -78,20 +78,8 @@ void PyRuntime_sync(void* handle, double currentTime, size_t nPins, const int* p
                      int* pinBoolOut, int* pinIsOutput, int* pinPull,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
-                     int* uartTxPinOut, int* uartTxLevelOut,
+                     int* uartTxPinOut, int* uartTxLevelOut, /* vecteurs de UART_SLOTS (0 = machine.UART du script, 1 = radio interne micro:bit) */
                      int powerGood, double adcRef,
                      double* nextWakeTime);
-
-/* Idem pour un coeur dont le schema porte un identifiant de reseau (antenne
-   radio de la micro:bit) : boardNetwork, -1 si rien n'est cable. */
-void PyRuntime_syncBoard(void* handle, double currentTime, size_t nPins, const int* pinBoolIn,
-                          const double* pinAnalogIn,
-                          int* pinBoolOut, int* pinIsOutput, int* pinPull,
-                          double* pwmFreqOut, double* pwmDutyOut,
-                          int* displaySeqOut, const char** displayPayloadOut,
-                          int* uartTxPinOut, int* uartTxLevelOut,
-                          int powerGood, double adcRef,
-                          int boardNetwork,
-                          double* nextWakeTime);
 
 #endif

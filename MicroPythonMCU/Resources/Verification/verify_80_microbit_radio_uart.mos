@@ -1,0 +1,53 @@
+// Scenario de verification n°80 : radio et machine.UART simultanes sur une
+// micro:bit. omc verify_80_microbit_radio_uart.mos
+//
+// La carte a parle a la fois :
+// - par la radio embarquee (moteur interne n°1 : modem + antenne), avec la
+//   carte b qui ecoute (microbit_radio_rx.py) ;
+// - par machine.UART (moteur n°0, P0/P1), avec un UartEchoDevice externe.
+// Marqueurs attendus : BOTH 1..5 (les deux emissions partent ensemble),
+// ECHO 1..5 (l'appareil serie repond), RX PING 1..5 (l'autre carte recoit
+// par la radio) et DONE.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+loadString("model MicroBitRadioUart
+  MicroPythonMCU.MicroBit_v2 a(
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/microbit_radio_uart.py\"),
+    buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant);
+  MicroPythonMCU.MicroBit_v2 b(
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/microbit_radio_rx.py\"),
+    buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant);
+  MicroPythonMCU.Peripherals.UartEchoDevice echo(baudrate = 9600, behaviour = MicroPythonMCU.Interfaces.UartBehaviour.Script, scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/Device/echo.py\"));
+  Modelica.Electrical.Analog.Basic.Ground gnd;
+equation
+  connect(a.Antenna, b.Antenna);
+  connect(a.P0, echo.RX);
+  connect(echo.TX, a.P1);
+  connect(a.GND, gnd.p);
+  connect(b.GND, gnd.p);
+  connect(echo.GND, gnd.p);
+end MicroBitRadioUart;"); getErrorString();
+
+buildModel(MicroBitRadioUart, stopTime = 8, numberOfIntervals = 80, fileNamePrefix = "MicroBitRadioUart");
+b := getErrorString();
+ret := system(".\\MicroBitRadioUart.bat", "MicroBitRadioUart_run.txt");
+log := readFile("MicroBitRadioUart_run.txt");
+
+(n1, m) := regex(log, "BOTH 1", 1);
+(n2, m) := regex(log, "BOTH 5", 1);
+(n3, m) := regex(log, "ECHO 1", 1);
+(n4, m) := regex(log, "ECHO 5", 1);
+(n5, m) := regex(log, "RX PING 1", 1);
+(n6, m) := regex(log, "RX PING 5", 1);
+(n7, m) := regex(log, "DONE", 1);
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0 and n5 > 0 and n6 > 0 and n7 > 0 then
+  print("PASS: verify_80_microbit_radio_uart (radio et machine.UART simultanes)\n");
+else
+  print("FAIL: verify_80_microbit_radio_uart (both1=" + String(n1) + ", both5=" + String(n2)
+        + ", echo1=" + String(n3) + ", echo5=" + String(n4) + ", rx1=" + String(n5)
+        + ", rx5=" + String(n6) + ", done=" + String(n7) + ")\n" + b);
+end if;

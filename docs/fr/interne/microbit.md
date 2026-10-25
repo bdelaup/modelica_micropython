@@ -60,7 +60,7 @@ colonnes (sink, LOW = LED allumée) sur les broches edge P4/P7/P3/P6/P10 (COL1
 
 Le moteur vit **côté C, comme `uartcore` pour l'UART**, parce que le balayage
 exige des transitions à la granularité du quantum (~370 µs), sous le plancher
-des `machine.Timer` (1 ms, 4 minuteurs). Son état et celui de la radio vivent
+des `machine.Timer` (1 ms, 4 minuteurs). Son état vit
 dans `board_ext` du handle (`pyruntime_microbit.h`), et il est cadencé par
 les **crochets de carte** (`pyruntime_board.h`, implémentés pour la micro:bit
 par `pyruntime_microbit.c`) que `PyRuntime_sync` appelle sans connaître le
@@ -161,7 +161,9 @@ d'emploi) :
 | `verify_74_microbit_buttons` | boutons électriques (tirage 10 k, Goff de l'interrupteur), `is_pressed`/`was_pressed`/`get_presses` |
 | `verify_75_microbit_board` | la carte complète : rail 3,0 V, courants réels des LED (allumée ~0,3 mA moyen, éteinte ~0), arrêt propre |
 | `verify_76_microbit_example_buttons` | l'exemple `Examples.MicroBit.Buttons` : 4 appuis comptés, P5 au niveau électrique attendu à chaque instant |
-| `verify_79_microbit_unpowered` | carte jamais alimentee (`usbConnected = false`) : la simulation va au bout, le programme ne demarre pas, rail a 0 V, destruction du runtime sans etat de carte (regression : bilan radio sur un pointeur NULL) |
+| `verify_79_microbit_unpowered` | carte jamais alimentee (`usbConnected = false`) : la simulation va au bout, le programme ne demarre pas, rail a 0 V, destruction du runtime sans etat de carte (le destructeur doit se passer du bilan d'une carte jamais alimentee) |
+| `verify_80_microbit_radio_uart` | radio et `machine.UART` **simultanés** : la carte émet ses PING par la radio (moteur n° 1) pendant qu'elle dialogue avec un appareil série externe sur P0/P1 (moteur n° 0) — les deux moteurs coexistent |
+| `verify_81_microbit_self_talk` | **auto-communication** : la carte s'envoie un paquet radio qu'un `RadioModem` externe (câblé sur son antenne et sur P0/P1) lui restitue sur `machine.UART` — tout le chemin TX radio → air → modem → RX utilisateur sur une seule carte |
 
 `IMax` des LED de matrice : 0,4 mA (le courant **moyen** d'une LED allumée à
 plein niveau, duty 1/5 sur la trame — l'icône atteint sa pleine luminosité sur
@@ -174,52 +176,65 @@ de la v2, USB HID. Le redémarrage logiciel (`microbit.reset()`) n'est pas
 simulé (cohérent avec l'absence de redémarrage sur perte d'alimentation) :
 le programme se termine.
 
-## Radio `microbit.radio` (Lot 8, 2026-10-23)
+## Radio `microbit.radio` (refactoring « Radios micro:bit », 2026-10-24)
 
-Décision « Radios micro:bit » de `requirements.md` : **moteur de paquets
-dédié côté C** (comme la matrice LED l'est pour le balayage), pas un
-`RadioModem` sur l'UART — la radio de la micro:bit n'est pas sur un UART,
-l'API est par paquets (file `queue`, filtrage `channel`/`group`/`address`,
-troncation `length`) et une trame électrique à 1 ou 2 Mbit/s coûterait des
-milliers de points de synchro par paquet.
+Décision « Radios micro:bit » de `requirements.md` : la radio embarquée est
+un **modem radio générique monté dans la carte** — le même moteur C que
+`Peripherals.Radio.RadioModem` (`Internal.OnBoardRadioModem`, dérivé de
+`Internal.PartialRadioModem`, tous paramètres `final`) — et le protocole par
+paquets du firmware vit **dans le shim Python**. Plus une ligne de C dédiée à
+la radio : l'ancien moteur de paquets (`pyruntime_radio.c`, registre, verrous,
+natives), la liaison logique `RadioAir` et le cœur spécialisé `McuCoreRadio`
+ont été supprimés.
 
-- **Topologie** : le port **Antenna** de la carte (paramètre `useRadio`)
-  porte une liaison logique `Interfaces.RadioAirInput` vers un
-  `Peripherals.Radio.RadioAir`, qui donne son identifiant de réseau à
-  toutes les antennes câblées à lui (`networkId` explicite, sinon un hash
-  du nom d'instance, `Internal.StringHash`). Deux moteurs s'entendent
-  s'ils partagent l'identifiant ; `radio.on()` lève une erreur explicite
-  tant que l'antenne n'est pas câblée. L'identifiant transite par un
-  nouvel entrée de `PyRuntime_syncBoard` (`boardNetwork`, -1 = pas d'antenne)
-  plomberie dans le cœur spécialisé `Internal.McuCoreRadio` (connecteur
-  conditionnel `AntennaIn`, `useRadio`) que la carte redeclared depuis
-  `Internal.PartialBoard` — le cœur partagé `Internal.McuCore` ne porte pas
-  la radio (cf. décision « Refactoring du socle des cartes »).
-- **Moteur** (`pyruntime_radio.c`, inclus par le chapeau) : registre global
-  des moteurs du process (tous les MCU d'un modèle partagent l'exe) — une
-  carte s'y enregistre à son **boot** (crochet `boot` : première synchro
-  alimentée ; une carte jamais alimentée n'écoute pas l'air, comme le
-  matériel) ;
-  `radio_send` pose le paquet dans la file d'arrivee de chaque auditeur du
-  meme réseau avec `arrival = t + (len + 6)*8/data_rate`, `radio_step`
-  (chaque synchro) livre les paquets arrivés, filtres par la config du
-  RECEPTEUR, dans sa file `queue` (les plus vieux partent en premier,
-  file pleine = paquet perdu, avertissements plafonnés côté thread
-  Modelica). Verrou global `g_radio_cs` pour l'inbox/registre (aucun cycle :
-  l'emetteur ne prend jamais le cs d'un autre handle) ; `earliest_radio_deadline`
-  entre dans le calcul du prochain réveil (livraison exacte à l'arrivée).
-- **Natives** : `radio_on/off/config/send_bytes/any/read_bytes` (table du
-  module natif ; `pyimports.h` régénéré par `tools/make_pyimports.sh` pour
-  `PyErr_WarnEx`).
-- **Shim** : module `radio` autonome (`import radio`, aussi attaché à
-  `microbit.radio`), config gardée côté Python (les sept valeurs
-  repassées à chaque `config()`), `send`/`receive` encodent/décodent en
-  UTF-8, `receive_bytes_into` vérifie la taille du tampon. `power` accepté,
-  sans effet (pas de portée).
-- **Exemple** : `Examples.MicroBit.RadioChat` (scripts
-  `microbit_radio_tx.py` / `microbit_radio_rx.py`).
-- **Vérification** : `verify_78_microbit_radio.mos` — deux cartes sur le
-  même air, 5 PING émis/reçus, marqueurs TX/RX.
+- **Topologie** : le port **Antenna** de la carte est
+  le connecteur acausal `Interfaces.Antenna` du modem — **un seul fil** entre
+  les cartes qui s'entendent, comme entre deux `RadioModem`. Le modem est
+  câblé en interne aux broches 34 (TX du cœur) et 35 (RX) du cœur, invisibles
+  (pas sur l'edge, `Pin(34)` refusé par le shim).
+- **Broches de la radio réclamées au boot** (`microbit_boot` pose
+  `uart_rx_claimed` sur les indices des ids 34/35) : leurs transitions
+  (établissement de la ligne à l'initialisation, trames de la radio) ne sont
+  jamais des entrées du script. Sans cela, l'installation de la ligne TX du
+  modem à t = 0 se comporte comme un changement d'entrée et **réveille le
+  premier `sleep()` du programme** (1000 ms avalés en 0,55 ms, le programme
+  dévale sa chronologie — piégé par `verify_75`).
+- **Deux moteurs UART** : le handle du runtime porte `struct UartSlot
+  uart[2]` — n° 0 pour `machine.UART(0)` du script, n° 1 pour la radio
+  (broches internes acceptées sans capabilité EXTERNAL) ; la
+  synchro boucle sur les deux slots, la publication TX (`uartTxPin`/
+  `uartTxLevel`) et `nextWakeTime` sont des vecteurs/min sur les deux. Sur
+  les profils generic/pico, le slot n° 1 est `machine.UART(1)` (ouvrable en
+  même temps que `UART(0)`, cf. `verify_82`/`verify_83`) ; sur la micro:bit,
+  il appartient à la radio et le shim y refuse `machine.UART(1)`. La
+  radio et `machine.UART` coexistent, comme deux périphériques distincts du
+  nRF52833. Nouvelle native `uart_tx_busy(nid)` : `radio.send()` attend la
+  fin d'émission (le réveil est demandé à l'échéance de la trame, pas à
+  l'instant courant).
+- **Toujours là, comme le matériel** : plus de case `useRadio` - le modem et le
+  port **Antenna** existent dans toute `MicroBit_v2` (port visible en haut de
+  l'icône, étiquette `ant`), le modèle d'une carte sans liaison radio ne paie
+  rien tant que rien n'est émis, et `radio.on()` réussit toujours ; seule une
+  antenne non câblée reste silencieuse (documenté dans les limites du guide).
+- **Protocole (shim)** : trames façon HDLC — délimiteur `0x7E` **ouvrant et
+  fermant**, échappement `0x7D`, en-tête (longueur, canal, groupe, adresse
+  4 octets, débit) + charge utile + CRC-16/CCITT. Réception : machine à états
+  alimentée par `uart_read(1, ...)` à chaque `receive()`, filtrage
+  `channel`/`group`/`address`/`data_rate`, file `queue` (le NOUVEAU paquet
+  est jeté quand elle est pleine, comme le firmware), troncation à `length`
+  à l'émission. Les octets perdus ou corrompus par le modem (tampon plein,
+  collision, semi-duplex) font sauter la trame : le délimiteur suivant
+  resynchronise. `radio.on()` laisse la ligne se poser 1 ms (temps de mise
+  en route, comme le matériel) avant la première trame.
+- **Cadence** : liaison interne à 115 200 bauds (garde-fou `UART_MAX_BAUD`
+  du moteur), air à 1 Mbit/s (`RADIO_MAX_AIR_BAUD`, plafond propre au côté
+  air — le nombre d'événements par octet ne dépend pas du débit, seul leur
+  espacement change).
+- **Exemples/vérification** : `Examples.MicroBit.RadioChat` (scripts
+  `microbit_radio_tx.py` / `microbit_radio_rx.py`, inchangés) ;
+  `verify_78` (deux cartes, un fil, 5 PING), `verify_80` (radio et
+  `machine.UART` simultanés), `verify_81` (auto-communication : la carte
+  relit ses propres trames via un `RadioModem` externe câblé sur son edge).
 
 ## Sources des boutons et capteurs (retravail du paramétrage, 2026-10-23)
 

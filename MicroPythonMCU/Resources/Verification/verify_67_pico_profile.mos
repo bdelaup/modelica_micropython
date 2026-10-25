@@ -6,7 +6,7 @@
 // broche non permise lève « bad TX pin » / « bad SCL pin ») ; GPIO inexistante
 // et UART(2) refusés ; broches par défaut du port rp2 (UART(0) : TX GP0, RX GP1,
 // bouclage reçu ; I2C(1) : SCL GP7, SDA GP6) ; identifiant I2C déduit des
-// broches ; un seul UART à la fois ; SoftI2C sur n'importe quelles broches ;
+// broches ; deux moteurs UART ouvrables en même temps ; SoftI2C sur n'importe quelles broches ;
 // ADC(4) lit le capteur de température (27 °C : 0,706 V, soit ~14000 sur 65535).
 // Modèle défini ici plutôt que dans Examples.
 loadModel(Modelica); getErrorString();
@@ -34,7 +34,7 @@ log := readFile("PicoProfile_run.txt");
 (n4, m) := regex(log, "i2c_bad_scl ValueError bad SCL pin", 1);
 (n5, m) := regex(log, "pin30 ValueError GPIO 30 not supported on this board [(]valid: 0-29[)]", 1);
 (n6, m) := regex(log, "uart2 ValueError UART[(]2[)] doesn't exist", 1);
-(n7, m) := regex(log, "uart1_busy ValueError UART[(]0[)] is in use", 1);
+(n7, m) := regex(log, "uart1_ok UART[(]1,", 1);
 (n8, m) := regex(log, "loopback b'hi'", 1);
 (n9, m) := regex(log, "i2c1 pins 7 6", 1);
 (n10, m) := regex(log, "i2c id 1", 1);
@@ -44,7 +44,7 @@ log := readFile("PicoProfile_run.txt");
 n := n1 + n2 + n3 + n4 + n5 + n6 + n7 + n8 + n9 + n10 + n11 + n12;
 
 if ret == 0 and n == 12 and nEnd >= 1 then
-  print("PASS: verify_67_pico_profile (ADC, multiplexage UART/I2C, broches par defaut, UART unique, SoftI2C, capteur de temperature : 12/12)\n");
+  print("PASS: verify_67_pico_profile (ADC, multiplexage UART/I2C, broches par defaut, UART(0) et UART(1) simultanes, SoftI2C, capteur de temperature : 12/12)\n");
 else
   print("FAIL: verify_67_pico_profile (code " + String(ret) + ", " + String(n) + "/12 lignes attendues : " + String(n1) + String(n2) + String(n3) + String(n4) + String(n5) + String(n6) + String(n7) + String(n8) + String(n9) + String(n10) + String(n11) + String(n12) + ")\n" + b + "\n--- journal ---\n" + log);
 end if;

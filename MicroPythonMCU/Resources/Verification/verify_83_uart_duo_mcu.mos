@@ -1,0 +1,39 @@
+// Scenario de verification n°83 : deux liaisons UART simultanees entre deux
+// MCU. omc verify_83_uart_duo_mcu.mos
+//
+// Meme epreuve que verify_82 sur les MCU de base : les programmes
+// uart_duo_a.py / uart_duo_b.py ouvrent UART(0) sur GP0/GP1 et UART(1) sur
+// GP4/GP5 en meme temps. Marqueurs BOTH 1..5 et DONE.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+loadString("model UartDuoMcu
+  MicroPythonMCU.MCU a(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_duo_a.py\"));
+  MicroPythonMCU.MCU b(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/uart_duo_b.py\"));
+  Modelica.Electrical.Analog.Basic.Ground gnd;
+equation
+  connect(a.GP0, b.GP1);
+  connect(b.GP0, a.GP1);
+  connect(a.GP4, b.GP5);
+  connect(b.GP4, a.GP5);
+  connect(a.GND, gnd.p);
+  connect(b.GND, gnd.p);
+end UartDuoMcu;"); getErrorString();
+
+buildModel(UartDuoMcu, stopTime = 4, numberOfIntervals = 40, fileNamePrefix = "UartDuoMcu");
+b := getErrorString();
+ret := system(".\\UartDuoMcu.bat", "UartDuoMcu_run.txt");
+log := readFile("UartDuoMcu_run.txt");
+
+(n1, m) := regex(log, "BOTH 1", 1);
+(n2, m) := regex(log, "BOTH 5", 1);
+(n3, m) := regex(log, "PONG 5", 1);
+(n4, m) := regex(log, "WORLD 5", 1);
+(n5, m) := regex(log, "DONE_B", 1);
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0 and n5 > 0 then
+  print("PASS: verify_83_uart_duo_mcu (UART(0) et UART(1) simultanes sur deux MCU)\n");
+else
+  print("FAIL: verify_83_uart_duo_mcu (both1=" + String(n1) + ", both5=" + String(n2)
+        + ", pong5=" + String(n3) + ", world5=" + String(n4) + ", doneb=" + String(n5) + ")\n" + b);
+end if;

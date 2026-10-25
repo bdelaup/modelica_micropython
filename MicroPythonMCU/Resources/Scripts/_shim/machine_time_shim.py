@@ -35,8 +35,11 @@ _PICO_UART = {0: ((0, 12, 16, 28), (1, 13, 17, 29), (0, 1)),
               1: ((4, 8, 20, 24), (5, 9, 21, 25), (4, 5))}
 _PICO_I2C = {0: ((1, 5, 9, 13, 17, 21, 25, 29), (0, 4, 8, 12, 16, 20, 24, 28), (5, 4)),
              1: ((3, 7, 11, 15, 19, 23, 27), (2, 6, 10, 14, 18, 22, 26), (7, 6))}
-# Un seul moteur UART et un seul maitre I2C dans la simulation : sur la Pico,
-# UART(0) et UART(1) (I2C(0) et I2C(1)) y aboutissent tous deux, un a la fois.
+# Deux moteurs UART depuis le refactoring radio (requirements.md, decision
+# « Radios micro:bit ») : UART(0) et UART(1) coexistent, chacun sur son
+# moteur - sur la Pico, leurs broches respectives du RP2040. Un seul maitre
+# I2C dans la simulation : I2C(0) et I2C(1) y aboutissent tous deux, un a la
+# fois.
 _pico_owner = {}
 
 # Profil micro:bit v2 (MicroBit_v2, nRF52833) : 19 broches edge (pas de P17/P18),
@@ -82,10 +85,14 @@ def _pico_pins(table, kind, id, a, b, names):
         raise ValueError('bad %s pin' % names[0])
     if b not in valid_b:
         raise ValueError('bad %s pin' % names[1])
-    owner = _pico_owner.get(kind)
+    # Verrou : un moteur I2C unique (I2C(0) et I2C(1) aboutissent au meme,
+    # message d'erreur adapte) ; deux moteurs UART - un par id, chacun garde
+    # le sien, une re-init du meme id reste permise comme avant.
+    key = 'UART%d' % id if kind == 'UART' else kind
+    owner = _pico_owner.get(key)
     if owner is not None and owner != id:
         raise ValueError('%s(%d) is in use: the simulation has a single %s, deinit() it first' % (kind, owner, kind))
-    _pico_owner[kind] = id
+    _pico_owner[key] = id
     return a, b
 
 def _pico_release(kind):
@@ -247,14 +254,18 @@ class UART:
     def init(self, baudrate=1200, bits=8, parity=None, stop=1, tx=None, rx=None, **kwargs):
         if _PICO:
             tx, rx = _pico_pins(_PICO_UART, 'UART', self.id, tx, rx, ('TX', 'RX'))
-            self._nid = 0   # le moteur UART unique de la simulation
+            self._nid = self.id      # un moteur par id : UART(0) -> slot 0, UART(1) -> slot 1
         else:
             if tx is None or rx is None:
                 raise ValueError('tx and rx must be given (e.g. UART(0, tx=Pin(0), rx=Pin(1)))')
             tx = _pin_id(tx)
             rx = _pin_id(rx)
             if _MBIT:
-                # micro:bit : moteur UART unique, broches edge, pas de colonne
+                if self.id != 0:
+                    # le moteur n 1 appartient a la radio embarquee (module
+                    # radio du shim) : jamais au script
+                    raise ValueError('only UART(0) exists on the micro:bit - the second UART engine is the on-board radio')
+                # micro:bit : moteur UART du script, broches edge, pas de colonne
                 # de la matrice LED tant que l'affichage est actif
                 _mbit_check(tx, 'GPIO', write=True)
                 _mbit_check(rx, 'GPIO', write=True)
@@ -305,7 +316,7 @@ class UART:
     def deinit(self):
         _native.uart_deinit(self._nid)
         if _PICO:
-            _pico_release('UART')
+            _pico_release('UART%d' % self._nid)
 
 class I2C:
     # Maitre I2C en drain ouvert (un seul bus). L'identifiant est

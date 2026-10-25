@@ -151,6 +151,7 @@ The replica of the board and its power supply (see [The Raspberry Pi Pico board]
 | `Pico.Blink` | Board supplied by USB, nothing to wire: on-board LED and LED on `GP15`, VSYS and temperature read by `ADC(3)` and `ADC(4)` | `pico.GP15.v`, `pico.vSys`, `pico.iSys`, log | `pico_blink.py` |
 | `Pico.Battery` | Same program on two AA cells connected to `VSYS`: current drawn from the cells, higher while the LEDs are lit | `iBattery.i`, `pico.vRail` | `pico_blink.py` |
 | `Pico.PowerUp` | Ramp on `VSYS`: the program starts at power-on (`ticks_ms() = 0`), then stops when `VSYS` falls | `pico.vRail`, `pico.core.powerGood`, `pico.GP15.v`, log | `pico_power.py` |
+| `Pico.UartDuo` | Two Pico talking over **two UART links open at the same time**: `UART(0)` on GP0/GP1 (PING/PONG) and `UART(1)` on GP4/GP5 (HELLO/WORLD) - the two engines of the RP2040 | log (`SENT`, `BOTH`, `PONG`, `WORLD`), `picoA.GP0.v`, `picoA.GP4.v` | `uart_duo_a.py`, `uart_duo_b.py` |
 
 ![Pico.PowerUp: VSYS and 3.3 V rail, GP15; the program starts at 0.38 s and stops at 1.565 s](../images/sim/pico-power.svg)
 

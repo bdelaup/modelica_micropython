@@ -1,7 +1,8 @@
-// Scenario de verification n°78 : radio micro:bit (microbit.radio, Lot 8).
+// Scenario de verification n°78 : radio micro:bit (microbit.radio).
 // omc verify_78_microbit_radio.mos
 //
-// Deux MicroBit_v2 partageant le meme air (une Peripherals.Radio.RadioAir) :
+// Deux MicroBit_v2 partageant le meme air (un seul fil d'antenne entre
+// elles, comme deux RadioModem) :
 // - carte a : microbit_radio_tx.py, envoie PING 1..5, une par seconde
 // - carte b : microbit_radio_rx.py, ecoute et compte
 // Le programme emetteur imprime TX n / TX_DONE, le recepteur RX PING n /
@@ -13,19 +14,15 @@ loadString("model MicroBitRadio
   MicroPythonMCU.MicroBit_v2 a(
     scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/microbit_radio_tx.py\"),
     buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
-    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
-    useRadio = true);
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant);
   MicroPythonMCU.MicroBit_v2 b(
     scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/microbit_radio_rx.py\"),
     buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
-    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
-    useRadio = true);
-  MicroPythonMCU.Peripherals.Radio.RadioAir air;
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant);
   Modelica.Electrical.Analog.Basic.Ground ga;
   Modelica.Electrical.Analog.Basic.Ground gb;
 equation
-  connect(a.Antenna, air.antenna);
-  connect(b.Antenna, air.antenna);
+  connect(a.Antenna, b.Antenna);
   connect(a.GND, ga.p);
   connect(b.GND, gb.p);
 end MicroBitRadio;"); getErrorString();

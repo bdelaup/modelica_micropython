@@ -1,6 +1,6 @@
 # Emetteur radio : envoie PING 1..5 sur l'air, une par seconde, et montre le
 # numero sur la matrice. Avec microbit_radio_rx.py sur une autre carte cablee
-# a la meme Peripherals.Radio.RadioAir - cf. Examples.MicroBit.RadioChat.
+# a la meme antenne (un seul fil) - cf. Examples.MicroBit.RadioChat.
 from microbit import *
 import radio
 

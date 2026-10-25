@@ -1,6 +1,6 @@
 # Recepteur radio : ecoute l'air, affiche et compte chaque PING recu.
 # Avec microbit_radio_tx.py sur l'autre carte cablee a la meme
-# Peripherals.Radio.RadioAir - cf. Examples.MicroBit.RadioChat.
+# meme antenne (un seul fil) - cf. Examples.MicroBit.RadioChat.
 from microbit import *
 import radio
 

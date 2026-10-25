@@ -145,6 +145,7 @@ La réplique de la carte et son alimentation (voir [La carte Raspberry Pi Pico](
 | `Pico.Blink` | Carte alimentée par USB, rien à câbler : LED embarquée et LED sur `GP15`, VSYS et température lus par `ADC(3)` et `ADC(4)` | `pico.GP15.v`, `pico.vSys`, `pico.iSys`, journal | `pico_blink.py` |
 | `Pico.Battery` | Même programme sur deux piles AA branchées sur `VSYS` : courant tiré des piles, plus fort quand les LED sont allumées | `iBattery.i`, `pico.vRail` | `pico_blink.py` |
 | `Pico.PowerUp` | Rampe de `VSYS` : le programme démarre à la mise sous tension (`ticks_ms() = 0`), puis s'arrête quand `VSYS` retombe | `pico.vRail`, `pico.core.powerGood`, `pico.GP15.v`, journal | `pico_power.py` |
+| `Pico.UartDuo` | Deux Pico dialoguent sur **deux liaisons UART ouvertes en même temps** : `UART(0)` sur GP0/GP1 (PING/PONG) et `UART(1)` sur GP4/GP5 (HELLO/WORLD) — les deux moteurs du RP2040 | journal (`SENT`, `BOTH`, `PONG`, `WORLD`), `picoA.GP0.v`, `picoA.GP4.v` | `uart_duo_a.py`, `uart_duo_b.py` |
 
 ![Pico.PowerUp : VSYS et rail 3,3 V, GP15 ; le programme démarre à 0,38 s et s'arrête à 1,565 s](../images/sim/pico-power.svg)
 

@@ -24,7 +24,6 @@
     X(PyErr_SetNone) \
     X(PyErr_SetObject) \
     X(PyErr_SetString) \
-    X(PyErr_WarnEx) \
     X(PyEval_EvalCode) \
     X(PyEval_GetBuiltins) \
     X(PyEval_RestoreThread) \
@@ -84,5 +83,7 @@
     X(_PyObject_CallFunction_SizeT) \
     X(_Py_BuildValue_SizeT) \
     X(_Py_Dealloc) \
+    X(_Py_FalseStruct) \
     X(_Py_NoneStruct) \
+    X(_Py_TrueStruct) \
     /* fin */

@@ -729,21 +729,137 @@ def _mbit_scale(value, from_, to):
     return out
 
 # radio : le module du portage micro:bit, autonome (import radio) et
-# aussi attache a microbit (microbit.radio) par commodite. Le protocole
-# par paquets vit cote C (pyruntime_radio.c) : filtrage
-# channel/group/address, file de reception de profondeur queue, duree de
-# trame a l'air au debit data_rate. La config garde ici l'etat courant
-# (meme defauts que le firmware) et repasse les SEPT valeurs a chaque
-# radio.config() - la native n'a pas a se souvenir d'un "None veut dire
-# inchange".
+# aussi attache a microbit (microbit.radio) par commodite. La radio
+# embarquee est un MODEM RADIO GENERIQUE monte dans la carte
+# (Internal.OnBoardRadioModem, le meme moteur que Peripherals.Radio.RadioModem)
+# et branche en interne sur deux broches du coeur reservees a cet usage
+# (UART n°1 du runtime : TX 34, RX 35 - jamais exposees au script). Le
+# PROTOCOLE par paquets du firmware vit ici, en Python : trames facon HDLC
+# (delimiteur 0x7E, echappement 0x7D, CRC-16/CCITT) portant l'en-tete
+# channel/group/address/data_rate, filtrage a la reception, file de
+# profondeur queue (le nouveau est jete quand elle est pleine, comme le
+# firmware), troncation a length a l'emission. Les octets perdus ou
+# corrompus par le modem (tampon plein, collision, semi-duplex) font
+# simplement sauter la trame : le delimiteur suivant resynchronise.
 _radio_cfg = dict(length=32, queue=3, channel=7, power=6,
                   address=0x75626974, group=0, data_rate=1)
 
+_RADIO_TX_PIN = 34
+_RADIO_RX_PIN = 35
+_RADIO_BAUD = 115200
+_RADIO_MAX_FRAME = 600          # garde : une trame valide fait 262 octets au plus
+_radio_on_flag = False
+_radio_queue = []
+_radio_rx_buf = bytearray()
+
+def _radio_crc16(data):
+    # CRC-16/CCITT (polynome 0x1021, init 0x0000, variant XModem)
+    crc = 0
+    for b in data:
+        crc ^= b << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if (crc & 0x8000) else (crc << 1)
+            crc &= 0xFFFF
+    return crc
+
+def _radio_escape(body):
+    out = bytearray()
+    for b in body:
+        if b == 0x7E:
+            out += b'\x7D\x5E'
+        elif b == 0x7D:
+            out += b'\x7D\x5D'
+        else:
+            out.append(b)
+    return bytes(out)
+
+def _radio_frame(payload):
+    # en-tete : longueur, canal, groupe, adresse (4 octets, gros boutiste),
+    # debit ; puis la charge utile et le CRC sur l'ensemble. La trame est
+    # ENCADREE de delimitateurs 0x7E (facon HDLC) : le recepteur clot une
+    # candidate a chaque delimiteur rencontre - les octets orphelins
+    # (bruit, reste d'une trame coupee par une perte) tombent dans une
+    # candidate isolee que le CRC rejette, la trame suivante part propre.
+    addr = _radio_cfg['address']
+    body = (bytes([len(payload), _radio_cfg['channel'], _radio_cfg['group']]) +
+            bytes([(addr >> 24) & 0xFF, (addr >> 16) & 0xFF,
+                   (addr >> 8) & 0xFF, addr & 0xFF, _radio_cfg['data_rate']]) +
+            payload)
+    crc = _radio_crc16(body)
+    return b'\x7E' + _radio_escape(body + bytes([crc & 0xFF, (crc >> 8) & 0xFF])) + b'\x7E'
+
+def _radio_accept(frame):
+    # Deframe une candidate (octets entre deux delimiteurs) : desechappement,
+    # CRC, coherence de la longueur, puis filtrage firmware.
+    if not frame:
+        return
+    body = bytearray()
+    esc = False
+    for b in frame:
+        if esc:
+            if b == 0x5E:
+                body.append(0x7E)
+            elif b == 0x5D:
+                body.append(0x7D)
+            else:
+                return             # echappement invalide : trame jetee
+            esc = False
+        elif b == 0x7D:
+            esc = True
+        else:
+            body.append(b)
+    if esc or len(body) < 10:       # 8 octets d'en-tete + 2 de CRC
+        return
+    if _radio_crc16(body[:-2]) != (body[-2] | (body[-1] << 8)):
+        return
+    ln = body[0]
+    if ln > 251 or len(body) != 8 + ln + 2:
+        return
+    if (body[1] != _radio_cfg['channel'] or body[2] != _radio_cfg['group'] or
+            int.from_bytes(body[3:7], 'big') != _radio_cfg['address'] or
+            body[7] != _radio_cfg['data_rate']):
+        return                      # pas notre canal, groupe, adresse ou debit
+    depth = _radio_cfg['queue']
+    if depth <= 0 or len(_radio_queue) >= depth:
+        return                      # file pleine (ou desactivee) : le NOUVEAU est jete
+    _radio_queue.append(bytes(body[8:8 + ln]))
+
+def _radio_drain():
+    # Tire les octets arrives du modem (UART n°1) et en extrait les trames
+    # completes. Les octets non encore deframes attendent le delimiteur
+    # suivant ; une candidate trop longue est jete (deja perdue de toute facon).
+    if not _radio_on_flag:
+        return
+    data = _native.uart_read(1, -1)
+    if data:
+        _radio_rx_buf.extend(data)
+    while True:
+        i = _radio_rx_buf.find(0x7E)
+        if i < 0:
+            if len(_radio_rx_buf) > _RADIO_MAX_FRAME:
+                del _radio_rx_buf[:len(_radio_rx_buf) - 256]
+            return
+        frame = bytes(_radio_rx_buf[:i])
+        del _radio_rx_buf[:i + 1]
+        _radio_accept(frame)
+
 def _radio_on():
-    _native.radio_on()
+    global _radio_on_flag, _radio_queue
+    _native.uart_init(1, _RADIO_TX_PIN, _RADIO_RX_PIN, _RADIO_BAUD, 8, -1, 1)
+    _radio_queue = []
+    del _radio_rx_buf[:]
+    _radio_on_flag = True
+    # Temps de mise en route, comme le materiel : laisse la ligne serie se
+    # poser a l'etat de repos avant la premiere trame (sinon son front de
+    # start se confond avec la prise de controle des broches a t = 0 et le
+    # modem decode une trame coupee).
+    sleep_ms(1)
 
 def _radio_off():
-    _native.radio_off()           # le firmware vide la file, la config est conservee
+    global _radio_on_flag
+    _radio_on_flag = False
+    _native.uart_deinit(1)        # le firmware vide la file, la config est conservee
+    _radio_queue = []
 
 def _radio_config(length=None, queue=None, channel=None, power=None,
                   address=None, group=None, data_rate=None):
@@ -774,16 +890,21 @@ def _radio_config(length=None, queue=None, channel=None, power=None,
         _radio_cfg['group'] = int(group)
     if data_rate is not None:
         _radio_cfg['data_rate'] = int(data_rate)
-    _native.radio_config(_radio_cfg['length'], _radio_cfg['queue'],
-                         _radio_cfg['channel'], _radio_cfg['power'],
-                         _radio_cfg['address'], _radio_cfg['group'],
-                         _radio_cfg['data_rate'])
 
 def _radio_send_bytes(message):
-    _native.radio_send_bytes(bytes(message))
+    if not _radio_on_flag:
+        raise RuntimeError("the radio is off (radio.on() first)")
+    message = bytes(message)[:_radio_cfg['length']]   # troncation du firmware
+    _native.uart_write(1, _radio_frame(message))
+    # uart_write rend la main immediatement (la file est videe par Modelica) ;
+    # radio.send se termine quand la trame a quitte l'antenne, chaque
+    # interrogation est un point de synchro qui laisse le temps avancer.
+    while _native.uart_tx_busy(1):
+        pass
 
 def _radio_receive_bytes():
-    return _native.radio_read_bytes()         # bytes, ou None
+    _radio_drain()
+    return _radio_queue.pop(0) if _radio_queue else None
 
 def _radio_receive_bytes_into(buffer):
     b = _radio_receive_bytes()

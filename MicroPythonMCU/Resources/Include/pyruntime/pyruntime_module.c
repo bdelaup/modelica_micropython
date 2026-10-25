@@ -30,6 +30,7 @@ static PyMethodDef native_methods[] = {
     {"uart_any", native_uart_any, METH_VARARGS, "Number of received bytes waiting to be read"},
     {"uart_read", native_uart_read, METH_VARARGS, "Reads up to n received bytes (n < 0 = all), None if nothing"},
     {"uart_deinit", native_uart_deinit, METH_VARARGS, "Releases the UART and its pins"},
+    {"uart_tx_busy", native_uart_tx_busy, METH_VARARGS, "True while the UART is transmitting a frame or has bytes in its transmit queue"},
     {"i2c_init", native_i2c_init, METH_VARARGS, "Configures the I2C bus (SCL/SDA pins, frequency) and takes the pins"},
     {"i2c_xfer", native_i2c_xfer, METH_VARARGS, "Complete I2C transaction (write, read after repeated START), blocking"},
     {"i2c_deinit", native_i2c_deinit, METH_VARARGS, "Releases the I2C bus and its pins"},
@@ -37,12 +38,6 @@ static PyMethodDef native_methods[] = {
     {"i2ct_deinit", native_i2ct_deinit, METH_VARARGS, "Releases the I2C target and its pins"},
     {"i2ct_irq", native_i2ct_irq, METH_VARARGS, "Registers/clears the IRQ handler of the I2C target"},
     {"i2ct_flags", native_i2ct_flags, METH_VARARGS, "Events handed to the last call of the I2C target handler"},
-    {"radio_on", native_radio_on, METH_VARARGS, "Turns the on-board radio on (micro:bit profile)"},
-    {"radio_off", native_radio_off, METH_VARARGS, "Turns the radio off and empties the receive queue"},
-    {"radio_config", native_radio_config, METH_VARARGS, "Sets the radio configuration (length, queue, channel, power, address, group, data_rate)"},
-    {"radio_send_bytes", native_radio_send_bytes, METH_VARARGS, "Puts a packet on the air (bytes), delivered after the frame duration"},
-    {"radio_any", native_radio_any, METH_VARARGS, "Number of packets waiting in the receive queue"},
-    {"radio_read_bytes", native_radio_read_bytes, METH_VARARGS, "Reads the oldest received packet (bytes), None if nothing"},
     {"i2ct_memaddr", native_i2ct_memaddr, METH_VARARGS, "Current memory address of the I2C target"},
     {"i2ct_readinto", native_i2ct_readinto, METH_VARARGS, "Copies the bytes received from the controller into a buffer, returns their number"},
     {"i2ct_write", native_i2ct_write, METH_VARARGS, "Queues bytes for the next reads of the controller, returns the number accepted"},
@@ -601,10 +596,16 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     InitializeCriticalSection(&handle->cs);
     InitializeConditionVariable(&handle->cv);
     handle->turn = TURN_MODELICA;
-    /* calloc met tout a zero, or 0 est un index de broche valide : les deux
-       broches UART doivent donc etre remises explicitement a "non affectee". */
-    handle->uart_tx_pin = -1;
-    handle->uart_rx_pin = -1;
+    /* calloc met tout a zero, or 0 est un index de broche valide : les
+       broches TX/RX de chaque slot UART doivent donc etre remises
+       explicitement a "non affectee". */
+    {
+        int u;
+        for (u = 0; u < UART_SLOTS; u++) {
+            handle->uart[u].tx_pin = -1;
+            handle->uart[u].rx_pin = -1;
+        }
+    }
     handle->i2c_scl_pin = -1;
     handle->i2c_sda_pin = -1;
     handle->i2cm.next_time = 1.0e300;
@@ -618,7 +619,6 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
        board_hooks. */
     handle->board = board_hooks(handle->board_profile);
     handle->board_ext = NULL;
-    handle->board_network = -1;
 
     /* Journal : a partir du deuxieme microcontroleur, toutes les lignes des MCU
        sont prefixees par leur nom d'instance (cf. g_mcu_prefix_on). */
@@ -753,7 +753,9 @@ void PyRuntime_destroy(void* handle_) {
     /* board_ext n'existe qu'apres la premiere synchro alimentee : une carte
        jamais alimentee n'a ni bilan ni etat a liberer. */
     if (h->board && h->board_ext) {
-        h->board->report(h);            /* bilan des moteurs (pertes radio, ...) */
+        if (h->board->report) {
+            h->board->report(h);        /* bilan des moteurs, si le profil en a un */
+        }
         h->board->destroy(h->board_ext);
         h->board_ext = NULL;
     }
@@ -818,6 +820,7 @@ static void publish_unpowered(struct PyRuntimeHandle* h, int* pinBoolOut, int* p
    tenu. */
 static void power_loss(struct PyRuntimeHandle* h, double currentTime) {
     int i;
+    int u;
     ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): supply lost (3V3 below the power-good threshold, or RUN low) "
                           "- program stopped, pins released; a restart when the supply comes back is not simulated\n",
                           currentTime, h->instanceName);
@@ -835,7 +838,9 @@ static void power_loss(struct PyRuntimeHandle* h, double currentTime) {
         h->pin_pull[i] = PIN_PULL_NONE;
         h->pwm_freq[i] = 0;
     }
-    h->uart_configured = 0;
+    for (u = 0; u < UART_SLOTS; u++) {
+        h->uart[u].configured = 0;
+    }
     h->i2c_configured = 0;
     h->i2ct.configured = 0;
     for (i = 0; i < MAX_TIMERS; i++) {
@@ -891,13 +896,6 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
         return;
     }
 
-    /* Identifiant du reseau radio porte par le schema (crochet de carte) :
-       -1 si l'antenne n'est pas cablee (radio.on() le signale). Stocke avant
-       tout tour du worker : la valeur ne depend que du modele. */
-    if (h->board) {
-        h->board->set_network(h, h->board_network);
-    }
-
     if (h->script_done) {
         for (i = 0; i < h->num_pins; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
@@ -917,10 +915,8 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
            sans memoire, plus de gestionnaire pour fournir les octets (0xFF). */
         i2ct_step(h, pinBoolIn);
         i2ct_finish(h);
-        /* Moteurs de la carte : le vrai balayage est materiel (timer + PPI),
-           il continue apres la fin du programme, comme l'UART vide sa file ;
-           les paquets radio restants sont livres aux compteurs (avertissements
-           de pertes), plus personne ne les lit - le programme est fini. */
+        /* Fait tourner le materiel autonome de la carte apres la fin du
+           programme, comme l'UART vide sa file. */
         if (h->board) {
             h->board->step(h, currentTime);
         }
@@ -930,8 +926,7 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
         }
         /* Une echeance UART (prochain front a emettre, octet recu a clore) ou
            du materiel autonome de la carte (prochaine transition du balayage)
-           peut encore demander un reveil apres la fin du script - pas les
-           arrivees radio : plus personne ne les lit. */
+           peut encore demander un reveil apres la fin du script. */
         *nextWakeTime = earliest_uart_deadline(h, currentTime);
         if (h->board) {
             double next_scan = h->board->next_scan_deadline(h);
@@ -948,11 +943,8 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
 
     /* Moteurs de la carte avant la boucle ci-dessous : les broches de la
        matrice sont des sorties pendant le balayage, leurs transitions ne sont
-       pas des entrees ; la radio livre a la file de reception les paquets
-       dont l'air a termine la livraison (arrivee <= maintenant), filtres par
-       la config du RECEPTEUR - avant le worker, pour que le programme les
-       voie a ce point de synchro. Les envois d'autres moteurs ne peuvent pas
-       arriver pendant CETTE synchro (un seul worker a la fois, cf.
+       pas des entrees. Les envois d'autres moteurs ne peuvent pas arriver
+       pendant CETTE synchro (un seul worker a la fois, cf.
        pyruntime_core.h). */
     if (h->board) {
         h->board->step(h, currentTime);
@@ -1123,16 +1115,11 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
     }
     /* Meme raison, moteurs de la carte : display.on()/off() ou un nouveau
        dessin pendant le drain (la prochaine transition du balayage peut
-       avoir bouge), ou un paquet radio volant vers ce moteur (pose par un
-       emetteur lors d'une synchro anterieure), reveil a son arrivee. */
+       avoir bouge). */
     if (h->board) {
         double next_scan = h->board->next_scan_deadline(h);
         if (next_scan < wake_at) {
             wake_at = next_scan;
-        }
-        double next_inbox = h->board->next_inbox_deadline(h);
-        if (next_inbox < wake_at) {
-            wake_at = next_inbox;
         }
     }
     LeaveCriticalSection(&h->cs);
@@ -1148,7 +1135,9 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
     *nextWakeTime = done ? uart_only : wake_at;
 }
 
-/* Point de synchro des coeurs sans lien de carte (MCU, RPi_Pico). */
+/* Point de synchro (MCU, RPi_Pico, MicroBit_v2 : la radio embarquee n'est
+   plus un lien logique du schema, elle vit dans les broches internes et le
+   modem de la carte, cf. requirements.md decision "Radios micro:bit"). */
 void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput, int* pinPull,
@@ -1157,25 +1146,6 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
                      int* uartTxPinOut, int* uartTxLevelOut,
                      int powerGood, double adcRef,
                      double* nextWakeTime) {
-    sync_impl(handle_, currentTime, nPins, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput,
-              pinPull, pwmFreqOut, pwmDutyOut, displaySeqOut, displayPayloadOut,
-              uartTxPinOut, uartTxLevelOut, powerGood, adcRef, nextWakeTime);
-}
-
-/* Meme point de synchro pour le coeur d'une carte dont le schema porte un
-   identifiant de reseau (antenne radio de la micro:bit) : il est pose dans le
-   handle avant la synchro, puis transmis au crochet set_network une fois
-   l'etat de la carte alloue. Seul le thread Modelica l'ecrit. */
-void PyRuntime_syncBoard(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
-                          const double* pinAnalogIn,
-                          int* pinBoolOut, int* pinIsOutput, int* pinPull,
-                          double* pwmFreqOut, double* pwmDutyOut,
-                          int* displaySeqOut, const char** displayPayloadOut,
-                          int* uartTxPinOut, int* uartTxLevelOut,
-                          int powerGood, double adcRef,
-                          int boardNetwork,
-                          double* nextWakeTime) {
-    ((struct PyRuntimeHandle*) handle_)->board_network = boardNetwork;
     sync_impl(handle_, currentTime, nPins, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput,
               pinPull, pwmFreqOut, pwmDutyOut, displaySeqOut, displayPayloadOut,
               uartTxPinOut, uartTxLevelOut, powerGood, adcRef, nextWakeTime);

@@ -94,7 +94,7 @@ vsys = ADC(3).read_u16() * 3.3 / 65535 * 3
 temp = 27 - (ADC(4).read_u16() * 3.3 / 65535 - 0.706) / 0.001721
 ```
 
-Une broche qui n'est pas permise pour ce périphérique lève l'erreur du port `rp2` (« bad TX pin », « bad SCL pin »). La simulation n'a qu'un moteur UART et qu'un maître I2C : `UART(0)` et `UART(1)` sont acceptés, mais **un seul à la fois** (de même pour `I2C(0)`/`I2C(1)`).
+Une broche qui n'est pas permise pour ce périphérique lève l'erreur du port `rp2` (« bad TX pin », « bad SCL pin »). La simulation a deux moteurs UART - `UART(0)` et `UART(1)` peuvent être ouverts **en même temps** (`Examples.Pico.UartDuo` en fait la démonstration) - mais un seul maître I2C : `I2C(0)` et `I2C(1)` restent **un seul à la fois**.
 
 ## Paramètres
 

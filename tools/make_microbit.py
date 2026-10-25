@@ -36,7 +36,7 @@ DOC = '''<html>
 <h4>Pull resistors (as on the board)</h4>
 <p>10 MOhm to 3V on the ring pins <code>P0</code>/<code>P1</code>/<code>P2</code> (touch sensing), 10 kOhm to 3V on the button pins <code>P5</code>/<code>P11</code>, 4.7 kOhm to 3V on the I2C pins <code>P19</code>/<code>P20</code>.</p>
 <h4>Radio (<code>microbit.radio</code>)</h4>
-<p>The on-board 2.4 GHz radio is simulated as <b>packets</b>: check <code>useRadio</code> to show the <code>Antenna</code> port, wire the antennas of the boards that must hear each other to one <code>Peripherals.Radio.RadioAir</code>, and the programs exchange messages with the firmware API (<code>radio.on()</code>, <code>config()</code>, <code>send()</code>, <code>receive()</code>, filtering by <code>channel</code>/<code>group</code>/<code>address</code>, receive queue of depth <code>queue</code>). A packet is delivered after the air time of its frame (payload + 6 header bytes at <code>data_rate</code>), and <code>radio.on()</code> fails with an explicit error while the antenna is unwired. No modulated signal is plotted (a 1 Mbit/s frame would take thousands of sync points): <code>Peripherals.Radio.RadioModem</code> remains the tool for that.</p>
+<p>The on-board 2.4 GHz radio is a <b>generic radio modem</b> mounted inside the board on two internal pins, always present as on the real hardware: wire the <code>Antenna</code> port (top of the icon) with <b>one</b> antenna wire between the boards that must hear each other (as with <code>Peripherals.Radio.RadioModem</code>), and the programs exchange messages with the firmware API (<code>radio.on()</code>, <code>config()</code>, <code>send()</code>, <code>receive()</code>, filtering by <code>channel</code>/<code>group</code>/<code>address</code>, receive queue of depth <code>queue</code>), implemented in the Python shim on top of the internal modem. A packet travels at the pace of the modem (air at 1 Mbit/s); an unwired antenna means nobody hears the emission, like a modem in the void. No modulated signal is plotted: <code>Peripherals.Radio.RadioModem</code> remains the tool for that.</p>
 <p>Not simulated (see the user guide): the touch logo, SPI, microphone and speaker of the v2. See <code>requirements.md</code>, decision "MCU micro:bit v2".</p>
 </html>'''
 
@@ -124,7 +124,6 @@ def core_pt(lx, ly):
 
 
 CORE = {'pin': core_pt(-110, 0), 'vdd': core_pt(0, 110), 'gnd': core_pt(0, -110), 'vref': core_pt(-60, 110)}
-ANT = core_pt(110, 20)   # connecteur AntennaIn du coeur (radio, conditionnel)
 
 
 def route(a, b, first='h'):
@@ -297,8 +296,11 @@ conns.append('  Modelica.Electrical.Analog.Interfaces.PositivePin P_3V "3V suppl
 conns.append('  Modelica.Electrical.Analog.Interfaces.NegativePin GND if useGroundPin "Common reference (ground) - shown when useGroundPin is checked, otherwise the board is referenced to the simulation ground (0 V)" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-4, -4}, {4, 4}})));' % (D['GND'][0], D['GND'][1], edge_x(ICX['GND']), PAD_Y))
 conns.append('  Modelica.Blocks.Interfaces.BooleanInput buttonA if buttonASource == InputSource.Connector "Button A (P5): true while pressed - wire a boolean signal or source; pressed = pin to GND, 10 kOhm pull-up otherwise" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}})));' % (D['buttonA'][0], D['buttonA'][1], -HALF_W - 12, 0))
 conns.append('  Modelica.Blocks.Interfaces.BooleanInput buttonB if buttonBSource == InputSource.Connector "Button B (P11): true while pressed - same as buttonA" annotation(\n    Placement(transformation(origin = {%g, %g}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {%g, %g}, extent = {{-5, -5}, {5, 5}}, rotation = 180)));' % (D['buttonB'][0], D['buttonB'][1], HALF_W + 12, 0))
-# Antenne radio : port conditionnel (useRadio), borde haut a droite de l'icone
-conns.append('  Interfaces.RadioAirInput Antenna if useRadio "Antenna of the on-board 2.4 GHz radio (microbit.radio): wire it to the antenna of a Peripherals.Radio.RadioAir - the boards sharing the same air hear each other" annotation('
+# Antenne radio : port permanent (la radio est toujours la, comme sur le materiel),
+# borde haut a droite de l'icone.
+# Le meme connecteur acausal que les RadioModem : un seul fil entre toutes les
+# cartes qui partagent le meme air.
+conns.append('  Interfaces.Antenna Antenna "Antenna of the on-board 2.4 GHz radio (microbit.radio): wire it with ONE wire to the antenna of the other boards (or Peripherals.Radio.RadioModem) that share the same air" annotation('
              '\n    Placement(transformation(origin = {330, 300}, extent = {{-10, -10}, {10, 10}}), iconTransformation(origin = {140, 183.3}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));')
 
 sensor_params = []
@@ -359,9 +361,29 @@ for btn, pin, tbl in BUTTONS:
     button_eqs.append('  connect(src_%s.y, switch%s.control);' % (btn, sw))
     button_eqs.append('  if %(b)sSource == InputSource.Connector then\n    connect(%(b)s, src_%(b)s.u) annotation(\n    Line(points = %(pts)s, color = {150, 0, 200}));\n  end if;' % dict(b=btn, pts=btn_pts))
 
-# Antenne radio : connectee au coeur quand elle existe (meme condition des
-# deux cotes, le coeur recoit final useRadio = useRadio)
-button_eqs.append('  if useRadio then\n    connect(core.AntennaIn, Antenna) annotation(\n    Line(points = %s, color = {160, 90, 0}));\n  end if;' % pts([ANT, (ANT[0], 335), (330, 335), (330, 310)]))
+# Radio embarquee : modem radio generique interne (meme moteur que
+# Peripherals.Radio.RadioModem), branche sur les broches internes du coeur
+# (pin[33] = TX du coeur id 34 -> RX du modem, pin[34] = RX du coeur id 35 <-
+# TX du modem), sa masse au bus commun et son antenne au port de la carte.
+# Comme sur le materiel, le modem est toujours la : rien de conditionnel.
+place('radioModem', (250, 230), 0)
+decls.append(comp_decl('MicroPythonMCU.Internal.OnBoardRadioModem', 'radioModem', '',
+                       'On-board 2.4 GHz radio of the micro:bit, as a transparent modem on two internal pins of the core - the microbit.radio protocol lives in the Python shim'))
+RAD = (250, 230)
+RAD_RX = (RAD[0] - 12, RAD[1] - 3)     # RX du modem (bas gauche)
+RAD_TX = (RAD[0] - 12, RAD[1] + 3)     # TX du modem (haut gauche)
+RAD_GND = (RAD[0], RAD[1] - 10)
+RAD_ANT = (RAD[0], RAD[1] + 10)
+button_eqs.append(
+                   '    connect(core.pin[33], radioModem.RX) annotation(\n'
+                   '    Line(points = %s, color = {0, 0, 255}));\n' % pts([CORE['pin'], (CORE['pin'][0] + 60, CORE['pin'][1]), (RAD_RX[0] - 20, CORE['pin'][1]), RAD_RX]) +
+                   '    connect(core.pin[34], radioModem.TX) annotation(\n'
+                   '    Line(points = %s, color = {0, 0, 255}));\n' % pts([CORE['pin'], (CORE['pin'][0] + 50, CORE['pin'][1] - 8), (RAD_TX[0] - 30, CORE['pin'][1] - 8), RAD_TX]) +
+                   '    connect(radioModem.GND, core.gnd) annotation(\n'
+                   '    Line(points = %s, color = %s));\n' % (pts([RAD_GND, (RAD_GND[0], GND_BUS[1]), GND_BUS, GND_LEG]), GND_COLOR) +
+                   '    connect(radioModem.antenna, Antenna) annotation(\n'
+                   '    Line(points = %s, color = {160, 90, 0}));\n'
+                   % pts([RAD_ANT, (RAD_ANT[0], 335), (330, 335), (330, 310)]))
 
 
 # ---------------------------------------------------------------- icone
@@ -448,24 +470,21 @@ doc = DOC.replace('"', '\\"')
 # socle dans le modificateur du extends, le redeclare porte l'annotation de
 # placement (le coeur reste au point calcule par le generateur)
 core_mods = ', '.join(
-    ['final nPins = 32',
-     'final pinIds = {%s}' % ', '.join([n[1:] for n in EDGE] + [str(i) for i in ROW_IDS + list(range(26, 34))]),
-     'final pinCaps = {%s}' % ', '.join(['7' if n in ADC_EDGE else '3' for n in EDGE] + ['1'] * 5 + ['4'] * 8),
-     'final boardProfile = "microbit"', 'final useRadio = useRadio'])
+    ['final nPins = 34',
+     'final pinIds = {%s}' % ', '.join([n[1:] for n in EDGE] + [str(i) for i in ROW_IDS + list(range(26, 36))]),
+     'final pinCaps = {%s}' % ', '.join(['7' if n in ADC_EDGE else '3' for n in EDGE] + ['1'] * 5 + ['4'] * 8 + ['1'] * 2),
+     'final boardProfile = "microbit"'])
 
 src = '''within MicroPythonMCU;
 
 model MicroBit_v2 "BBC micro:bit v2 board: nRF52833 programmable in MicroPython, real pinout and dimensions, multiplexed 5x5 LED matrix, buttons A/B, integrated sensors and USB power supply"
-  extends Internal.PartialUsbBoard(ICore = 0.004, redeclare Internal.McuCoreRadio core(%(core_mods)s) "The nRF52833: pin[1..19] = P0-P16, P19, P20 (edge), pin[20..24] = matrix rows ROW1-ROW5 (internal), pin[25..32] = accelerometer X/Y/Z, compass X/Y/Z, temperature, light (internal)" annotation(
+  extends Internal.PartialUsbBoard(ICore = 0.004, redeclare Internal.McuCore core(%(core_mods)s) "The nRF52833: pin[1..19] = P0-P16, P19, P20 (edge), pin[20..24] = matrix rows ROW1-ROW5 (internal), pin[25..32] = accelerometer X/Y/Z, compass X/Y/Z, temperature, light (internal), pin[33..34] = TX/RX of the on-board radio (internal)" annotation(
     Placement(transformation(origin = {%(cx)g, %(cy)g}, extent = {{-70, -70}, {70, 70}}))));
   type InputSource = MicroPythonMCU.Interfaces.InputSource "Source of each button and integrated sensor value (alias of the shared type, so that existing models keep writing MicroBit_v2.InputSource.Connector)";
   parameter Modelica.Units.SI.Voltage VTgt = 3.0 "Voltage of the 3V rail (output of the on-board regulator, high level and ADC reference of the pins)" annotation(
     Dialog(tab = "Power supply", group = "Regulator"));
   parameter Boolean useGroundPin = true "Show the GND pin - unchecked: the board is referenced to the simulation ground (0 V), nothing to wire" annotation(
     Dialog(tab = "Pins", group = "Supply"),
-    choices(checkBox = true));
-  parameter Boolean useRadio = false "On-board 2.4 GHz radio (microbit.radio): shows the Antenna port, to wire to the antenna of a Peripherals.Radio.RadioAir - the boards sharing the same air hear each other, radio.on() fails with an explicit error while unwired" annotation(
-    Dialog(tab = "Pins", group = "Radio"),
     choices(checkBox = true));
 %(sensor_params)s
 %(button_params)s
@@ -519,7 +538,7 @@ for k, (name, unit, default, formula, doc, group, tbl) in enumerate(SENSORS):
     icon.append('Text(textColor = {70, 70, 70}, extent = {{%g, %g}, {%g, %g}}, textString = "%s", fontSize = 8)' % (px - 17, py + 21, px + 17, py + 11.5, name))
 
 # Etiquette de l'antenne radio (bord haut a droite, avec son port)
-icon.append('Text(visible = useRadio, textColor = {70, 70, 70}, extent = {{123, 204.3}, {157, 194.8}}, textString = "ant", fontSize = 8)')
+icon.append('Text(textColor = {70, 70, 70}, extent = {{123, 204.3}, {157, 194.8}}, textString = "ant", fontSize = 8)')
 
 src = src % dict(sensor_params='\n'.join(sensor_params), button_params='\n'.join(button_params), conns='\n'.join(conns), core_mods=core_mods,
                  cx=CORE_O[0], cy=CORE_O[1], rx=P['regulator'][0][0], ry=P['regulator'][0][1],

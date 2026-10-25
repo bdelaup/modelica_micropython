@@ -1,0 +1,33 @@
+// Scenario de verification n°82 : deux liaisons UART simultanees entre deux
+// cartes. omc verify_82_uart_duo_pico.mos
+//
+// Exemple Examples.Pico.UartDuo : deux RPi_Pico, chacune avec UART(0) sur
+// GP0/GP1 ET UART(1) sur GP4/GP5 (les deux moteurs UART du RP2040, ouverts en
+// meme temps). A envoie PING n et HELLO n, B repond PONG n et WORLD n sur la
+// liaison correspondante : marqueurs BOTH 1..5 (les deux reponses de chaque
+// tour arrivent ensemble) et DONE.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+// Deux Pico cablees : le solveur non lineaire creux (KINSOL/KLU) echoue sur
+// ce modele de taille intermediaire (densite 0,07 < seuil 0,10, sans motif de
+// parcimonie) - solveur dense impose.
+buildModel(MicroPythonMCU.Examples.Pico.UartDuo, stopTime = 4, numberOfIntervals = 40, fileNamePrefix = "UartDuoPico", simflags = "-nlssMaxDensity=0");
+b := getErrorString();
+ret := system(".\\UartDuoPico.bat -nlssMaxDensity=0", "UartDuoPico_run.txt");
+log := readFile("UartDuoPico_run.txt");
+
+(n1, m) := regex(log, "SENT 1", 1);
+(n2, m) := regex(log, "BOTH 1", 1);
+(n3, m) := regex(log, "BOTH 5", 1);
+(n4, m) := regex(log, "PONG 5", 1);
+(n5, m) := regex(log, "WORLD 5", 1);
+(n6, m) := regex(log, "DONE_B", 1);
+
+if n1 > 0 and n2 > 0 and n3 > 0 and n4 > 0 and n5 > 0 and n6 > 0 then
+  print("PASS: verify_82_uart_duo_pico (UART(0) et UART(1) simultanes, 5 rounds PONG+WORLD)\n");
+else
+  print("FAIL: verify_82_uart_duo_pico (sent1=" + String(n1) + ", both1=" + String(n2)
+        + ", both5=" + String(n3) + ", pong5=" + String(n4) + ", world5=" + String(n5)
+        + ", doneb=" + String(n6) + ")\n" + b);
+end if;

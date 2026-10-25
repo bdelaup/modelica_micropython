@@ -1,7 +1,6 @@
 PyRuntime
 PartialPyRuntimeSync
 PyRuntime_sync
-PyRuntime_syncBoard
 PinBridge
 PartialMcuSettings
 PartialBoard
@@ -10,7 +9,6 @@ SensorSource
 PartialUsbBoard
 PartialMcuCore
 McuCore
-McuCoreRadio
 Rt6150
 UartDevice
 UartDevice_sync
@@ -38,4 +36,4 @@ LogicAnalyzer_finish
 RadioModem
 RadioModem_sync
 PartialRadioModem
-StringHash
+OnBoardRadioModem

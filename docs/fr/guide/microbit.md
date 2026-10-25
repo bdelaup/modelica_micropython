@@ -142,28 +142,36 @@ simulé). La broche `3V` alimente aussi le 3V de la carte.
 
 ## Radio : `microbit.radio`
 
-La radio 2,4 GHz embarquée est simulée **par paquets**. Cocher `useRadio`
-(onglet *Pins*) fait apparaître le port **Antenna** de la carte : câblez les
-antennes des cartes qui doivent s'entendre à l'antenne d'un même
-`Peripherals.Radio.RadioAir` — deux cartes câblées à deux `RadioAir`
-différents ne s'entendent jamais, le schéma montre qui est sur l'air.
+La radio 2,4 GHz embarquée est un **modem radio ordinaire monté dans la carte**
+(le même moteur que `Peripherals.Radio.RadioModem`, branché en interne sur deux
+broches du cœur) — **toujours présente, comme sur le vrai matériel**. Son port
+**Antenna** (en haut de l'icône) se câble **en un seul fil** entre toutes les
+cartes qui doivent s'entendre — exactement comme entre deux `RadioModem`. Le
+protocole du firmware (trames, filtrage `channel`/`group`/`address`, file de
+réception, troncation) vit dans le shim Python ; l'API du programme :
 
 ```python
 import radio
-radio.on()                     # erreur explicite tant que l'antenne n'est pas câblée
+radio.on()                     # toujours presente : reussit sans condition ;
+                                # une antenne non câblée émet dans le vide,
+                                # comme un modem isolé
 radio.config(channel=7, group=0, power=6)   # filtrage channel/group/address,
                                             # file de réception queue (défaut 3)
 radio.send('PING 1')            # ou send_bytes(b'...'), au plus length octets
 msg = radio.receive()           # str ou None (receive_bytes() : bytes ou None)
 ```
 
-Un paquet est livré après le **temps de trame à l'air** (contenu + 6 octets
-d'en-tête au débit `data_rate`, 1 ou 2 Mbit/s) ; les mêmes sémantiques que le
-firmware (filtrage, file, troncation à `length`) s'appliquent, `power` est
-accepté mais sans effet (pas de portée simulée). Aucun signal modulé n'est
-tracé — une trame à 1 Mbit/s coûterait des milliers de points de synchro ;
-le `RadioModem` reste l'outil pour les modulations. L'exemple
-`Examples.MicroBit.RadioChat` fait dialoguer deux cartes.
+Un paquet voyage au rythme du modem (liaison interne à 115 200 bauds, air à
+1 Mbit/s) ; les sémantiques du firmware s'appliquent (filtrage, file,
+troncation à `length`), `power` est accepté mais sans effet (pas de portée
+simulée), et `data_rate` doit correspondre des deux côtés (une trame d'un
+autre débit est ignorée, comme deux radios réelles incompatibles). Deux cartes
+neuves sur le même fil s'entendent — même `channel`/`group`/`address` par
+défaut, comme deux vraies micro:bits. Aucun signal modulé n'est tracé côté
+carte ; le `RadioModem` reste l'outil pour les modulations. L'exemple
+`Examples.MicroBit.RadioChat` fait dialoguer deux cartes, et la radio coexiste
+avec `machine.UART` (deux moteurs distincts, l'un interne à la radio, l'autre
+au service du programme).
 
 ## Limites spécifiques à la micro:bit
 
@@ -176,6 +184,12 @@ le `RadioModem` reste l'outil pour les modulations. L'exemple
   n'ont pas de source en simulation.
 - `display.scroll`/`show` avec `wait=False` utilisent un `machine.Timer`
   interne (pool de 4).
+- Radio : une antenne **non câblée** ne se signale pas (un fil d'antenne
+  acausal ne peut pas dire « personne au bout ») — l'émission part dans le
+  vide, comme un modem isolé ; le rythme des
+  échanges est celui du modem interne (liaison à 115 200 bauds, air à
+  1 Mbit/s), pas la durée de trame exacte du matériel, et un flux continu
+  dense coûte plus d'événements de simulation qu'un envoi sporadique.
 
 Voir aussi : la référence de l'API `machine` (page « API machine / time »),
 la page « Limites et dépannage », et `Examples.MicroBit`.

@@ -32,19 +32,11 @@ struct BoardHooks {
     /* Prochaine transition du materiel qui SURVIT a la fin du script (ex.
        balayage de la matrice), 1e300 si rien : entre dans nextWakeTime. */
     double (*next_scan_deadline)(struct PyRuntimeHandle* h);
-    /* Prochaine arrivee EN VOL vers cette carte (ex. paquet radio), 1e300
-       si rien : s'annule avec la fin du script, seul le materiel autonome
-       demande encore un reveil apres elle. */
-    double (*next_inbox_deadline)(struct PyRuntimeHandle* h);
     /* Consomme la liberation d'une broche par un moteur (ex. display.off()) :
        sa premiere transition ensuite n'etablit que son niveau apres la haute
        impedance, ce n'est pas une vraie entree - renvoie 1 (et efface) si la
        transition de la broche doit etre ignoree, 0 sinon. */
     int (*pin_released)(struct PyRuntimeHandle* h, int pin);
-    /* Identifiant du reseau porte par le schema (ex. antenne radio), -1 si
-       rien n'est cable : stocke avant tout traitement de la synchro, la
-       valeur ne depend que du modele. */
-    void (*set_network)(struct PyRuntimeHandle* h, int network_id);
     /* Perte d'alimentation : tout le materiel de la carte s'arrete, ses
        broches sont relachees avec les autres. */
     void (*power_loss)(struct PyRuntimeHandle* h);

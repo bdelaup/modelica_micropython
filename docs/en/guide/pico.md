@@ -98,7 +98,7 @@ vsys = ADC(3).read_u16() * 3.3 / 65535 * 3
 temp = 27 - (ADC(4).read_u16() * 3.3 / 65535 - 0.706) / 0.001721
 ```
 
-A pin that is not allowed for this peripheral raises the error of the `rp2` port ("bad TX pin", "bad SCL pin"). The simulation has a single UART engine and a single I2C controller: `UART(0)` and `UART(1)` are both accepted, but **only one at a time** (likewise for `I2C(0)`/`I2C(1)`).
+A pin that is not allowed for this peripheral raises the error of the `rp2` port ("bad TX pin", "bad SCL pin"). The simulation has two UART engines - `UART(0)` and `UART(1)` can be open **at the same time** (`Examples.Pico.UartDuo` demonstrates it) - but a single I2C controller: `I2C(0)` and `I2C(1)` remain **only one at a time**.
 
 ## Parameters
 

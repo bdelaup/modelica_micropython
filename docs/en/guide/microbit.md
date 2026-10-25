@@ -138,28 +138,36 @@ simulated). The `3V` pin also supplies external circuits.
 
 ## Radio: `microbit.radio`
 
-The on-board 2.4 GHz radio is simulated **as packets**. Check `useRadio`
-(tab *Pins*) to show the **Antenna** port of the board: wire the antennas of
-the boards that must hear each other to the antenna of one
-`Peripherals.Radio.RadioAir` - boards wired to two different `RadioAir`
-never hear each other, the diagram shows who is on the air.
+The on-board 2.4 GHz radio is an **ordinary radio modem mounted inside the
+board** (the same engine as `Peripherals.Radio.RadioModem`, wired internally
+to two pins of the core) - **always present, as on the real hardware**. Its
+**Antenna** port (top of the icon) is wired with **one single wire** between
+all the boards that must hear each other - exactly as between two
+`RadioModem`. The firmware protocol (framing, `channel`/`group`/`address`
+filtering, receive queue, truncation) lives in the Python shim; the program
+API:
 
 ```python
 import radio
-radio.on()                     # explicit error while the antenna is unwired
+radio.on()                     # always present: succeeds unconditionally;
+                                # an unwired antenna transmits into the void,
+                                # like an isolated modem
 radio.config(channel=7, group=0, power=6)   # channel/group/address filtering,
                                             # receive queue (default 3)
 radio.send('PING 1')            # or send_bytes(b'...'), at most length bytes
-msg = radio.receive()           # str or None (receive_bytes(): bytes or None)
+msg = radio.receive()          # str or None (receive_bytes(): bytes or None)
 ```
 
-A packet is delivered after the **air time of its frame** (payload + 6
-header bytes at `data_rate`, 1 or 2 Mbit/s); the firmware semantics apply
-(filtering, queue, truncation to `length`), `power` is accepted but has no
-effect (no range simulated). No modulated signal is plotted - a 1 Mbit/s
-frame would cost thousands of sync points; the `RadioModem` remains the tool
-for modulations. The example `Examples.MicroBit.RadioChat` makes two boards
-talk.
+A packet travels at the pace of the modem (internal link at 115200 bauds, air
+at 1 Mbit/s); the firmware semantics apply (filtering, queue, truncation to
+`length`), `power` is accepted but has no effect (no range simulated), and
+`data_rate` must match on both sides (a frame from another rate is ignored,
+like two incompatible real radios). Two fresh boards on the same wire hear
+each other - same default `channel`/`group`/`address`, like two real
+micro:bits. No modulated signal is plotted on the board; the `RadioModem`
+remains the tool for modulations. The example `Examples.MicroBit.RadioChat`
+makes two boards talk, and the radio coexists with `machine.UART` (two
+distinct engines, one internal to the radio, one for the program).
 
 ## micro:bit specific limits
 
@@ -171,6 +179,12 @@ talk.
   the simulation.
 - `display.scroll`/`show` with `wait=False` use an internal `machine.Timer`
   (pool of 4).
+- Radio: an **unwired** antenna is not reported (an acausal antenna wire
+  cannot say "nobody at the other end") - the emission goes into the void,
+  like an isolated modem; the pace of the
+  exchanges is that of the internal modem (link at 115200 bauds, air at
+  1 Mbit/s), not the exact frame duration of the hardware, and a dense
+  continuous stream costs more simulation events than a sporadic send.
 
 See also: the `machine` API reference ("machine / time API" page), the
 "Limits and troubleshooting" page, and `Examples.MicroBit`.

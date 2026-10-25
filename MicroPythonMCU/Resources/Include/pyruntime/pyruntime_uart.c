@@ -20,18 +20,28 @@
    est decodee dans PyRuntime_sync a partir des fronts de la ligne (cf.
    uartcore_rx_step). */
 
-/* Plus proche echeance UART, ou 1e300 si l'UART n'est pas configure. */
+/* Plus proche echeance UART, ou 1e300 si aucun slot n'est configure. */
 static double earliest_uart_deadline(struct PyRuntimeHandle* h, double now) {
-    if (!h->uart_configured) {
-        return 1.0e300;
+    double best = 1.0e300;
+    int n;
+    for (n = 0; n < UART_SLOTS; n++) {
+        if (h->uart[n].configured) {
+            double d = uartcore_deadline(&h->uart[n].engine, now);
+            if (d < best) {
+                best = d;
+            }
+        }
     }
-    return uartcore_deadline(&h->uart, now);
+    return best;
 }
 
 /* Fait avancer l'emission et le decodage. Appelees par PyRuntime_sync a chaque
    point de synchro ; le niveau de la broche RX est lu dans pinBoolIn. */
 static void uart_tx_advance(struct PyRuntimeHandle* h, double now) {
-    uartcore_tx_advance(&h->uart, now);
+    int n;
+    for (n = 0; n < UART_SLOTS; n++) {
+        uartcore_tx_advance(&h->uart[n].engine, now);
+    }
 }
 
 /* Signale au journal un octet recu avec une erreur (parite fausse, stop bas),
@@ -40,19 +50,19 @@ static void uart_tx_advance(struct PyRuntimeHandle* h, double now) {
    complet est donne en fin de simulation (uart_report_errors). */
 #define UART_ERR_REPORT_MAX 10
 
-static void uart_warn_errors(struct PyRuntimeHandle* h, double now, int errors) {
-    if (!errors || h->uart_err_reported > UART_ERR_REPORT_MAX) {
+static void uart_warn_errors(struct PyRuntimeHandle* h, int slot, double now, int errors) {
+    if (!errors || h->uart[slot].err_reported > UART_ERR_REPORT_MAX) {
         return;
     }
-    h->uart_err_reported++;
-    if (h->uart_err_reported > UART_ERR_REPORT_MAX) {
-        ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): UART(0): further reception errors not reported "
-                              "(total at the end of the simulation)\n", now, h->instanceName);
+    h->uart[slot].err_reported++;
+    if (h->uart[slot].err_reported > UART_ERR_REPORT_MAX) {
+        ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): UART(%d): further reception errors not reported "
+                              "(total at the end of the simulation)\n", now, h->instanceName, slot);
         return;
     }
-    ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): UART(0): %s%s%s error on a received byte "
+    ModelicaFormatWarning("[t=%.6f s] PyRuntime (%s): UART(%d): %s%s%s error on a received byte "
                           "(kept in the receive queue) - do baud rate, bits, parity and stop match the transmitter?\n",
-                          now, h->instanceName,
+                          now, h->instanceName, slot,
                           (errors & UART_ERR_PARITY) ? "parity" : "",
                           (errors & UART_ERR_PARITY) && (errors & UART_ERR_FRAMING) ? " and " : "",
                           (errors & UART_ERR_FRAMING) ? "framing" : "");
@@ -60,22 +70,28 @@ static void uart_warn_errors(struct PyRuntimeHandle* h, double now, int errors) 
 
 /* Bilan de fin de simulation, seulement si le plafond a ete atteint. */
 static void uart_report_errors(struct PyRuntimeHandle* h) {
-    if (h->uart_err_reported > UART_ERR_REPORT_MAX) {
-        ModelicaFormatWarning("PyRuntime (%s): UART(0): %ld parity and %ld framing errors in total\n",
-                              h->instanceName, h->uart.rx_parity_errors, h->uart.rx_framing_errors);
+    int n;
+    for (n = 0; n < UART_SLOTS; n++) {
+        if (h->uart[n].err_reported > UART_ERR_REPORT_MAX) {
+            ModelicaFormatWarning("PyRuntime (%s): UART(%d): %ld parity and %ld framing errors in total\n",
+                                  h->instanceName, n, h->uart[n].engine.rx_parity_errors, h->uart[n].engine.rx_framing_errors);
+        }
     }
 }
 
 static void uart_rx_step(struct PyRuntimeHandle* h, double now, const int* pinBoolIn) {
-    if (!h->uart_configured || h->uart_rx_pin < 0) {
-        return;
+    int n;
+    for (n = 0; n < UART_SLOTS; n++) {
+        if (h->uart[n].configured && h->uart[n].rx_pin >= 0) {
+            uart_warn_errors(h, n, now, uartcore_rx_step(&h->uart[n].engine, now, pinBoolIn[h->uart[n].rx_pin]));
+        }
     }
-    uart_warn_errors(h, now, uartcore_rx_step(&h->uart, now, pinBoolIn[h->uart_rx_pin]));
 }
 
-/* Un seul id supporte - meme esprit que resolve_display_index. */
+/* Deux id supportes : 0 = machine.UART du script, 1 = radio interne de la
+   micro:bit (meme esprit que resolve_display_index). */
 static int resolve_uart_index(int id) {
-    if (id == 0) return 0;
+    if (id == 0 || id == 1) return id;
     return -1;
 }
 
@@ -87,12 +103,15 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
        revalide ici, la native pouvant etre appelee directement. */
     if (!PyArg_ParseTuple(args, "iiidiii", &id, &tx_id, &rx_id, &baudrate, &bits, &parity, &stop)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) and UART(1) exist)", id);
         return NULL;
     }
-    int tx = require_pin(tx_id, PIN_CAP_DIGITAL | PIN_CAP_EXTERNAL, "TX pin");
+    /* Slot 0 : broches externes du modele. Slot 1 (radio interne de la
+       micro:bit) : broches internes de la carte, EXTERNAL non exigee. */
+    int caps = (id == 0) ? (PIN_CAP_DIGITAL | PIN_CAP_EXTERNAL) : PIN_CAP_DIGITAL;
+    int tx = require_pin(tx_id, caps, "TX pin");
     if (tx < 0) return NULL;
-    int rx = require_pin(rx_id, PIN_CAP_DIGITAL | PIN_CAP_EXTERNAL, "RX pin");
+    int rx = require_pin(rx_id, caps, "RX pin");
     if (rx < 0) return NULL;
     if (tx == rx) {
         PyErr_SetString(PyExc_ValueError, "TX and RX must be two different pins");
@@ -118,13 +137,13 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
-    g_current->uart_configured = 1;
-    g_current->uart_tx_pin = tx;
-    g_current->uart_rx_pin = rx;
+    g_current->uart[id].configured = 1;
+    g_current->uart[id].tx_pin = tx;
+    g_current->uart[id].rx_pin = rx;
     g_current->pin_is_output[tx] = 1;   /* la broche TX est prise par le peripherique, comme sur le vrai RP2040 */
     g_current->pin_is_output[rx] = 0;
     g_current->uart_rx_claimed[rx] = 1; /* ses fronts ne reveillent plus le script (cf. PyRuntime_sync) */
-    uartcore_configure(&g_current->uart, 1.0 / baudrate, bits, parity, stop);
+    uartcore_configure(&g_current->uart[id].engine, 1.0 / baudrate, bits, parity, stop);
     LeaveCriticalSection(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
@@ -138,10 +157,10 @@ static PyObject* native_uart_write(PyObject* self, PyObject* args) {
     /* "y#" : bytes + longueur. Pas "s", qui s'arrete au premier NUL et refuse les bytes. */
     if (!PyArg_ParseTuple(args, "iy#", &id, &data, &len)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) and UART(1) exist)", id);
         return NULL;
     }
-    if (!g_current->uart_configured) {
+    if (!g_current->uart[id].configured) {
         PyErr_SetString(PyExc_RuntimeError, "UART not initialised");
         return NULL;
     }
@@ -149,13 +168,13 @@ static PyObject* native_uart_write(PyObject* self, PyObject* args) {
     long written = 0;
     EnterCriticalSection(&g_current->cs);
     for (i = 0; i < len; i++) {
-        if (!uartcore_tx_push(&g_current->uart, (unsigned char) data[i])) {
+        if (!uartcore_tx_push(&g_current->uart[id].engine, (unsigned char) data[i])) {
             break;   /* file pleine : les octets restants sont perdus, comme un FIFO materiel qui deborde */
         }
         written++;
     }
     /* Si rien n'est en cours d'emission, demarrer tout de suite la premiere trame. */
-    uartcore_tx_kick(&g_current->uart, g_current->sim_time);
+    uartcore_tx_kick(&g_current->uart[id].engine, g_current->sim_time);
     LeaveCriticalSection(&g_current->cs);
     /* Non bloquant : le temps n'avance pas ici, Modelica joue la forme d'onde. */
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
@@ -167,12 +186,12 @@ static PyObject* native_uart_any(PyObject* self, PyObject* args) {
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) and UART(1) exist)", id);
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     EnterCriticalSection(&g_current->cs);
-    long n = uartcore_rx_count(&g_current->uart);
+    long n = uartcore_rx_count(&g_current->uart[id].engine);
     LeaveCriticalSection(&g_current->cs);
     return PyLong_FromLong(n);
 }
@@ -183,18 +202,18 @@ static PyObject* native_uart_read(PyObject* self, PyObject* args) {
     int id, n;
     if (!PyArg_ParseTuple(args, "ii", &id, &n)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) and UART(1) exist)", id);
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     char out[UART_RX_BUF_LEN];
     int count = 0;
     EnterCriticalSection(&g_current->cs);
-    int avail = uartcore_rx_count(&g_current->uart);
+    int avail = uartcore_rx_count(&g_current->uart[id].engine);
     int want = (n < 0 || n > avail) ? avail : n;
     while (count < want) {
         unsigned char byte;
-        if (!uartcore_rx_pop(&g_current->uart, &byte)) {
+        if (!uartcore_rx_pop(&g_current->uart[id].engine, &byte)) {
             break;
         }
         out[count++] = (char) byte;
@@ -211,20 +230,49 @@ static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     if (resolve_uart_index(id) < 0) {
-        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) exists)", id);
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) and UART(1) exist)", id);
         return NULL;
     }
     EnterCriticalSection(&g_current->cs);
-    if (g_current->uart_configured && g_current->uart_rx_pin >= 0) {
-        g_current->uart_rx_claimed[g_current->uart_rx_pin] = 0;
+    if (g_current->uart[id].configured && g_current->uart[id].rx_pin >= 0) {
+        g_current->uart_rx_claimed[g_current->uart[id].rx_pin] = 0;
     }
-    g_current->uart_configured = 0;
-    g_current->uart_tx_pin = -1;
-    g_current->uart_rx_pin = -1;
-    uartcore_stop(&g_current->uart);
+    g_current->uart[id].configured = 0;
+    g_current->uart[id].tx_pin = -1;
+    g_current->uart[id].rx_pin = -1;
+    uartcore_stop(&g_current->uart[id].engine);
     LeaveCriticalSection(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
+}
+
+/* Vrai tant que le slot emet une trame ou a des octets en file : le module
+   radio du shim attend la fin de son emission (radio.send doit se terminer
+   quand la trame quitte l'antenne, cf. requirements.md decision "Radios
+   micro:bit"), uart_write etant non bloquant. Le point de synchro demande le
+   reveil a l'ECHEANCE de la trame en cours (pas a l'instant courant : le
+   script bouclerait sans que Modelica avance d'une seconde simulee) ; les
+   fronts de la ligne, eux, reveillent de toute facon. */
+static PyObject* native_uart_tx_busy(PyObject* self, PyObject* args) {
+    REQUIRE_WORKER();
+    int id;
+    if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
+    if (resolve_uart_index(id) < 0) {
+        PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) and UART(1) exist)", id);
+        return NULL;
+    }
+    int busy;
+    double wake;
+    EnterCriticalSection(&g_current->cs);
+    busy = g_current->uart[id].configured &&
+           (g_current->uart[id].engine.tx_active || uartcore_tx_count(&g_current->uart[id].engine) > 0);
+    wake = busy ? uartcore_deadline(&g_current->uart[id].engine, g_current->sim_time) : g_current->sim_time;
+    LeaveCriticalSection(&g_current->cs);
+    if (yield_to_modelica(wake) != 0) return NULL;
+    if (busy) {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
 }
 
 /* Publie l'etat UART vers Modelica : la broche d'emission et le niveau a y
@@ -232,7 +280,16 @@ static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
    broche n'est affectee en TX ; une fois affectee, elle le reste meme hors
    trame (la ligne au repos doit etre HAUTE, pas retomber sur pinBoolOut qui
    vaut bas par defaut). */
+/* Publie l'etat UART vers Modelica : la broche d'emission de chaque slot et le
+   niveau a y tenir jusqu'au point de synchro suivant (vecteurs de UART_SLOTS,
+   indices Modelica 1 et 2). uartTxPin vaut 0 tant qu'aucune broche n'est
+   affectee en TX ; une fois affectee, elle le reste meme hors trame (la ligne
+   au repos doit etre HAUTE, pas retomber sur pinBoolOut qui vaut bas par
+   defaut). */
 static void uart_publish(struct PyRuntimeHandle* h, double now, int* uartTxPinOut, int* uartTxLevelOut) {
-    *uartTxPinOut = (h->uart_configured && h->uart_tx_pin >= 0) ? h->uart_tx_pin + 1 : 0;
-    *uartTxLevelOut = uartcore_tx_level(&h->uart, now);
+    int n;
+    for (n = 0; n < UART_SLOTS; n++) {
+        uartTxPinOut[n] = (h->uart[n].configured && h->uart[n].tx_pin >= 0) ? h->uart[n].tx_pin + 1 : 0;
+        uartTxLevelOut[n] = uartcore_tx_level(&h->uart[n].engine, now);
+    }
 }

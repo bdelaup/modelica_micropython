@@ -125,6 +125,20 @@ struct I2cTargetSide {
    profils sans moteurs ne les porte pas (phase 4 du refactoring). */
 struct BoardHooks;
 
+/* Un moteur UART par "slot" : 0 = machine.UART du script (broches externes du
+   modele), 1 = radio interne de la micro:bit (broches internes de la carte,
+   cf. requirements.md decision "Radios micro:bit"). Chaque slot a ses propres
+   broches TX/RX et son format de trame, mais la mecanique (uartcore) et les
+   natives sont communes. */
+#define UART_SLOTS 2
+struct UartSlot {
+    int configured;
+    int tx_pin;                  /* index interne de la broche, -1 si non affecte */
+    int rx_pin;
+    int err_reported;            /* erreurs de reception deja signalees au journal (plafond UART_ERR_REPORT_MAX) */
+    struct UartEngine engine;    /* files TX/RX, trame au format choisi, decodage : cf. uartcore.h (partage avec Peripherals.UartDevice) */
+};
+
 struct PyRuntimeHandle {
     char* scriptPath;            /* chaine vide : main.py du systeme de fichiers tient lieu de programme */
 
@@ -230,13 +244,8 @@ struct PyRuntimeHandle {
        La forme d'onde elle-meme est generee en continu par Modelica a partir de
        uart.tx_bits/uart.tx_start_time (motif PWM), pas front par front depuis ici.
        Cf. requirements.md, decision "UART electrique reel". */
-    int uart_configured;
-    int uart_tx_pin;             /* index interne de la broche, -1 si non affecte */
-    int uart_rx_pin;
+    struct UartSlot uart[UART_SLOTS]; /* uart[0] : machine.UART du script ; uart[1] : radio interne (micro:bit) */
     int uart_rx_claimed[MAX_PINS]; /* broche affectee a la reception UART : ses fronts ne reveillent pas le script et ne declenchent pas d'IRQ GPIO (fidele au materiel reel), cf. PyRuntime_sync */
-
-    struct UartEngine uart;      /* files TX/RX, trame au format choisi, decodage : cf. uartcore.h (partage avec Peripherals.UartDevice) */
-    int uart_err_reported;       /* erreurs de reception deja signalees au journal (plafond UART_ERR_REPORT_MAX) */
 
     /* machine.I2C : sequence cadencee par echeances (nextWakeTime), comme la
        reception UART. Le script est bloque dans i2c_xfer jusqu'a la fin de la
@@ -256,11 +265,9 @@ struct PyRuntimeHandle {
        board_ext sur leur etat, alloue par le crochet boot a la premiere
        synchro alimentee et libere par PyRuntime_destroy. Ecrit par les
        natives du profil (thread worker) et par PyRuntime_sync via les
-       crochets (pas de synchro, deadlines, identifiant radio depuis le
-       modele), comme l'UART des deux cotes. */
+       crochets (pas de synchro, deadlines), comme l'UART des deux cotes. */
     const struct BoardHooks* board;
     void* board_ext;
-    int board_network;       /* identifiant de reseau porte par le schema (-1 : rien de cable), pose par PyRuntime_syncBoard */
 
     int script_done;
     int script_error;

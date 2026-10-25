@@ -1,5 +1,5 @@
 within MicroPythonMCU.Internal;
-partial impure function PartialPyRuntimeSync "Interface shared by the sync points PyRuntime_sync and PyRuntime_syncBoard: passes the pin states, wakes the worker thread up to its next blocking point, returns the driven state and the next requested wake-up"
+partial impure function PartialPyRuntimeSync "Interface of the sync point PyRuntime_sync: passes the pin states, wakes the worker thread up to its next blocking point, returns the driven state and the next requested wake-up"
   input PyRuntime handle;
   input Real currentTime;
   // The pin arrays are Integer (0/1, or 0/1/2 for pinPull), not Boolean: an array of Boolean is handed to the C
@@ -17,7 +17,7 @@ partial impure function PartialPyRuntimeSync "Interface shared by the sync point
   output Real pwmDuty[size(pinBoolIn, 1)] "PWM duty cycle of each pin (0-1), relevant only if pwmFreq > 0";
   output Integer displaySeq "incremented at each machine.Display.write() on the single logical link MCU.Display0 - see machine.Display";
   output String displayPayload "last text sent by write() (sample-and-hold)";
-  output Integer uartTxPin "pin assigned to serial transmission (0 = none, otherwise its index, aligned with pinBoolOut) - see machine.UART";
-  output Boolean uartTxLevel "level to hold on the transmit pin until the next sync point (idle = high): nextWakeTime falls on the next level CHANGE of the frame, the frame format stays entirely on the C side";
+  output Integer uartTxPin[2] "pins assigned to serial transmission, one per UART slot (0 = none, otherwise its index, aligned with pinBoolOut) - slot 1: machine.UART of the script, slot 2: internal radio of the micro:bit - see machine.UART";
+  output Integer uartTxLevel[2] "level to hold on each transmit pin until the next sync point (0/1, idle = high): nextWakeTime falls on the next level CHANGE of a frame, the frame format stays entirely on the C side - Integer for the same reason as uartTxPin";
   output Real nextWakeTime;
 end PartialPyRuntimeSync;

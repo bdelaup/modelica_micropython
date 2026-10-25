@@ -1,0 +1,43 @@
+// Scenario de verification n°81 : la micro:bit se parle a elle-meme a travers
+// ses deux moteurs UART. omc verify_81_microbit_self_talk.mos
+//
+// Une seule carte : son programme s'envoie un paquet radio (moteur interne
+// n°1 : modem embarque, antenne), qu'un RadioModem externe cable sur la meme
+// antenne restitue sur ses broches P0/P1 (machine.UART, moteur n°0). Le
+// programme doit relire sa propre trame, charge utile comprise : tout le
+// chemin TX radio -> air -> modem externe -> RX utilisateur est exerce.
+// Le RadioModem externe est regle comme la radio de la carte : air a 1 Mbit/s
+// sur la bande 2,4 GHz.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+loadString("model MicroBitSelfTalk
+  MicroPythonMCU.MicroBit_v2 a(
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Scripts/MCU/microbit_self_talk.py\"),
+    buttonASource = MicroPythonMCU.MicroBit_v2.InputSource.Constant,
+    buttonBSource = MicroPythonMCU.MicroBit_v2.InputSource.Constant);
+  MicroPythonMCU.Peripherals.Radio.RadioModem modem(baudrate = 9600, airBaudrate = 1000000, fCarrier = 2.4e9, warnSampling = false);
+  Modelica.Electrical.Analog.Basic.Ground gnd;
+equation
+  connect(a.Antenna, modem.antenna);
+  connect(a.P0, modem.RX);
+  connect(modem.TX, a.P1);
+  connect(a.GND, gnd.p);
+  connect(modem.GND, gnd.p);
+end MicroBitSelfTalk;"); getErrorString();
+
+buildModel(MicroBitSelfTalk, stopTime = 4, numberOfIntervals = 40, fileNamePrefix = "MicroBitSelfTalk");
+b := getErrorString();
+ret := system(".\\MicroBitSelfTalk.bat", "MicroBitSelfTalk_run.txt");
+log := readFile("MicroBitSelfTalk_run.txt");
+
+(n1, m) := regex(log, "BACK 1", 1);
+(n2, m) := regex(log, "BACK 3", 1);
+(n3, m) := regex(log, "DONE", 1);
+
+if n1 > 0 and n2 > 0 and n3 > 0 then
+  print("PASS: verify_81_microbit_self_talk (3 paquets relus par l'UART apres la radio)\n");
+else
+  print("FAIL: verify_81_microbit_self_talk (back1=" + String(n1) + ", back3=" + String(n2)
+        + ", done=" + String(n3) + ")\n" + b);
+end if;
