@@ -1,0 +1,38 @@
+// Scenario de verification n°79 : une MicroBit_v2 jamais alimentee.
+// omc verify_79_microbit_unpowered.mos
+//
+// Sans USB ni pile, la carte ne demarre jamais : l'etat de la carte (moteurs
+// matrice et radio) n'est alloue qu'a la premiere synchro alimentee. Verifie
+// que la simulation va au bout et que la destruction du runtime ne touche pas
+// un etat inexistant (regression : bilan radio sur un pointeur NULL) :
+// - le programme ne s'est jamais execute (aucune ligne "boot") ;
+// - le code retour de la simulation est 0 ;
+// - le rail reste a 0 V.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+loadString("model MicroBitUnpowered
+  MicroPythonMCU.MicroBit_v2 mb(
+    usbConnected = false,
+    scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/microbit_smoke.py\"));
+  Modelica.Electrical.Analog.Basic.Ground ground;
+  Modelica.Blocks.Sources.BooleanConstant btnA(k = false);
+  Modelica.Blocks.Sources.BooleanConstant btnB(k = false);
+equation
+  connect(mb.GND, ground.p);
+  connect(btnA.y, mb.buttonA);
+  connect(btnB.y, mb.buttonB);
+end MicroBitUnpowered;"); getErrorString();
+
+buildModel(MicroBitUnpowered, stopTime = 1, numberOfIntervals = 100, fileNamePrefix = "MicroBitUnpowered");
+b := getErrorString();
+ret := system(".\\MicroBitUnpowered.bat", "MicroBitUnpowered_run.txt");
+log := readFile("MicroBitUnpowered_run.txt");
+
+(nBoot, m) := regex(log, "boot is_on", 1);
+rail := val(mb.vRail, 0.9, "MicroBitUnpowered_res.mat");
+
+if ret == 0 and nBoot == 0 and abs(rail) < 0.1 then
+  print("PASS: verify_79_microbit_unpowered (ret=" + String(ret) + ", vRail=" + String(rail) + " V)\n");
+else
+  print("FAIL: verify_79_microbit_unpowered (ret=" + String(ret) + ", boot=" + String(nBoot) + ", vRail=" + String(rail) + ")\n" + b + log);
+end if;

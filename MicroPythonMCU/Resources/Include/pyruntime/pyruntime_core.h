@@ -26,20 +26,6 @@
 #define MAX_TIMERS 4                 /* pool fixe de machine.Timer, meme esprit que les 8 broches GPIO de MCU plutot que 29 */
 #define TIMER_MIN_PERIOD 0.001       /* plancher (1 ms) : evite une tempete d'evenements Modelica a duree simulee nulle si period<=0, cf. requirements.md */
 
-/* Matrice LED 5x5 de la micro:bit (profil "microbit" uniquement, cf.
-   requirements.md decision "MCU micro:bit v2") : moteur cadence cote C comme
-   l'UART l'est pour ses bits (TIMER_MIN_PERIOD et MAX_TIMERS interdisent un
-   balayage 60 Hz x 5 lignes en callbacks Python). Valeurs du firmware CODAL
-   (NRF52LedMatrix) : trame de 60 Hz, un creneau par ligne, LED allumee quand
-   sa ligne est HIGH (source, anode) et sa colonne LOW (sink, cathode), la
-   colonne restant basse une fraction du creneau proportionnelle au niveau du
-   pixel (quantum), puis relachee. Le moteur pilote les 10 broches par la table
-   pin_*[] habituelle et demande un reveil a chaque transition reelle - pas de
-   quantification, pas de timer Python. */
-#define MATRIX_ROWS 5
-#define MATRIX_COLS 5
-#define MATRIX_FRAME_RATE 60.0       /* Hz, NRF52_LED_MATRIX_FREQUENCY de CODAL */
-#define MATRIX_MAX_LEVEL 9          /* niveaux de display.set_pixel() de MicroPython */
 #define IRQ_TRIGGER_RISING 1
 #define IRQ_TRIGGER_FALLING 2
 #define PIN_MODE_KEEP (-1)           /* native_pin_init : ne pas toucher a la direction (Pin(n, pull=...)) */
@@ -133,57 +119,11 @@ struct I2cTargetSide {
     int irq_flags;                   /* evenements remis au dernier appel (irq().flags()) */
 };
 
-/* Matrice LED de la micro:bit (profil "microbit") : moteur de balayage ligne par
-   ligne, cf. pyruntime_matrix.c. */
-struct MatrixEngine {
-    int enabled;                             /* display.is_on() : le moteur possede les 10 broches */
-    int row_idx[MATRIX_ROWS];                /* index interne (table pin_*) de chaque ligne, -1 tant que non configure */
-    int col_idx[MATRIX_COLS];                /* idem colonnes */
-    unsigned char pixels[MATRIX_ROWS][MATRIX_COLS];  /* niveaux 0-9, pixels[ligne][colonne] */
-    double t0;                               /* ancre des trames (instant d'activation, phase arbitraire) */
-};
-
-/* microbit.radio (profil "microbit") : moteur de paquets, cf. pyruntime_radio.c.
-   Les paquets voyagent ENTRE les moteurs radio du process (tous les
-   microcontroleurs d'un meme modele partagent l'exe) : l'emetteur les pose
-   dans la file d'arrivee du recepteur avec l'instant ou l'air les livre, le
-   recepteur les filtre (channel/group/address de SA config, comme le materiel
-   qui filtre a la reception) et les met en file a la profondeur queue.
-   Defauts et bornes du firmware micro:bit (radio.config). */
-#define RADIO_MAX_PAYLOAD 251        /* radio.config(length=...) : 251 max */
-#define RADIO_MAX_QUEUE 32           /* profondeur de la file de reception (queue) */
-#define RADIO_INBOX_MAX 64           /* paquets en transit vers ce moteur (file d'arrivee) */
-#define RADIO_OVERHEAD 6             /* en-tete micro:bit : address(4) + group(1) + length(1) */
-#define RADIO_REGISTRY_MAX 32        /* moteurs radio du process (un par microcontroleur avec useRadio) */
-#define RADIO_DEFAULT_LENGTH 32
-#define RADIO_DEFAULT_QUEUE 3
-#define RADIO_DEFAULT_CHANNEL 7
-#define RADIO_DEFAULT_POWER 6        /* puissance d'emission 0-7 : pas simulee, acceptee */
-#define RADIO_DEFAULT_ADDRESS 0x75626974  /* "ubit", petit-boutiste, defaut du firmware */
-#define RADIO_DEFAULT_GROUP 0
-#define RADIO_WARN_MAX 10            /* avertissements de paquets jetes, plafonnes comme UART */
-
-struct RadioPacket {
-    double arrival;                  /* temps simule auquel l'air livre le paquet au recepteur */
-    int channel;                     /* canal de l'EMETTEUR : frequence physique, filtre a la reception */
-    int group;                       /* groupe de l'en-tete de l'emetteur : filtre par le RECEPTEUR */
-    int address;                     /* adresse de l'en-tete de l'emetteur : idem */
-    unsigned char payload[RADIO_MAX_PAYLOAD];
-    int len;
-};
-
-struct RadioEngine {
-    int on;
-    int network_id;                  /* ecrit par PyRuntime_sync (vient du modele), -1 = pas d'antenne cablee */
-    int length, queue, channel, group, address, power;
-    int data_rate;                   /* 1 ou 2 : Mbit/s, duree de trame a l'air */
-    struct RadioPacket inbox[RADIO_INBOX_MAX];  /* en transit, triee par arrival croissante */
-    int inbox_len;
-    struct RadioPacket rx[RADIO_MAX_QUEUE];     /* livres et filtres, la plus ancienne en tete */
-    int rx_len;
-    int rx_dropped;                  /* paquets perdus (file pleine, radio eteinte), bilan de fin */
-    int warned;                      /* avertissements deja emis (plafond RADIO_WARN_MAX) */
-};
+/* Moteurs de carte (matrice/radio de la micro:bit, futurs moteurs d'autres
+   profils) : crochets dans pyruntime_board.h, definitions et etat dans
+   pyruntime_microbit.h, alloues dans board_ext ci-dessous - le handle des
+   profils sans moteurs ne les porte pas (phase 4 du refactoring). */
+struct BoardHooks;
 
 struct PyRuntimeHandle {
     char* scriptPath;            /* chaine vide : main.py du systeme de fichiers tient lieu de programme */
@@ -310,23 +250,17 @@ struct PyRuntimeHandle {
     struct I2cMaster i2cm;
     struct I2cTargetSide i2ct;   /* machine.I2CTarget, cf. pyruntime_i2ctarget.c */
 
-    /* microbit.display (profil "microbit") : moteur de la matrice LED, cf.
-       pyruntime_matrix.c. Ecrit par les natives matrix_* (worker) et par
-       matrix_step (PyRuntime_sync), comme l'UART des deux cotes.
-       matrix_pin_released : une broche de la matrice que matrix_disable vient
-       de liberer - sa PREMIERE transition ensuite (l'etablissement de son
-       niveau apres la haute impedance) ne reveille pas le script : ce n'est
-       pas une vraie transition d'entree, juste l'artifact de la liberation
-       (une interruption GPIO est masquee tant que la broche appartient au
-       driver d'affichage, et display.off() n'en genere pas). */
-    struct MatrixEngine matrix;
-    int matrix_pin_released[MAX_PINS];
-
-    /* microbit.radio (profil "microbit") : moteur de paquets, cf.
-       pyruntime_radio.c. Ecrit par les natives radio_* (worker) et par
-       PyRuntime_sync (network_id depuis le modele, livraison des paquets a
-       leur arrivee), comme l'UART des deux cotes. */
-    struct RadioEngine radio;
+    /* Moteurs de la carte (crochets par profil, cf. pyruntime_board.h) :
+       board pointe sur les crochets du profil (NULL pour un profil sans
+       moteurs - les cartes generiques ne paient ni memoire ni branches),
+       board_ext sur leur etat, alloue par le crochet boot a la premiere
+       synchro alimentee et libere par PyRuntime_destroy. Ecrit par les
+       natives du profil (thread worker) et par PyRuntime_sync via les
+       crochets (pas de synchro, deadlines, identifiant radio depuis le
+       modele), comme l'UART des deux cotes. */
+    const struct BoardHooks* board;
+    void* board_ext;
+    int board_network;       /* identifiant de reseau porte par le schema (-1 : rien de cable), pose par PyRuntime_syncBoard */
 
     int script_done;
     int script_error;

@@ -1,13 +1,18 @@
 # Cœur, `MCU` et carte `RPi_Pico`
 
-Depuis le 2026-10-04, le microcontrôleur programmable est un **composant**, `Internal.McuCore`, placé à l'intérieur de deux blocs posables : `MCU` (8 broches, alimentation idéale) et `RPi_Pico` (réplique de la carte et de son alimentation). Décision complète : « Carte Raspberry Pi Pico et alimentation » dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
+Depuis le 2026-10-04, le microcontrôleur programmable est un **composant** placé à l'intérieur des blocs posables — `MCU` (8 broches, alimentation idéale), `RPi_Pico` (réplique de la carte et de son alimentation) puis `MicroBit_v2` — et, depuis le refactoring du socle des cartes (2026-10-24), les trois cartes héritent de `Internal.PartialBoard` (contrat carte-cœur écrit une fois). Décision complète : « Carte Raspberry Pi Pico et alimentation » dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
 
 ## Les classes
 
 | Classe | Rôle |
 |---|---|
 | `Internal.PartialMcuSettings` | Paramètres réglés par l'utilisateur (programme, flash, temps d'exécution, débogage, étages électriques), avec leurs onglets. Étendu par `MCU`, `RPi_Pico` **et** `McuCore` : chaque carte transmet tous ses paramètres au cœur par des modificateurs `final`. Ainsi, chaque paramètre n'est écrit qu'une fois |
-| `Internal.McuCore` | Le RP2040 et son programme : `PyRuntime`, la synchro (le grand `when`), un `PinBridge` par broche, la mise sous tension. Connecteurs : `pin[nPins]`, `vdd`, `gnd`, `vref`, `run`, `Display0` |
+| `Internal.PartialBoard` | Socle commun des trois cartes : étend `PartialMcuSettings`, porte `boardName`, `ICore`/`VPowerOn`/`VPowerOff` et le cœur `replaceable` avec le contrat carte-cœur (`final`) écrit une seule fois ; chaque carte redeclare le cœur et sa table de broches dans le modificateur de son `extends` |
+| `Internal.PartialUsbBoard` | Socle des cartes USB (`RPi_Pico`, `MicroBit_v2`) : ajoute les paramètres `usbConnected`/`VUsb`/`RUsb`/`eta` ; les composants et le câblage restent dans chaque carte |
+| `Internal.PartialMcuCore` | Le cœur sans sa synchro ni sa radio : `PyRuntime`, un `PinBridge` par broche, la mise sous tension. Connecteurs : `pin[nPins]`, `vdd`, `gnd`, `vref`, `run`, `Display0` |
+| `Internal.McuCore` | `PartialMcuCore` + le grand `when` de synchro (`PyRuntime_sync`, réseau radio -1 : pas de radio). Placé dans `MCU` et `RPi_Pico` |
+| `Internal.McuCoreRadio` | `PartialMcuCore` + le `when` de synchro et la radio 2,4 GHz (`useRadio`, port conditionnel `AntennaIn`, identifiant du réseau passé à `PyRuntime_sync`). Placé dans `MicroBit_v2` (redeclare) |
+| `Internal.SensorSource` / `Internal.ButtonSource` | Blocs sources paramétrables (constante / table horaire / connecteur, énumération `Interfaces.InputSource`) : un par capteur et par bouton de la micro:bit |
 | `Internal.PinBridge` | Étage électrique d'une broche, en équations : sortie push-pull par deux conductances (`1/ROut` de `vdd` vers la broche, ou de la broche vers `VOL`), tirages, fuite `GOff` |
 | `MCU` | Le cœur + une `ConstantVoltage(VOH)` sur `vdd` et `vref` + la LED embarquée sur `pin[9]`. `run` reste en l'air (tirage interne) |
 | `RPi_Pico` | Le cœur + l'arbre d'alimentation de la carte + la LED sur `pin[26]`. **Généré** par `tools/make_pico.py` : ne pas éditer `RPi_Pico.mo` à la main |
@@ -15,6 +20,135 @@ Depuis le 2026-10-04, le microcontrôleur programmable est un **composant**, `In
 | `Internal.PartialSupplyPin` | `GND` + broche `VCC` facultative (`useSupplyPin`) des périphériques |
 
 Les connecteurs restent dans la classe qui porte l'icône (`MCU`, `RPi_Pico`) : un placement hérité ne se modifie pas, et les deux icônes n'ont ni la même taille ni le même système de coordonnées. La liaison `Display0` passe du cœur à la carte par un `connect` de deux sorties (intérieure vers extérieure), sans équation d'alias.
+
+## Diagramme des classes
+
+L'héritage (`extends`) est la flèche pleine ; le losange `o--` est le **slot `replaceable`** ouvert par `PartialBoard` ; la flèche pointillée `redeclare` donne le **type effectif** choisi par chaque carte ; les liens pleins `*--` sont les composants internes. Le contrat carte-cœur (les ~25 modificateurs `final`) est écrit une seule fois dans `PartialBoard` ; la radio n'existe que dans la branche `McuCoreRadio` — décision « Refactoring du socle des cartes » de `requirements.md`.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class InputSource {
+        <<énumération>>
+        Constant
+        Table
+        Connector
+    }
+
+    class PartialMcuSettings {
+        <<partial>>
+        scriptPath · fsEnabled · fsSource · fsWorkspace
+        tickPeriod · gpioOpTime · hangWarningTime
+        debugEnabled · debugPort
+        VOL · VIH · VIL · ROut · RPullUp · RPullDown · GOff
+    }
+
+    class PartialBoard {
+        <<partial · socle des cartes>>
+        ICore · VPowerOn · VPowerOff
+        boardName
+        +core (replaceable, contrat en final)
+    }
+    PartialMcuSettings <|-- PartialBoard
+
+    class PartialUsbBoard {
+        <<partial · cartes USB>>
+        usbConnected · VUsb · RUsb · eta
+    }
+    PartialBoard <|-- PartialUsbBoard
+
+    class PartialMcuCore {
+        <<partial · tout sauf la synchro>>
+        nPins · pinIds · pinCaps · boardProfile
+        hasTempSensor · dieTemperature · instanceName
+        +pin × nPins · +vdd · +gnd · +vref · +run
+        +Display0 · powerGood · supplyOk · runHigh
+        -rt PyRuntime
+        -bridge × nAll PinBridge
+        -coreLoad · -runPullUp · -tempSensor
+    }
+    PartialMcuSettings <|-- PartialMcuCore
+
+    class McuCore {
+        <<sans radio>>
+        when : PyRuntime_sync(... réseau radio = -1)
+    }
+    PartialMcuCore <|-- McuCore
+
+    class McuCoreRadio {
+        <<avec radio 2,4 GHz>>
+        +useRadio
+        +AntennaIn (si useRadio)
+        when : PyRuntime_syncBoard(... radioNetworkC)
+    }
+    PartialMcuCore <|-- McuCoreRadio
+
+    PartialBoard o-- PartialMcuCore : slot replaceable
+
+    class MCU {
+        VOH · useGroundPin · ledSeriesR
+        GP0..GP7 · GND · Display0
+        builtinLed LED · ledResistor
+        vddSource · implicitGround
+    }
+    PartialBoard <|-- MCU
+    MCU ..> McuCore : redeclare core
+
+    class RPi_Pico {
+        dieTemperature · ledSeriesR
+        GP0..GP28 · VBUS · VSYS · V3V3 · RUN
+        builtinLed · usbSupply · usbCable
+        schottky · ponts diviseurs
+    }
+    PartialUsbBoard <|-- RPi_Pico
+    RPi_Pico ..> McuCore : redeclare core
+
+    class MicroBit_v2 {
+        VTgt · useGroundPin · useRadio
+        P0..P20 · P_3V · GND · Antenna
+        led_0_0..led_4_4 (matrice 5×5)
+        switchA/B · pullBtnA/B · pullI2c · pullRing
+        sensor × 8 SignalVoltage
+        src × 8 · src_buttonA/B
+        usbSupply · usbCable
+    }
+    PartialUsbBoard <|-- MicroBit_v2
+    MicroBit_v2 ..> McuCoreRadio : redeclare core
+
+    class SensorSource {
+        source InputSource
+        k · table
+        +u RealInput (si Connector)
+        +y RealOutput
+    }
+    class ButtonSource {
+        source InputSource
+        pressed · table
+        +u BooleanInput (si Connector)
+        +y BooleanOutput
+    }
+    InputSource ..> SensorSource : type de source
+    InputSource ..> ButtonSource : type de source
+    MicroBit_v2 *-- "8" SensorSource : src_ (protégés)
+    MicroBit_v2 *-- "2" ButtonSource : src_buttonA/B
+    MicroBit_v2 *-- "25" LED : matrice
+    MCU *-- "1" LED : builtinLed
+    RPi_Pico *-- "1" LED : builtinLed
+
+    class Rt6150 {
+        VOut · eta · VInOn · VInOff
+        +vin · +vout · +en · +gnd
+    }
+    RPi_Pico *-- "1" Rt6150 : regulator
+    MicroBit_v2 *-- "1" Rt6150 : regulator
+
+    class RadioAir {
+        <<Peripherals.Radio>>
+        networkId
+    }
+    McuCoreRadio ..> RadioAir : AntennaIn (liaison logique)
+```
 
 ## Table des broches
 

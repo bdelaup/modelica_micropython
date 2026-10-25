@@ -612,10 +612,13 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
     handle->i2ct.sda_pin = -1;
     handle->init_state = INIT_PENDING;
 
-    /* Radio micro:bit : defauts du firmware puis enregistrement au registre
-       du process (l'emetteur d'un autre moteur y cherche ses auditeurs). */
-    radio_engine_init(handle);
-    radio_registry_add(handle);
+    /* Moteurs de la carte : crochets du profil (cf. pyruntime_board.h), NULL
+       pour un profil sans moteurs - l'etat (board_ext) est alloue au boot par
+       la premiere synchro alimentee, et le profil n'est connu que de
+       board_hooks. */
+    handle->board = board_hooks(handle->board_profile);
+    handle->board_ext = NULL;
+    handle->board_network = -1;
 
     /* Journal : a partir du deuxieme microcontroleur, toutes les lignes des MCU
        sont prefixees par leur nom d'instance (cf. g_mcu_prefix_on). */
@@ -747,8 +750,13 @@ void PyRuntime_destroy(void* handle_) {
         pyhost_abandon();
     }
     uart_report_errors(h);
-    radio_report(h);
-    radio_registry_remove(h);
+    /* board_ext n'existe qu'apres la premiere synchro alimentee : une carte
+       jamais alimentee n'a ni bilan ni etat a liberer. */
+    if (h->board && h->board_ext) {
+        h->board->report(h);            /* bilan des moteurs (pertes radio, ...) */
+        h->board->destroy(h->board_ext);
+        h->board_ext = NULL;
+    }
     fs_at_exit(h);
     pyhost_release();
 }
@@ -833,17 +841,18 @@ static void power_loss(struct PyRuntimeHandle* h, double currentTime) {
     for (i = 0; i < MAX_TIMERS; i++) {
         h->timer_active[i] = 0;
     }
-    h->matrix.enabled = 0;   /* matrice LED micro:bit : broches relachees avec les autres */
+    if (h->board) {
+        h->board->power_loss(h);   /* moteurs de la carte : broches relachees avec les autres */
+    }
 }
 
-void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
+static void sync_impl(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
                      const double* pinAnalogIn,
                      int* pinBoolOut, int* pinIsOutput, int* pinPull,
                      double* pwmFreqOut, double* pwmDutyOut,
                      int* displaySeqOut, const char** displayPayloadOut,
                      int* uartTxPinOut, int* uartTxLevelOut,
                      int powerGood, double adcRef,
-                     int radioNetwork,
                      double* nextWakeTime) {
     struct PyRuntimeHandle* h = (struct PyRuntimeHandle*) handle_;
     int i;
@@ -853,11 +862,6 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
                             h->instanceName, (int) nPins, h->num_pins);
         return;
     }
-    /* Antenne radio (microbit.radio) : identifiant du reseau porte par le
-       schema, -1 si l'antenne n'est pas cablee (radio.on() le signale).
-       Stocke avant tout traitement : la valeur ne depend que du modele. */
-    h->radio.network_id = radioNetwork;
-
     /* Alimentation : le programme demarre a la premiere synchro alimentee
        (ticks_ms() compte depuis cet instant), une perte d'alimentation ensuite
        l'arrete pour de bon (cf. power_loss). */
@@ -870,11 +874,11 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
         EnterCriticalSection(&h->cs);
         h->started = 1;
         h->boot_time = currentTime;
-        /* micro:bit : le firmware active son driver d'affichage au boot, avant
-           le programme (le shim ne peut pas : aucune native avec yield pendant
-           l'init, cf. matrix_boot_enable). */
-        if (strcmp(h->board_profile, "microbit") == 0 && !h->matrix.enabled) {
-            matrix_boot_enable(h, currentTime);
+        /* Moteurs de la carte : alloues et actives au boot, avant le programme
+           (le shim ne peut pas : aucune native avec yield pendant l'init,
+           cf. pyruntime_board.h). Une seule fois, comme le demarrage. */
+        if (h->board && !h->board_ext) {
+            h->board_ext = h->board->boot(h, currentTime);
         }
         LeaveCriticalSection(&h->cs);
     } else if (!powerGood) {
@@ -885,6 +889,13 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
         publish_unpowered(h, pinBoolOut, pinIsOutput, pinPull, pwmFreqOut, pwmDutyOut,
                           displaySeqOut, displayPayloadOut, uartTxPinOut, uartTxLevelOut, nextWakeTime);
         return;
+    }
+
+    /* Identifiant du reseau radio porte par le schema (crochet de carte) :
+       -1 si l'antenne n'est pas cablee (radio.on() le signale). Stocke avant
+       tout tour du worker : la valeur ne depend que du modele. */
+    if (h->board) {
+        h->board->set_network(h, h->board_network);
     }
 
     if (h->script_done) {
@@ -906,24 +917,26 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
            sans memoire, plus de gestionnaire pour fournir les octets (0xFF). */
         i2ct_step(h, pinBoolIn);
         i2ct_finish(h);
-        /* Matrice LED micro:bit : le vrai balayage est materiel (timer + PPI),
-           il continue apres la fin du programme, comme l'UART vide sa file. */
-        matrix_step(h, currentTime);
-        /* Radio : les paquets restants sont livres aux compteurs (avertissements
+        /* Moteurs de la carte : le vrai balayage est materiel (timer + PPI),
+           il continue apres la fin du programme, comme l'UART vide sa file ;
+           les paquets radio restants sont livres aux compteurs (avertissements
            de pertes), plus personne ne les lit - le programme est fini. */
-        radio_step(h, currentTime);
+        if (h->board) {
+            h->board->step(h, currentTime);
+        }
         for (i = 0; i < h->num_pins; i++) {
             pinBoolOut[i] = h->pin_driven_value[i];
             pinIsOutput[i] = h->pin_is_output[i];
         }
         /* Une echeance UART (prochain front a emettre, octet recu a clore) ou
-           de matrice (prochaine transition du balayage) peut encore demander
-           un reveil apres la fin du script. */
+           du materiel autonome de la carte (prochaine transition du balayage)
+           peut encore demander un reveil apres la fin du script - pas les
+           arrivees radio : plus personne ne les lit. */
         *nextWakeTime = earliest_uart_deadline(h, currentTime);
-        {
-            double next_matrix = earliest_matrix_deadline(h);
-            if (next_matrix < *nextWakeTime) {
-                *nextWakeTime = next_matrix;
+        if (h->board) {
+            double next_scan = h->board->next_scan_deadline(h);
+            if (next_scan < *nextWakeTime) {
+                *nextWakeTime = next_scan;
             }
         }
         return;
@@ -933,16 +946,17 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     h->sim_time = currentTime;
     h->adc_ref = adcRef;
 
-    /* Matrice LED micro:bit avant la boucle ci-dessous : ses broches sont des
-       sorties pendant le balayage, leurs transitions ne sont pas des entrees. */
-    matrix_step(h, currentTime);
-
-    /* Radio micro:bit : livre a la file de reception les paquets dont l'air
-       a termine la livraison (arrivee <= maintenant), filtres par la config
-       du RECEPTEUR - avant le worker, pour que le programme les voie a ce
-       point de synchro. Les envois d'autres moteurs ne peuvent pas arriver
-       pendant CETTE synchro (un seul worker a la fois, cf. pyruntime_core.h). */
-    radio_step(h, currentTime);
+    /* Moteurs de la carte avant la boucle ci-dessous : les broches de la
+       matrice sont des sorties pendant le balayage, leurs transitions ne sont
+       pas des entrees ; la radio livre a la file de reception les paquets
+       dont l'air a termine la livraison (arrivee <= maintenant), filtres par
+       la config du RECEPTEUR - avant le worker, pour que le programme les
+       voie a ce point de synchro. Les envois d'autres moteurs ne peuvent pas
+       arriver pendant CETTE synchro (un seul worker a la fois, cf.
+       pyruntime_core.h). */
+    if (h->board) {
+        h->board->step(h, currentTime);
+    }
 
     /* Une vraie transition d'une broche actuellement en ENTREE justifie de
        reveiller le worker avant l'heure demandee par son sleep() (cf.
@@ -962,8 +976,7 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
            haute impedance, pas une vraie entree - elle ne reveille pas le
            script (une broche du driver d'affichage ne genere pas d'IRQ, et
            off() n'en produit pas non plus). */
-        if (h->matrix_pin_released[i]) {
-            h->matrix_pin_released[i] = 0;
+        if (h->board && h->board->pin_released(h, i)) {
             old_val = new_val;
         }
         /* Une broche affectee a la reception UART est exclue : ses fronts
@@ -1072,10 +1085,12 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     /* Octet differe par IRQ_READ_REQ : le gestionnaire a eu son tour. */
     i2ct_finish(h);
 
-    /* Matrice LED micro:bit, second appel : le worker a pu activer, eteindre
-       ou redessiner l'affichage pendant le drain, les niveaux publies doivent
+    /* Moteurs de la carte, second appel : le worker a pu activer, eteindre ou
+       redessiner l'affichage pendant le drain, les niveaux publies doivent
        refleter son dernier etat a cet instant. */
-    matrix_step(h, currentTime);
+    if (h->board) {
+        h->board->step(h, currentTime);
+    }
 
     for (i = 0; i < h->num_pins; i++) {
         pinBoolOut[i] = h->pin_driven_value[i];
@@ -1106,17 +1121,19 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     if (next_i2c < wake_at) {
         wake_at = next_i2c;
     }
-    /* Meme raison : display.on()/off() ou un nouveau dessin pendant le drain,
-       la prochaine transition du balayage peut avoir bouge. */
-    double next_matrix = earliest_matrix_deadline(h);
-    if (next_matrix < wake_at) {
-        wake_at = next_matrix;
-    }
-    /* Meme raison pour la radio : un paquet peut voler vers ce moteur (pose
-       par un emetteur lors d'une synchro anterieure), reveil a son arrivee. */
-    double next_radio = earliest_radio_deadline(h);
-    if (next_radio < wake_at) {
-        wake_at = next_radio;
+    /* Meme raison, moteurs de la carte : display.on()/off() ou un nouveau
+       dessin pendant le drain (la prochaine transition du balayage peut
+       avoir bouge), ou un paquet radio volant vers ce moteur (pose par un
+       emetteur lors d'une synchro anterieure), reveil a son arrivee. */
+    if (h->board) {
+        double next_scan = h->board->next_scan_deadline(h);
+        if (next_scan < wake_at) {
+            wake_at = next_scan;
+        }
+        double next_inbox = h->board->next_inbox_deadline(h);
+        if (next_inbox < wake_at) {
+            wake_at = next_inbox;
+        }
     }
     LeaveCriticalSection(&h->cs);
 
@@ -1129,4 +1146,37 @@ void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* 
     /* Script termine : seul l'UART peut encore demander un reveil (il finit de
        vider sa file en autonome, comme le PWM continue de tourner). */
     *nextWakeTime = done ? uart_only : wake_at;
+}
+
+/* Point de synchro des coeurs sans lien de carte (MCU, RPi_Pico). */
+void PyRuntime_sync(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
+                     const double* pinAnalogIn,
+                     int* pinBoolOut, int* pinIsOutput, int* pinPull,
+                     double* pwmFreqOut, double* pwmDutyOut,
+                     int* displaySeqOut, const char** displayPayloadOut,
+                     int* uartTxPinOut, int* uartTxLevelOut,
+                     int powerGood, double adcRef,
+                     double* nextWakeTime) {
+    sync_impl(handle_, currentTime, nPins, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput,
+              pinPull, pwmFreqOut, pwmDutyOut, displaySeqOut, displayPayloadOut,
+              uartTxPinOut, uartTxLevelOut, powerGood, adcRef, nextWakeTime);
+}
+
+/* Meme point de synchro pour le coeur d'une carte dont le schema porte un
+   identifiant de reseau (antenne radio de la micro:bit) : il est pose dans le
+   handle avant la synchro, puis transmis au crochet set_network une fois
+   l'etat de la carte alloue. Seul le thread Modelica l'ecrit. */
+void PyRuntime_syncBoard(void* handle_, double currentTime, size_t nPins, const int* pinBoolIn,
+                          const double* pinAnalogIn,
+                          int* pinBoolOut, int* pinIsOutput, int* pinPull,
+                          double* pwmFreqOut, double* pwmDutyOut,
+                          int* displaySeqOut, const char** displayPayloadOut,
+                          int* uartTxPinOut, int* uartTxLevelOut,
+                          int powerGood, double adcRef,
+                          int boardNetwork,
+                          double* nextWakeTime) {
+    ((struct PyRuntimeHandle*) handle_)->board_network = boardNetwork;
+    sync_impl(handle_, currentTime, nPins, pinBoolIn, pinAnalogIn, pinBoolOut, pinIsOutput,
+              pinPull, pwmFreqOut, pwmDutyOut, displaySeqOut, displayPayloadOut,
+              uartTxPinOut, uartTxLevelOut, powerGood, adcRef, nextWakeTime);
 }

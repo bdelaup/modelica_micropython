@@ -55,9 +55,9 @@ modelica_micropython/
 │   └── run_tests.cmd, make_docs.cmd, make_pyimports.cmd, make_debugpy.cmd, make_pulseview_zip.cmd -- un lanceur par script bash, qui appelle gitbash.cmd
 └── MicroPythonMCU/                 -- la bibliothèque OpenModelica elle-même
     ├── package.mo, package.order   -- déclaration du package racine
-    ├── MCU.mo                      -- le microcontrôleur simplifié : icône, 8 broches GP0-GP7 + GND + Display0 ; à l'intérieur, le cœur Internal.McuCore, une source idéale VOH et la LED embarquée (cf. cartes.md)
+    ├── MCU.mo                      -- le microcontrôleur simplifié : icône, 8 broches GP0-GP7 + GND + Display0 ; étend le socle commun Internal.PartialBoard (réglages du cœur écrits une fois), qui porte le cœur Internal.McuCore ; à l'intérieur, une source idéale VOH et la LED embarquée (cf. cartes.md)
     ├── RPi_Pico.mo                 -- la carte Raspberry Pi Pico : brochage et cotes réels, cœur + alimentation (USB, VBUS, VSYS, régulateur Rt6150, 3V3) ; GÉNÉRÉ par tools/make_pico.py
-    ├── Interfaces/                 -- constantes électriques (VOH, VOL, VIH, VIL, ROut, RPull, GOff) — approximation RP2040 ; énumérations UartParity, ChannelKind, BitOrder, ClockEdge, Modulation ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique) ; connecteur acausal Antenna (fil d'antenne des modules radio, voir radio.md)
+    ├── Interfaces/                 -- constantes électriques (VOH, VOL, VIH, VIL, ROut, RPull, GOff) — approximation RP2040 ; énumérations UartParity, ChannelKind, BitOrder, ClockEdge, Modulation, InputSource (Constant/Table/Connector : source des boutons et capteurs intégrés des cartes) ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique) ; connecteur acausal Antenna (fil d'antenne des modules radio, voir radio.md)
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
     │   ├── PyRuntime_sync.mo       -- impure function : le point de synchro appelé depuis le `when` de MCU
@@ -172,7 +172,7 @@ modelica_micropython/
         ├── Scripts/
         │   ├── MCU/                -- programmes du microcontrôleur, un par exemple (dont demo.py, valeur par défaut de `MCU.scriptPath`) ; companion.py et lib/ servent à Program.Imports ; drivers du commerce posés à côté des programmes qui les importent : driver_grove_lcd_rgb.py, hx711_gpio.py (robert-hh)
         │   ├── Device/             -- scripts des périphériques, nommés d'après l'appareil : série (mode Script) echo.py, gps.py, temperature_sensor.py, state_machine.py, generic.py ; I2C i2c_echo.py, i2c_generic.py, grove_lcd_rgb.py - chaque périphérique fourni a le sien par défaut
-        │   └── _shim/              -- machine_time_shim.py : le shim machine/time lui-même (source unique, exécuté par PyRuntime_new avant le script utilisateur)
+        │   └── _shim/              -- machine_time_shim.py : le shim machine/time lui-même (source unique, exécuté par PyRuntime_new avant le script utilisateur), microbit_shim.py (module microbit/radio, chargé par le shim uniquement pour le profil microbit)
         └── Verification/           -- scripts Python spécifiques à la vérification + scripts `.mos` exécutables via `omc` (scénarios de requirements.md)
 ```
 
@@ -180,7 +180,7 @@ modelica_micropython/
 
 | Composant | Rôle | Quand il intervient |
 |---|---|---|
-| `Internal/McuCore.mo` (Modelica), placé dans `MCU` et `RPi_Pico` | Modélise l'étage électrique de chaque broche (`Internal.PinBridge` : sortie push-pull alimentée par `vdd`, tirages internes, capteur : schéma dans le [guide](../guide/mcu.md#modele-electrique-dune-broche)), la mise sous tension, déclenche les points de synchro — cf. [Cœur, MCU et carte Pico](cartes.md) | Continuellement (équations électriques) + aux instants d'événement (`when`) |
+| `Internal/PartialMcuCore.mo` et ses deux concrétisations — `Internal/McuCore.mo` sans radio (`MCU`, `RPi_Pico`), `Internal/McuCoreRadio.mo` avec la radio (`MicroBit_v2`) — placées dans les cartes via `Internal.PartialBoard`, qui porte le contrat carte-cœur (les répliques générées le redeclarent avec leur annotation de placement) | Modélise l'étage électrique de chaque broche (`Internal.PinBridge` : sortie push-pull alimentée par `vdd`, tirages internes, capteur : schéma dans le [guide](../guide/mcu.md#modele-electrique-dune-broche)), la mise sous tension, déclenche les points de synchro — cf. [Cœur, MCU et carte Pico](cartes.md) | Continuellement (équations électriques) + aux instants d'événement (`when`) |
 | `PyRuntime.mo` (Modelica) | Déclare l'External Object et ses fonctions `constructor`/`destructor` | Une fois à l'initialisation, une fois (nominalement) à la fin |
 | `PyRuntime_sync.mo` (Modelica) | Point d'entrée appelé depuis le `when` de `MCU` ; transmet `pinBoolIn` (seuillé, numérique) et `pinAnalogIn`/`pinNodeVoltage` (brut, lu par `machine.ADC`) en entrée ; `pwmFreq`/`pwmDuty` (configurés par `machine.PWM`), `displaySeq`/`displayPayload` (configurés par `machine.Display.write()`) et les sorties série `uartTxPin`/`uartTxLevel` (broche d'émission et niveau à y tenir jusqu'au prochain changement, cf. `peripherique-uart.md`) en sortie, en plus de `pinBoolOut`/`pinIsOutput`/`pinPull` (tirage interne de chaque broche) | À chaque événement de synchro |
 | `PyRuntimeImpl.c` (C) | Fichier chapeau : inclut les parties de `pyruntime/` qui implémentent `PyRuntime_new`/`_destroy`/`_sync`, le thread worker, le shim (dont `machine.Pin.irq()`/`machine.Timer`/`machine.Display`, cf. `cycle-de-vie.md` §3bis), le décodage de la réception série (machine à états entièrement en C, cf. `peripherique-uart.md`) et la redirection stdout | Compilé une fois par `omc` (une seule unité de compilation), exécuté à chaque appel externe |

@@ -1,5 +1,5 @@
 within MicroPythonMCU.Internal;
-partial model PartialMcuSettings "User parameters of a microcontroller (program, file system, execution time, debugging, electrical stages of the pins) - declared once, shared by MCU, RPi_Pico and their core Internal.McuCore"
+partial model PartialMcuSettings "User parameters of a microcontroller (program, file system, execution time, debugging, electrical stages of the pins) - declared once, shared by the boards (MCU, RPi_Pico, MicroBit_v2) and their core Internal.McuCore"
   parameter String scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/MCU/demo.py") "Path of the user script (.py) - with an active file system, run after boot.py instead of main.py; empty = main.py from the flash" annotation(
     Dialog(group = "Python script", loadSelector(filter = "Python files (*.py)", caption = "Select a Python script")));
   parameter Boolean addScriptDirToPath = true "Make the .py files next to the script importable (e.g. import my_module) - mimics the real Pico (flash root folder on sys.path)" annotation(
@@ -34,8 +34,6 @@ partial model PartialMcuSettings "User parameters of a microcontroller (program,
     Dialog(tab = "Electrical", group = "Logic levels"));
   parameter Modelica.Units.SI.Resistance ROut = Interfaces.ROut "Output series resistance (drive strength)" annotation(
     Dialog(tab = "Electrical", group = "Output stages"));
-  parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Series resistance of the on-board LED (internal, GP25)" annotation(
-    Dialog(tab = "Electrical", group = "Output stages"));
   parameter Modelica.Units.SI.Resistance RPullUp = Interfaces.RPull "Internal pull-up resistor to the supply, switched on by Pin(n, mode, Pin.PULL_UP) and by I2C() on SCL/SDA" annotation(
     Dialog(tab = "Electrical", group = "Input stages"));
   parameter Modelica.Units.SI.Resistance RPullDown = Interfaces.RPull "Internal pull-down resistor to GND, switched on by Pin(n, mode, Pin.PULL_DOWN)" annotation(
@@ -44,6 +42,6 @@ partial model PartialMcuSettings "User parameters of a microcontroller (program,
     Dialog(tab = "Electrical", group = "Input stages"));
   annotation(
     Documentation(info = "<html>
-<p>Parameters set by the user on <code>MCU</code> or <code>RPi_Pico</code>, with their dialog tabs. Both boards extend this class and pass every parameter on to their core (<code>Internal.McuCore</code>, which extends it too), so that the parameters are written only once. <code>ledSeriesR</code> is used by the boards (on-board LED), not by the core.</p>
+<p>Parameters set by the user on the boards (<code>MCU</code>, <code>RPi_Pico</code>, <code>MicroBit_v2</code>), with their dialog tabs. The boards and their core (<code>Internal.McuCore</code>, which extends this class too) share these declarations, so that the parameters are written only once.</p>
 </html>"));
 end PartialMcuSettings;

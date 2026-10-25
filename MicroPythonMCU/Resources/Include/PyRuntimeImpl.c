@@ -41,6 +41,8 @@
 #include "i2ctarget.h"                     /* moteur I2C cible generique (sans Python ni thread), partage avec I2cDeviceImpl.c */
 #include "pyhost.c"                        /* demarrage unique de CPython, relais stdout, lecture de fichier - partage avec UartDeviceImpl.c ; avant pyruntime_core.h, qui embarque un struct RelayBuf */
 #include "pyruntime/pyruntime_core.h"      /* constantes, PyRuntimeHandle, handle courant */
+#include "pyruntime/pyruntime_board.h"     /* crochets de carte (par profil) - cf. phase 4 du refactoring */
+#include "pyruntime/pyruntime_microbit.h"  /* moteurs de la micro:bit (dans board_ext), apres le handle pour MAX_PINS */
 #include "uartcore.c"                      /* files TX/RX, trame au format choisi, decodage - avant pyruntime_uart.c qui l'utilise */
 #include "i2ctarget.c"                     /* decodage START/STOP/bits/ACK - avant pyruntime_i2ctarget.c qui l'utilise */
 #include "pyruntime/pyruntime_sync.c"      /* dispatch des callbacks + yield_to_modelica */
@@ -52,5 +54,6 @@
 #include "pyruntime/pyruntime_timer.c"     /* machine.Timer */
 #include "pyruntime/pyruntime_matrix.c"   /* microbit.display : moteur de la matrice LED (apres pyruntime_pin.c pour require_pin) */
 #include "pyruntime/pyruntime_radio.c"    /* microbit.radio : moteur de paquets (apres pyruntime_sync.c pour REQUIRE_WORKER/yield, avant le module pour la table) */
+#include "pyruntime/pyruntime_microbit.c" /* crochets de la micro:bit : compose les moteurs ci-dessus, SEUL endroit qui connait le nom du profil (avant le module, dont la synchro appelle board_hooks) */
 #include "pyruntime/pyruntime_fs.c"        /* systeme de fichiers : liaison shim <-> handle */
 #include "pyruntime/pyruntime_module.c"    /* module natif, thread worker, API exportee */

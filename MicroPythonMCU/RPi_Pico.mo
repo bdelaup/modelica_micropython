@@ -1,24 +1,12 @@
 within MicroPythonMCU;
 
 model RPi_Pico "Raspberry Pi Pico board: RP2040 programmable in MicroPython, real pinout and dimensions, power supply through USB, VBUS or VSYS and the on-board 3.3 V regulator"
-  extends Internal.PartialMcuSettings;
-  parameter Boolean usbConnected = true "USB cable plugged in: 5 V on VBUS (the board runs without any wiring) - false to supply the board through VBUS or VSYS" annotation(
-    Dialog(tab = "Power supply", group = "USB"),
-    choices(checkBox = true));
-  parameter Modelica.Units.SI.Voltage VUsb = 5 "Voltage of the USB supply" annotation(
-    Dialog(tab = "Power supply", group = "USB", enable = usbConnected));
-  parameter Modelica.Units.SI.Resistance RUsb = 0.2 "Resistance of the USB cable and connector" annotation(
-    Dialog(tab = "Power supply", group = "USB", enable = usbConnected));
-  parameter Real eta(min = 0.1, max = 1) = 0.9 "Efficiency of the 3.3 V regulator" annotation(
-    Dialog(tab = "Power supply", group = "Regulator"));
-  parameter Modelica.Units.SI.Current ICore = 0.02 "Current drawn from the 3.3 V rail by the RP2040 and the flash while supplied (program running, pins excluded)" annotation(
-    Dialog(tab = "Power supply", group = "Consumption"));
-  parameter Modelica.Units.SI.Voltage VPowerOn = 1.8 "3.3 V rail voltage above which the RP2040 starts (power-on reset)" annotation(
-    Dialog(tab = "Power supply", group = "Power-on"));
-  parameter Modelica.Units.SI.Voltage VPowerOff = 1.6 "3.3 V rail voltage below which a running RP2040 stops for good (brown-out)" annotation(
-    Dialog(tab = "Power supply", group = "Power-on"));
+  extends Internal.PartialUsbBoard(redeclare Internal.McuCore core(final nPins = 30, final pinIds = {i for i in 0:29}, final pinCaps = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 7, 7, 7, 5}, final boardProfile = "pico", final hasTempSensor = true, final dieTemperature = dieTemperature) "The RP2040: pin[i] = GPIO i-1 (GP0-GP22, GP23 power-save, GP24 VBUS sense, GP25 LED, GP26-GP28, GP29 VSYS/3)" annotation(
+    Placement(transformation(origin = {-120, -20}, extent = {{-70, -70}, {70, 70}}))));
   parameter Modelica.Units.NonSI.Temperature_degC dieTemperature = 27 "Temperature of the RP2040, read by machine.ADC(4)" annotation(
     Dialog(tab = "Power supply", group = "Temperature sensor"));
+  parameter Modelica.Units.SI.Resistance ledSeriesR = 330 "Series resistance of the on-board LED (internal, GP25)" annotation(
+    Dialog(tab = "Electrical", group = "Output stages"));
   Modelica.Electrical.Analog.Interfaces.PositivePin GP0 "GPIO 0, physical pin 1 (machine.Pin(0))" annotation(
     Placement(transformation(origin = {-300, 230}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {-90, 190}, extent = {{-5, -5}, {5, 5}})));
   Modelica.Electrical.Analog.Interfaces.PositivePin GP1 "GPIO 1, physical pin 2 (machine.Pin(1))" annotation(
@@ -101,8 +89,6 @@ model RPi_Pico "Raspberry Pi Pico board: RP2040 programmable in MicroPython, rea
     Placement(transformation(origin = {-300, -58}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {90, -190}, extent = {{-5, -5}, {5, 5}})));
   Interfaces.DisplayLinkOutput Display0 "Logical link to an educational display peripheral (machine.Display(0).write()) - not on the real board: simplified causal link, see requirements.md decision \"Périphérique d'affichage pédagogique\"" annotation(
     Placement(transformation(origin = {300, -120}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {60, 210}, extent = {{-5, -5}, {5, 5}}, rotation = 90)));
-  Internal.McuCore core(final nPins = 30, final pinIds = {i for i in 0:29}, final pinCaps = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 7, 7, 7, 5}, final boardProfile = "pico", final instanceName = boardName, final hasTempSensor = true, final dieTemperature = dieTemperature, final ICore = ICore, final VPowerOn = VPowerOn, final VPowerOff = VPowerOff, final scriptPath = scriptPath, final addScriptDirToPath = addScriptDirToPath, final libraryPath = libraryPath, final fsEnabled = fsEnabled, final fsSource = fsSource, final fsWorkspace = fsWorkspace, final fsOpenExplorer = fsOpenExplorer, final tickPeriod = tickPeriod, final gpioOpTime = gpioOpTime, final hangWarningTime = hangWarningTime, final debugEnabled = debugEnabled, final debugPort = debugPort, final VOL = VOL, final VIH = VIH, final VIL = VIL, final ROut = ROut, final ledSeriesR = ledSeriesR, final RPullUp = RPullUp, final RPullDown = RPullDown, final GOff = GOff) "The RP2040: pin[i] = GPIO i-1 (GP0-GP22, GP23 power-save, GP24 VBUS sense, GP25 LED, GP26-GP28, GP29 VSYS/3)" annotation(
-    Placement(transformation(origin = {-120, -20}, extent = {{-70, -70}, {70, 70}})));
   Internal.Rt6150 regulator(eta = eta) "Buck-boost regulator VSYS -> 3.3 V (RT6150B)" annotation(
     Placement(transformation(origin = {176, 120}, extent = {{-20, -20}, {20, 20}})));
   MicroPythonMCU.Peripherals.LED builtinLed "On-board LED (GPIO25)" annotation(
@@ -111,7 +97,6 @@ model RPi_Pico "Raspberry Pi Pico board: RP2040 programmable in MicroPython, rea
   Modelica.Units.SI.Voltage vSys = VSYS.v - core.gnd.v "Voltage of VSYS";
   Modelica.Units.SI.Current iSys = regulator.iIn "Current drawn from VSYS by the regulator";
 protected
-  final parameter String boardName = getInstanceName() "Instance name of the board, given to the core (log prefix, name of the copy of the flash): getInstanceName() written in the modifier of core would return the name of the core";
   Modelica.Electrical.Analog.Sources.ConstantVoltage usbSupply(V = VUsb) if usbConnected "USB supply (5 V)" annotation(
     Placement(transformation(origin = {40, 200}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
   Modelica.Electrical.Analog.Basic.Resistor usbCable(R = RUsb) if usbConnected "Resistance of the USB cable" annotation(

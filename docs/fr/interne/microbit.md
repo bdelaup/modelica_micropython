@@ -20,16 +20,28 @@ historique : `requirements.md`, décision « MCU micro:bit v2 ».
   la carte — cf. `verify_74` pour le choix de `Goff = 1e-9`, la fuite par défaut
   de `IdealClosingSwitch` de la MSL étant de 100 kΩ) ;
 - les **capteurs intégrés** : chaque capteur a un paramètre constant et, si
-  activé, un connecteur d'entrée qui le remplace (patron MSL : connecteur
-  conditionnel + `Constant` conditionnelle vers un nœud interne, puis équation
-  sur le `v` de la `SignalVoltage` — licite, même forme que `tempSensor` de
-  `McuCore`) ;
+  activé, un connecteur d'entrée qui le remplace — le choix constant / table /
+  connecteur vit dans le bloc `Internal.SensorSource` (un par capteur,
+  `src_<nom>`, invisible dans le schéma), qui alimente l'équation `v` de la
+  `SignalVoltage` (`v = vRail × f(y)`, lisible par `adc_read` en fraction de
+  la référence) ;
 - les **tirages edge** comme sur la carte : 10 MΩ sur les anneaux P0/P1/P2,
   4,7 kΩ sur P19/P20 (I2C) ;
 - l'**alimentation** : USB 5 V → `Internal.Rt6150` (`VOut = VTgt` = 3,0 V,
   rail de la micro:bit v2) → broche `3V` ; l'enable du régulateur est câblé à
   l'entrée VIN (sur le rail, il ne démarrerait jamais — boucle morte) ;
-- le fichier `.mo` généré fait ~530 lignes et 130 `connect()`.
+- le fichier `.mo` généré fait ~650 lignes et 129 `connect()`.
+
+Le diagramme interne est rangé en zones sans chevauchement (chacune son
+groupe fonctionnel, cf. `ZONES` du générateur) : connecteur edge et anneaux à
+gauche, matrice au centre, alimentation dans sa bande verticale au-dessus,
+capteurs à droite, tirages I2C, bande de masse puis boutons en bas. Les
+invariants : aucun composant n'en chevauche un autre, aucun fil ne traverse un
+composant ni l'icône du cœur (le rail 3V et vref arrivent par-dessus, la masse
+converge sur un bus unique, les fils des boutons et des anneaux contournent la
+colonne de broches par la gauche), et chaque fil rejoint bien son connecteur —
+le bus de colonnes de la matrice descend puis converge vers `pin[]` au même
+endroit que le fan des broches edge.
 
 ## Le moteur de matrice (`Resources/Include/pyruntime/pyruntime_matrix.c`)
 
@@ -48,19 +60,26 @@ colonnes (sink, LOW = LED allumée) sur les broches edge P4/P7/P3/P6/P10 (COL1
 
 Le moteur vit **côté C, comme `uartcore` pour l'UART**, parce que le balayage
 exige des transitions à la granularité du quantum (~370 µs), sous le plancher
-des `machine.Timer` (1 ms, 4 minuteurs). Il est cadencé par `PyRuntime_sync` :
+des `machine.Timer` (1 ms, 4 minuteurs). Son état et celui de la radio vivent
+dans `board_ext` du handle (`pyruntime_microbit.h`), et il est cadencé par
+les **crochets de carte** (`pyruntime_board.h`, implémentés pour la micro:bit
+par `pyruntime_microbit.c`) que `PyRuntime_sync` appelle sans connaître le
+nom du profil — les cœurs sans moteurs ne paient ni mémoire ni branches
+(phase 4 du refactoring) :
 
-- `matrix_step(h, now)` — idempotent, recalculé depuis l'ancre `t0` — écrit
+- `matrix_step(h, b, now)` — idempotent, recalculé depuis l'ancre `t0` — écrit
   `pin_is_output`/`pin_driven_value` des 10 broches : le chemin « sortie
   digitale » habituel de `Internal.PinBridge`, **aucune signature de synchro à
   changer** ;
-- `earliest_matrix_deadline(h)` — prochaine transition réelle (frontière de
-  créneau ou relâche de colonne), alimente `nextWakeTime` : un événement
+- `earliest_matrix_deadline(h, b)` — prochaine transition réelle (frontière de
+  créneau ou relâche de colonne), alimente `nextWakeTime` par le crochet
+  `next_scan_deadline` : un événement
   Modelica par transition, ~600-1800/s, l'ordre de grandeur d'un UART à
   1200 bauds ; les relâches déjà passées sont ignorées (sinon chattering —
   constaté au premier essai avec un niveau intermédiaire, cf. `verify_73`) ;
-- l'activation **au démarrage** est faite par `matrix_boot_enable`, appelée à
-  la première synchro alimentée d'une carte de profil `microbit` : le shim ne
+- l'activation **au démarrage** est faite par `matrix_boot_enable`, appelée
+  par le crochet `boot` (qui alloue `board_ext`) à la première synchro
+  alimentée d'une carte de profil `microbit` : le shim ne
   peut rien appeler qui rende la main pendant son init (le constructeur
   `PyRuntime_new` n'échange pas de tours → deadlock), et le firmware active
   lui-même son driver au boot.
@@ -69,7 +88,8 @@ Deux artefacts corrigés au passage :
 
 - **réveil parasite à l'arrêt** : la première transition des broches après
   `display.off()` (l'établissement de leur niveau hors haute impédance) ne
-  réveille pas le script — drapeau `matrix_pin_released`, cf. la boucle
+  réveille pas le script — drapeau `pin_released` de `board_ext`, consommé
+  par le crochet `pin_released`, cf. la boucle
   `input_changed` de `PyRuntime_sync` ;
 - les transitions des broches **pendant** le balayage n'entrent pas dans cette
   boucle : ce sont des sorties.
@@ -78,9 +98,11 @@ Deux artefacts corrigés au passage :
 
 ## Le module `microbit` du shim
 
-Il vit dans `machine_time_shim.py`, sous `if _MBIT:` (profil de carte),
-fournit l'API officielle du portage MicroPython de la micro:bit **par-dessus
-`machine`** (le vrai portage v2 expose aussi `machine`) :
+Il vit dans son propre fichier, `Scripts/_shim/microbit_shim.py`, chargé par
+`machine_time_shim.py` uniquement pour le profil de carte `microbit` (exec dans
+les globales du shim : même espace de noms, les autres cartes ne le compilent
+pas), et fournit l'API officielle du portage MicroPython de la micro:bit
+**par-dessus `machine`** (le vrai portage v2 expose aussi `machine`) :
 
 - `display` (`show`/`scroll`/`clear`/`set_pixel`/`get_pixel`/`on`/`off`/
   `is_on`/`read_light_level`), animations d'arrière-plan par un `machine.Timer`
@@ -139,6 +161,7 @@ d'emploi) :
 | `verify_74_microbit_buttons` | boutons électriques (tirage 10 k, Goff de l'interrupteur), `is_pressed`/`was_pressed`/`get_presses` |
 | `verify_75_microbit_board` | la carte complète : rail 3,0 V, courants réels des LED (allumée ~0,3 mA moyen, éteinte ~0), arrêt propre |
 | `verify_76_microbit_example_buttons` | l'exemple `Examples.MicroBit.Buttons` : 4 appuis comptés, P5 au niveau électrique attendu à chaque instant |
+| `verify_79_microbit_unpowered` | carte jamais alimentee (`usbConnected = false`) : la simulation va au bout, le programme ne demarre pas, rail a 0 V, destruction du runtime sans etat de carte (regression : bilan radio sur un pointeur NULL) |
 
 `IMax` des LED de matrice : 0,4 mA (le courant **moyen** d'une LED allumée à
 plein niveau, duty 1/5 sur la trame — l'icône atteint sa pleine luminosité sur
@@ -167,11 +190,16 @@ milliers de points de synchro par paquet.
   du nom d'instance, `Internal.StringHash`). Deux moteurs s'entendent
   s'ils partagent l'identifiant ; `radio.on()` lève une erreur explicite
   tant que l'antenne n'est pas câblée. L'identifiant transite par un
-  nouvel entrée de `PyRuntime_sync` (`radioNetwork`, -1 = pas d'antenne),
-  plomberie dans `Internal.McuCore` (connecteur conditionnel `AntennaIn`,
-  `useRadio`).
+  nouvel entrée de `PyRuntime_syncBoard` (`boardNetwork`, -1 = pas d'antenne)
+  plomberie dans le cœur spécialisé `Internal.McuCoreRadio` (connecteur
+  conditionnel `AntennaIn`, `useRadio`) que la carte redeclared depuis
+  `Internal.PartialBoard` — le cœur partagé `Internal.McuCore` ne porte pas
+  la radio (cf. décision « Refactoring du socle des cartes »).
 - **Moteur** (`pyruntime_radio.c`, inclus par le chapeau) : registre global
-  des moteurs du process (tous les MCU d'un modèle partagent l'exe) ;
+  des moteurs du process (tous les MCU d'un modèle partagent l'exe) — une
+  carte s'y enregistre à son **boot** (crochet `boot` : première synchro
+  alimentée ; une carte jamais alimentée n'écoute pas l'air, comme le
+  matériel) ;
   `radio_send` pose le paquet dans la file d'arrivee de chaque auditeur du
   meme réseau avec `arrival = t + (len + 6)*8/data_rate`, `radio_step`
   (chaque synchro) livre les paquets arrivés, filtres par la config du

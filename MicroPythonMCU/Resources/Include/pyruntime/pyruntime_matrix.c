@@ -13,18 +13,23 @@
    (4) interdisent de balayer 60 Hz x 5 lignes par des callbacks Python, et la
    comparaison continue du vrai driver (GPIOTE/PPI, quantum CODAL
    NRF52LedMatrix) serait de toute facon quantifiee par les minuteries. Le
-   moteur vit ici, cadence par PyRuntime_sync :
+   moteur vit ici, cadence par PyRuntime_sync (crochets de pyruntime_board.h,
+   implémentes par pyruntime_microbit.c) :
 
-   - matrix_step(h, now) : etat ABSOLU (idempotent, recalcule depuis t0), ecrit
-     le niveau des 10 broches dans pin_is_output/pin_driven_value - le chemin
-     "sortie digitale" habituel de Internal.PinBridge, aucune signature de
-     synchro a changer. Aucun cout simule : le vrai balayage est materiel
-     (timer + PPI), il ne consomme pas de temps processeur.
-   - earliest_matrix_deadline(h) : prochaine transition REELLE (changement de
-     ligne au creneau suivant, relache d'une colonne en cours de creneau) :
+   - matrix_step(h, b, now) : etat ABSOLU (idempotent, recalcule depuis t0),
+     ecrit le niveau des 10 broches dans pin_is_output/pin_driven_value - le
+     chemin "sortie digitale" habituel de Internal.PinBridge, aucune
+     signature de synchro a changer. Aucun cout simule : le vrai balayage est
+     materiel (timer + PPI), il ne consomme pas de temps processeur.
+   - earliest_matrix_deadline(h, b) : prochaine transition REELLE (changement
+     de ligne au creneau suivant, relache d'une colonne en cours de creneau) :
      un evenement Modelica par transition, pas de quantum d'horloge.
    - natives matrix_enable/matrix_disable/matrix_set_pixels, appelees par le
      shim microbit (display.on()/off(), tampon de pixels 0-9).
+
+   L'etat du moteur vit dans struct MicroBitBoard (board_ext du handle,
+   cf. pyruntime_microbit.h) : alloue au boot, les cartes des autres profils
+   n'en ont pas - leurs natives renvoient une erreur explicite.
 
    Polarite du driver CODAL : ligne HIGH (source, anode de la LED), colonne LOW
    (sink, cathode) pendant [debut de creneau, debut + creneau*niveau/9], puis
@@ -36,13 +41,25 @@ static double matrix_slot_duration(void) {
     return 1.0 / (MATRIX_FRAME_RATE * MATRIX_ROWS);
 }
 
+/* Etat des moteurs de la carte du worker courant, ou NULL (profil sans
+   moteurs, ou avant le boot - impossible depuis le worker) : erreur
+   explicite, meme garde que les natives radio. */
+static struct MicroBitBoard* matrix_board(struct PyRuntimeHandle* h) {
+    struct MicroBitBoard* b = (struct MicroBitBoard*) h->board_ext;
+    if (!b) {
+        PyErr_SetString(PyExc_RuntimeError, "display exists only on the micro:bit profile");
+        return NULL;
+    }
+    return b;
+}
+
 /* Fait avancer le moteur a l'instant now : publie le niveau des 10 broches de
-   la matrice. Appellee par PyRuntime_sync, cs tenu, AVANT la boucle de
+   la matrice. Appellee par le crochet step, cs tenu, AVANT la boucle de
    detection des transitions d'entree (les broches de la matrice sont des
    sorties pendant le balayage) et une seconde fois apres le drain (le worker
    a pu activer, eteindre ou redessiner l'affichage pendant son tour). */
-static void matrix_step(struct PyRuntimeHandle* h, double now) {
-    struct MatrixEngine* m = &h->matrix;
+static void matrix_step(struct PyRuntimeHandle* h, struct MicroBitBoard* b, double now) {
+    struct MatrixEngine* m = &b->matrix;
     if (!m->enabled) {
         return;
     }
@@ -76,10 +93,10 @@ static void matrix_step(struct PyRuntimeHandle* h, double now) {
 /* Prochaine transition a demander au solveur : frontiere du creneau suivant
    (changement de ligne) ou relache d'une colonne encore basse du creneau
    courant, la plus tot des deux. 1e300 si le moteur est eteint. Appellee sous
-   verrou par PyRuntime_sync ; n'utilise QUE l'etat pose par matrix_step, donc
-   coherent avec les niveaux publies au meme instant. */
-static double earliest_matrix_deadline(struct PyRuntimeHandle* h) {
-    struct MatrixEngine* m = &h->matrix;
+   verrou par les crochets next_scan_deadline ; n'utilise QUE l'etat pose par
+   matrix_step, donc coherent avec les niveaux publies au meme instant. */
+static double earliest_matrix_deadline(struct PyRuntimeHandle* h, struct MicroBitBoard* b) {
+    struct MatrixEngine* m = &b->matrix;
     if (!m->enabled) {
         return 1.0e300;
     }
@@ -121,17 +138,18 @@ static double earliest_matrix_deadline(struct PyRuntimeHandle* h) {
    attend la fin de l'init), donc tout appel d'une native qui rend la main a
    Modelica y deadlock (le constructeur n'echange pas de tours). Comme le vrai
    firmware, qui demarre son driver d'affichage au boot avant le programme,
-   c'est PyRuntime_sync qui active le moteur a la premiere synchro alimentee
-   d'une carte "microbit" (cf. matrix_boot_enable). Le display du shim nait
-   alors simplement dans l'etat "on". */
+   c'est le crochet boot (premiere synchro alimentee) qui alloue l'etat et
+   active le moteur. Le display du shim nait alors simplement dans l'etat
+   "on". */
 
-/* Active le moteur pour le profil micro:bit a la premiere synchro alimentee :
-   convention de brochage de la carte (lignes internes 21-25, colonnes = P4, P7,
-   P3, P6, P10, cf. requirements.md) - la table de broches vient du modele.
-   Thread Modelica, cs tenu, une seule fois par demarrage. Une table de broches
-   incomplete (modele incoherent) laisse la matrice eteinte avec un
-   avertissement plutot qu'une erreur. */
-static void matrix_boot_enable(struct PyRuntimeHandle* h, double now) {
+/* Active le moteur pour le profil micro:bit a la premiere synchro alimentee
+   (crochet boot, apres l'allocation de board_ext) : convention de brochage
+   de la carte (lignes internes 21-25, colonnes = P4, P7, P3, P6, P10, cf.
+   requirements.md) - la table de broches vient du modele. Thread Modelica,
+   cs tenu, une seule fois par demarrage. Une table de broches incomplete
+   (modele incoherent) laisse la matrice eteinte avec un avertissement plutot
+   qu'une erreur. */
+static void matrix_boot_enable(struct PyRuntimeHandle* h, struct MicroBitBoard* b, double now) {
     static const int row_ids[MATRIX_ROWS] = {21, 22, 23, 24, 25};
     static const int col_ids[MATRIX_COLS] = {4, 7, 3, 6, 10};
     int i, ok = 1;
@@ -156,15 +174,15 @@ static void matrix_boot_enable(struct PyRuntimeHandle* h, double now) {
         return;
     }
     for (i = 0; i < MATRIX_ROWS; i++) {
-        h->matrix.row_idx[i] = idx[i];
+        b->matrix.row_idx[i] = idx[i];
         h->pwm_freq[idx[i]] = 0;
     }
     for (i = 0; i < MATRIX_COLS; i++) {
-        h->matrix.col_idx[i] = idx[MATRIX_ROWS + i];
+        b->matrix.col_idx[i] = idx[MATRIX_ROWS + i];
         h->pwm_freq[idx[MATRIX_ROWS + i]] = 0;
     }
-    h->matrix.t0 = now;
-    h->matrix.enabled = 1;
+    b->matrix.t0 = now;
+    b->matrix.enabled = 1;
 }
 
 /* display.on() : prend possession des 10 broches (5 lignes puis 5 colonnes,
@@ -174,8 +192,10 @@ static void matrix_boot_enable(struct PyRuntimeHandle* h, double now) {
 static PyObject* native_matrix_enable(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     struct PyRuntimeHandle* h = g_current;
+    struct MicroBitBoard* b = matrix_board(h);
     int ids[MATRIX_ROWS + MATRIX_COLS];
     int i;
+    if (!b) return NULL;
     if (!PyArg_ParseTuple(args, "iiiiiiiiii",
                           &ids[0], &ids[1], &ids[2], &ids[3], &ids[4],
                           &ids[5], &ids[6], &ids[7], &ids[8], &ids[9])) return NULL;
@@ -185,15 +205,16 @@ static PyObject* native_matrix_enable(PyObject* self, PyObject* args) {
         if (idx[i] < 0) return NULL;
     }
     EnterCriticalSection(&h->cs);
-    for (i = 0; i < MATRIX_ROWS + MATRIX_COLS; i++) {
-        h->matrix.row_idx[i] = idx[i];
+    for (i = 0; i < MATRIX_ROWS; i++) {
+        b->matrix.row_idx[i] = idx[i];
         h->pwm_freq[idx[i]] = 0;   /* CODAL reconfigure la broche : le PWM en cours est coupe */
     }
     for (i = 0; i < MATRIX_COLS; i++) {
-        h->matrix.col_idx[i] = idx[MATRIX_ROWS + i];
+        b->matrix.col_idx[i] = idx[MATRIX_ROWS + i];
+        h->pwm_freq[idx[MATRIX_ROWS + i]] = 0;
     }
-    h->matrix.t0 = h->sim_time;
-    h->matrix.enabled = 1;
+    b->matrix.t0 = h->sim_time;
+    b->matrix.enabled = 1;
     LeaveCriticalSection(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
@@ -206,22 +227,24 @@ static PyObject* native_matrix_enable(PyObject* self, PyObject* args) {
 static PyObject* native_matrix_disable(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     struct PyRuntimeHandle* h = g_current;
+    struct MicroBitBoard* b = matrix_board(h);
     int i;
+    if (!b) return NULL;
     EnterCriticalSection(&h->cs);
-    if (h->matrix.enabled) {
+    if (b->matrix.enabled) {
         for (i = 0; i < MATRIX_ROWS; i++) {
-            if (h->matrix.row_idx[i] >= 0) {
-                h->pin_is_output[h->matrix.row_idx[i]] = 0;
-                h->matrix_pin_released[h->matrix.row_idx[i]] = 1;
+            if (b->matrix.row_idx[i] >= 0) {
+                h->pin_is_output[b->matrix.row_idx[i]] = 0;
+                b->pin_released[b->matrix.row_idx[i]] = 1;
             }
         }
         for (i = 0; i < MATRIX_COLS; i++) {
-            if (h->matrix.col_idx[i] >= 0) {
-                h->pin_is_output[h->matrix.col_idx[i]] = 0;
-                h->matrix_pin_released[h->matrix.col_idx[i]] = 1;
+            if (b->matrix.col_idx[i] >= 0) {
+                h->pin_is_output[b->matrix.col_idx[i]] = 0;
+                b->pin_released[b->matrix.col_idx[i]] = 1;
             }
         }
-        h->matrix.enabled = 0;
+        b->matrix.enabled = 0;
     }
     LeaveCriticalSection(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
@@ -234,8 +257,10 @@ static PyObject* native_matrix_disable(PyObject* self, PyObject* args) {
 static PyObject* native_matrix_set_pixels(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     struct PyRuntimeHandle* h = g_current;
+    struct MicroBitBoard* b = matrix_board(h);
     const char* buf;
     Py_ssize_t len;
+    if (!b) return NULL;
     if (!PyArg_ParseTuple(args, "y#", &buf, &len)) return NULL;
     if (len != MATRIX_ROWS * MATRIX_COLS) {
         PyErr_Format(PyExc_ValueError, "matrix buffer must be %d bytes, got %zd",
@@ -247,7 +272,7 @@ static PyObject* native_matrix_set_pixels(PyObject* self, PyObject* args) {
     for (i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
         int level = buf[i];
         level = level < 0 ? 0 : (level > MATRIX_MAX_LEVEL ? MATRIX_MAX_LEVEL : level);
-        h->matrix.pixels[i / MATRIX_COLS][i % MATRIX_COLS] = (unsigned char) level;
+        b->matrix.pixels[i / MATRIX_COLS][i % MATRIX_COLS] = (unsigned char) level;
     }
     LeaveCriticalSection(&h->cs);
     /* Aucun yield : le tampon n'a pas d'effet avant le prochain creneau de
