@@ -289,8 +289,9 @@ température 27→35 °C sur 10 s, rampe de lumière 200→50 sur 5 s.
 
 **Exemples** : `Examples.MicroBit.Scenario` (script
 `Resources/Scripts/MCU/microbit_scenario.py`) — scénario complet piloté
-uniquement par les sources en mode Table ; `Examples.MicroBit.SensorInputs` —
-même script, mais **toutes** les entrées câblées depuis le schéma : chaque
+uniquement par les sources en mode Table. L'ancien exemple `SensorInputs`
+(retiré de `Examples`) montrait le même script avec **toutes** les entrées
+câblées depuis le schéma : chaque
 famille de sources fait face à ses ports, **sorties tournées vers la carte**
 (boussole colonne à gauche, accéléromètre colonne à droite en miroir,
 température et lumière empilées au-dessus pivotées vers le bas, boutons en
@@ -307,8 +308,8 @@ confirmés par le serveur MCP d'OMEdit (`getComponentPlacement`,
 `Resources/Verification/microbit_tables.py`) — modèle inline `MicroBitTables`
 héritant de `MicroBit_v2` avec des tables de test contrôlées (appuis à
 t=0,2/0,5 s, secousse à t=0,1 s, rampe température 20→30 °C, rampe lumière
-200→50). Vérifie les marqueurs du script Python. `Examples.MicroBit.SensorInputs`
-vérifié par simulation (omc) : les entrées câblées pilotent bien les capteurs
+200→50). Vérifie les marqueurs du script Python. L'ancien exemple `SensorInputs`
+(retiré) était vérifié par simulation (omc) : les entrées câblées pilotent bien les capteurs
 (accéléromètre à 5 m/s² à t=1 s, température 27→35 °C, lumière 200→50 puis
 maintenue — la `TimeTable` MSL extrapole linéairement, d'où le point final de
 maintien dans l'exemple).

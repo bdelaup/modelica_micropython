@@ -84,9 +84,9 @@ Each sensor is driven by its own **source dropdown** (`accelXSource`...
 input wired from the diagram - its **labelled port then appears on the
 matching edge of the icon**, turned towards the board (accelerometer on the
 right edge, compass on the left edge, temperature and light on the top edge),
-so the value can vary during the simulation. The example
-`Examples.MicroBit.SensorInputs` wires **all** the sensors and both buttons
-to `TimeTable`, `Constant` and `BooleanPulse` blocks.
+so the value can vary during the simulation. Wire `TimeTable` blocks
+(varying values), `Constant` blocks (steady levels) or `BooleanPulse`
+blocks (presses) to these ports.
 
 | Sensor | Parameters (unit) | API |
 |---|---|---|

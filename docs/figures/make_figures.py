@@ -42,17 +42,28 @@ def omc_exe():
 
 
 def simulate(model, variables, stop, intervals, work, simflags=""):
-    """Simule MicroPythonMCU.Examples.<model>, rend {variable: [valeurs]} et le temps.
+    """Simule un exemple de MicroPythonMCU.Examples (<model> sans "/"), ou un modele
+    autonome de Resources/Verification ("<model>" = "Verification/<Nom>"). Rend
+    {variable: [valeurs]} et le temps.
     simflags="-emit_protected" pour tracer une variable protégée (mcu.pwmDuty...)."""
-    prefix = model.replace(".", "_")
+    prefix = model.replace("/", "_").replace(".", "_")
     regex = "|".join(v.replace("[", "\\\\[").replace("]", "\\\\]") for v in variables)
     mos = os.path.join(work, prefix + ".mos")
     with open(mos, "w", encoding="utf-8") as f:
         f.write('loadModel(Modelica); getErrorString();\n')
         f.write('loadFile("%s"); getErrorString();\n' % PACKAGE)
-        f.write('r := simulate(MicroPythonMCU.Examples.%s, stopTime=%g, numberOfIntervals=%d, '
+        if "/" in model:
+            # modele autonome de Resources/Verification : fichier .mo sans "within",
+            # charge directement, classe de premier niveau
+            f.write('loadFile("%s/%s.mo"); getErrorString();\n'
+                    % (os.path.join(ROOT, "MicroPythonMCU", "Resources", "Verification").replace("\\", "/"),
+                       model.split("/", 1)[1]))
+            target = model.rsplit("/", 1)[1]
+        else:
+            target = "MicroPythonMCU.Examples.%s" % model
+        f.write('r := simulate(%s, stopTime=%g, numberOfIntervals=%d, '
                 'outputFormat="csv", variableFilter="time|%s", fileNamePrefix="%s", simflags="%s"); '
-                'getErrorString();\n' % (model, stop, intervals, regex, prefix, simflags))
+                'getErrorString();\n' % (target, stop, intervals, regex, prefix, simflags))
         f.write('print(r.messages);\n')
     log = subprocess.run([omc_exe(), mos], cwd=work, capture_output=True, text=True)
     res = os.path.join(work, prefix + "_res.csv")
@@ -237,7 +248,7 @@ def fig_reactivity(work):
 
 
 def fig_timing(work):
-    c = simulate("Gpio.Timing", ["mcu.GP0.v"], 0.2002, 400400, work)
+    c = simulate("Verification/Timing", ["mcu.GP0.v"], 0.2002, 400400, work)
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(8, 2.6), gridspec_kw={"width_ratios": [1, 2.4]})
     for ax, t0, t1, title in [(a1, 0.1 - 5e-6, 0.1 + 15e-6, "out.on(); out.off()"),
                               (a2, 0.2 - 10e-6, 0.2 + 115e-6, "10 × out(1); out(0)")]:
@@ -249,7 +260,7 @@ def fig_timing(work):
     a1.text(7.5, 1.5, "5 µs", ha="center", fontsize=8)
     a2.text(62, 3.75, "20 accès = 100 µs, mesurés aussi par ticks_us()", ha="center", fontsize=8)
     a2.set_ylim(-0.3, 4.1)
-    fig.suptitle("Gpio.Timing : chaque accès à une broche dure gpioOpTime = 5 µs de temps simulé",
+    fig.suptitle("Timing (vérification) : chaque accès à une broche dure gpioOpTime = 5 µs de temps simulé",
                  x=0.01, ha="left", fontsize=10)
     fig.tight_layout()
     save(fig, "gpio-timing")
@@ -388,7 +399,7 @@ def fig_radio_sampling(work):
 
 
 def fig_radio_buffer(work):
-    c = simulate("Radio.Overflow", ["radioA.txFill", "radioA.nDropped", "radioA.carrierOn"],
+    c = simulate("Verification/Overflow", ["radioA.txFill", "radioA.nDropped", "radioA.carrierOn"],
                  0.25, 25000, work)
     t_ms = [x * 1e3 for x in c["time"]]
     fig, (a1, a2) = plt.subplots(2, 1, figsize=(8, 3.8), sharex=True)
@@ -401,7 +412,7 @@ def fig_radio_buffer(work):
     style(a1, "", "octets")
     style(a2, "temps (ms)", "carrierOn")
     a1.set_ylim(0, 21)
-    a1.set_title("Radio.Overflow : 40 octets à 9600 bauds, émis à 1200 bit/s, tampon de 16 octets",
+    a1.set_title("Overflow (vérification) : 40 octets à 9600 bauds, émis à 1200 bit/s, tampon de 16 octets",
                  loc="left", fontsize=10)
     save(fig, "radio-overflow")
 

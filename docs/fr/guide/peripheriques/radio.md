@@ -53,7 +53,7 @@ Un module n'entend que les émetteurs **accordés sur son canal** (même fréque
 
 ![Tampon plein dans Radio.Overflow](../../images/sim/radio-overflow.svg)
 
-*Exemple `Radio.Overflow` : 40 octets arrivent à 9600 bauds, mais le module ne les réémet qu'à 1200 bit/s. Le tampon de 16 octets se remplit (`txFill`), puis chaque octet qui arrive tampon plein est perdu (`nDropped`). Une place ne se libère qu'au départ d'une trame radio.*
+*Scénario de vérification `Radio.Overflow` (`Resources/Verification/Overflow.mo`) : 40 octets arrivent à 9600 bauds, mais le module ne les réémet qu'à 1200 bit/s. Le tampon de 16 octets se remplit (`txFill`), puis chaque octet qui arrive tampon plein est perdu (`nDropped`). Une place ne se libère qu'au départ d'une trame radio.*
 
 ## Synchro masquée et signal tracé
 
@@ -194,7 +194,6 @@ En fin de simulation, chaque module écrit au journal un **bilan d'une ligne** :
 | Exemple | Ce qu'il montre |
 |---|---|
 | `Radio.Link` | Les programmes PING/PONG de `MultiMcu.Uart`, inchangés, à travers deux modules radio |
-| `Radio.Overflow` | Un débit radio huit fois plus lent que la liaison série et un tampon de 16 octets : la fin du message est perdue |
 | `Radio.Modulations` | Le même caractère en OOK, ASK, FSK et BPSK |
 
 Essais à faire sur `Radio.Link` : régler `radioB.fCarrier` sur 440 MHz (B n'entend plus rien), ou `radioB.airBaudrate` sur 4800 (les trames arrivent fausses et sont jetées).

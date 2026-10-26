@@ -1,0 +1,7 @@
+PartialSupplyPin
+PartialUartPins
+PartialUartDevice
+PartialI2cDevice
+PartialRadioModem
+PartialTextDisplay
+OnBoardRadioModem

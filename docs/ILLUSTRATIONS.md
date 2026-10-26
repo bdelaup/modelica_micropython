@@ -80,12 +80,12 @@ python docs/figures/make_figures.py uart hx711     # certaines
 | `hx711-lecture.svg` | `Weighing.Hx711Read` | `hx.PD_SCK.v`, `hx.DOUT.v` (pas de 0,5 µs) | chaîne de pesée |
 | `pwm-fade.svg` | `Pwm.LedFade` | `mcu.pwmDuty[1]` (variable protégée, `-emit_protected`), deux zooms de `mcu.GP0.v` à 25 % et 75 % | exemples |
 | `input-reactivity.svg` | `Gpio.InputReactivity` | `mcu.GP1.v`, `mcu.GP0.v` | exemples |
-| `gpio-timing.svg` | `Gpio.Timing` | `mcu.GP0.v` à la µs : impulsion `on(); off()` et rafale de 10 impulsions | API |
+| `gpio-timing.svg` | `Verification/Timing.mo` | `mcu.GP0.v` à la µs : impulsion `on(); off()` et rafale de 10 impulsions | API |
 | `kitchen-scale.svg` | `Weighing.KitchenScale` | `totalMass.y`, `hx.code`, appui TARE | chaîne de pesée |
 | `radio-modulations.svg` | `Radio.Modulations` (pas de 2,5 µs) | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx`, grille des bits de `U` | liaison radio |
 | `radio-signal-trace.svg` | aucun : schéma calculé (bits 0 1 1 0, réglages par défaut) ; écrit aussi `MicroPythonMCU/Resources/Images/radio_drawn_signal.png` (version anglaise, image du groupe *Drawn carrier* de la boîte de paramètres du `RadioModem`) | `sTx` ASK et FSK annotés (`fDisplay`, `deltaFDisplay`, `askLowAmplitude`) | liaison radio |
 | `radio-sampling.svg` | `Radio.Modulations` simulé deux fois (intervalles 2,5 µs et 200 µs) | `txFSK.sTx` : porteuse nette, puis repliement | liaison radio |
-| `radio-overflow.svg` | `Radio.Overflow` | `radioA.txFill`, `radioA.nDropped`, `radioA.carrierOn` | liaison radio |
+| `radio-overflow.svg` | `Verification/Overflow.mo` | `radioA.txFill`, `radioA.nDropped`, `radioA.carrierOn` | liaison radio |
 | `pico-power.svg` | `Pico.PowerUp` | `pico.vSys`, `pico.vRail`, `pico.GP15.v`, `pico.core.powerGood` | carte Pico, exemples |
 | `pico-battery.svg` | `Pico.Battery` | `iBattery.i`, `pico.GP15.v` | carte Pico |
 

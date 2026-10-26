@@ -1,6 +1,6 @@
 # Exemples
 
-Le paquetage `MicroPythonMCU.Examples` contient 52 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque.
+Le paquetage `MicroPythonMCU.Examples` contient 44 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque ; ceux qui n'ont pas de valeur d'exemple (cas d'erreur, mesures internes) ne sont pas dans `Examples` : leurs modèles sont directement dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification), à côté des scripts `.mos`.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -23,7 +23,6 @@ Le paquetage `MicroPythonMCU.Examples` contient 52 modèles prêts à simuler : 
 | `Gpio.LedChaser` | Chenillard sur 8 LED disposées autour du microcontrôleur | icônes des LED (relecture animée) | `led_chaser.py` |
 | `Gpio.PinEcho` | `GP1` oscille, `GP2` relit son état électrique, `GP3` le recopie | `mcu.GP1.v`, `mcu.GP3.v` | `pin_echo.py` |
 | `Gpio.InputReactivity` | Un bouton sur `GP1` réveille le programme pendant un `sleep(3600)` | `mcu.GP1.v`, sortie du programme | `input_reactive.py` *(V)* |
-| `Gpio.Timing` | Coût d'un accès aux broches (`gpioOpTime`) : impulsion `on()`/`off()` sans `sleep`, rafale, attente active, IRQ masquée | `mcu.GP0.v` (zoom à la µs) | `gpio_timing.py` *(V)* |
 | `Gpio.Pull` | Tirages internes : deux boutons sans résistance externe (`Pin.PULL_UP` vers la masse, `Pin.PULL_DOWN` vers 3,3 V), et une broche dont le tirage change face à une résistance externe de 1 MΩ | `mcu.GP0.v`, `mcu.GP3.v`, `mcu.GP4.v` | `gpio_pull.py` |
 
 ![Réveil par une entrée pendant un sleep](../images/sim/input-reactivity.svg)
@@ -33,7 +32,6 @@ Le paquetage `MicroPythonMCU.Examples` contient 52 modèles prêts à simuler : 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
 | `Adc.Read` | `GP1` en entrée analogique sur un pont diviseur (≈ 2,2 V) ; seuil recopié sur une LED | `mcu.GP1.v`, `mcu.GP0.v` | `adc_read.py` |
-| `Adc.Sleep` | Une entrée analogique qui traverse le seuil logique ne réveille pas le programme | `mcu.GP0.v`, `mcu.GP1.v` | `adc_sleep.py` |
 
 ## PWM (`Examples.Pwm`)
 
@@ -57,8 +55,6 @@ Le paquetage `MicroPythonMCU.Examples` contient 52 modèles prêts à simuler : 
 
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
-| `Program.SleepCompression` | Deux `sleep(3600)` simulés en une fraction de seconde de calcul | durée de la simulation | `sleep_long.py` *(V)* |
-| `Program.Error` | Une exception non rattrapée arrête la simulation, trace Python dans le journal | journal | `script_error.py` *(V)* |
 | `Program.Imports` | Import d'un module posé à côté du programme et d'une bibliothèque d'un autre dossier (`libraryPath`) | LED de `GP0` et `GP1` | `import_demo.py` |
 | `Program.Debug` | Débogage pas à pas avec VS Code : la simulation attend que VS Code s'attache, temps simulé figé pendant les pauses (voir [Déboguer avec VS Code](debogage.md)) | VS Code, LED de `GP0` et `GP1`, journal | `debug_demo.py` |
 
@@ -82,14 +78,12 @@ Le paquetage `MicroPythonMCU.Examples` contient 52 modèles prêts à simuler : 
 |---|---|---|---|
 | `Uart.Loopback` | Trame 8N1 bouclée sur le microcontrôleur | `mcu.GP0.v` | `uart_loopback.py` |
 | `Uart.EchoPy` | Dialogue avec un appareil d'écho décrit par un script Python | `mcu.GP5.v`, `mcu.GP4.v`, journal | `uart_echo.py` |
-| `Uart.Echo` | Même montage, écho réglé dans la table de l'appareil | idem | `uart_echo.py` |
 | `Uart.Sensor` | Interrogation d'un capteur de température, puis envoi d'une consigne | `sensor.valueOut[1]`, journal | `uart_sensor.py` |
 | `Uart.Regulation` | Régulation en boucle fermée à travers la seule liaison série | `plant.y`, `sensor.valueOut[1]` | `uart_regulation.py` |
 | `Uart.GpsPy` | Un module GPS émet ses trames sans être interrogé | journal | `uart_gps.py` |
 | `Uart.StateMachinePy` | Appareil dont la réponse dépend de son historique (machine d'état Python) | journal | `uart_state_machine.py` |
 | `Uart.Lcd` | Deux lignes écrites sur un afficheur série 20x2 | icône de l'afficheur | `uart_lcd.py` |
 | `Uart.Format` | Liaison en 8E2 (parité paire, 2 bits de stop) avec un appareil d'écho réglé de même | `mcu.GP5.v`, `mcu.GP7.v` | `uart_format.py` |
-| `Uart.FormatMismatch` | Même montage, appareil en parité impaire : octets gardés, erreurs de parité au journal | journal | `uart_format.py` |
 
 ![Trame série](../images/sim/uart-trame.svg)
 
@@ -99,7 +93,6 @@ Le paquetage `MicroPythonMCU.Examples` contient 52 modèles prêts à simuler : 
 |---|---|---|---|
 | `I2c.Echo` | Écriture et relecture d'une trame, lecture d'un registre derrière un START répété | `echo.SDA.v`, `echo.SCL.v` | `i2c_echo.py` |
 | `I2c.MultiDevice` | Trois périphériques sur un bus à 400 kHz, trouvés par `scan()` | journal | `i2c_multi.py` |
-| `I2c.NoPullUp` | Bus sans résistances de tirage externes : les seuls tirages internes (50 kΩ) sont trop lents à 400 kHz, `OSError(ETIMEDOUT)` | fronts montants lents, journal | `i2c_nopullup.py` |
 | `I2c.GroveLcd` | Écran Grove LCD RGB piloté par un driver du commerce non modifié | icône de l'écran | `i2c_grove_lcd_rgb.py` |
 
 ## Plusieurs microcontrôleurs (`Examples.MultiMcu`)
@@ -128,7 +121,6 @@ Des modules radio transparents entre les UART de deux microcontrôleurs, reliés
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
 | `Radio.Link` | Les programmes PING/PONG de `MultiMcu.Uart`, inchangés, à travers deux modules radio | `mcuA.GP0.v`, `radioA.carrierOn`, `mcuB.GP1.v`, `radioA.sTx` (porteuse FSK, sortie toutes les 2 µs), bilan de chaque module au journal | `uart_ping.py`, `uart_pong.py` |
-| `Radio.Overflow` | 40 octets à 9600 bauds, réémis à 1200 bit/s avec un tampon de 16 octets : la fin du message est perdue | `radioA.txFill`, `radioA.nDropped`, ce que B affiche | `radio_burst.py`, `radio_listen.py` |
 | `Radio.Modulations` | Le caractère `U` en OOK, ASK, FSK et BPSK | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx` entre 25 et 35 ms | `radio_beacon.py` |
 | `Weighing.KitchenScale` | Balance de cuisine complète, bouton TARE | icône de l'écran | `kitchen_scale.py` |
 
@@ -156,7 +148,7 @@ La sonde `LogicAnalyzer` décode les fils d'un montage dans un fichier texte, ou
 | Exemple | Ce qu'il montre | À observer | Programme |
 |---|---|---|---|
 | `Analyzer.UartLink` | Sonde sur les deux fils de la liaison 8E2 de `Uart.Format`, voies de type `Uart` | `UartLink.analyzer.txt` : « Hello, parity! » en hexa + ASCII, bits et octets sous le chronogramme ; l'écho chevauche l'envoi | `uart_format.py` |
-| `Analyzer.UartErrors` | Même sonde, appareil en parité impaire (`Uart.FormatMismatch`) | octets renvoyés marqués `!` et `!P` | `uart_format.py` |
+| `Analyzer.UartErrors` | Même sonde, appareil en parité impaire (scénario de vérification `verify_45`) | octets renvoyés marqués `!` et `!P` | `uart_format.py` |
 | `Analyzer.I2cBus` | Sonde sur le bus de `I2c.Echo` : SCL en `Logic`, SDA en `I2cSda` | une ligne par transaction, NACK de fin de lecture, START répété | `i2c_echo.py` |
 | `Analyzer.Hx711Serial` | Sonde sur la liaison PD_SCK/DOUT de `Weighing.Hx711Read`, DOUT en `SyncData` (24 bits, poids fort en tête) | un mot par conversion, impulsions de gain, silences comprimés | `hx711_read.py` |
 

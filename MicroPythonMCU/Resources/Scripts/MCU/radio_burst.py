@@ -1,4 +1,4 @@
-# Board A of Examples.Radio.Overflow: writes a 40-byte burst at once on its
+# Board A of the Radio.Overflow verification model: writes a 40-byte burst at once on its
 # UART (TX = GP0), towards a radio modem whose air data rate (1200 bit/s) is
 # eight times slower than the serial link (9600 baud) and whose transmit
 # buffer only holds 16 bytes: the end of the burst cannot all fit.

@@ -1,7 +1,7 @@
 // Scenario de verification n°72 : profil « microbit » du shim et moteur de la
 // matrice LED (MicroBit_v2, nRF52833). omc verify_72_microbit_smoke.mos
 //
-// Ce que ce scenario verifie, sur un coeur Internal.McuCore nu configure comme
+// Ce que ce scenario verifie, sur un coeur Internal.Boards.McuCore nu configure comme
 // la micro:bit (19 broches edge, 5 lignes internes de la matrice, 8 capteurs) :
 // - le module microbit est charge et display.is_on() est vrai au demarrage
 //   (le moteur de matrice est active au boot par PyRuntime_sync, comme le
@@ -21,7 +21,7 @@ loadFile("../../package.mo"); getErrorString();
 loadString("model MicroBitSmoke
   parameter Integer ids[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33};
   parameter Integer caps[32] = {7,7,7,7,7,3,3,3,3,3,7,3,3,3,3,3,3,3,3,1,1,1,1,1,4,4,4,4,4,4,4,4};
-  MicroPythonMCU.Internal.McuCore core(nPins = 32, pinIds = ids, pinCaps = caps, boardProfile = \"microbit\",
+  MicroPythonMCU.Internal.Boards.McuCore core(nPins = 32, pinIds = ids, pinCaps = caps, boardProfile = \"microbit\",
     scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/microbit_smoke.py\")) \"accel (0, 0, -9.81) m/s^2, boussole (0, 50, 0) uT, temp 27 C, lumiere 100\";
   Modelica.Electrical.Analog.Basic.Ground ground;
   Modelica.Electrical.Analog.Sources.ConstantVoltage supply(V = 3.3);

@@ -35,6 +35,6 @@ equation
     Documentation(info = "<html>
 <p>First I2C dialogue: the microcontroller (master) writes the frame <code>b'Hello I2C'</code> (9 bytes) to the echo peripheral at address <code>0x42</code>, reads it back, then reads a \"register\" behind a <strong>repeated START</strong> (<code>readfrom_mem</code>). <code>GP7</code> goes high if the three exchanges are as expected, which the LED <code>led7</code> shows.</p>
 <p>The bus is <strong>electrical</strong>: plotting <code>mcu.GP4.v</code> (SCL) and <code>mcu.GP5.v</code> (SDA) shows the real sequence — START (SDA falls while SCL is high), 7-bit address + R/W bit, acknowledge from the slave (SDA pulled low on the 9th clock pulse), data bytes, STOP. <code>echo.sdaDriveLow</code> shows the instants when the slave, and not the master, holds SDA.</p>
-<p>The pull-up resistors are carried by the echo (<code>usePullUp = true</code>). Disabling them keeps the lines low: see <code>Examples.I2c.NoPullUp</code>.</p>
+<p>The pull-up resistors are carried by the echo (<code>usePullUp = true</code>). Disabling them keeps the lines low: the verification scenario <code>verify_23</code> (<code>Resources/Verification/NoPullUp.mo</code>) covers this case.</p>
 </html>"));
 end Echo;

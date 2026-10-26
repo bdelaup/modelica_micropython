@@ -1,7 +1,7 @@
 within MicroPythonMCU.Peripherals;
 
 model I2cEchoDevice "Test I2C peripheral: reads back to the master what it has just written to it"
-  extends Internal.PartialI2cDevice(addresses = "0x42", nOut = 3, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/i2c_echo.py"));
+  extends Internal.Devices.PartialI2cDevice(addresses = "0x42", nOut = 3, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/i2c_echo.py"));
   annotation(
     Icon(graphics = {Text(textColor = {255, 255, 255}, extent = {{-90, -22}, {90, -40}}, textString = "ECHO", textStyle = {TextStyle.Bold})}),
   Documentation(info = "<html>

@@ -10,7 +10,7 @@ import time
 # the total number of 1 bits (data + parity) even: 'H' = 0x48 has two 1 bits,
 # so its parity bit is 0.
 #
-# In Examples.Uart.FormatMismatch the device uses ODD parity instead: every byte
+# In the FormatMismatch verification model the device uses ODD parity instead: every byte
 # then arrives with a wrong parity bit. It is still delivered (as on the RP2040),
 # but each side logs a "parity error" warning - the first ten, then a total.
 MESSAGE = b'Hello, parity!\n'

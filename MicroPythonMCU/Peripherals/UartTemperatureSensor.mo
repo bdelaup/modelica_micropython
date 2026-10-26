@@ -1,7 +1,7 @@
 within MicroPythonMCU.Peripherals;
 
 model UartTemperatureSensor "Serial temperature sensor: answers AT+TEMP with the measured value, and accepts a setpoint through SET"
-  extends Internal.PartialUartDevice(
+  extends Internal.Devices.PartialUartDevice(
     respondEnabled = true,
     commandTable = "AT+TEMP=>TEMP={v1:.1f}\r\n|AT+ID=>SIM-TEMP-1\r\n|SET {o1}=>OK\r\n",
     responseDelay = 0.005,
@@ -14,7 +14,7 @@ model UartTemperatureSensor "Serial temperature sensor: answers AT+TEMP with the
   annotation(
     Icon(graphics = {Text(textColor = {255, 255, 255}, extent = {{-90, -22}, {90, -40}}, textString = "TEMP", textStyle = {TextStyle.Bold})}),
     Documentation(info = "<html>
-<p>Device derived from <code>Internal.PartialUartDevice</code> by overriding parameters only — no logic coded again. It answers three commands, all ending with a line feed:</p>
+<p>Device derived from <code>Internal.Devices.PartialUartDevice</code> by overriding parameters only — no logic coded again. It answers three commands, all ending with a line feed:</p>
 <ul>
 <li><code>AT+TEMP</code> → <code>TEMP=&lt;value&gt;</code>, where the value is the one present on the <code>valueIn[1]</code> connector when the question arrives. Connect a ramp, a thermal model, or any quantity of the model to it.</li>
 <li><code>AT+ID</code> → a fixed identification string, like any real AT module.</li>

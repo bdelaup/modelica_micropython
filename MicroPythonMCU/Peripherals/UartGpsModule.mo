@@ -1,7 +1,7 @@
 within MicroPythonMCU.Peripherals;
 
 model UartGpsModule "Serial GPS module: spontaneously pushes a position frame, without being asked"
-  extends Internal.PartialUartDevice(
+  extends Internal.Devices.PartialUartDevice(
     respondEnabled = false,
     periodicEnabled = true,
     period = 1,

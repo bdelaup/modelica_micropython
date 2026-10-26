@@ -9,7 +9,7 @@ v1 := val(mcu.Display0.seq, 1.5, "DisplayDemo_res.mat");
 v2 := val(mcu.Display0.seq, 2.5, "DisplayDemo_res.mat");
 
 // "Hello" (premier message) : H=72, e=101, l=108 - confirme que le texte reellement
-// recu atteint bien l'icone caractere par caractere (Internal.StringToCharCodes,
+// recu atteint bien l'icone caractere par caractere (Internal.Functions.StringToCharCodes,
 // propage via connect() jusqu'a display.displayLink.charCode), pas seulement le compteur seq.
 // NB : val() sur un index de tableau via une variable de boucle .mos ne se resout pas
 // correctement dans cette installation (renvoie NaN) - indices litteraux uniquement.

@@ -56,6 +56,6 @@ equation
 <li>addresses <code>0x20</code>, where nobody answers: <code>OSError(EIO)</code>.</li>
 </ol>
 <p><code>GP7</code> goes high if everything is as expected.</p>
-<p>Two peripherals carry pull-up resistors (<code>usePullUp = true</code>), the third does not: the two pairs end up in parallel, as when several off-the-shelf modules are connected to the same bus. The bus works as soon as there is at least one — see <code>Examples.I2c.NoPullUp</code> for the case where there is none.</p>
+<p>Two peripherals carry pull-up resistors (<code>usePullUp = true</code>), the third does not: the two pairs end up in parallel, as when several off-the-shelf modules are connected to the same bus. The bus works as soon as there is at least one — the verification scenario <code>verify_23</code> (<code>Resources/Verification/NoPullUp.mo</code>) covers the case where there is none.</p>
 </html>"));
 end MultiDevice;

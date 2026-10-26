@@ -1,12 +1,12 @@
 within MicroPythonMCU.Peripherals;
 
 model I2cGroveLcdRgb "Grove - LCD RGB Backlight screen (16x2): JHD1313 display controller at 0x3E and PCA9633 backlight driver at 0x62"
-  extends Internal.PartialI2cDevice(addresses = "0x3E, 0x62", usePullUp = true, nOut = 4, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/grove_lcd_rgb.py"));
-  extends Internal.Lcd16x2RgbIcon;
+  extends Internal.Devices.PartialI2cDevice(addresses = "0x3E, 0x62", usePullUp = true, nOut = 4, scriptPath = Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/Scripts/Device/grove_lcd_rgb.py"));
+  extends Internal.Icons.Lcd16x2RgbIcon;
 equation
   when {initial(), change(eventSeq)} then
-    lcdLine1 = Internal.StringToCharCodes(line1, 16) "visible text returned by lines() of the script";
-    lcdLine2 = Internal.StringToCharCodes(line2, 16);
+    lcdLine1 = Internal.Functions.StringToCharCodes(line1, 16) "visible text returned by lines() of the script";
+    lcdLine2 = Internal.Functions.StringToCharCodes(line2, 16);
   end when;
   backlight = {valueOut[1], valueOut[2], valueOut[3]} "red, green, blue returned by outputs() of the script";
   annotation(

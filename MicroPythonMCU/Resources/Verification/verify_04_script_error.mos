@@ -2,8 +2,9 @@
 // omc verify_04_script_error.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
+loadFile("Error.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.Program.Error, stopTime = 5, fileNamePrefix = "ScriptError");
+simulate(Error, stopTime = 5, fileNamePrefix = "ScriptError");
 getErrorString();
 
 // Le résultat de simulate() n'est pas lisible depuis un .mos (r.resultFile

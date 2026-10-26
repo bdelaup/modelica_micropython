@@ -1,5 +1,4 @@
 Loopback
-Echo
 EchoPy
 Sensor
 Regulation
@@ -7,4 +6,3 @@ GpsPy
 StateMachinePy
 Lcd
 Format
-FormatMismatch

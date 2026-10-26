@@ -2,7 +2,7 @@ from machine import Pin, I2C
 import time
 
 # Same bus as Examples.I2c.MultiDevice, but NO component carries the bus
-# pull-up resistors (Examples.I2c.NoPullUp). Only the internal pull-ups of the
+# pull-up resistors (Verification/NoPullUp.mo). Only the internal pull-ups of the
 # microcontroller remain, which I2C() switches on as on the Pico: 50 kOhm
 # against the 30 pF of the three peripherals, the lines rise far too slowly
 # for 400 kHz. The master sees SCL still low when it should be high and

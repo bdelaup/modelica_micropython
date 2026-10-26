@@ -1,4 +1,4 @@
-# Board B of Examples.Radio.Overflow: accumulates what its radio modem
+# Board B of the Radio.Overflow verification model: accumulates what its radio modem
 # delivers on the UART (RX = GP1) and prints it once nothing has arrived for
 # 200 ms.
 from machine import Pin, UART

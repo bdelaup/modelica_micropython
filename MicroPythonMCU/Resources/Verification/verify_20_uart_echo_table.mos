@@ -1,5 +1,5 @@
 // Scénario de vérification n°21 : écho paramétré, mode Table
-// (Examples.Uart.Echo - même montage que Uart.EchoPy, echo.behaviour = Table).
+// (modèle Echo.mo de ce dossier - même montage que Uart.EchoPy, echo.behaviour = Table).
 //
 // Ce que ce scénario vérifie et que verify_14 ne vérifie plus : l'écho OCTET PAR
 // OCTET du mode Table (echoEnabled). Chaque octet repart dès qu'il est décodé,
@@ -8,8 +8,9 @@
 // ensemble distinguent les deux modes sur le même schéma.
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
+loadFile("Echo.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.Uart.Echo, stopTime = 0.1, numberOfIntervals = 20000, fileNamePrefix = "UartEchoTable");
+simulate(Echo, stopTime = 0.1, numberOfIntervals = 20000, fileNamePrefix = "UartEchoTable");
 b := getErrorString();
 
 f := "UartEchoTable_res.mat";

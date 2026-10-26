@@ -1,4 +1,4 @@
-// Scénario de vérification n°45 : désaccord de parité (Examples.Uart.FormatMismatch).
+// Scénario de vérification n°45 : désaccord de parité (modèle FormatMismatch.mo de ce dossier).
 // omc verify_45_uart_format_mismatch.mos   (depuis ce dossier)
 //
 // Ce que ce scénario vérifie : le microcontrôleur parle en 8E2, l'appareil
@@ -9,8 +9,9 @@
 // reported », puis un bilan en fin de simulation (15 octets de part et d'autre).
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
+loadFile("FormatMismatch.mo"); getErrorString();
 
-buildModel(MicroPythonMCU.Examples.Uart.FormatMismatch, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartFormatMismatch");
+buildModel(FormatMismatch, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartFormatMismatch");
 b := getErrorString();
 ret := system(".\UartFormatMismatch.bat", "UartFormatMismatch_run.txt");
 log := readFile("UartFormatMismatch_run.txt");

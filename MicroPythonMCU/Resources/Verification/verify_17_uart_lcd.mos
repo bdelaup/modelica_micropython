@@ -4,7 +4,7 @@
 //
 // Ce que ce scénario vérifie : le texte affiché est bien celui réellement
 // décodé bit à bit sur la broche RX, et le défilement à deux lignes fonctionne
-// sur l'icône factorisée Internal.TwoLineTextIcon, partagée avec Display.
+// sur l'icône factorisée Internal.Icons.TwoLineTextIcon, partagée avec Display.
 //
 // NB : val() sur un index de tableau via une variable de boucle .mos ne se
 // resout pas (NaN) - les indices sont donc ecrits en litteral.

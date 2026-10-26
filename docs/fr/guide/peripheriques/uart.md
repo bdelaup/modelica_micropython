@@ -70,7 +70,7 @@ L'appareil utilise **son propre** format, réglé par `dataBits`, `parity` et `s
 uart = UART(0, baudrate=1200, bits=8, parity=0, stop=2, tx=Pin(5), rx=Pin(4))   # appareil : parity = Even, stopBits = 2
 ```
 
-En cas de désaccord, l'appareil et le microcontrôleur gardent les octets reçus en erreur mais le signalent au journal (`parity error`, `framing error` ; les dix premiers, puis un total en fin de simulation). Un désaccord de parité laisse passer des octets justes, simplement signalés ; un désaccord de débit ou de nombre de bits donne des octets faux. Les exemples `Uart.Format` et `Uart.FormatMismatch` montrent les deux situations.
+En cas de désaccord, l'appareil et le microcontrôleur gardent les octets reçus en erreur mais le signalent au journal (`parity error`, `framing error` ; les dix premiers, puis un total en fin de simulation). Un désaccord de parité laisse passer des octets justes, simplement signalés ; un désaccord de débit ou de nombre de bits donne des octets faux. L'exemple `Uart.Format` montre la situation accordée ; le scénario de vérification `verify_45` (`Resources/Verification/FormatMismatch.mo`) illustre le désaccord.
 
 ## Paramètres
 
@@ -199,7 +199,7 @@ Pour observer la trame d'un `MCU` seul, sans appareil, on relie sa broche TX à 
 | Exemple | Ce qu'il montre |
 |---|---|
 | `Uart.Loopback` | Trame bouclée sur le microcontrôleur, lisible à l'oscilloscope |
-| `Uart.EchoPy`, `Uart.Echo` | Dialogue avec un appareil d'écho, en mode `Script` puis `Table` |
+| `Uart.EchoPy` | Dialogue avec un appareil d'écho, en mode `Script` |
 | `Uart.Sensor` | Interrogation d'un capteur de température, puis envoi d'une consigne |
 | `Uart.Regulation` | Boucle de régulation fermée à travers la liaison série |
 | `Uart.GpsPy` | Trames spontanées d'un module GPS, comptées par le programme |

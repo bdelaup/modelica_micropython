@@ -3,7 +3,7 @@ within MicroPythonMCU.Interfaces;
 type UartBehaviour = enumeration(
     Table "Command table (parameters)",
     Script "Python script (handlers)")
-  "Origin of the behaviour of an external serial device (Internal.PartialUartDevice)"
+  "Origin of the behaviour of an external serial device (Internal.Devices.PartialUartDevice)"
   annotation(
     Documentation(info = "<html>
 <p>Explicit selector rather than an implicit precedence rule between <code>commandTable</code> and <code>scriptPath</code>: OMEdit renders an enumeration as a drop-down list, and the <code>Dialog(enable = ...)</code> of the model grey out the group of parameters that no longer applies. The ambiguous case \"both are filled in\" therefore cannot happen.</p>

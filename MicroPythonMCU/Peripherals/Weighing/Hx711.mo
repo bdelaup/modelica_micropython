@@ -1,7 +1,7 @@
 within MicroPythonMCU.Peripherals.Weighing;
 
 model Hx711 "HX711 converter: 24-bit amplifier and ADC for a gauge bridge, PD_SCK/DOUT serial link"
-  extends Internal.PartialSupplyPin(IQ = 1.5e-3);
+  extends Internal.Devices.PartialSupplyPin(IQ = 1.5e-3);
   import Modelica.Units.SI;
   parameter Real rate(unit = "Hz") = 10 "Conversion rate (RATE pin of the chip: 10 or 80 samples per second)" annotation(
     Dialog(group = "Conversion"));

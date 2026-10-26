@@ -70,7 +70,7 @@ The device uses **its own** format, set by `dataBits`, `parity` and `stopBits` (
 uart = UART(0, baudrate=1200, bits=8, parity=0, stop=2, tx=Pin(5), rx=Pin(4))   # device: parity = Even, stopBits = 2
 ```
 
-On a mismatch, the device and the microcontroller keep the bytes received with an error but report them in the log (`parity error`, `framing error`; the first ten, then a total at the end of the simulation). A parity mismatch lets correct bytes through, merely reported; a baud rate or data-bit mismatch gives wrong bytes. The `Uart.Format` and `Uart.FormatMismatch` examples show both situations.
+On a mismatch, the device and the microcontroller keep the bytes received with an error but report them in the log (`parity error`, `framing error`; the first ten, then a total at the end of the simulation). A parity mismatch lets correct bytes through, merely reported; a baud rate or data-bit mismatch gives wrong bytes. The `Uart.Format` example shows the matched case; the verification scenario `verify_45` (`Resources/Verification/FormatMismatch.mo`) shows the mismatch.
 
 ## Parameters
 
@@ -201,7 +201,7 @@ To watch the frame of an `MCU` alone, without a device, connect its TX pin to it
 | Example | What it shows |
 |---|---|
 | `Uart.Loopback` | Frame looped back onto the microcontroller, readable as on an oscilloscope |
-| `Uart.EchoPy`, `Uart.Echo` | Dialogue with an echo device, in `Script` then `Table` mode |
+| `Uart.EchoPy` | Dialogue with an echo device, in `Script` mode |
 | `Uart.Sensor` | Querying a temperature sensor, then sending a setpoint |
 | `Uart.Regulation` | Closed control loop through the serial link |
 | `Uart.GpsPy` | Spontaneous frames from a GPS module, counted by the program |

@@ -1,5 +1,5 @@
 // Scénario de vérification n°23 : bus I2C SANS résistance de tirage de bus
-// (Examples.I2c.NoPullUp, même schéma que MultiDevice avec usePullUp = false
+// (modèle NoPullUp.mo de ce dossier, même schéma que MultiDevice avec usePullUp = false
 // partout). Le microcontrôleur tente une écriture puis un scan().
 //
 // Ce que ce scénario vérifie : en drain ouvert, seules les résistances de
@@ -11,8 +11,9 @@
 // que ce soit. Pendant de verify_22, qui vérifie le même bus AVEC tirages.
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
+loadFile("NoPullUp.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.I2c.NoPullUp, stopTime = 0.003, numberOfIntervals = 3000, fileNamePrefix = "I2cNoPullUp");
+simulate(NoPullUp, stopTime = 0.003, numberOfIntervals = 3000, fileNamePrefix = "I2cNoPullUp");
 b := getErrorString();
 
 f := "I2cNoPullUp_res.mat";

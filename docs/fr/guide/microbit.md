@@ -88,9 +88,8 @@ pour une valeur de paramètre, **Table** pour une table horaire interne
 son port **étiqueté apparaît alors au bord correspondant de l'icône**,
 tourné vers la carte (accéléromètre sur le bord droit, boussole sur le bord
 gauche, température et lumière sur le bord haut) — la valeur peut donc varier
-pendant la simulation. L'exemple `Examples.MicroBit.SensorInputs` câble
-**tous** les capteurs et les deux boutons sur des blocs `TimeTable`,
-`Constant` et `BooleanPulse`.
+pendant la simulation. On y branche des blocs `TimeTable` (valeurs
+variantes), `Constant` (niveaux fixes) ou `BooleanPulse` (appuis).
 
 | Capteur | Paramètres (unité) | API |
 |---|---|---|

@@ -1,4 +1,4 @@
-// Scénario de vérification n°52 : tampon d'émission plein (Examples.Radio.Overflow).
+// Scénario de vérification n°52 : tampon d'émission plein (modèle Overflow.mo de ce dossier).
 // omc verify_52_radio_overflow.mos   (depuis ce dossier)
 //
 // Ce que ce scénario vérifie : 40 octets écrits d'un coup à 9600 bauds (un
@@ -12,8 +12,9 @@
 // bien été plein (txFill = 16 à t = 45 ms).
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
+loadFile("Overflow.mo"); getErrorString();
 
-buildModel(MicroPythonMCU.Examples.Radio.Overflow, stopTime = 0.5, numberOfIntervals = 5000, fileNamePrefix = "RadioOverflow");
+buildModel(Overflow, stopTime = 0.5, numberOfIntervals = 5000, fileNamePrefix = "RadioOverflow");
 b := getErrorString();
 ret := system(".\\RadioOverflow.bat", "RadioOverflow_run.txt");
 log := readFile("RadioOverflow_run.txt");

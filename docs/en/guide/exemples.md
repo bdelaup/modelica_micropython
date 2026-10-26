@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 52 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 44 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite; the scenarios that are not user-facing examples (error cases, internal behaviours) are not in `Examples`: their models live in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification), next to the `.mos` scripts. Program comments and printed messages are in French.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -23,7 +23,6 @@ The `MicroPythonMCU.Examples` package holds 52 ready-to-simulate models: open th
 | `Gpio.LedChaser` | Chaser on 8 LEDs placed around the microcontroller | LED icons (animated replay) | `led_chaser.py` |
 | `Gpio.PinEcho` | `GP1` toggles, `GP2` reads back its electrical state, `GP3` copies it | `mcu.GP1.v`, `mcu.GP3.v` | `pin_echo.py` |
 | `Gpio.InputReactivity` | A button on `GP1` wakes the program during a `sleep(3600)` | `mcu.GP1.v`, program output | `input_reactive.py` *(V)* |
-| `Gpio.Timing` | Cost of a pin access (`gpioOpTime`): `on()`/`off()` pulse without `sleep`, burst, busy-wait, masked IRQ | `mcu.GP0.v` (zoom to the µs) | `gpio_timing.py` *(V)* |
 | `Gpio.Pull` | Internal pull resistors: two buttons without any external resistor (`Pin.PULL_UP` to ground, `Pin.PULL_DOWN` to 3.3 V), and a pin whose pull changes against a 1 MΩ external resistor | `mcu.GP0.v`, `mcu.GP3.v`, `mcu.GP4.v` | `gpio_pull.py` |
 
 ![Woken up by an input during a sleep](../images/sim/input-reactivity.svg)
@@ -35,7 +34,6 @@ The `MicroPythonMCU.Examples` package holds 52 ready-to-simulate models: open th
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
 | `Adc.Read` | `GP1` as an analog input on a voltage divider (≈ 2.2 V); threshold copied to an LED | `mcu.GP1.v`, `mcu.GP0.v` | `adc_read.py` |
-| `Adc.Sleep` | An analog input crossing the logic threshold does not wake the program | `mcu.GP0.v`, `mcu.GP1.v` | `adc_sleep.py` |
 
 ## PWM (`Examples.Pwm`)
 
@@ -63,8 +61,6 @@ The `MicroPythonMCU.Examples` package holds 52 ready-to-simulate models: open th
 
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
-| `Program.SleepCompression` | Two `sleep(3600)` simulated in a fraction of a second of computation | simulation duration | `sleep_long.py` *(V)* |
-| `Program.Error` | An uncaught exception stops the simulation, Python traceback in the log | log | `script_error.py` *(V)* |
 | `Program.Imports` | Import of a module placed next to the program and of a library from another folder (`libraryPath`) | LEDs on `GP0` and `GP1` | `import_demo.py` |
 | `Program.Debug` | Step-by-step debugging with VS Code: the simulation waits until VS Code attaches, simulated time frozen during pauses (see [Debugging with VS Code](debogage.md)) | VS Code, LEDs on `GP0` and `GP1`, log | `debug_demo.py` |
 
@@ -88,14 +84,12 @@ The `MicroPythonMCU.Examples` package holds 52 ready-to-simulate models: open th
 |---|---|---|---|
 | `Uart.Loopback` | 8N1 frame looped back onto the microcontroller | `mcu.GP0.v` | `uart_loopback.py` |
 | `Uart.EchoPy` | Dialogue with an echo device described by a Python script | `mcu.GP5.v`, `mcu.GP4.v`, log | `uart_echo.py` |
-| `Uart.Echo` | Same setup, echo set in the device's table | same | `uart_echo.py` |
 | `Uart.Sensor` | Querying a temperature sensor, then sending a setpoint | `sensor.valueOut[1]`, log | `uart_sensor.py` |
 | `Uart.Regulation` | Closed-loop control through the serial link alone | `plant.y`, `sensor.valueOut[1]` | `uart_regulation.py` |
 | `Uart.GpsPy` | A GPS module sends its frames without being asked | log | `uart_gps.py` |
 | `Uart.StateMachinePy` | Device whose reply depends on its history (Python state machine) | log | `uart_state_machine.py` |
 | `Uart.Lcd` | Two lines written to a 20x2 serial display | display icon | `uart_lcd.py` |
 | `Uart.Format` | 8E2 link (even parity, 2 stop bits) with an echo device set the same way | `mcu.GP5.v`, `mcu.GP7.v` | `uart_format.py` |
-| `Uart.FormatMismatch` | Same circuit, device in odd parity: bytes kept, parity errors in the log | log | `uart_format.py` |
 
 ![Serial frame](../images/sim/uart-trame.svg)
 
@@ -105,7 +99,6 @@ The `MicroPythonMCU.Examples` package holds 52 ready-to-simulate models: open th
 |---|---|---|---|
 | `I2c.Echo` | Writing and reading back a frame, reading a register after a repeated START | `echo.SDA.v`, `echo.SCL.v` | `i2c_echo.py` |
 | `I2c.MultiDevice` | Three devices on a 400 kHz bus, found by `scan()` | log | `i2c_multi.py` |
-| `I2c.NoPullUp` | Bus without external pull-up resistors: the internal pull-ups alone (50 kΩ) are too slow at 400 kHz, `OSError(ETIMEDOUT)` | slow rising edges, log | `i2c_nopullup.py` |
 | `I2c.GroveLcd` | Grove LCD RGB display driven by an unmodified off-the-shelf driver | display icon | `i2c_grove_lcd_rgb.py` |
 
 ## Several microcontrollers (`Examples.MultiMcu`)
@@ -134,7 +127,6 @@ Transparent radio modules between the UARTs of two microcontrollers, joined by a
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
 | `Radio.Link` | The PING/PONG programs of `MultiMcu.Uart`, unchanged, through two radio modules | `mcuA.GP0.v`, `radioA.carrierOn`, `mcuB.GP1.v`, `radioA.sTx` (FSK carrier, output every 2 µs), summary of each module in the log | `uart_ping.py`, `uart_pong.py` |
-| `Radio.Overflow` | 40 bytes at 9600 baud, transmitted again at 1200 bit/s with a 16-byte buffer: the end of the message is lost | `radioA.txFill`, `radioA.nDropped`, what B prints | `radio_burst.py`, `radio_listen.py` |
 | `Radio.Modulations` | The character `U` in OOK, ASK, FSK and BPSK | `txOOK.sTx`, `txASK.sTx`, `txFSK.sTx`, `txBPSK.sTx` between 25 and 35 ms | `radio_beacon.py` |
 | `Weighing.KitchenScale` | Complete kitchen scale, TARE button | display icon | `kitchen_scale.py` |
 
@@ -164,6 +156,6 @@ The `LogicAnalyzer` probe decodes the wires of a circuit into a text file, opene
 | Example | What it shows | What to watch | Program |
 |---|---|---|---|
 | `Analyzer.UartLink` | Probe on both wires of the 8E2 link of `Uart.Format`, channels of kind `Uart` | `UartLink.analyzer.txt`: "Hello, parity!" in hex + ASCII, bits and bytes under the timing diagram; the echo overlaps the message | `uart_format.py` |
-| `Analyzer.UartErrors` | Same probe, device in odd parity (`Uart.FormatMismatch`) | bytes sent back marked `!` and `!P` | `uart_format.py` |
+| `Analyzer.UartErrors` | Same probe, device in odd parity (verification scenario `verify_45`) | bytes sent back marked `!` and `!P` | `uart_format.py` |
 | `Analyzer.I2cBus` | Probe on the bus of `I2c.Echo`: SCL as `Logic`, SDA as `I2cSda` | one line per transaction, NACK ending a read, repeated START | `i2c_echo.py` |
 | `Analyzer.Hx711Serial` | Probe on the PD_SCK/DOUT link of `Weighing.Hx711Read`, DOUT as `SyncData` (24 bits, MSB first) | one word per conversion, gain pulses, compressed silences | `hx711_read.py` |

@@ -49,7 +49,7 @@ A module only hears the transmitters **tuned to its channel** (same frequency, w
 
 ![Full buffer in Radio.Overflow](../../images/sim/radio-overflow.svg)
 
-*`Radio.Overflow` example: 40 bytes arrive at 9600 baud, but the module transmits them again at only 1200 bit/s. The 16-byte buffer fills up (`txFill`), then every byte arriving while it is full is lost (`nDropped`). A place is freed only when a radio frame leaves.*
+*Verification scenario `Radio.Overflow` (`Resources/Verification/Overflow.mo`): 40 bytes arrive at 9600 baud, but the module transmits them again at only 1200 bit/s. The 16-byte buffer fills up (`txFill`), then every byte arriving while it is full is lost (`nDropped`). A place is freed only when a radio frame leaves.*
 
 ## Masked synchronisation and drawn signal
 
@@ -190,7 +190,6 @@ At the end of the simulation, each module writes a **one-line summary** in the l
 | Example | What it shows |
 |---|---|
 | `Radio.Link` | The PING/PONG programs of `MultiMcu.Uart`, unchanged, through two radio modules |
-| `Radio.Overflow` | An air data rate eight times slower than the serial link and a 16-byte buffer: the end of the message is lost |
 | `Radio.Modulations` | The same character in OOK, ASK, FSK and BPSK |
 
 Things to try on `Radio.Link`: set `radioB.fCarrier` to 440 MHz (B no longer hears anything), or `radioB.airBaudrate` to 4800 (the frames arrive wrong and are dropped).

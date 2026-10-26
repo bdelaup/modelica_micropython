@@ -22,8 +22,8 @@ equation
     Diagram(coordinateSystem(extent = {{-160, -100}, {120, 80}})),
     experiment(StopTime = 0.4, Interval = 5e-6),
     Documentation(info = "<html>
-<p>Same circuit as <code>Examples.Uart.Echo</code>, with another <strong>frame format</strong>: 8 data bits, <strong>even parity</strong>, <strong>2 stop bits</strong> (8E2). The program opens its UART with <code>UART(0, baudrate=1200, bits=8, parity=0, stop=2, ...)</code>, and the device is set to the same format by its parameters <code>dataBits</code>, <code>parity</code> and <code>stopBits</code> (\"Serial link\" group); its icon shows the format it uses.</p>
+<p>Same circuit as <code>Examples.Uart.EchoPy</code>, with another <strong>frame format</strong>: 8 data bits, <strong>even parity</strong>, <strong>2 stop bits</strong> (8E2). The program opens its UART with <code>UART(0, baudrate=1200, bits=8, parity=0, stop=2, ...)</code>, and the device is set to the same format by its parameters <code>dataBits</code>, <code>parity</code> and <code>stopBits</code> (\"Serial link\" group); its icon shows the format it uses.</p>
 <p>Plotting <code>mcu.GP5.v</code> shows a 12-bit frame lasting 10 ms: start bit, 8 data bits least significant first, the parity bit, then two stop bits. The parity bit makes the total number of 1 bits even: <code>'H'</code> (0x48) has two of them, so its parity bit is 0.</p>
-<p>The program sets <code>GP7</code> high if the line read back is identical to the one sent. <code>Examples.Uart.FormatMismatch</code> extends this example and only changes the parity of the device, to show what a configuration mismatch produces.</p>
+<p>The program sets <code>GP7</code> high if the line read back is identical to the one sent. The verification scenario <code>verify_45</code> (<code>Resources/Verification/FormatMismatch.mo</code>) sets the device to odd parity, to show what a configuration mismatch produces.</p>
 </html>"));
 end Format;

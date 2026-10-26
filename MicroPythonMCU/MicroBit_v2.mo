@@ -1,7 +1,7 @@
 within MicroPythonMCU;
 
 model MicroBit_v2 "BBC micro:bit v2 board: nRF52833 programmable in MicroPython, real pinout and dimensions, multiplexed 5x5 LED matrix, buttons A/B, integrated sensors and USB power supply"
-  extends Internal.PartialUsbBoard(ICore = 0.004, redeclare Internal.McuCore core(final nPins = 34, final pinIds = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35}, final pinCaps = {7, 7, 7, 7, 7, 3, 3, 3, 3, 3, 7, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1}, final boardProfile = "microbit") "The nRF52833: pin[1..19] = P0-P16, P19, P20 (edge), pin[20..24] = matrix rows ROW1-ROW5 (internal), pin[25..32] = accelerometer X/Y/Z, compass X/Y/Z, temperature, light (internal), pin[33..34] = TX/RX of the on-board radio (internal)" annotation(
+  extends Internal.Boards.PartialUsbBoard(ICore = 0.004, redeclare Internal.Boards.McuCore core(final nPins = 34, final pinIds = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35}, final pinCaps = {7, 7, 7, 7, 7, 3, 3, 3, 3, 3, 7, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1}, final boardProfile = "microbit") "The nRF52833: pin[1..19] = P0-P16, P19, P20 (edge), pin[20..24] = matrix rows ROW1-ROW5 (internal), pin[25..32] = accelerometer X/Y/Z, compass X/Y/Z, temperature, light (internal), pin[33..34] = TX/RX of the on-board radio (internal)" annotation(
     Placement(transformation(origin = {-110, 40}, extent = {{-70, -70}, {70, 70}}))));
   type InputSource = MicroPythonMCU.Interfaces.InputSource "Source of each button and integrated sensor value (alias of the shared type, so that existing models keep writing MicroBit_v2.InputSource.Connector)";
   parameter Modelica.Units.SI.Voltage VTgt = 3.0 "Voltage of the 3V rail (output of the on-board regulator, high level and ADC reference of the pins)" annotation(
@@ -135,7 +135,7 @@ model MicroBit_v2 "BBC micro:bit v2 board: nRF52833 programmable in MicroPython,
     Placement(transformation(origin = {330, -300}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {-35, 183.3}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
   Modelica.Blocks.Interfaces.RealInput lightIn if lightSource == InputSource.Connector "Light level 0-255 read by display.read_light_level() from the diagram" annotation(
     Placement(transformation(origin = {330, -340}, extent = {{-6, -6}, {6, 6}}), iconTransformation(origin = {35, 183.3}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
-  Internal.Rt6150 regulator(VOut = VTgt, eta = eta) "Buck-boost regulator USB -> 3V rail (RT6150)" annotation(
+  Internal.Boards.Rt6150 regulator(VOut = VTgt, eta = eta) "Buck-boost regulator USB -> 3V rail (RT6150)" annotation(
     Placement(transformation(origin = {240, 195}, extent = {{-20, -20}, {20, 20}}, rotation = 270)));
   Modelica.Electrical.Analog.Sources.ConstantVoltage usbSupply(V = VUsb) if usbConnected "USB supply (5 V)" annotation(
     Placement(transformation(origin = {240, 300}, extent = {{-10, -10}, {10, 10}}, rotation = 270)));
@@ -213,41 +213,41 @@ protected
     Placement(transformation(origin = {-220, 60}, extent = {{-10, -10}, {10, 10}})));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_accelX "Integrated sensor X axis of the accelerometer, as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -60}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_accelX(source = accelXSource, k = accelX, table = accelXTable) "Source of X axis of the accelerometer: constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_accelX(source = accelXSource, k = accelX, table = accelXTable) "Source of X axis of the accelerometer: constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_accelY "Integrated sensor Y axis of the accelerometer, as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -100}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_accelY(source = accelYSource, k = accelY, table = accelYTable) "Source of Y axis of the accelerometer: constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_accelY(source = accelYSource, k = accelY, table = accelYTable) "Source of Y axis of the accelerometer: constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_accelZ "Integrated sensor Z axis of the accelerometer (default: gravity, board lying display up), as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -140}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_accelZ(source = accelZSource, k = accelZ, table = accelZTable) "Source of Z axis of the accelerometer (default: gravity, board lying display up): constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_accelZ(source = accelZSource, k = accelZ, table = accelZTable) "Source of Z axis of the accelerometer (default: gravity, board lying display up): constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_magX "Integrated sensor X axis of the magnetometer/compass, as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -180}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_magX(source = magXSource, k = magX, table = magXTable) "Source of X axis of the magnetometer/compass: constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_magX(source = magXSource, k = magX, table = magXTable) "Source of X axis of the magnetometer/compass: constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_magY "Integrated sensor Y axis of the magnetometer/compass (default: field pointing along +Y), as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -220}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_magY(source = magYSource, k = magY, table = magYTable) "Source of Y axis of the magnetometer/compass (default: field pointing along +Y): constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_magY(source = magYSource, k = magY, table = magYTable) "Source of Y axis of the magnetometer/compass (default: field pointing along +Y): constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_magZ "Integrated sensor Z axis of the magnetometer/compass, as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -260}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_magZ(source = magZSource, k = magZ, table = magZTable) "Source of Z axis of the magnetometer/compass: constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_magZ(source = magZSource, k = magZ, table = magZTable) "Source of Z axis of the magnetometer/compass: constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_temp "Integrated sensor Temperature read by microbit.temperature(), as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -300}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_temp(source = tempSource, k = temp, table = tempTable) "Source of Temperature read by microbit.temperature(): constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_temp(source = tempSource, k = temp, table = tempTable) "Source of Temperature read by microbit.temperature(): constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
   Modelica.Electrical.Analog.Sources.SignalVoltage sensor_light "Integrated sensor Light level 0-255 read by display.read_light_level(), as seen by the ADC" annotation(
     Placement(transformation(origin = {340, -340}, extent = {{-10, -10}, {10, 10}})));
-  MicroPythonMCU.Internal.SensorSource src_light(source = lightSource, k = light, table = lightTable) "Source of Light level 0-255 read by display.read_light_level(): constant, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.SensorSource src_light(source = lightSource, k = light, table = lightTable) "Source of Light level 0-255 read by display.read_light_level(): constant, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
-  MicroPythonMCU.Internal.ButtonSource src_buttonA(source = buttonASource, pressed = buttonAPressed, table = buttonATable) "Source of button A: constant state, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.ButtonSource src_buttonA(source = buttonASource, pressed = buttonAPressed, table = buttonATable) "Source of button A: constant state, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
-  MicroPythonMCU.Internal.ButtonSource src_buttonB(source = buttonBSource, pressed = buttonBPressed, table = buttonBTable) "Source of button B: constant state, time table or connector wired from the diagram" annotation(
+  MicroPythonMCU.Internal.Sources.ButtonSource src_buttonB(source = buttonBSource, pressed = buttonBPressed, table = buttonBTable) "Source of button B: constant state, time table or connector wired from the diagram" annotation(
     Placement(visible = false));
-  MicroPythonMCU.Internal.OnBoardRadioModem radioModem "On-board 2.4 GHz radio of the micro:bit, as a transparent modem on two internal pins of the core - the microbit.radio protocol lives in the Python shim" annotation(
+  MicroPythonMCU.Internal.Devices.OnBoardRadioModem radioModem "On-board 2.4 GHz radio of the micro:bit, as a transparent modem on two internal pins of the core - the microbit.radio protocol lives in the Python shim" annotation(
     Placement(transformation(origin = {250, 230}, extent = {{-10, -10}, {10, 10}})));
 equation
   connect(core.pin[20], led_0_0.p) annotation(

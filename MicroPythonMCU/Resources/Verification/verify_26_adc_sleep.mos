@@ -2,8 +2,9 @@
 // omc verify_26_adc_sleep.mos   (depuis ce dossier)
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
+loadFile("Sleep.mo"); getErrorString();
 
-simulate(MicroPythonMCU.Examples.Adc.Sleep, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "AdcSleep");
+simulate(Sleep, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "AdcSleep");
 b := getErrorString();
 
 // La sinusoïde sur GP0 (ADC) traverse le seuil logique 10 fois par seconde.
