@@ -5,6 +5,8 @@ brochage et cotes réels, matrice LED 5×5 multiplexée, boutons A/B, capteurs
 intégrés, alimentation USB. On y exécute le même programme que sur une vraie
 micro:bit, écrit pour l'API officielle (`from microbit import *`).
 
+![Icône réelle de MicroBit_v2 capturée dans OMEdit : carte micro:bit v2 avec matrice LED, boutons A/B, broches edge et entrées des capteurs](../images/microbit-icone.png){ width="440" }
+
 ## Démarrage rapide
 
 1. Poser un composant `MicroBit_v2` dans le schéma, relier sa broche `GND` à
@@ -45,6 +47,8 @@ display.set_pixel(0, 0, 9)            # luminosité 0 (éteinte) à 9 (maxi)
 display.clear()
 display.read_light_level()            # niveau de lumière 0-255
 ```
+
+![Capture MCP du diagramme de Examples.MicroBit.Heart : carte, entrées logiques des boutons A/B et masse](../images/microbit-heart-schema.png){ width="650" }
 
 Comme sur la vraie carte, la matrice est **multiplexée sur 10 GPIO** (5
 lignes + 5 colonnes) et balayée à 60 Hz : `display.show()` n'allume pas 25
@@ -171,6 +175,8 @@ carte ; le `RadioModem` reste l'outil pour les modulations. L'exemple
 `Examples.MicroBit.RadioChat` fait dialoguer deux cartes, et la radio coexiste
 avec `machine.UART` (deux moteurs distincts, l'un interne à la radio, l'autre
 au service du programme).
+
+![Capture MCP du diagramme de Examples.MicroBit.RadioChat : deux cartes MicroBit_v2, leurs ports d'antenne reliés et chacune mise à la masse](../images/microbit-radio-schema.png){ width="700" }
 
 ## Limites spécifiques à la micro:bit
 

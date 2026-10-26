@@ -5,6 +5,8 @@ real pinout and dimensions, multiplexed 5x5 LED matrix, A/B buttons, on-board
 sensors, USB power supply. It runs the same program as on a physical
 micro:bit, written for the official API (`from microbit import *`).
 
+![Actual MicroBit_v2 icon captured in OMEdit: micro:bit v2 board with LED matrix, A/B buttons, edge pins, and sensor inputs](../images/microbit-icone.png){ width="440" }
+
 ## Quick start
 
 1. Drop a `MicroBit_v2` component in the diagram, connect its `GND` pin to a
@@ -44,6 +46,8 @@ display.set_pixel(0, 0, 9)                  # brightness 0 (off) to 9 (max)
 display.clear()
 display.read_light_level()                  # light level 0-255
 ```
+
+![MCP capture of the Examples.MicroBit.Heart diagram: board, logical inputs for buttons A/B, and ground](../images/microbit-heart-schema.png){ width="650" }
 
 As on the real board, the matrix is **multiplexed over 10 GPIO** (5 rows +
 5 columns) and scanned at 60 Hz: `display.show()` does not drive 25 outputs,
@@ -168,6 +172,8 @@ micro:bits. No modulated signal is plotted on the board; the `RadioModem`
 remains the tool for modulations. The example `Examples.MicroBit.RadioChat`
 makes two boards talk, and the radio coexists with `machine.UART` (two
 distinct engines, one internal to the radio, one for the program).
+
+![MCP capture of the Examples.MicroBit.RadioChat diagram: two MicroBit_v2 boards, their antenna ports connected, and each grounded](../images/microbit-radio-schema.png){ width="700" }
 
 ## micro:bit specific limits
 
