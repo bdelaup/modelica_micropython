@@ -41,7 +41,7 @@ Autant de périphériques qu'on veut se partagent les deux fils ; chacun ne rép
 
 Les scripts par défaut sont dans `Resources/Scripts/Device/`.
 
-<!-- ILLUSTRATION grove-lcd : icône de I2cGroveLcdRgb affichant « hello World » sur fond coloré (fin de simulation de I2c.GroveLcd) (cf. docs/ILLUSTRATIONS.md) -->
+![Ic?ne de I2cGroveLcdRgb affichant ? hello World ? sur fond color? (fin de I2c.GroveLcd)](../../images/grove-lcd.gif){ width="300" }
 
 ### L'écran Grove LCD RGB
 

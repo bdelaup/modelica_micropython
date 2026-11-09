@@ -38,12 +38,13 @@
 | Système de fichiers façon flash, `boot.py` / `main.py` | `open()`, `os` | [API](guide/api.md#systeme-de-fichiers-open-et-os) |
 | Import de modules, drivers du commerce | `import` | [Le bloc MCU](guide/mcu.md#script-python) |
 | Carte Raspberry Pi Pico : brochage réel, alimentation USB / pile, mise sous tension | `RPi_Pico` (bloc) | [La carte Raspberry Pi Pico](guide/pico.md) |
+| Carte Seeed Studio XIAO RP2040 : pastilles D0-D10, LED RGB active bas, USB ou alimentation externe 5 V | `XIAO_rp2040` (bloc) | [La carte XIAO RP2040](guide/xiao-rp2040.md) |
 
 Un `time.sleep(1)` ne coûte aucun temps réel : le solveur avance directement à l'échéance. Une heure simulée s'exécute en une fraction de seconde.
 
 ## Périphériques fournis
 
-LED, afficheur pédagogique, appareils série (écho, capteur de température, GPS, afficheur 20x2, appareil générique), périphériques I2C (écran Grove LCD RGB, écho, périphérique générique) une chaîne de pesée complète (corps d'épreuve, pont de jauges, convertisseur HX711), une sonde d'analyseur logique et des modules radio (réglés par défaut comme un APC220) dont le signal modulé est tracé. Les 48 [exemples](guide/exemples.md) les mettent tous en œuvre, jusqu'à une balance de cuisine qui exécute sans modification des drivers MicroPython du commerce.
+LED, afficheur pédagogique, appareils série (écho, capteur de température, GPS, afficheur 20x2, appareil générique), périphériques I2C (écran Grove LCD RGB, écho, périphérique générique), une chaîne de pesée complète (corps d'épreuve, pont de jauges, convertisseur HX711), une sonde d'analyseur logique et des modules radio (réglés par défaut comme un APC220) dont le signal modulé est tracé. Les 53 [exemples](guide/exemples.md) couvrent ces composants et les cartes Pico, micro:bit et XIAO, jusqu'à une balance de cuisine qui exécute sans modification des drivers MicroPython du commerce.
 
 ## Limites actuelles
 

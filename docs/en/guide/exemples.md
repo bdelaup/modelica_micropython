@@ -1,6 +1,6 @@
 # Examples
 
-The `MicroPythonMCU.Examples` package holds 44 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite; the scenarios that are not user-facing examples (error cases, internal behaviours) are not in `Examples`: their models live in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification), next to the `.mos` scripts. Program comments and printed messages are in French.
+The `MicroPythonMCU.Examples` package holds 53 ready-to-simulate models: open the model, simulate, plot the listed variables. Each one runs the program named in the "Program" column, to be read alongside: in [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), or in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) for those marked *(V)*. The examples also serve as scenarios for the library's verification suite; the scenarios that are not user-facing examples (error cases, internal behaviours) are not in `Examples`: their models live in [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification), next to the `.mos` scripts. Program comments and printed messages are in French.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -148,6 +148,20 @@ The replica of the board and its power supply (see [The Raspberry Pi Pico board]
 ![Pico.PowerUp: VSYS and 3.3 V rail, GP15; the program starts at 0.38 s and stops at 1.565 s](../images/sim/pico-power.svg)
 
 *Labels in French: "tension" = voltage, "carte alimentée" = board supplied, "le programme démarre" = the program starts, "arrêt définitif, broches relâchées" = stopped for good, pins released, "temps" = time.*
+
+## Seeed XIAO RP2040
+
+The replica of the standard XIAO RP2040 board (see [The XIAO RP2040 board](xiao-rp2040.md)).
+
+| `XIAO_rp2040.Blink` | `XIAO_rp2040.Adc` | `XIAO_rp2040.ExternalSupply` |
+|---|---|---|
+| ![XIAO_rp2040.Blink](../images/exemple-xiao-blink.png){ width="260" } | ![XIAO_rp2040.Adc](../images/exemple-xiao-adc.png){ width="260" } | ![XIAO_rp2040.ExternalSupply](../images/exemple-xiao-externalsupply.png){ width="240" } |
+
+| Example | What it shows | What to watch | Program |
+|---|---|---|---|
+| `XIAO_rp2040.Blink` | USB, active-low RGB LED and external LED on `D6` / GPIO0 | `xiao.vRail`, `xiao.D6.v`, RGB channel currents | `xiao_blink.py` |
+| `XIAO_rp2040.Adc` | Read 1.65 V on `D0` / GPIO26 using `ADC(0)` | `xiao.D0.v`, log | `xiao_adc.py` |
+| `XIAO_rp2040.ExternalSupply` | External 5 V supply on `V5`, USB disconnected | `xiao.vInput`, `xiao.vRail`, `xiao.iInput` | `xiao_blink.py` |
 
 ## Logic analyser (`Examples.Analyzer`)
 

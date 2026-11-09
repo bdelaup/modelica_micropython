@@ -1,5 +1,5 @@
 within ;
-package MicroPythonMCU "Simulation library of a programmable microcontroller (Raspberry Pi Pico / RP2040 target) driven by a MicroPython-compatible Python script"
+package MicroPythonMCU "Simulation library of programmable microcontrollers driven by a MicroPython-compatible Python script"
   extends Modelica.Icons.Package;
 
   annotation(

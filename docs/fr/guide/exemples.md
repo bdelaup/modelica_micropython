@@ -1,6 +1,6 @@
 # Exemples
 
-Le paquetage `MicroPythonMCU.Examples` contient 44 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque ; ceux qui n'ont pas de valeur d'exemple (cas d'erreur, mesures internes) ne sont pas dans `Examples` : leurs modèles sont directement dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification), à côté des scripts `.mos`.
+Le paquetage `MicroPythonMCU.Examples` contient 53 modèles prêts à simuler : ouvrir le modèle, simuler, tracer les grandeurs indiquées. Chacun exécute le programme nommé dans la colonne « Programme », à lire en parallèle : dans [`Resources/Scripts/MCU/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Scripts/MCU), ou dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification) pour ceux marqués *(V)*. Les exemples servent aussi de scénarios à la suite de vérification de la bibliothèque ; ceux qui n'ont pas de valeur d'exemple (cas d'erreur, mesures internes) ne sont pas dans `Examples` : leurs modèles sont directement dans [`Resources/Verification/`](https://gitlab.com/bdelaup/modelica_micropython/-/tree/main/MicroPythonMCU/Resources/Verification), à côté des scripts `.mos`.
 
 | `BasicBlink` | `Gpio.LedChaser` | `Pwm.LedFade` |
 |---|---|---|
@@ -140,6 +140,20 @@ La réplique de la carte et son alimentation (voir [La carte Raspberry Pi Pico](
 | `Pico.UartDuo` | Deux Pico dialoguent sur **deux liaisons UART ouvertes en même temps** : `UART(0)` sur GP0/GP1 (PING/PONG) et `UART(1)` sur GP4/GP5 (HELLO/WORLD) — les deux moteurs du RP2040 | journal (`SENT`, `BOTH`, `PONG`, `WORLD`), `picoA.GP0.v`, `picoA.GP4.v` | `uart_duo_a.py`, `uart_duo_b.py` |
 
 ![Pico.PowerUp : VSYS et rail 3,3 V, GP15 ; le programme démarre à 0,38 s et s'arrête à 1,565 s](../images/sim/pico-power.svg)
+
+## XIAO RP2040
+
+La réplique de la XIAO RP2040 standard (voir [La carte XIAO RP2040](xiao-rp2040.md)).
+
+| `XIAO_rp2040.Blink` | `XIAO_rp2040.Adc` | `XIAO_rp2040.ExternalSupply` |
+|---|---|---|
+| ![XIAO_rp2040.Blink](../images/exemple-xiao-blink.png){ width="260" } | ![XIAO_rp2040.Adc](../images/exemple-xiao-adc.png){ width="260" } | ![XIAO_rp2040.ExternalSupply](../images/exemple-xiao-externalsupply.png){ width="240" } |
+
+| Exemple | Ce qu'il montre | À observer | Programme |
+|---|---|---|---|
+| `XIAO_rp2040.Blink` | USB, LED RGB active bas et LED externe sur `D6` / GPIO0 | `xiao.vRail`, `xiao.D6.v`, courants des canaux RGB | `xiao_blink.py` |
+| `XIAO_rp2040.Adc` | Lecture de 1,65 V sur `D0` / GPIO26 avec `ADC(0)` | `xiao.D0.v`, journal | `xiao_adc.py` |
+| `XIAO_rp2040.ExternalSupply` | Alimentation externe 5 V sur `V5`, câble USB désactivé | `xiao.vInput`, `xiao.vRail`, `xiao.iInput` | `xiao_blink.py` |
 
 ## Analyseur logique (`Examples.Analyzer`)
 

@@ -8,6 +8,7 @@ __pycache__/
 *.a
 # ... sauf l'interpréteur de la distribution embarquée : il lance le client DAP du scénario de débogage
 !/MicroPythonMCU/Resources/PythonRuntime/python.exe
+*.tmp
 *.bat
 *.log
 *.libs

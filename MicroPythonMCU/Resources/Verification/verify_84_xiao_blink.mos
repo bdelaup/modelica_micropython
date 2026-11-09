@@ -1,0 +1,25 @@
+// Verify the XIAO USB supply, active-low RGB LED channels and physical D6 pin.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.XIAO_rp2040.Blink, stopTime = 0.7, numberOfIntervals = 700, fileNamePrefix = "XiaoBlink");
+b := getErrorString();
+ret := system(".\\XiaoBlink.bat", "XiaoBlink_run.txt");
+log := readFile("XiaoBlink_run.txt");
+(nRed, m1) := regex(log, "red", 1);
+(nGreen, m2) := regex(log, "green", 1);
+(nBlue, m3) := regex(log, "blue", 1);
+vInput := val(xiao.vInput, 0.1, "XiaoBlink_res.mat");
+vRail := val(xiao.vRail, 0.1, "XiaoBlink_res.mat");
+iRed := val(xiao.rgbLed.red.currentSensor.i, 0.1, "XiaoBlink_res.mat");
+iGreenOff := val(xiao.rgbLed.green.currentSensor.i, 0.1, "XiaoBlink_res.mat");
+iGreen := val(xiao.rgbLed.green.currentSensor.i, 0.3, "XiaoBlink_res.mat");
+iBlue := val(xiao.rgbLed.blue.currentSensor.i, 0.5, "XiaoBlink_res.mat");
+iPower := val(xiao.powerLed.currentSensor.i, 0.1, "XiaoBlink_res.mat");
+vD6 := val(xiao.D6.v, 0.1, "XiaoBlink_res.mat");
+
+if ret == 0 and nRed >= 1 and nGreen >= 1 and nBlue >= 1 and vInput > 4.9 and vInput < 5.1 and vRail > 3.25 and vRail < 3.35 and iRed > 0.002 and abs(iGreenOff) < 1e-5 and iGreen > 0.002 and iBlue > 0.002 and iPower > 0.0005 and vD6 > 3.0 then
+  print("PASS: verify_84_xiao_blink (USB=" + String(vInput) + "V, rail=" + String(vRail) + "V, RGB currents=" + String(iRed) + "/" + String(iGreen) + "/" + String(iBlue) + "A, power LED=" + String(iPower) + "A, D6=" + String(vD6) + "V)\n");
+else
+  print("FAIL: verify_84_xiao_blink (code " + String(ret) + ", RGB log=" + String(nRed) + String(nGreen) + String(nBlue) + ", USB=" + String(vInput) + "V, rail=" + String(vRail) + "V, RGB currents=" + String(iRed) + "/" + String(iGreenOff) + "/" + String(iGreen) + "/" + String(iBlue) + "A, power LED=" + String(iPower) + "A, D6=" + String(vD6) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

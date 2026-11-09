@@ -41,6 +41,8 @@ Any number of devices can share the two wires; each one only answers its own add
 
 Default scripts live in `Resources/Scripts/Device/`.
 
+
+![Icon of I2cGroveLcdRgb showing ?hello World? on a colored background (end of I2c.GroveLcd)](../../images/grove-lcd.gif){ width="300" }
 ### The Grove LCD RGB display
 
 The real module carries two chips, hence two addresses for a single component; the script emulates them from their datasheets:

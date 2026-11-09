@@ -62,6 +62,10 @@ At the end, the 20x2 shows the last two readings (the most recent at the top), t
 
 One wire, from the `DISPLAY` output of the microcontroller (`mcu.Display0`, above the `MCU` icon) to the input of the display (`displayLink`, on its left). No ground nor supply to wire for the display: the link is logical. The `MCU` keeps its own ground.
 
+![Display icon showing two messages (Display.Demo)](../../images/display-icone.png){ width="300" }
+
+![Display4x32 and Display8x32 icons at the end of Display.Large](../../images/grands-ecrans.png){ width="300" }
+
 Several displays may be connected to the same `Display0`: they all receive every message. This is what `Display.Large` does, with a 20x2 (`display`), a 4x32 (`screen4`) and an 8x32 (`screen8`):
 
 ![Diagram of Display.Large: the DISPLAY output of the MCU wired to the three displays, the GND pin of the MCU to the ground](../../images/grands-ecrans-cablage.png){ width="440" }

@@ -42,8 +42,8 @@ Trois afficheurs de texte qui montrent **sur leur icône** les messages envoyés
 
 Les grands écrans sont pratiques pour suivre un historique de mesures ou d'états sans ouvrir le journal.
 
-<!-- ILLUSTRATION display-icone : icône de Peripherals.Display affichant deux messages (fin de simulation de Display.Demo) (cf. docs/ILLUSTRATIONS.md) -->
-<!-- ILLUSTRATION grands-ecrans : icônes de Display4x32 et Display8x32 en fin de simulation de Display.Large (cf. docs/ILLUSTRATIONS.md) -->
+![Ic?ne de Display affichant deux messages (Display.Demo)](../../images/display-icone.png){ width="300" }
+![Ic?nes de Display4x32 et Display8x32 en fin de simulation de Display.Large](../../images/grands-ecrans.png){ width="300" }
 
 ```python
 from machine import Display

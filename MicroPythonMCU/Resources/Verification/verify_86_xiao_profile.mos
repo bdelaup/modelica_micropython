@@ -1,0 +1,32 @@
+// Verify XIAO exposed pins against the RP2040 MicroPython profile and external 5 V supply.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+loadString("model XiaoProfile
+  MicroPythonMCU.XIAO_rp2040 xiao(usbConnected = false, scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/xiao_profile.py\"));
+  Modelica.Electrical.Analog.Sources.ConstantVoltage supply(V = 5);
+  Modelica.Electrical.Analog.Basic.Ground ground;
+equation
+  connect(supply.p, xiao.V5);
+  connect(supply.n, ground.p);
+  connect(xiao.GND, ground.p);
+end XiaoProfile;"); getErrorString();
+
+buildModel(XiaoProfile, stopTime = 0.1, numberOfIntervals = 100, fileNamePrefix = "XiaoProfile");
+b := getErrorString();
+ret := system(".\\XiaoProfile.bat", "XiaoProfile_run.txt");
+log := readFile("XiaoProfile_run.txt");
+(nPins, m1) := regex(log, "D pins", 1);
+(nAdc, m2) := regex(log, "ADC channels", 1);
+(nTemp, m3) := regex(log, "ADC temperature 30", 1);
+(nUart, m4) := regex(log, "UART default 0 1", 1);
+(nI2c, m5) := regex(log, "I2C default 1 7 6", 1);
+(nHidden, m6) := regex(log, "hidden GPIO ValueError GPIO 5 not supported", 1);
+vInput := val(xiao.vInput, 0.05, "XiaoProfile_res.mat");
+vRail := val(xiao.vRail, 0.05, "XiaoProfile_res.mat");
+
+if ret == 0 and nPins >= 1 and nAdc >= 1 and nTemp >= 1 and nUart >= 1 and nI2c >= 1 and nHidden >= 1 and vInput > 4.9 and vInput < 5.1 and vRail > 3.25 and vRail < 3.35 then
+  print("PASS: verify_86_xiao_profile (external 5 V, D0-D10 map, ADC0-3 and temperature, UART0, I2C1, hidden GPIO rejected)\n");
+else
+  print("FAIL: verify_86_xiao_profile (code " + String(ret) + ", pins/ADC/temp/UART/I2C/hidden=" + String(nPins) + "/" + String(nAdc) + "/" + String(nTemp) + "/" + String(nUart) + "/" + String(nI2c) + "/" + String(nHidden) + ", input=" + String(vInput) + "V, rail=" + String(vRail) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

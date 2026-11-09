@@ -24,10 +24,10 @@ _warnings.filterwarnings('ignore', category=SyntaxWarning)
 
 # Profil de carte, donne par le modele (_native.board()) : 'generic' pour MCU,
 # qui accepte l'UART et l'I2C sur n'importe quelle broche et l'ADC sur GP0-GP7,
-# 'pico' pour RPi_Pico, fidele au RP2040 : ADC(0-3) = GP26-GP29,
+# 'pico' pour RPi_Pico et XIAO_rp2040, fidele au RP2040 : ADC(0-3) = GP26-GP29,
 # ADC(4) = capteur de temperature, multiplexage des broches UART/I2C et broches
 # par defaut du port rp2. Cf. requirements.md, decision "Carte Raspberry Pi Pico
-# et alimentation".
+# et alimentation" et decision "Carte Seeed Studio XIAO RP2040".
 _PICO = _native.board() == 'pico'
 _PICO_ADC_TEMP = 30   # pseudo-broche du capteur de temperature, alignee sur RPi_Pico
 # Par peripherique : broches possibles (TX ou SCL), (RX ou SDA), broches par defaut

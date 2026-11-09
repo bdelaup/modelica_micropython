@@ -1,0 +1,17 @@
+// Verify D0/GPIO26 mapping and ADC0 conversion on the XIAO RP2040.
+loadModel(Modelica); getErrorString();
+loadFile("../../package.mo"); getErrorString();
+
+buildModel(MicroPythonMCU.Examples.XIAO_rp2040.Adc, stopTime = 0.5, numberOfIntervals = 500, fileNamePrefix = "XiaoAdc");
+b := getErrorString();
+ret := system(".\\XiaoAdc.bat", "XiaoAdc_run.txt");
+log := readFile("XiaoAdc_run.txt");
+(nAdc, m) := regex(log, "D0 ADC[(]0[)] = 32[0-9][0-9][0-9]", 1);
+vD0 := val(xiao.D0.v, 0.1, "XiaoAdc_res.mat");
+vRail := val(xiao.vRail, 0.1, "XiaoAdc_res.mat");
+
+if ret == 0 and nAdc >= 1 and abs(vD0 - 1.65) < 0.01 and vRail > 3.25 and vRail < 3.35 then
+  print("PASS: verify_85_xiao_adc (D0/GPIO26=" + String(vD0) + "V, rail=" + String(vRail) + "V, ADC0 about half scale)\n");
+else
+  print("FAIL: verify_85_xiao_adc (code " + String(ret) + ", ADC log=" + String(nAdc) + ", D0=" + String(vD0) + "V, rail=" + String(vRail) + "V)\n" + b + "\n--- journal ---\n" + log);
+end if;

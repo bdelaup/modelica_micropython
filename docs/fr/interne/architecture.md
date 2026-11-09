@@ -10,8 +10,9 @@
 ```mermaid
 flowchart TB
     subgraph LIB["MicroPythonMCU (package Modelica)"]
-        Examples["Examples<br/>37 modèles"]
+        Examples["Examples<br/>53 modèles"]
         MCU["MCU<br/>broches + orchestration"]
+        XIAO["XIAO_rp2040<br/>RP2040 + alimentation"]
         Peripherals["Peripherals<br/>LED, Display, Uart*, I2c*, Weighing"]
         Internal["Internal<br/>External Objects + bases partielles"]
         Interfaces["Interfaces<br/>niveaux, connecteurs"]
@@ -24,10 +25,13 @@ flowchart TB
         Verification["Verification/<br/>.mos + run_tests.sh"]
     end
     Examples --> MCU
+    Examples --> XIAO
     Examples --> Peripherals
     MCU --> Internal
+    XIAO --> Internal
     Peripherals --> Internal
     MCU --> Interfaces
+    XIAO --> Interfaces
     Peripherals --> Interfaces
     Internal -- "annotation Include" --> Include
     Include -- "LoadLibraryExW" --> PythonRuntime
@@ -48,7 +52,8 @@ modelica_micropython/
 ├── zensical.fr.toml, zensical.en.toml -- configuration du site, une par langue
 ├── get_pulseview.cmd               -- télécharge la copie portable de PulseView dans PulseView/ (pour l'utilisateur final, sans Git Bash)
 ├── tools/                          -- outillage mainteneur :
-│   ├── make_pico.py, make_text_icons.py -- générateurs de RPi_Pico.mo et des icônes Internal.TextIcon4x32/8x32
+│   ├── make_pico.py, make_microbit.py, make_xiao.py -- générateurs des cartes générées
+│   ├── make_text_icons.py              -- générateur des icônes Internal.TextIcon4x32/8x32
 │   ├── make_docs.sh                -- construit les deux langues dans public/ (appelé par .gitlab-ci.yml)
 │   ├── make_pyimports.sh, make_debugpy.sh, make_pulseview_zip.sh -- pyimports.h, Resources/Debugpy/, zip de PulseView
 │   ├── gitbash.cmd                 -- lance un script bash avec Git Bash depuis PowerShell, cmd ou l'Explorateur (voir outils-windows.md)
@@ -57,6 +62,7 @@ modelica_micropython/
     ├── package.mo, package.order   -- déclaration du package racine
     ├── MCU.mo                      -- le microcontrôleur simplifié : icône, 8 broches GP0-GP7 + GND + Display0 ; étend le socle commun Internal.PartialBoard (réglages du cœur écrits une fois), qui porte le cœur Internal.McuCore ; à l'intérieur, une source idéale VOH et la LED embarquée (cf. cartes.md)
     ├── RPi_Pico.mo                 -- la carte Raspberry Pi Pico : brochage et cotes réels, cœur + alimentation (USB, VBUS, VSYS, régulateur Rt6150, 3V3) ; GÉNÉRÉ par tools/make_pico.py
+    ├── XIAO_rp2040.mo              -- la carte Seeed Studio XIAO RP2040 standard : pastilles D0-D10, cœur, LED RGB active bas et alimentation USB-C/5 V ; GÉNÉRÉ par tools/make_xiao.py
     ├── Interfaces/                 -- constantes électriques (VOH, VOL, VIH, VIL, ROut, RPull, GOff) — approximation RP2040 ; énumérations UartParity, ChannelKind, BitOrder, ClockEdge, Modulation, InputSource (Constant/Table/Connector : source des boutons et capteurs intégrés des cartes) ; connecteurs logiques causaux DisplayLinkOutput/DisplayLinkInput (liaison d'affichage pédagogique, pas électrique) ; connecteur acausal Antenna (fil d'antenne des modules radio, voir radio.md)
     ├── Internal/                   -- détails d'implémentation, non destinés à l'usage direct
     │   ├── PyRuntime.mo            -- ExternalObject : constructor (démarre CPython + thread) / destructor
@@ -181,7 +187,7 @@ modelica_micropython/
 
 | Composant | Rôle | Quand il intervient |
 |---|---|---|
-| `Internal/PartialMcuCore.mo` et sa concrétisation `Internal/McuCore.mo` (point de synchro), placée dans les trois cartes via `Internal.PartialBoard`, qui porte le contrat carte-cœur (les répliques générées le redeclarent avec leur annotation de placement) | Modélise l'étage électrique de chaque broche (`Internal.PinBridge` : sortie push-pull alimentée par `vdd`, tirages internes, capteur : schéma dans le [guide](../guide/mcu.md#modele-electrique-dune-broche)), la mise sous tension, déclenche les points de synchro — cf. [Cœur, MCU et carte Pico](cartes.md) | Continuellement (équations électriques) + aux instants d'événement (`when`) |
+| `Internal/PartialMcuCore.mo` et sa concrétisation `Internal/McuCore.mo` (point de synchro), placée dans les quatre cartes via `Internal.PartialBoard`, qui porte le contrat carte-cœur (les répliques générées le redeclarent avec leur annotation de placement) | Modélise l'étage électrique de chaque broche (`Internal.PinBridge` : sortie push-pull alimentée par `vdd`, tirages internes, capteur : schéma dans le [guide](../guide/mcu.md#modele-electrique-dune-broche)), la mise sous tension, déclenche les points de synchro — cf. [Cœur, MCU et carte Pico](cartes.md) | Continuellement (équations électriques) + aux instants d'événement (`when`) |
 | `PyRuntime.mo` (Modelica) | Déclare l'External Object et ses fonctions `constructor`/`destructor` | Une fois à l'initialisation, une fois (nominalement) à la fin |
 | `PyRuntime_sync.mo` (Modelica) | Point d'entrée appelé depuis le `when` de `MCU` ; transmet `pinBoolIn` (seuillé, numérique) et `pinAnalogIn`/`pinNodeVoltage` (brut, lu par `machine.ADC`) en entrée ; `pwmFreq`/`pwmDuty` (configurés par `machine.PWM`), `displaySeq`/`displayPayload` (configurés par `machine.Display.write()`) et les sorties série `uartTxPin`/`uartTxLevel` (broche d'émission et niveau à y tenir jusqu'au prochain changement, cf. `peripherique-uart.md`) en sortie, en plus de `pinBoolOut`/`pinIsOutput`/`pinPull` (tirage interne de chaque broche) | À chaque événement de synchro |
 | `PyRuntimeImpl.c` (C) | Fichier chapeau : inclut les parties de `pyruntime/` qui implémentent `PyRuntime_new`/`_destroy`/`_sync`, le thread worker, le shim (dont `machine.Pin.irq()`/`machine.Timer`/`machine.Display`, cf. `cycle-de-vie.md` §3bis), le décodage de la réception série (machine à états entièrement en C, cf. `peripherique-uart.md`) et la redirection stdout | Compilé une fois par `omc` (une seule unité de compilation), exécuté à chaque appel externe |

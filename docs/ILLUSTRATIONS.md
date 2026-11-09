@@ -26,12 +26,12 @@ Priorité : **1** = la page en a vraiment besoin ; **2** = utile ; **3** = confo
 | `premiers-pas-omedit` | `guide/premiers-pas.md` | Fenêtre d'OMEdit : bibliothèque dépliée dans l'explorateur, `BasicBlink` ouvert en vue *Diagramme* | PNG | 1 | non |
 | `premiers-pas-parametres` | `guide/premiers-pas.md` | Boîte de paramètres du `MCU`, onglet *General*, champ *scriptPath* avec son bouton *…* | PNG | 1 | non |
 | `mcu-parametres` | `guide/mcu.md` | Les cinq onglets de la boîte de paramètres du `MCU` (*General*, *Execution time*, *Electrical*, *File system*, *Debugging*), en une image composée ou en cinq (`mcu-parametres-1.png`…) | PNG | 2 | non |
-| `grove-lcd` | `guide/peripheriques/i2c.md` | Icône de `I2cGroveLcdRgb` en fin de simulation de `I2c.GroveLcd` : « hello World » sur fond coloré | PNG (capture de la relecture) | 2 | non |
-| `display-icone` | `guide/peripheriques/led-afficheur.md` | Icône de `Peripherals.Display` en fin de simulation de `Display.Demo` : deux messages | PNG | 2 | non |
-| `hx711-icone` | `guide/peripheriques/pesee.md` | Icône de `Weighing.Hx711` pendant `Hx711Read` : gain, code, voyant cyan | PNG | 3 | non |
+| `grove-lcd` | `guide/peripheriques/i2c.md` | Icône de `I2cGroveLcdRgb` en fin de simulation de `I2c.GroveLcd` : « hello World » sur fond coloré | GIF anim? (capture de la relecture) | 2 | oui |
+| `display-icone` | `guide/peripheriques/led-afficheur.md` | Icône de `Peripherals.Display` en fin de simulation de `Display.Demo` : deux messages | PNG | 2 | oui |
+| `hx711-icone` | `guide/peripheriques/pesee.md` | Icône de `Weighing.Hx711` pendant `Hx711Read` : gain, code, voyant cyan | PNG | 3 | oui |
 | `led-icones` | `guide/peripheriques/led-afficheur.md` | Icône de `Peripherals.LED` éteinte et allumée, côte à côte | PNG | 3 | non |
 | `kitchen-scale-gif` | `guide/exemples.md` | Animation de la balance : l'écran Grove affiche 0 g, 350 g, Tare..., 250 g pendant qu'on déplace le curseur de temps | GIF | 2 | non |
-| `grands-ecrans` | `guide/peripheriques/led-afficheur.md` | Icônes de `Display4x32` et `Display8x32` en fin de simulation de `Display.Large` (messages 7 à 10 et 3 à 10) | PNG (capture de la relecture) | 2 | non |
+| `grands-ecrans` | `guide/peripheriques/led-afficheur.md` | Icônes de `Display4x32` et `Display8x32` en fin de simulation de `Display.Large` (messages 7 à 10 et 3 à 10) | PNG (capture de la relecture) | 2 | oui |
 | `ledchaser-gif` | `guide/exemples.md` | Animation du chenillard `Gpio.LedChaser` | GIF | 3 | non |
 | `analyseur-bloc-notes` | `guide/peripheriques/analyseurs.md` | Fichier texte de `UartLink` dans un éditeur à interligne serré (le Bloc-notes de Windows 11 espace les lignes du chronogramme et souligne les mots) | PNG | 3 | non |
 | `analyseur-onglets` | `guide/peripheriques/analyseurs.md` | Boîte de paramètres de `LogicAnalyzer` : onglet `CH1` d'`Analyzer.I2cBus` (type `I2cSda`, horloge `CH0`), groupes UART et série synchrone grisés | PNG | 2 | non |
@@ -61,6 +61,9 @@ Les images « oui » ont été faites le 2026-10-02 (voir ci-dessous), sauf les 
 | `pico-icone.png` | `guide/pico.md` (FR et EN) | Capture MCP de l'icône de `RPi_Pico`, `--no-name`. Icône générée par `make_pico.py` : la recapturer après toute retouche du générateur |
 | `pico-schema-interne.png` | `guide/pico.md` (FR et EN), `interne/cartes.md` | Capture MCP de la vue *Diagramme* de `RPi_Pico` (fils colorés par réseau, zones de fond), générée par `make_pico.py` |
 | `exemple-pico-blink.png`, `exemple-pico-battery.png`, `exemple-pico-powerup.png` | vignettes de `guide/exemples.md` (FR et EN) | Captures MCP des vues *Diagramme* des exemples `Pico.*` |
+| `xiao-icone.png` | `guide/xiao-rp2040.md` (FR et EN) | Capture MCP de l'icône de `XIAO_rp2040`, `--no-name` |
+| `exemple-xiao-blink.png`, `exemple-xiao-adc.png`, `exemple-xiao-externalsupply.png` | vignettes de `guide/exemples.md` (FR et EN) | Captures MCP des vues *Diagramme* des exemples `XIAO_rp2040.*` |
+| `xiao-schema-interne.png` | `guide/xiao-rp2040.md` (FR et EN) | Capture MCP de la vue *Diagramme* de `XIAO_rp2040`, générée par `make_xiao.py` |
 | `pico-alimentation.svg`, `pico-alimentation-en.svg` | `guide/pico.md` (FR, EN), `interne/cartes.md` | Schéma de principe de l'alimentation de la Pico, dessiné à la main en SVG d'après `make_pico.py` (mêmes couleurs que les fils du schéma interne). **Version anglaise à part** (demande de l'utilisateur, exception à la règle « texte en français ») : `-en.svg` est produite à partir du français par la table de traductions de `python docs/figures/make_pico_alimentation_en.py` ; retoucher d'abord le français, puis répercuter dans l'anglais. À retoucher si l'arbre d'alimentation change |
 | `microbit-icone.png` | `guide/microbit.md` (FR et EN) | Capture MCP de l'icône de `MicroBit_v2`, recadrée par `docs/figures/crop_mcp.py --no-name` |
 | `microbit-heart-schema.png` | `guide/microbit.md` (FR et EN) | Capture MCP de la vue *Diagramme* de `Examples.MicroBit.Heart` |

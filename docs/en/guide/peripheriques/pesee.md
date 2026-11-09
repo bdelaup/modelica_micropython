@@ -63,6 +63,8 @@ The link with the microcontroller follows the datasheet: `DOUT` goes low when da
 
 The icon shows the gain and the last code, a cyan light when data is waiting to be read, an amber light in power-down.
 
+![HX711 icon: gain, last code and cyan light](../../images/hx711-icone.png){ width="240" }
+
 | Connector | Role |
 |---|---|
 | `PD_SCK` | Serial clock and power-down control (SCK pin of the module), driven by the microcontroller |

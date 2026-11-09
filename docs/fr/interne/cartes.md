@@ -1,20 +1,21 @@
-# Cœur, `MCU` et carte `RPi_Pico`
+# Cœur, `MCU` et cartes
 
-Depuis le 2026-10-04, le microcontrôleur programmable est un **composant** placé à l'intérieur des blocs posables — `MCU` (8 broches, alimentation idéale), `RPi_Pico` (réplique de la carte et de son alimentation) puis `MicroBit_v2` — et, depuis le refactoring du socle des cartes (2026-10-24), les trois cartes héritent de `Internal.PartialBoard` (contrat carte-cœur écrit une fois). Décision complète : « Carte Raspberry Pi Pico et alimentation » dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
+Le microcontrôleur programmable est un **composant** placé à l'intérieur des blocs posables : `MCU` (8 broches, alimentation idéale), `RPi_Pico`, `MicroBit_v2` et `XIAO_rp2040` (répliques de cartes). Les quatre héritent de `Internal.PartialBoard` (contrat carte-cœur écrit une fois) ; les trois cartes alimentées par USB étendent aussi `Internal.PartialUsbBoard`. Les décisions complètes sont consignées dans [`requirements.md`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/requirements.md).
 
 ## Les classes
 
 | Classe | Rôle |
 |---|---|
-| `Internal.PartialMcuSettings` | Paramètres réglés par l'utilisateur (programme, flash, temps d'exécution, débogage, étages électriques), avec leurs onglets. Étendu par `MCU`, `RPi_Pico` **et** `McuCore` : chaque carte transmet tous ses paramètres au cœur par des modificateurs `final`. Ainsi, chaque paramètre n'est écrit qu'une fois |
-| `Internal.PartialBoard` | Socle commun des trois cartes : étend `PartialMcuSettings`, porte `boardName`, `ICore`/`VPowerOn`/`VPowerOff` et le cœur `replaceable` avec le contrat carte-cœur (`final`) écrit une seule fois ; chaque carte redeclare le cœur et sa table de broches dans le modificateur de son `extends` |
-| `Internal.PartialUsbBoard` | Socle des cartes USB (`RPi_Pico`, `MicroBit_v2`) : ajoute les paramètres `usbConnected`/`VUsb`/`RUsb`/`eta` ; les composants et le câblage restent dans chaque carte |
+| `Internal.PartialMcuSettings` | Paramètres réglés par l'utilisateur (programme, flash, temps d'exécution, débogage, étages électriques), avec leurs onglets. Étendu par `Internal.PartialBoard` et `Internal.McuCore` : chaque carte transmet tous ses paramètres au cœur par des modificateurs `final`. Ainsi, chaque paramètre n'est écrit qu'une fois |
+| `Internal.PartialBoard` | Socle commun des quatre cartes : étend `PartialMcuSettings`, porte `boardName`, `ICore`/`VPowerOn`/`VPowerOff` et le cœur `replaceable` avec le contrat carte-cœur (`final`) écrit une seule fois ; chaque carte redeclare le cœur et sa table de broches dans le modificateur de son `extends` |
+| `Internal.PartialUsbBoard` | Socle des cartes USB (`RPi_Pico`, `MicroBit_v2`, `XIAO_rp2040`) : ajoute les paramètres `usbConnected`/`VUsb`/`RUsb`/`eta` ; les composants et le câblage restent dans chaque carte |
 | `Internal.PartialMcuCore` | Le cœur sans sa synchro : `PyRuntime`, un `PinBridge` par broche, la mise sous tension. Connecteurs : `pin[nPins]`, `vdd`, `gnd`, `vref`, `run`, `Display0` |
-| `Internal.McuCore` | `PartialMcuCore` + le grand `when` de synchro (`PyRuntime_sync`). Placé dans les trois cartes |
+| `Internal.McuCore` | `PartialMcuCore` + le grand `when` de synchro (`PyRuntime_sync`). Placé dans les quatre cartes |
 | `Internal.SensorSource` / `Internal.ButtonSource` | Blocs sources paramétrables (constante / table horaire / connecteur, énumération `Interfaces.InputSource`) : un par capteur et par bouton de la micro:bit |
 | `Internal.PinBridge` | Étage électrique d'une broche, en équations : sortie push-pull par deux conductances (`1/ROut` de `vdd` vers la broche, ou de la broche vers `VOL`), tirages, fuite `GOff` |
 | `MCU` | Le cœur + une `ConstantVoltage(VOH)` sur `vdd` et `vref` + la LED embarquée sur `pin[9]`. `run` reste en l'air (tirage interne) |
 | `RPi_Pico` | Le cœur + l'arbre d'alimentation de la carte + la LED sur `pin[26]`. **Généré** par `tools/make_pico.py` : ne pas éditer `RPi_Pico.mo` à la main |
+| `XIAO_rp2040` | Le cœur + alimentation USB-C/5 V, rail régulé 3,3 V, LED d'alimentation et trois canaux de LED RGB active bas. **Généré** par `tools/make_xiao.py` : ne pas éditer `XIAO_rp2040.mo` à la main |
 | `Internal.Rt6150` | Régulateur buck-boost, modèle moyen |
 | `Internal.PartialSupplyPin` | `GND` + broche `VCC` facultative (`useSupplyPin`) des périphériques |
 
@@ -94,6 +95,16 @@ classDiagram
     PartialUsbBoard <|-- RPi_Pico
     RPi_Pico ..> McuCore : redeclare core
 
+    class XIAO_rp2040 {
+        usbConnected · dieTemperature
+        D0..D10 · V5 · V3V3 · GND · Display0
+        RGB GPIO17/16/25 active bas
+        usbSupply · usbCable · Rt6150
+        power LED · BOOT/RESET décoratifs
+    }
+    PartialUsbBoard <|-- XIAO_rp2040
+    XIAO_rp2040 ..> McuCore : redeclare core
+
     class MicroBit_v2 {
         VTgt · useGroundPin
         P0..P20 · P_3V · GND · Antenna
@@ -125,6 +136,8 @@ classDiagram
     MicroBit_v2 *-- "25" LED : matrice
     MCU *-- "1" LED : builtinLed
     RPi_Pico *-- "1" LED : builtinLed
+    XIAO_rp2040 *-- "1" LED : powerLed
+    XIAO_rp2040 *-- "3" LED : RGB channels
 
     class Rt6150 {
         VOut · eta · VInOn · VInOff
@@ -132,6 +145,7 @@ classDiagram
     }
     RPi_Pico *-- "1" Rt6150 : regulator
     MicroBit_v2 *-- "1" Rt6150 : regulator
+    XIAO_rp2040 *-- "1" Rt6150 : regulator
 
     class OnBoardRadioModem {
         <<Internal, toujours la>>
@@ -153,12 +167,13 @@ Le cœur reçoit sa table par ses paramètres `nPins`, `pinIds` (numéro GPIO de
 
 - `MCU` : `{0, …, 7, 25}`, capacités `7` pour GP0-GP7 et `1` pour la LED.
 - `RPi_Pico` : `{0, …, 29}` (`pin[i]` = GPIO `i−1`), `3` pour GP0-GP22, `1` pour GP23-GP25 (broches internes), `7` pour GP26-GP28, `5` pour GP29 (`VSYS/3`), puis le capteur (`4`).
+- `XIAO_rp2040` : `{26, 27, 28, 29, 6, 7, 0, 1, 2, 4, 3, 16, 17, 25}`. D0-D3 ont les capacités `7`, D4-D10 les capacités `3`, les trois canaux RGB internes `1`, puis le capteur de température pseudo-broche 30 (`4`). Les autres GPIO RP2040 sont refusés par la table.
 
 Côté C (`pyruntime_core.h`) : `MAX_PINS = 32` dimensionne les tableaux du handle ; `num_pins`, `pin_id[]`, `pin_caps[]` y sont copiés par `PyRuntime_new`. `resolve_pin_index` parcourt la table, `require_pin(id, caps, quoi)` vérifie les capacités et compose le message d'erreur à partir de la table (« GPIO 30 not supported on this board (valid: 0-29) »). Les tableaux de `PyRuntime_sync` sont de taille libre côté Modelica (`[:]`) ; leur taille est passée au C et comparée à la table.
 
 ## Profil de carte dans le shim
 
-`_native.board()` rend `boardProfile`. Le shim (`_PICO`) en déduit, pour la Pico seulement : la numérotation de l'ADC (`ADC(0..3)` = GP26-GP29, `ADC(4)` = pseudo-broche 30), le multiplexage UART/I2C du RP2040 et les broches par défaut du port `rp2` (`_PICO_UART`, `_PICO_I2C`, `_pico_pins`), et l'unicité du moteur UART et du maître I2C (`_pico_owner` : `UART(0)` ou `UART(1)`, un seul à la fois — tous deux arrivent sur l'identifiant natif 0). `SoftI2C` est une classe dérivée de `I2C` qui échappe au multiplexage. La native `adc_read` rend une **fraction** de la référence `adcRef` (entrée de `PyRuntime_sync`, tension de `vref`).
+`_native.board()` rend `boardProfile`. Le shim (`_PICO`) applique le profil `rp2` à `RPi_Pico` et `XIAO_rp2040` : numérotation de l'ADC (`ADC(0..3)` = GPIO26-GPIO29, `ADC(4)` = pseudo-broche 30), multiplexage UART/I2C et broches par défaut du port `rp2` (`_PICO_UART`, `_PICO_I2C`, `_pico_pins`), et unicité du maître I2C (`_pico_owner`). La table propre à chaque carte demeure l'autorité sur les GPIO effectivement accessibles : sur la XIAO, seules les pastilles et les trois GPIO internes de la LED RGB sont présentes. `SoftI2C` échappe au multiplexage. La native `adc_read` rend une **fraction** de la référence `adcRef` (tension de `vref`).
 
 ## Mise sous tension et perte d'alimentation
 
@@ -190,6 +205,12 @@ USB 5 V ─ RUsb ─ VBUS ─ Schottky (0,3 V) ─ VSYS ─ Rt6150 ─ 3V3 ─ c
 ```
 
 `Rt6150` : sortie 3,3 V derrière 0,05 Ω tant que `en` > 1 V et `VSYS` au-dessus du seuil (1,8 V au démarrage, 1,7 V à l'arrêt) ; courant d'entrée `max(Pout, 0)/(eta·VSYS) + IQ`. Les courants lisent `pre(running)` (boucle tension d'entrée → marche → courant d'entrée avec une pile à résistance interne). Arrêté, la sortie est en haute impédance.
+
+## Alimentation de `XIAO_rp2040`
+
+Le générateur `tools/make_xiao.py` câble la source USB-C optionnelle (`usbSupply` et `usbCable`) ou le connecteur externe `V5` vers `Internal.Boards.Rt6150`. Le régulateur alimente directement `core.vdd`, `core.vref`, la sortie `V3V3` et les LED intégrées ; `GND` est reliée à la masse du cœur. Le paramètre `eta` du socle USB règle le rendement ; les variables `vInput`, `vRail` et `iInput` rendent respectivement la tension d'entrée, le rail et le courant demandé à la source.
+
+`Rt6150` est un modèle moyen : seuil d'activation 1,8 V, arrêt à 1,7 V, sortie nominale 3,3 V et résistance de sortie 0,05 Ω. Il ne représente ni commutation, ni limitation de courant, ni transitoires détaillés. Les trois LED RGB sont reliées au rail via leurs résistances série, puis à GPIO17/16/25 : un niveau bas consomme du courant et allume le canal, un niveau haut l'éteint. La LED verte de puissance est reliée au rail et à la masse. BOOT et RESET ne sont que des éléments graphiques.
 
 ## Broche `VCC` des périphériques
 

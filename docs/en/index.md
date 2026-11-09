@@ -38,12 +38,13 @@
 | Flash-like file system, `boot.py` / `main.py` | `open()`, `os` | [API](guide/api.md#file-system-open-and-os) |
 | Module imports, off-the-shelf drivers | `import` | [The MCU block](guide/mcu.md#python-script) |
 | Raspberry Pi Pico board: real pinout, USB / battery supply, power-on | `RPi_Pico` (block) | [The Raspberry Pi Pico board](guide/pico.md) |
+| Seeed Studio XIAO RP2040 board: D0-D10 pads, active-low RGB LED, USB or external 5 V supply | `XIAO_rp2040` (block) | [The XIAO RP2040 board](guide/xiao-rp2040.md) |
 
 A `time.sleep(1)` costs no real time: the solver jumps straight to the deadline. One simulated hour runs in a fraction of a second.
 
 ## Supplied peripherals
 
-LED, teaching display, serial devices (echo, temperature sensor, GPS, 20x2 display, generic device), I2C devices (Grove LCD RGB display, echo, generic device) a complete weighing chain (load cell, strain-gauge bridge, HX711 converter), a logic analyser probe and radio modules (set up like an APC220 by default) whose modulated signal is drawn. The 48 [examples](guide/exemples.md) use all of them, up to a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
+LED, teaching display, serial devices (echo, temperature sensor, GPS, 20x2 display, generic device), I2C devices (Grove LCD RGB display, echo, generic device), a complete weighing chain (load cell, strain-gauge bridge, HX711 converter), a logic analyser probe and radio modules (set up like an APC220 by default) whose modulated signal is drawn. The 53 [examples](guide/exemples.md) cover these components and the Pico, micro:bit and XIAO boards, up to a kitchen scale that runs off-the-shelf MicroPython drivers unmodified.
 
 ## Current limits
 

@@ -61,7 +61,7 @@ La liaison avec le microcontrôleur suit la fiche technique : `DOUT` descend qua
 
 L'icône affiche le gain et le dernier code, un voyant cyan quand une donnée attend d'être lue, un voyant ambre en veille.
 
-<!-- ILLUSTRATION hx711-icone : icône de Weighing.Hx711 en cours de simulation (gain, code, voyant cyan) (cf. docs/ILLUSTRATIONS.md) -->
+![Ic?ne du HX711 : gain, dernier code et voyant cyan](../../images/hx711-icone.png){ width="240" }
 
 | Connecteur | Rôle |
 |---|---|
