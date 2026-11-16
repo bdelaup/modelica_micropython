@@ -1874,7 +1874,10 @@
 #define _NETBSD_SOURCE 1
 
 /* Define to activate features from IEEE Stds 1003.1-2008 */
-#define _POSIX_C_SOURCE 200809L
+/* Local adjustment: preserve the level selected by earlier system headers. */
+#ifndef _POSIX_C_SOURCE
+# define _POSIX_C_SOURCE 200809L
+#endif
 
 /* Define if you have POSIX threads, and your system does not define that. */
 /* #undef _POSIX_THREADS */
@@ -1940,4 +1943,3 @@
 #endif
 
 #endif /*Py_PYCONFIG_H*/
-

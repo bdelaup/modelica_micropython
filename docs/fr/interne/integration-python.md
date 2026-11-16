@@ -49,6 +49,14 @@ Plutôt que de dépendre d'un Python installé sur le poste (voir `requirements.
 
 Sous Linux, `pyhost.c` charge `lib/libpython3.12.so.1.0` de cette distribution par chemin absolu avec `dlopen`, puis résout les symboles avec `dlsym`. Les macros générées dans `pyimports_linux.h` précèdent l'inclusion des en-têtes CPython Linux, y compris pour les fonctions inline. Les chemins de la bibliothèque standard et de ses extensions sont configurés explicitement. Un autre Python déjà chargé dans le processus est refusé pour éviter de mélanger les runtimes. Le portage est en cours de validation sur Ubuntu 22.04 (glibc 2.35) ; les systèmes plus anciens, où `dlopen` peut demander une liaison `-ldl` explicite, ne sont pas validés.
 
+L'en-tête fourni `cpython312linux/pyconfig.h` est adapté localement : il ne
+définit `_POSIX_C_SOURCE` que si cette macro n'est pas déjà définie.
+OpenModelica peut inclure des en-têtes système avant `Python.h` ; sur Ubuntu
+26.04, ceux-ci sélectionnent une valeur différente de celle de CPython.
+Conserver leur valeur évite une redéfinition après leur lecture, sans prétendre
+que l'ordre des inclusions est celui recommandé par CPython. Vérification :
+`Resources/Verification/test_python_headers_linux.c`.
+
 Sous Windows, cela entraîne les choix suivants :
 
 1. **Chargement de `python312.dll` par son chemin absolu.** Un lien classique (`-lpython312`) laisserait le chargeur de Windows chercher la DLL au lancement de l'exécutable : dossier de l'exe, System32, répertoire courant, puis PATH. Or `PythonRuntime/windows-x86_64/` n'est pas dans le PATH, et c'est le `python312.dll` d'un Python installé sur le poste qui était pris (constaté sur le poste de développement). Le modèle n'est donc lié à aucune bibliothèque Python. `pyhost_load_dll()` (`pyhost.c`), appelée en tête de `pyhost_ensure()` avant tout appel à l'API, charge `<pythonHome>\windows-x86_64\python312.dll` par `LoadLibraryExW`, puis remplit elle-même la table d'import :

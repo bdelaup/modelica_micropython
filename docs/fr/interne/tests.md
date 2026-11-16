@@ -25,6 +25,17 @@ Depuis Windows, `.\tools\run_tests_docker_linux.cmd` lance les mêmes scénarios
 sous Linux dans Docker et accepte les mêmes options ; voir
 [Conteneur Linux expérimental](outils-windows.md#lancer-les-tests-linux-depuis-windows).
 
+Pour vérifier séparément que les en-têtes CPython Linux conservent le niveau
+POSIX déjà choisi par les en-têtes système, depuis le dossier `Verification/`
+sous Linux :
+
+```bash
+cc -std=c11 -D_POSIX_C_SOURCE=202405L -Wall -Wextra -Werror -fsyntax-only test_python_headers_linux.c
+cc -std=c11 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -fsyntax-only test_python_headers_linux.c
+cc -std=c11 -DTEST_PYTHON_FIRST -Wall -Wextra -Werror -fsyntax-only test_python_headers_linux.c
+cc -std=gnu11 -Wall -Wextra -Werror -fsyntax-only test_python_headers_linux.c
+```
+
 Pendant l'exécution, une barre de progression suit les scripts terminés : redessinée sur une seule ligne dans un terminal (nombre fait, échecs, temps écoulé, dernier script), une ligne par script terminé quand la sortie est redirigée vers un fichier (`[#####-----] 12/50  PASS  14.1 s  verify_...`), ce qui permet de la suivre de loin (`tail -f`). À la fin, le script affiche un récapitulatif `PASS`/`FAIL`/`ERREUR` avec la durée de chaque `.mos`, puis la fin du journal de chaque script en échec ; il se termine avec le code 1 si un script n'a pas passé. Si `omc` n'est pas sur le `PATH` mais que `OPENMODELICAHOME` est positionné, il complète le `PATH` lui-même. Sauf `-k`, il supprime tous les artefacts générés — ils portent tous le nom du `fileNamePrefix` de leur script — **avant de démarrer** (une exécution interrompue en laisse sur place : on repart d'un dossier propre) et **à la fin** de la suite ; sur Ctrl-C, il tue aussi les `omc` en cours et nettoie avant de sortir. Seul un kill brutal du terminal (fermeture de fenêtre, `taskkill`) échappe à tout nettoyage : les restes partiront au lancement suivant.
 
 **Politique des artefacts** (2026-10-23, après qu'un `simulate()` lancé depuis la racine du dépôt y a déposé 66 fichiers de build) : **ne jamais lancer `omc` depuis la racine du dépôt** — omc écrit les sources C générées dans son dossier courant. Toujours lancer les tests depuis `MicroPythonMCU/Resources/Verification/`, de préférence via `run_tests.sh`. Les artefacts sont quoi qu'il arrive ignorés par `.gitignore` (`*.exe`, `*_Jac*Jac*.bin`, `*_run.txt` de `Verification/`, `/*.c` à la racine) : un `git status --short` ne doit jamais montrer d'artefact. Après un lancement direct d'un `.mos` hors `run_tests.sh`, ses artefacts restent sur place : les supprimer avec `git clean -fdX -- MicroPythonMCU/Resources/Verification/` (le nettoyage de démarrage de `run_tests.sh` s'en charge aussi au prochain lancement).

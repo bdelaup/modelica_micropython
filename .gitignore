@@ -63,6 +63,7 @@ __pycache__/
 /MicroPythonMCU/Resources/Verification/*.c
 !/MicroPythonMCU/Resources/Verification/test_mcu_thread.c
 !/MicroPythonMCU/Resources/Verification/test_launch_linux.c
+!/MicroPythonMCU/Resources/Verification/test_python_headers_linux.c
 # Sortie capturée de la simulation de chaque test (system(".\X.bat", "X_run.txt"))
 /MicroPythonMCU/Resources/Verification/*_run.txt
 # Filet de sécurité : C généré par un omc lancé depuis la racine du dépôt —
