@@ -203,6 +203,7 @@ int LogicAnalyzer_finish(void* an, double currentTime) {
 }
 
 /* Vrai si 'path' designe un fichier lisible. */
+#ifdef _WIN32
 static int an_file_exists(const char* path) {
     FILE* f = (path && path[0] != '\0') ? fopen(path, "rb") : NULL;
     if (f) {
@@ -211,6 +212,7 @@ static int an_file_exists(const char* path) {
     }
     return 0;
 }
+#endif
 
 /* Chemin de PulseView a lancer, a liberer par free(). pulseViewPath regle :
    lui, tel quel (un echec du lancement le dira). Vide : le premier present de
@@ -220,6 +222,21 @@ static int an_file_exists(const char* path) {
    3. l'installation par l'installeur sigrok, dans %ProgramFiles%.
    NULL si aucun : un avertissement dit ou il a ete cherche. */
 static char* an_find_pulseview(const struct LogicAnalyzer* a) {
+#ifndef _WIN32
+    const char* configured;
+    char* path;
+    size_t len;
+    struct stat info;
+    if (a->pulseview_path[0] != '\0') return strdup(a->pulseview_path);
+    configured = getenv("MICROPYTHONMCU_PULSEVIEW");
+    if (!configured || !configured[0]) return strdup("pulseview");
+    if (stat(configured, &info) != 0 || !S_ISDIR(info.st_mode)) return strdup(configured);
+    len = strlen(configured) + sizeof("/pulseview");
+    path = (char*) malloc(len);
+    if (path) snprintf(path, len, "%s/pulseview", configured);
+    else ModelicaFormatWarning("Logic analyser %s: out of memory selecting PulseView\n", a->name);
+    return path;
+#else
     const char* env;
     char* cand[3] = {NULL, NULL, NULL};
     char* found = NULL;
@@ -266,6 +283,7 @@ static char* an_find_pulseview(const struct LogicAnalyzer* a) {
         free(cand[i]);
     }
     return found;
+#endif
 }
 
 /* Fin de simulation : clot le VCD, ecrit le fichier texte, dit ou ils sont,
@@ -312,7 +330,11 @@ void LogicAnalyzer_destroy(void* an) {
         if (an_write_text(a, file)) {
             ModelicaFormatMessage("Logic analyser %s: decoded frames in %s\n", a->name, full);
             if (a->open_text) {
+#ifdef _WIN32
                 launch_detached("Notepad", "notepad.exe", NULL, full);
+#else
+                launch_detached("text viewer", "xdg-open", NULL, full);
+#endif
             }
         }
         free(full);

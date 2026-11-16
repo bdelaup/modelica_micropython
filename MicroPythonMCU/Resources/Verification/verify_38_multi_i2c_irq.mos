@@ -13,7 +13,7 @@ b := getErrorString();
 
 ok := val(mcuA.GP7.v, 0.029, "MultiI2cIrq_res.mat");
 
-ret := system(".\\MultiI2cIrq.bat", "MultiI2cIrq_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MultiI2cIrq.bat" else "./MultiI2cIrq", "MultiI2cIrq_run.txt");
 log := readFile("MultiI2cIrq_run.txt");
 (nReply, m1) := regex(log, "mcuA] ID -> b'MCU-B' / CNT -> 2 then 3", 1);
 (nCmd, m2) := regex(log, "mcuB] command b'CNT' -> reply", 1);

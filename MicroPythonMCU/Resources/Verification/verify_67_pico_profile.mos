@@ -26,7 +26,7 @@ end PicoProfile;"); getErrorString();
 
 buildModel(PicoProfile, stopTime = 0.2, numberOfIntervals = 200, fileNamePrefix = "PicoProfile");
 b := getErrorString();
-ret := system(".\\PicoProfile.bat", "PicoProfile_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\PicoProfile.bat" else "./PicoProfile", "PicoProfile_run.txt");
 log := readFile("PicoProfile_run.txt");
 (n1, m) := regex(log, "adc5 ValueError Pin doesn't have ADC capabilities", 1);
 (n2, m) := regex(log, "adc26 ok", 1);

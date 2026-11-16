@@ -33,7 +33,7 @@ end MicroBitRadioUart;"); getErrorString();
 
 buildModel(MicroBitRadioUart, stopTime = 8, numberOfIntervals = 80, fileNamePrefix = "MicroBitRadioUart");
 b := getErrorString();
-ret := system(".\\MicroBitRadioUart.bat", "MicroBitRadioUart_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitRadioUart.bat" else "./MicroBitRadioUart", "MicroBitRadioUart_run.txt");
 log := readFile("MicroBitRadioUart_run.txt");
 
 (n1, m) := regex(log, "BOTH 1", 1);

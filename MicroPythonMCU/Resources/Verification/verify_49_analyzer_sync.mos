@@ -21,7 +21,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Analyzer.Hx711Serial, stopTime = 0.65, numberOfIntervals = 650, fileNamePrefix = "Hx711Serial");
 b := getErrorString();
-ret := system(".\Hx711Serial.bat -override=analyzer.openText=false", "Hx711Serial_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\Hx711Serial.bat -override=analyzer.openText=false" else "./Hx711Serial -override=analyzer.openText=false", "Hx711Serial_run.txt");
 log := readFile("Hx711Serial_run.txt");
 txt := readFile("Hx711Serial.analyzer.txt");
 

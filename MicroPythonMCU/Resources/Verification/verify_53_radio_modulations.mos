@@ -16,7 +16,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Radio.Modulations, stopTime = 0.04, numberOfIntervals = 4000, fileNamePrefix = "RadioModulations");
 b := getErrorString();
-ret := system(".\\RadioModulations.bat", "RadioModulations_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioModulations.bat" else "./RadioModulations", "RadioModulations_run.txt");
 log := readFile("RadioModulations_run.txt");
 f := "RadioModulations_res.mat";
 Tb := 1/1200;

@@ -73,9 +73,9 @@ static PyObject* native_display_write(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "Display %d not supported (only Display(0) exists)", id);
         return NULL;
     }
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     display_queue(g_current, text);
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }

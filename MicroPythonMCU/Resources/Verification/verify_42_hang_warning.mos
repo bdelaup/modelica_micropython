@@ -17,7 +17,7 @@ end HangWarning;"); getErrorString();
 buildModel(HangWarning, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "HangWarning");
 b := getErrorString();
 
-ret := system(".\HangWarning.bat", "HangWarning_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\HangWarning.bat" else "./HangWarning", "HangWarning_run.txt");
 log := readFile("HangWarning_run.txt");
 (nWarn1, m1) := regex(log, "warning.*the script has been running for more than 1 s of real time", 1);
 (nWarn2, m4) := regex(log, "warning.*the script has been running for more than 2 s of real time", 1);

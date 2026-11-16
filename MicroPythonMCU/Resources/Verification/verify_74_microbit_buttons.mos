@@ -42,7 +42,7 @@ end MicroBitButtons;"); getErrorString();
 
 buildModel(MicroBitButtons, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "MicroBitButtons");
 b := getErrorString();
-ret := system(".\\MicroBitButtons.bat", "MicroBitButtons_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitButtons.bat" else "./MicroBitButtons", "MicroBitButtons_run.txt");
 log := readFile("MicroBitButtons_run.txt");
 
 (n1, m) := regex(log, "start False False", 1);

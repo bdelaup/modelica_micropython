@@ -14,7 +14,7 @@ end XiaoProfile;"); getErrorString();
 
 buildModel(XiaoProfile, stopTime = 0.1, numberOfIntervals = 100, fileNamePrefix = "XiaoProfile");
 b := getErrorString();
-ret := system(".\\XiaoProfile.bat", "XiaoProfile_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\XiaoProfile.bat" else "./XiaoProfile", "XiaoProfile_run.txt");
 log := readFile("XiaoProfile_run.txt");
 (nPins, m1) := regex(log, "D pins", 1);
 (nAdc, m2) := regex(log, "ADC channels", 1);

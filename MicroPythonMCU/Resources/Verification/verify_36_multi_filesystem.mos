@@ -9,23 +9,26 @@
 // des scénarios 25 et 27, d'où pas de chaîne commune dans run_tests.sh.
 loadModel(Modelica); getErrorString();
 loadFile("../../package.mo"); getErrorString();
+loadString("model MultiFsVerify
+  extends MicroPythonMCU.Examples.MultiMcu.FileSystem(mcu1(fsWorkspace = \"MultiFsVerify_ws\"), mcu2(fsWorkspace = \"MultiFsVerify_ws\"));
+end MultiFsVerify;"); getErrorString();
 
-system("for /d %d in (mcu1_datalogger_* mcu2_datalogger_*) do rmdir /s /q \"%d\"");
+system(if getEnvironmentVar("OS") == "Windows_NT" then "if exist MultiFsVerify_ws rmdir /s /q MultiFsVerify_ws" else "rm -rf -- ./MultiFsVerify_ws");
 
-simulate(MicroPythonMCU.Examples.MultiMcu.FileSystem, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "MultiFileSystem");
+simulate(MultiFsVerify, stopTime = 1.5, numberOfIntervals = 1500, fileNamePrefix = "MultiFileSystem");
 b := getErrorString();
 
 ok1 := val(mcu1.GP1.v, 1.4, "MultiFileSystem_res.mat");
 ok2 := val(mcu2.GP1.v, 1.4, "MultiFileSystem_res.mat");
 
-system("dir /b /ad mcu1_datalogger_* > MultiFileSystem_copies1.txt");
-system("dir /b /ad mcu2_datalogger_* > MultiFileSystem_copies2.txt");
+system(if getEnvironmentVar("OS") == "Windows_NT" then "dir /b /ad MultiFsVerify_ws\\mcu1_datalogger_* > MultiFileSystem_copies1.txt" else "find MultiFsVerify_ws -mindepth 1 -maxdepth 1 -type d -name 'mcu1_datalogger_*' -printf '%f\\n' > MultiFileSystem_copies1.txt");
+system(if getEnvironmentVar("OS") == "Windows_NT" then "dir /b /ad MultiFsVerify_ws\\mcu2_datalogger_* > MultiFileSystem_copies2.txt" else "find MultiFsVerify_ws -mindepth 1 -maxdepth 1 -type d -name 'mcu2_datalogger_*' -printf '%f\\n' > MultiFileSystem_copies2.txt");
 c1 := OpenModelica.Scripting.strtok(readFile("MultiFileSystem_copies1.txt"), "\r\n");
 c2 := OpenModelica.Scripting.strtok(readFile("MultiFileSystem_copies2.txt"), "\r\n");
 n1 := size(c1, 1);
 n2 := size(c2, 1);
-m1 := if n1 == 1 then readFile(c1[1] + "/data/measurements.csv") else "";
-m2 := if n2 == 1 then readFile(c2[1] + "/data/measurements.csv") else "";
+m1 := if n1 == 1 then readFile("MultiFsVerify_ws/" + c1[1] + "/data/measurements.csv") else "";
+m2 := if n2 == 1 then readFile("MultiFsVerify_ws/" + c2[1] + "/data/measurements.csv") else "";
 // mcu2 mesure 1 V constant : ses 10 lignes valent 1.000 ; mcu1 mesure la rampe
 (nConst2, x1) := regex(m2, ";1[.]000", 1);
 lines1 := OpenModelica.Scripting.strtok(m1, "\n");
@@ -33,7 +36,7 @@ lines2 := OpenModelica.Scripting.strtok(m2, "\n");
 rampOk := if size(lines1, 1) == 11 and size(lines2, 1) == 11 then lines1[11] <> lines2[11] else false;
 const2 := if size(lines2, 1) == 11 then nConst2 >= 1 and regexBool(lines2[2], ";1[.]000$") and regexBool(lines2[11], ";1[.]000$") else false;
 
-system("for /d %d in (mcu1_datalogger_* mcu2_datalogger_*) do rmdir /s /q \"%d\"");
+system(if getEnvironmentVar("OS") == "Windows_NT" then "if exist MultiFsVerify_ws rmdir /s /q MultiFsVerify_ws" else "rm -rf -- ./MultiFsVerify_ws");
 
 if ok1 > 2.0 and ok2 > 2.0 and n1 == 1 and n2 == 1 and rampOk and const2 then
   print("PASS: verify_36_multi_filesystem (GP1 mcu1=" + String(ok1) + "V mcu2=" + String(ok2) + "V, une copie par MCU, mesures distinctes : " + lines1[11] + " / " + lines2[11] + ")\n");

@@ -7,11 +7,11 @@
 # Sauf -k, les artefacts générés sont supprimés avant le lancement (restes
 # d'une exécution interrompue) et à la fin de la suite, y compris sur Ctrl-C.
 #
-#   ./run_tests.sh                       # toute la suite, 4 exécutions simultanées
-#   ./run_tests.sh -j 2                  # 2 exécutions simultanées
-#   ./run_tests.sh verify_08_pwm.mos ... # seulement ces scripts
-#   ./run_tests.sh -k                    # garder artefacts de compilation et journaux
-#   ./run_tests.sh --copy                # sur une copie des fichiers suivis par git,
+#   bash run_tests.sh                       # toute la suite, 4 exécutions simultanées
+#   bash run_tests.sh -j 2                  # 2 exécutions simultanées
+#   bash run_tests.sh verify_08_pwm.mos ... # seulement ces scripts
+#   bash run_tests.sh -k                    # garder artefacts de compilation et journaux
+#   bash run_tests.sh --copy                # sur une copie des fichiers suivis par git,
 #                                        # hors du dépôt (avant de poser un tag)
 #
 # Code de sortie : 0 si tout passe, 1 sinon (2 si la suite n'a pas pu démarrer).
@@ -26,14 +26,15 @@
 # Les .mos restent autonomes et lançables un par un (omc verify_0X_....mos) ; ce
 # script ne fait que les orchestrer. Deux scripts qui partagent des fichiers ne
 # doivent pas tourner en même temps : ceux qui ont le même fileNamePrefix
-# (mêmes BasicBlink.exe, BasicBlink_res.mat...) et ceux qui manipulent les
-# copies de système de fichiers (ils effacent tous les dossiers mcu_datalogger_*
-# et écrivent fs_copies.txt). Ils sont regroupés automatiquement en une chaîne
+# (mêmes BasicBlink.exe, BasicBlink_res.mat...). Les scénarios de système de
+# fichiers emploient chacun un espace de travail dédié. Les scripts qui partagent
+# un préfixe sont regroupés automatiquement en une chaîne
 # exécutée séquentiellement ; les chaînes, elles, tournent en parallèle.
 
 JOBS=4
 KEEP=0
 COPY=0
+export LC_NUMERIC=C
 # getopts ne connaît pas les options longues : --copy est retiré à part.
 ARGS=()
 for a in "$@"; do
@@ -79,7 +80,7 @@ if [ $COPY -eq 1 ]; then
   fi
   FWD=(-j "$JOBS")
   [ $KEEP -eq 1 ] && FWD+=(-k)
-  "$WORK/MicroPythonMCU/Resources/Verification/run_tests.sh" "${FWD[@]}" "$@"
+  bash "$WORK/MicroPythonMCU/Resources/Verification/run_tests.sh" "${FWD[@]}" "$@"
   status=$?
   echo
   echo "Suite exécutée sur une copie des fichiers suivis : commit $(cd "$ROOT" && git rev-parse --short HEAD)$(cd "$ROOT" && git diff --quiet HEAD -- MicroPythonMCU || echo ' + modifications non commitées')"
@@ -91,15 +92,16 @@ if [ $# -gt 0 ]; then TESTS=("$@"); else TESTS=(verify_*.mos); fi
 
 # Artefacts de compilation et de simulation : tous nommés d'après le
 # fileNamePrefix du script (Prefix.exe, Prefix_res.mat, Prefix_01exo.c...),
-# plus les copies de système de fichiers et la liste des copies.
+# Les scénarios de système de fichiers nettoient leur espace de travail dédié.
 cleanup_artifacts() {  # cleanup_artifacts script.mos...
-  local t p
+  local t p f
   for t in "$@"; do
     for p in $(grep -o 'fileNamePrefix = "[A-Za-z0-9_]*"' "$t" | cut -d'"' -f2 | sort -u); do
-      rm -rf "$p".* "$p"_*
+      for f in "$p".* "$p"_* "$p"; do
+        if [ -f "$f" ] || [ -L "$f" ]; then rm -f -- "$f"; fi
+      done
     done
   done
-  rm -rf fs_copies.txt mcu_datalogger_*
 }
 
 # Une exécution interrompue (plantage, terminal fermé, kill) laisse ses artefacts
@@ -108,10 +110,8 @@ cleanup_artifacts() {  # cleanup_artifacts script.mos...
 # viennent peut-être d'un lancement précédent plus large.
 [ $KEEP -eq 0 ] && cleanup_artifacts verify_*.mos
 
-# Clé de chaîne : "fs" pour les scripts qui touchent aux copies de système de
-# fichiers, sinon le premier fileNamePrefix du script.
+# Clé de chaîne : premier fileNamePrefix du script.
 chain_key() {
-  if grep -q "mcu_datalogger" "$1"; then echo "fs"; return; fi
   grep -m1 -o 'fileNamePrefix = "[A-Za-z0-9_]*"' "$1" | cut -d'"' -f2
 }
 
@@ -129,6 +129,17 @@ LOGS=$(mktemp -d)
 PROGRESS=""
 PIDS=()
 
+# Arrêter d'abord les descendants, puis la chaîne qui les a lancés.
+kill_linux_tree() {
+  local pid=$1 child
+  local -a children=()
+  if [ -r "/proc/$pid/task/$pid/children" ]; then
+    read -r -a children < "/proc/$pid/task/$pid/children"
+    for child in "${children[@]}"; do kill_linux_tree "$child"; done
+  fi
+  kill "$pid" 2>/dev/null || true
+}
+
 # Ctrl-C : tuer les omc en cours (chaînes et leur arborescence de compilation)
 # et ne rien laisser traîner. Un kill brutal du terminal ne passe pas par ici :
 # le nettoyage de démarrage s'en chargera au prochain lancement.
@@ -136,10 +147,12 @@ on_interrupt() {
   trap - INT TERM
   [ -n "$PROGRESS" ] && kill "$PROGRESS" 2>/dev/null
   local pid w
-  for pid in "${PIDS[@]}"; do
+  for pid in $(jobs -pr); do
+    [ "$pid" = "$PROGRESS" ] && continue
     w=$(cat /proc/$pid/winpid 2>/dev/null)
-    if [ -n "$w" ]; then taskkill //F //T //PID "$w" >/dev/null 2>&1; else kill "$pid" 2>/dev/null; fi
+    if [ -n "$w" ]; then taskkill //F //T //PID "$w" >/dev/null 2>&1; else kill_linux_tree "$pid"; fi
   done
+  wait "${PIDS[@]}" 2>/dev/null
   if [ $KEEP -eq 0 ]; then
     cleanup_artifacts "${TESTS[@]}"
     rm -rf "$LOGS"
@@ -152,14 +165,20 @@ on_interrupt() {
 trap on_interrupt INT TERM
 
 run_chain() {
-  local t s e status
+  local t s e status rc
   for t in $1; do
     s=$(date +%s%N)
     omc "$t" > "$LOGS/$t.log" 2>&1
+    rc=$?
     e=$(date +%s%N)
-    status=$(grep -m1 -oE '^(PASS|FAIL)' "$LOGS/$t.log")
+    status=ERREUR
+    if grep -q '^FAIL' "$LOGS/$t.log"; then
+      status=FAIL
+    elif [ "$rc" -eq 0 ] && grep -q '^PASS' "$LOGS/$t.log"; then
+      status=PASS
+    fi
     # écrit puis renommé : le suivi de progression ne lit jamais un .res à moitié écrit
-    echo "${status:-ERREUR} $(( (e - s) / 1000000 ))" > "$LOGS/$t.tmp" && mv "$LOGS/$t.tmp" "$LOGS/$t.res"
+    echo "$status $(( (e - s) / 1000000 ))" > "$LOGS/$t.tmp" && mv "$LOGS/$t.tmp" "$LOGS/$t.res"
   done
 }
 

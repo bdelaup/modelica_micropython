@@ -25,7 +25,7 @@ end MicroBitUnpowered;"); getErrorString();
 
 buildModel(MicroBitUnpowered, stopTime = 1, numberOfIntervals = 100, fileNamePrefix = "MicroBitUnpowered");
 b := getErrorString();
-ret := system(".\\MicroBitUnpowered.bat", "MicroBitUnpowered_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitUnpowered.bat" else "./MicroBitUnpowered", "MicroBitUnpowered_run.txt");
 log := readFile("MicroBitUnpowered_run.txt");
 
 (nBoot, m) := regex(log, "boot is_on", 1);

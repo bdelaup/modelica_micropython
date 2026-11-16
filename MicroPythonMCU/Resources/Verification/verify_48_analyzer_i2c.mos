@@ -23,7 +23,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Analyzer.I2cBus, stopTime = 0.01, numberOfIntervals = 100, fileNamePrefix = "I2cBus");
 b := getErrorString();
-ret := system(".\I2cBus.bat -override=analyzer.openText=false", "I2cBus_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\I2cBus.bat -override=analyzer.openText=false" else "./I2cBus -override=analyzer.openText=false", "I2cBus_run.txt");
 log := readFile("I2cBus_run.txt");
 txt := readFile("I2cBus.analyzer.txt");
 

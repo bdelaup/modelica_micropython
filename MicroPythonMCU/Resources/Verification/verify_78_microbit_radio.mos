@@ -29,7 +29,7 @@ end MicroBitRadio;"); getErrorString();
 
 buildModel(MicroBitRadio, stopTime = 15, numberOfIntervals = 150, fileNamePrefix = "MicroBitRadio");
 b := getErrorString();
-ret := system(".\\MicroBitRadio.bat", "MicroBitRadio_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitRadio.bat" else "./MicroBitRadio", "MicroBitRadio_run.txt");
 log := readFile("MicroBitRadio_run.txt");
 
 // Marqueurs des scripts Python

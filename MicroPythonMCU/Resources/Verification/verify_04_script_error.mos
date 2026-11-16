@@ -12,13 +12,13 @@ getErrorString();
 // alors que la simulation a échoué. L'ancien critère « getErrorString() non
 // vide » ne passait que grâce à l'avertissement d'initialisation présent dans
 // toute simulation, disparu depuis que les valeurs de départ sont explicites.
-// On relance donc l'exécutable par son .bat (qui positionne le PATH), on garde
+// On relance donc l'exécutable (.bat sous Windows), on garde
 // son code de sortie et son journal, et on y cherche la trace Python et le
-// message du runtime. Le code doit valoir exactement -1 (arrêt propre d'OpenModelica
-// sur erreur) : -1073741819 (0xC0000005) signalerait le retour du plantage que
+// message du runtime. Le code vaut -1 sous Windows ou 255 sous Linux
+// (code de sortie POSIX sur 8 bits) : -1073741819 (0xC0000005) signalerait un plantage que
 // contourne Library = "-lwinpthread" (cf. requirements.md, décision « Comportement
 // en cas d'exception non gérée dans le script »).
-ret := system(".\\ScriptError.bat", "ScriptError_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\ScriptError.bat" else "./ScriptError", "ScriptError_run.txt");
 log := readFile("ScriptError_run.txt");
 (nTrace, m1) := regex(log, "ZeroDivisionError", 1);
 (nRuntime, m2) := regex(log, "the script raised an unhandled exception", 1);
@@ -26,7 +26,8 @@ log := readFile("ScriptError_run.txt");
 // au lieu de File "<string>" quand le programme passait par PyRun_SimpleString.
 (nFile, m3) := regex(log, "File \"[^\"]*script_error[.]py\", line 7", 1);
 
-if ret == -1 and nTrace >= 1 and nRuntime >= 1 and nFile >= 1 then
+expectedRet := if getEnvironmentVar("OS") == "Windows_NT" then -1 else 255;
+if ret == expectedRet and nTrace >= 1 and nRuntime >= 1 and nFile >= 1 then
   print("PASS: verify_04_script_error (simulation arretee proprement en erreur : code de sortie " + String(ret) + ", ZeroDivisionError, message du runtime et vrai nom de fichier dans le journal)\n");
 else
   print("FAIL: verify_04_script_error (code de sortie " + String(ret) + ", ZeroDivisionError trouve " + String(nTrace) + " fois, message du runtime " + String(nRuntime) + " fois, nom de fichier " + String(nFile) + " fois)\n--- journal ---\n" + log);

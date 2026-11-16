@@ -77,13 +77,13 @@ static PyObject* native_pin_init(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "invalid pull value %d (Pin.PULL_UP, Pin.PULL_DOWN or None)", pull);
         return NULL;
     }
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     if (mode != PIN_MODE_KEEP) {
         g_current->pin_is_output[idx] = mode;
         g_current->adc_claimed[idx] = 0;   /* Pin(n, mode) rend la broche au GPIO, meme apres un ADC(n) - comme sur le RP2040 */
     }
     g_current->pin_pull[idx] = pull;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -94,11 +94,11 @@ static PyObject* native_pin_write(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "ii", &id, &value)) return NULL;
     int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
     if (idx < 0) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     if (g_current->pin_is_output[idx]) {
         g_current->pin_driven_value[idx] = value;
     }
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     /* La broche change tout de suite (publiee a sim_time), puis le processeur
        reste occupe gpio_op_time : c'est ce qui donne une largeur a l'impulsion
        de on(); off(). Attente non interruptible, cf. yield_until. */
@@ -117,9 +117,9 @@ static PyObject* native_pin_read(PyObject* self, PyObject* args) {
        d'entree - la reponse d'un peripherique au front emis juste avant est
        alors visible. */
     if (yield_until(g_current->sim_time + g_current->gpio_op_time, 0) != 0) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     int v = g_current->pin_sensed_value[idx];
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     return PyBool_FromLong(v);
 }
 
@@ -134,10 +134,10 @@ static PyObject* native_adc_init(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = require_pin(id, PIN_CAP_ADC, "ADC input on GPIO");
     if (idx < 0) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     g_current->adc_claimed[idx] = 1;
     g_current->pin_pull[idx] = PIN_PULL_NONE;   /* adc_gpio_init coupe aussi les tirages : la mesure n'est pas faussee */
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -149,10 +149,10 @@ static PyObject* native_adc_read(PyObject* self, PyObject* args) {
     int idx = require_pin(id, PIN_CAP_ADC, "ADC input on GPIO");
     if (idx < 0) return NULL;
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     double v = g_current->pin_analog_value[idx];
     double ref = g_current->adc_ref;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     /* Fraction de la tension de reference (ADC_VREF sur la Pico, VOH pour
        MCU), convertie en read_u16() par le shim. */
     return PyFloat_FromDouble(ref > 0 ? v / ref : 0.0);
@@ -174,10 +174,10 @@ static PyObject* native_pwm_set_freq(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "negative PWM frequency (%s)", freq_str);
         return NULL;
     }
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     g_current->pin_is_output[idx] = 1;  /* le PWM prend la broche en sortie, comme sur le vrai RP2040 */
     g_current->pwm_freq[idx] = freq;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -191,9 +191,9 @@ static PyObject* native_pwm_set_duty(PyObject* self, PyObject* args) {
     if (idx < 0) return NULL;
     if (duty < 0.0) duty = 0.0;
     if (duty > 1.0) duty = 1.0;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     g_current->pwm_duty[idx] = duty;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -204,9 +204,9 @@ static PyObject* native_pwm_deinit(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
     int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
     if (idx < 0) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     g_current->pwm_freq[idx] = 0;  /* retombe en sortie numerique classique, pilotee par pin_driven_value (bas par defaut) */
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -237,10 +237,10 @@ static PyObject* native_idle(PyObject* self, PyObject* args) {
    synchro : rien ne change cote Modelica. */
 static PyObject* native_disable_irq(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     int previous = g_current->irq_disabled;
     g_current->irq_disabled = 1;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     return PyLong_FromLong(previous);
 }
 
@@ -248,9 +248,9 @@ static PyObject* native_enable_irq(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int state = 0;
     if (!PyArg_ParseTuple(args, "|i", &state)) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     g_current->irq_disabled = state ? 1 : 0;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     /* Demasquees : ce qui est arrive pendant le masquage s'execute tout de suite. */
     if (!state && run_due_callbacks(g_current) != 0) return NULL;
     Py_RETURN_NONE;
@@ -284,7 +284,7 @@ static PyObject* native_pin_irq_set(PyObject* self, PyObject* args) {
     if (!PyArg_ParseTuple(args, "iOOi", &id, &pin_self, &handler, &trigger)) return NULL;
     int idx = require_pin(id, PIN_CAP_DIGITAL, "GPIO");
     if (idx < 0) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     Py_CLEAR(g_current->pin_irq_handler[idx]);
     Py_CLEAR(g_current->pin_irq_self[idx]);
     g_current->pin_irq_pending[idx] = 0;
@@ -297,7 +297,7 @@ static PyObject* native_pin_irq_set(PyObject* self, PyObject* args) {
     } else {
         g_current->pin_irq_trigger[idx] = 0;
     }
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }

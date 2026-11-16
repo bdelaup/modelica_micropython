@@ -10,7 +10,7 @@ impure function LogicAnalyzer_record "Records the logic levels of the channels o
   // "Comportement en cas d'exception non geree dans le script").
   external "C" calls = LogicAnalyzer_record(an, currentTime, levels, size(levels, 1)) annotation(
     Include = "#include \"AnalyzerImpl.c\"",
-    Library = "-lwinpthread",
+    Library = "-lpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>

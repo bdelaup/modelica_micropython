@@ -16,22 +16,22 @@ loadString("model Shutdown
   extends MicroPythonMCU.Examples.BasicBlink(mcu(scriptPath = Modelica.Utilities.Files.loadResource(\"modelica://MicroPythonMCU/Resources/Verification/shutdown.py\"), fsEnabled = true, fsWorkspace = \"Shutdown_ws\", fsOpenExplorer = false));
 end Shutdown;"); getErrorString();
 
-system("if exist Shutdown_ws rmdir /s /q Shutdown_ws");
+system(if getEnvironmentVar("OS") == "Windows_NT" then "if exist Shutdown_ws rmdir /s /q Shutdown_ws" else "rm -rf -- ./Shutdown_ws");
 buildModel(Shutdown, stopTime = 0.95, numberOfIntervals = 95, fileNamePrefix = "Shutdown");
 b := getErrorString();
 
-ret := system(".\Shutdown.bat", "Shutdown_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\Shutdown.bat" else "./Shutdown", "Shutdown_run.txt");
 log := readFile("Shutdown_run.txt");
 (nFinally, m1) := regex(log, "finally ran after 10 lines", 1);
 (nEnd, m2) := regex(log, "The simulation finished successfully", 1);
 
-system("dir /b /ad Shutdown_ws > Shutdown_copies.txt");
+system(if getEnvironmentVar("OS") == "Windows_NT" then "dir /b /ad Shutdown_ws > Shutdown_copies.txt" else "ls -1 -- Shutdown_ws > Shutdown_copies.txt");
 copies := OpenModelica.Scripting.strtok(readFile("Shutdown_copies.txt"), "\r\n");
 content := if size(copies, 1) >= 1 then readFile("Shutdown_ws/" + copies[1] + "/log.txt") else "";
 nLines := if content == "" then 0 else size(OpenModelica.Scripting.strtok(content, "\n"), 1);
 (nLast, m3) := regex(content, "line 10", 1);
 
-system("if exist Shutdown_ws rmdir /s /q Shutdown_ws");
+system(if getEnvironmentVar("OS") == "Windows_NT" then "if exist Shutdown_ws rmdir /s /q Shutdown_ws" else "rm -rf -- ./Shutdown_ws");
 deleteFile("Shutdown_copies.txt");
 
 if ret == 0 and nFinally >= 1 and nEnd >= 1 and nLines == 10 and nLast >= 1 then

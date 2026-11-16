@@ -26,8 +26,10 @@ b := getErrorString();
 // Client DAP en arrière-plan : il retente la connexion jusqu'à ce que le MCU
 // écoute, et écrit son compte rendu avant de se détacher.
 deleteFile("DebugProgram_dap.json");
-system("start \"\" /b ..\\PythonRuntime\\python.exe dap_client.py 5860 \"" + cd() + "/debug_target.py\" 10 count DebugProgram_dap.json steps");
-ret := system(".\DebugProgram.bat", "DebugProgram_run.txt");
+system(if getEnvironmentVar("OS") == "Windows_NT" then
+  "start \"\" /b ..\\PythonRuntime\\windows-x86_64\\python.exe dap_client.py 5860 \"" + cd() + "/debug_target.py\" 10 count DebugProgram_dap.json steps"
+  else "python3 dap_client.py 5860 debug_target.py 10 count DebugProgram_dap.json steps > /dev/null 2>&1 &");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\DebugProgram.bat" else "./DebugProgram", "DebugProgram_run.txt");
 log := readFile("DebugProgram_run.txt");
 dap := if regularFileExists("DebugProgram_dap.json") then readFile("DebugProgram_dap.json") else "(pas de compte rendu)";
 

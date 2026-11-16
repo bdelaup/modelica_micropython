@@ -42,7 +42,7 @@ end SupplyPin;"); getErrorString();
 
 buildModel(SupplyPin, stopTime = 0.1, numberOfIntervals = 1000, fileNamePrefix = "SupplyPin");
 b := getErrorString();
-ret := system(".\\SupplyPin.bat", "SupplyPin_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\SupplyPin.bat" else "./SupplyPin", "SupplyPin_run.txt");
 log := readFile("SupplyPin_run.txt");
 (nEcho, m) := regex(log, "echo b'OK\\\\n'", 1);
 

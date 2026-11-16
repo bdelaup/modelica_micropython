@@ -12,7 +12,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Pico.Blink, stopTime = 2.5, numberOfIntervals = 2500, fileNamePrefix = "PicoUsb");
 b := getErrorString();
-ret := system(".\\PicoUsb.bat", "PicoUsb_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\PicoUsb.bat" else "./PicoUsb", "PicoUsb_run.txt");
 log := readFile("PicoUsb_run.txt");
 (nVsys, m1) := regex(log, "VSYS = 4[.][67][0-9] V, temperature = 2[67][.][0-9] C", 1);
 

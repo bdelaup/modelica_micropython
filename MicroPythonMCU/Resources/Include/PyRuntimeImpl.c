@@ -27,14 +27,19 @@
    prefixe, et un include quoted est resolu d'abord relativement au dossier du
    fichier qui l'inclut - donc depuis cpython312/. Aucun chemin d'inclusion
    supplementaire n'est necessaire, IncludeDirectory reste Resources/Include. */
+#ifdef _WIN32
 #include "cpython312/Python.h"
 #include <windows.h>
 #include <process.h>
+#else
+#include "pyimports_linux.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>        /* llround (ticks_ms) */
 #include "ModelicaUtilities.h"
+#include "mcu_thread.h"
 #include "launch.c"                        /* lanceur commun (Explorateur de fsOpenExplorer) - partage avec AnalyzerImpl.c */
 
 #include "uartcore.h"                      /* moteur UART generique (sans Python ni thread), partage avec UartDeviceImpl.c */

@@ -98,9 +98,12 @@ channel0\assigned_signal_name=probe.TX           ; signal PulseView : scope du V
 
 ## 7. Ouverture en fin de simulation : `launch.c`
 
-`launch_detached(what, exe, opts, file)` lance `"exe" opts "file"` par `CreateProcessA`, sans attendre (pas de `shell32` à lier). C'est le **seul** point du runtime qui dépend du système pour lancer un programme : `fsOpenExplorer` (Explorateur sur la copie de la flash), le Bloc-notes (`notepad.exe`, trouvé dans le `PATH`) et PulseView passent par lui. Hors Windows, il écrit au journal quel fichier ouvrir avec quoi : un portage Linux n'aura que lui à compléter (`posix_spawnp`).
+`launch_detached(what, exe, opts, file)` lance un programme sans attendre : `CreateProcessA` sous Windows, double fork et `execvp` sans shell sous Linux. Il signale les erreurs de lancement et est partagé par `fsOpenExplorer`, l'ouverture du fichier texte et PulseView. Sous Linux, les deux premières ouvertures utilisent `xdg-open`.
 
 PulseView : `pulseview -c -I vcd <fichier>`, d'après `pulseview --help` (`[OPTIONS] [FILE]`, `-I` format d'entrée, `-c` sans restaurer les sessions précédentes) ; options **avant** le fichier. `pulseViewPath` renseigné : une URI `modelica://` est résolue côté Modelica (`Internal.ResolvePath`), un chemin relatif est rendu absolu à la construction depuis le dossier de simulation (`launch_full_path`). Vide (le défaut) : `an_find_pulseview` (`analyzer_logic.c`) cherche, au moment de lancer, le premier `pulseview.exe` lisible parmi la variable d'environnement `MICROPYTHONMCU_PULSEVIEW` (fichier, ou dossier auquel il ajoute `pulseview.exe`), la copie portable à côté de la bibliothèque (chemin `pulseViewLocal` passé au constructeur par le modèle, `loadResource("modelica://MicroPythonMCU/../PulseView/pulseview.exe")`) et `%ProgramFiles%/sigrok/PulseView/` ; aucun : avertissement qui liste les chemins essayés. La copie portable est mise en place par `get_pulseview.cmd` ; elle n'est pas dans le dépôt (décision « Distribution de PulseView » de `requirements.md`, et [Publier](publication.md#pulseview-copie-portable)). Un échec du lancement n'est qu'un avertissement.
+
+Sous Linux, `MICROPYTHONMCU_PULSEVIEW` désigne l'exécutable ou son dossier ;
+sinon `pulseview` est recherché dans le `PATH`. PulseView s'installe séparément.
 
 ## 8. Vérification
 

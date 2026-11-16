@@ -14,7 +14,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Pico.PowerUp, stopTime = 2, numberOfIntervals = 4000, fileNamePrefix = "PicoPowerUp");
 b := getErrorString();
-ret := system(".\\PicoPowerUp.bat", "PicoPowerUp_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\PicoPowerUp.bat" else "./PicoPowerUp", "PicoPowerUp_run.txt");
 log := readFile("PicoPowerUp_run.txt");
 (nStart, m1) := regex(log, "\\[t=0[.]38[0-9]* s\\] power-on, ticks_ms[(][)] = 0", 1);
 (nLost, m2) := regex(log, "warning.*\\[t=1[.]56[0-9]* s\\].*supply lost", 1);

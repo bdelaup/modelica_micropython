@@ -14,7 +14,7 @@ loadFile("../../package.mo"); getErrorString();
 // parcimonie) - solveur dense impose.
 buildModel(MicroPythonMCU.Examples.Pico.UartDuo, stopTime = 4, numberOfIntervals = 40, fileNamePrefix = "UartDuoPico", simflags = "-nlssMaxDensity=0");
 b := getErrorString();
-ret := system(".\\UartDuoPico.bat -nlssMaxDensity=0", "UartDuoPico_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\UartDuoPico.bat -nlssMaxDensity=0" else "./UartDuoPico -nlssMaxDensity=0", "UartDuoPico_run.txt");
 log := readFile("UartDuoPico_run.txt");
 
 (n1, m) := regex(log, "SENT 1", 1);

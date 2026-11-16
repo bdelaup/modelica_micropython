@@ -12,7 +12,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Uart.Format, stopTime = 0.4, numberOfIntervals = 80000, fileNamePrefix = "UartFormat");
 b := getErrorString();
-ret := system(".\UartFormat.bat", "UartFormat_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\UartFormat.bat" else "./UartFormat", "UartFormat_run.txt");
 log := readFile("UartFormat_run.txt");
 f := "UartFormat_res.mat";
 

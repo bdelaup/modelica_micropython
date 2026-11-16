@@ -44,7 +44,7 @@ static PyObject* native_fs_set_root(PyObject* self, PyObject* args) {
    autre interpreteur (le principal), sans ces builtins : le test reste une
    garde. Meme test que worker_context_ok, sans lever d'exception. */
 static PyObject* native_on_worker(PyObject* self, PyObject* args) {
-    return PyBool_FromLong(g_current && GetCurrentThreadId() == g_current->worker_thread_id);
+    return PyBool_FromLong(g_current && mcu_thread_id_equal(mcu_thread_id(), g_current->worker_thread_id));
 }
 
 /* Fin de simulation (appele par PyRuntime_destroy) : redit ou est la copie -
@@ -57,6 +57,10 @@ static void fs_at_exit(struct PyRuntimeHandle* h) {
     }
     ModelicaFormatMessage("File system: end of simulation, files in %s\n", h->fs_root);
     if (h->fsOpenExplorer) {
+#ifdef _WIN32
         launch_detached("Windows Explorer", "explorer.exe", NULL, h->fs_root);
+#else
+        launch_detached("file manager", "xdg-open", NULL, h->fs_root);
+#endif
     }
 }

@@ -204,7 +204,7 @@ static PyObject* native_matrix_enable(PyObject* self, PyObject* args) {
         idx[i] = require_pin(ids[i], PIN_CAP_DIGITAL, "matrix pin");
         if (idx[i] < 0) return NULL;
     }
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     for (i = 0; i < MATRIX_ROWS; i++) {
         b->matrix.row_idx[i] = idx[i];
         h->pwm_freq[idx[i]] = 0;   /* CODAL reconfigure la broche : le PWM en cours est coupe */
@@ -215,7 +215,7 @@ static PyObject* native_matrix_enable(PyObject* self, PyObject* args) {
     }
     b->matrix.t0 = h->sim_time;
     b->matrix.enabled = 1;
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -230,7 +230,7 @@ static PyObject* native_matrix_disable(PyObject* self, PyObject* args) {
     struct MicroBitBoard* b = matrix_board(h);
     int i;
     if (!b) return NULL;
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     if (b->matrix.enabled) {
         for (i = 0; i < MATRIX_ROWS; i++) {
             if (b->matrix.row_idx[i] >= 0) {
@@ -246,7 +246,7 @@ static PyObject* native_matrix_disable(PyObject* self, PyObject* args) {
         }
         b->matrix.enabled = 0;
     }
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -267,14 +267,14 @@ static PyObject* native_matrix_set_pixels(PyObject* self, PyObject* args) {
                      MATRIX_ROWS * MATRIX_COLS, (Py_ssize_t) len);
         return NULL;
     }
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     int i;
     for (i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
         int level = buf[i];
         level = level < 0 ? 0 : (level > MATRIX_MAX_LEVEL ? MATRIX_MAX_LEVEL : level);
         b->matrix.pixels[i / MATRIX_COLS][i % MATRIX_COLS] = (unsigned char) level;
     }
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     /* Aucun yield : le tampon n'a pas d'effet avant le prochain creneau de
        toute facon (une trame dure 16,7 ms), et display.show()/scroll()
        enchainent souvent plusieurs rafraichissements - chacun rendrait la main

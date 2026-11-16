@@ -4,7 +4,7 @@ class PyRuntime "External Object wrapping the CPython interpreter that runs the 
 
   function constructor
     input String scriptPath "Path of the user's .py script (empty string: main.py of the file system)";
-    input String pythonHome "Path of the embedded Python distribution (Resources/PythonRuntime)";
+    input String pythonHome "Root of the embedded Python distributions (Resources/PythonRuntime)";
     input Boolean addScriptDirToPath "Adds the folder of scriptPath to the Python module search path";
     input String libraryPath "Optional (empty string = disabled): .py file of a shared library - its folder is added to the search path";
     input String shimPath "Path of the library's machine/time shim (Resources/Scripts/_shim/machine_time_shim.py), run before the user script";
@@ -26,7 +26,7 @@ class PyRuntime "External Object wrapping the CPython interpreter that runs the 
     // "Comportement en cas d'exception non geree dans le script").
     external "C" handle = PyRuntime_new(scriptPath, pythonHome, addScriptDirToPath, libraryPath, shimPath, fsEnabled, fsSource, fsWorkspace, fsOpenExplorer, instanceName, gpioOpTime, hangWarningTime, debugEnabled, debugPort, pinIds, size(pinIds, 1), pinCaps, size(pinCaps, 1), boardProfile) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
@@ -34,7 +34,7 @@ class PyRuntime "External Object wrapping the CPython interpreter that runs the 
     input PyRuntime handle;
     external "C" PyRuntime_destroy(handle) annotation(
       Include = "#include \"PyRuntimeImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 end PyRuntime;

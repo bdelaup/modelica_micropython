@@ -5,7 +5,8 @@
 # propre, _mcu_debug, quand MCU.debugEnabled est vrai. Trois temps :
 #   start() AVANT le shim : debugpy est importe tant que time est encore le
 #           vrai module (pydevd refuse un time sans mktime, et ses attentes
-#           doivent etre de vraies attentes, pas des sleep() simules) ;
+#           doivent etre de vraies attentes, pas des sleep() simules). Le
+#           traitement des chemins du client attend la fin de wait() ;
 #   wait()  au premier tour du worker (t=0), une fois tous les composants du
 #           modele construits (worker_main) : la copie de la flash existe, on
 #           pose la correspondance des chemins, puis on attend VS Code ;
@@ -16,10 +17,13 @@ import os, sys, time as _host_time   # vrai time : importe avant le shim
 
 DEBUGPY_DIR = None          # lu par le shim (_fs_mount) : jamais cloisonne
 _port = 0
+_paths_ready = None
+_setup_paths = None
+_paths = []
 
 
 def start(port, debugpy_dir, shim_dir):
-    global DEBUGPY_DIR, _port
+    global DEBUGPY_DIR, _port, _paths_ready, _setup_paths, _paths
     DEBUGPY_DIR = debugpy_dir
     _port = port
     # Modules geles de la stdlib : pydevd avertit qu'il pourrait y manquer
@@ -38,14 +42,26 @@ def start(port, debugpy_dir, shim_dir):
     if os.environ.get('MCU_DEBUGPY_LOG'):
         debugpy.log_to(os.environ['MCU_DEBUGPY_LOG'])
     debugpy.configure(subProcess=False)
+    import threading
+    import pydevd_file_utils
+    _paths_ready = threading.Event()
+    _paths = []
+    _setup_paths = pydevd_file_utils.setup_client_server_paths
+
+    def setup_ignoring_client(client_paths):
+        # Un client peut s'attacher des que listen() ouvre le port, avant wait().
+        _paths_ready.wait()
+        _setup_paths(_paths)
+
+    pydevd_file_utils.setup_client_server_paths = setup_ignoring_client
     # Adaptateur DAP dans le process : le mode par defaut lancerait
     # sys.executable, ici l'executable de simulation.
     debugpy.listen(('127.0.0.1', port), in_process_debug_adapter=True)
 
 
 def wait(port, fs_source, fs_copy):
+    global _paths
     import debugpy
-    import pydevd_file_utils
     # Seule correspondance de chemins : image de la flash -> copie horodatee
     # (les programmes de la flash s'executent depuis la copie, l'eleve ouvre
     # l'image). Les pathMappings du client sont IGNORES : VS Code et la
@@ -55,14 +71,9 @@ def wait(port, fs_source, fs_copy):
     # de la simulation (celui d'OMEdit) : aucun point d'arret n'etait plus
     # atteint. pydevd les applique a l'attachement par
     # setup_client_server_paths, d'ou son remplacement.
-    paths = [(os.path.abspath(fs_source), os.path.abspath(fs_copy))] if fs_source and fs_copy else []
-    setup = pydevd_file_utils.setup_client_server_paths
-
-    def setup_ignoring_client(client_paths):
-        setup(paths)
-
-    pydevd_file_utils.setup_client_server_paths = setup_ignoring_client
-    setup(paths)
+    _paths = [(os.path.abspath(fs_source), os.path.abspath(fs_copy))] if fs_source and fs_copy else []
+    _setup_paths(_paths)
+    _paths_ready.set()
     print('Debugger: waiting for VS Code on port %d (Run and Debug > attach to localhost:%d)' % (port, port))
     sys.stdout.flush()
     debugpy.wait_for_client()
@@ -71,6 +82,8 @@ def wait(port, fs_source, fs_copy):
 
 def stop():
     import socket, threading
+    if _paths_ready is not None:
+        _paths_ready.set()
     # pydevd.stoptrace() arrete les threads de pydevd, sauf celui qui attend
     # une (nouvelle) connexion de VS Code, bloque dans accept() : sous Windows,
     # fermer la socket depuis un autre thread ne le reveille pas, et il

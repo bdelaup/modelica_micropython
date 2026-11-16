@@ -13,7 +13,7 @@ loadFile("FormatMismatch.mo"); getErrorString();
 
 buildModel(FormatMismatch, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartFormatMismatch");
 b := getErrorString();
-ret := system(".\UartFormatMismatch.bat", "UartFormatMismatch_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\UartFormatMismatch.bat" else "./UartFormatMismatch", "UartFormatMismatch_run.txt");
 log := readFile("UartFormatMismatch_run.txt");
 
 (nMcuErr, m1) := regex(log, "warning.*PyRuntime \\(FormatMismatch.mcu\\): UART\\(0\\): parity error on a received byte", 1);

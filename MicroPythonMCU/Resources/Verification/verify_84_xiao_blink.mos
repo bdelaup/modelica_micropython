@@ -4,7 +4,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.XIAO_rp2040.Blink, stopTime = 0.7, numberOfIntervals = 700, fileNamePrefix = "XiaoBlink");
 b := getErrorString();
-ret := system(".\\XiaoBlink.bat", "XiaoBlink_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\XiaoBlink.bat" else "./XiaoBlink", "XiaoBlink_run.txt");
 log := readFile("XiaoBlink_run.txt");
 (nRed, m1) := regex(log, "red", 1);
 (nGreen, m2) := regex(log, "green", 1);

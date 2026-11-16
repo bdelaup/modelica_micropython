@@ -29,7 +29,7 @@ end MicroBitQuantum;"); getErrorString();
 
 buildModel(MicroBitQuantum, stopTime = 0.25, numberOfIntervals = 250, fileNamePrefix = "MicroBitQuantum");
 b := getErrorString();
-ret := system(".\\MicroBitQuantum.bat", "MicroBitQuantum_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitQuantum.bat" else "./MicroBitQuantum", "MicroBitQuantum_run.txt");
 log := readFile("MicroBitQuantum_run.txt");
 (n1, m) := regex(log, "quantum done", 1);
 

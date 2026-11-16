@@ -19,7 +19,7 @@ sequenceDiagram
 
     Sim->>MCU: initialisation du modèle
     MCU->>Ctor: PyRuntime(scriptPath, pythonHome, ...)
-    Ctor->>CPy: pyhost_ensure() — LoadLibraryExW(PythonRuntime/python312.dll),<br/>Py_InitializeFromConfig + relais stdout,<br/>sauf si un autre composant l'a déjà fait, puis rend le GIL
+    Ctor->>CPy: pyhost_ensure() — chargement du runtime de la plateforme depuis PythonRuntime/<br/>Py_InitializeFromConfig + relais stdout,<br/>sauf si un autre composant l'a déjà fait, puis rend le GIL
     Ctor->>CPy: module machine explicatif (scripts de périphérique), une fois
     Ctor->>Worker: _beginthreadex(worker_main)
     Worker->>CPy: PyGILState_Ensure() puis Py_NewInterpreterFromConfig (GIL partagé)

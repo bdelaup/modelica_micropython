@@ -20,7 +20,7 @@ lo1 := val(mcu1.GP0.v, 0.15, "MultiIndependent_res.mat");
 hi2 := val(mcu2.GP0.v, 0.05, "MultiIndependent_res.mat");
 lo2 := val(mcu2.GP0.v, 0.15, "MultiIndependent_res.mat");
 
-ret := system(".\\MultiIndependent.bat", "MultiIndependent_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MultiIndependent.bat" else "./MultiIndependent", "MultiIndependent_run.txt");
 log := readFile("MultiIndependent_run.txt");
 (nIsolated, m1) := regex(log, "mcu[12]] ticks counted by this microcontroller: 5 - isolated", 1);
 (nPrefix1, m2) := regex(log, "mcu1] ", 1);

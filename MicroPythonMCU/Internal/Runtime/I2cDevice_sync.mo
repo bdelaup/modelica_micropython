@@ -18,7 +18,7 @@ impure function I2cDevice_sync "Sync point of an I2C slave peripheral: interpret
   // "Comportement en cas d'exception non geree dans le script").
   external "C" I2cDevice_sync(dev, currentTime, sclLevel, sdaLevel, valueIn, valueOut, sdaDriveLow, busy, eventSeq, lastEvent, line1, line2) annotation(
     Include = "#include \"I2cDeviceImpl.c\"",
-    Library = "-lwinpthread",
+    Library = "-lpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>

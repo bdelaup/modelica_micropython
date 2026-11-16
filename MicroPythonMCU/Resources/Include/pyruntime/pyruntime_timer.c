@@ -31,15 +31,15 @@ static double earliest_timer_deadline(struct PyRuntimeHandle* h) {
 static PyObject* native_timer_new(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     int i;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     for (i = 0; i < MAX_TIMERS; i++) {
         if (!g_current->timer_allocated[i]) {
             g_current->timer_allocated[i] = 1;
-            LeaveCriticalSection(&g_current->cs);
+            mcu_mutex_unlock(&g_current->cs);
             return PyLong_FromLong(i);
         }
     }
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     PyErr_Format(PyExc_RuntimeError, "maximum number of Timer() reached (%d)", MAX_TIMERS);
     return NULL;
 }
@@ -63,7 +63,7 @@ static PyObject* native_timer_init(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "Timer period too short (%s s, minimum %s s)", period_str, min_str);
         return NULL;
     }
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     Py_CLEAR(g_current->timer_callback[slot]);
     Py_CLEAR(g_current->timer_self[slot]);
     Py_INCREF(callback);
@@ -74,7 +74,7 @@ static PyObject* native_timer_init(PyObject* self, PyObject* args) {
     g_current->timer_mode[slot] = mode;
     g_current->timer_next_fire[slot] = g_current->sim_time + period_seconds;
     g_current->timer_active[slot] = 1;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -87,12 +87,12 @@ static PyObject* native_timer_deinit(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "invalid Timer");
         return NULL;
     }
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     g_current->timer_active[slot] = 0;
     g_current->timer_allocated[slot] = 0;
     Py_CLEAR(g_current->timer_callback[slot]);
     Py_CLEAR(g_current->timer_self[slot]);
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }

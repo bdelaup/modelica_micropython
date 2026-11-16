@@ -48,7 +48,7 @@ LED, afficheur pédagogique, appareils série (écho, capteur de température, G
 
 ## Limites actuelles
 
-Windows uniquement, pas de SPI. Un modèle peut contenir plusieurs microcontrôleurs, qui dialoguent par leurs broches, une liaison série ou un bus I2C. Liste complète : [Limites et dépannage](guide/limites.md).
+Windows 64 bits ; portage Linux x86-64 expérimental en cours de validation ; pas de SPI. Un modèle peut contenir plusieurs microcontrôleurs, qui dialoguent par leurs broches, une liaison série ou un bus I2C. Liste complète : [Limites et dépannage](guide/limites.md).
 
 ## Contexte
 

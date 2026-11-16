@@ -23,7 +23,7 @@ impure function RadioModem_sync "Sync point of a radio modem: advances the seria
   // "Comportement en cas d'exception non geree dans le script").
   external "C" RadioModem_sync(modem, currentTime, serRxLevel, airLevel, airJam, serTxLevel, airTxLevel, carrierOn, airRxBusy, txFill, rxFill, airId, nSent, nReceived, nDropped, nCorrupted, nextWakeTime) annotation(
     Include = "#include \"RadioModemImpl.c\"",
-    Library = "-lwinpthread",
+    Library = "-lpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>

@@ -47,6 +47,7 @@
     X(PyLong_FromLongLong) \
     X(PyLong_FromUnsignedLong) \
     X(PyLong_Type) \
+    X(PyMem_RawFree) \
     X(PyModule_Create2) \
     X(PyModule_GetDict) \
     X(PyModule_GetState) \

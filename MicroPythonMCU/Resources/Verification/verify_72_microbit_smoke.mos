@@ -51,7 +51,7 @@ end MicroBitSmoke;"); getErrorString();
 
 buildModel(MicroBitSmoke, stopTime = 1.5, numberOfIntervals = 150, fileNamePrefix = "MicroBitSmoke");
 b := getErrorString();
-ret := system(".\\MicroBitSmoke.bat", "MicroBitSmoke_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitSmoke.bat" else "./MicroBitSmoke", "MicroBitSmoke_run.txt");
 log := readFile("MicroBitSmoke_run.txt");
 
 // Journal du programme

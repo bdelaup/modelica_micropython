@@ -4,7 +4,7 @@
 
 **Environment**
 
-- **64-bit Windows only**, with OpenModelica ([Installation](installation.md)).
+- **64-bit Windows**, with OpenModelica ([Installation](installation.md)). The Linux x86-64 port is experimental and being validated; macOS is not supported.
 
 **Microcontroller**
 

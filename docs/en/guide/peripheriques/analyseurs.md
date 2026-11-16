@@ -116,13 +116,18 @@ A line is only cut at an instant when no channel is in the middle of a byte. It 
     - **UART**: *RX* channel = the wire to decode, *Baud rate*, *Data bits*, *Parity*, *Stop bits* identical to the program's (`UART(0, baudrate=1200, bits=8, parity=0, stop=2, ...)` → 1200, 8, *even*, 2);
     - **I2C**: *SCL* and *SDA* channels.
 
-`pulseViewPath` stays empty, except in special cases: the probe **looks for PulseView by itself**, in this order, and takes the first one found:
+On Windows, `pulseViewPath` stays empty, except in special cases: the probe **looks for PulseView by itself**, in this order, and takes the first one found:
 
 | Order | Location | For whom |
 |---|---|---|
 | 1 | The environment variable `MICROPYTHONMCU_PULSEVIEW`: path of `pulseview.exe` or of its folder | A classroom: a single copy on a network share, the variable set once per computer (`setx MICROPYTHONMCU_PULSEVIEW "\\server\software\PulseView"`) or by the administrator |
 | 2 | The `PulseView` folder next to `MicroPythonMCU`, filled by `get_pulseview.cmd` | A personal computer |
 | 3 | `C:\Program Files\sigrok\PulseView\`, where the installer from [sigrok.org](https://sigrok.org/wiki/Downloads) puts it | A computer where PulseView is already installed |
+
+On experimental Linux, install PulseView separately. When `pulseViewPath` is
+empty, the probe uses `MICROPYTHONMCU_PULSEVIEW` (the executable or its
+directory), or `pulseview` on `PATH` if the variable is unset. Text files are opened with `xdg-open`,
+which requires a graphical session.
 
 Not found: a warning in the log gives the paths tried, and the simulation ends normally. A non-empty `pulseViewPath` bypasses the search.
 

@@ -1,25 +1,39 @@
-# Scenario de verification n°29 : la DLL python312.dll chargee dans le process de
-# simulation doit etre celle de la distribution embarquee (Resources/PythonRuntime),
-# jamais celle d'un Python installe sur le poste et trouve par le PATH.
-# GP0 passe a 1 si c'est le cas ; sinon le script leve une exception (simulation
-# en erreur). _winapi est integre a python312.dll et n'importe pas os : sans
-# systeme de fichiers, le shim refuse os au code du microcontroleur.
+# Scenario n°29 : verifier le chemin du runtime Python effectivement charge.
 from machine import Pin
-import _winapi
 import sys
 import time
 
 
-def normalise(chemin):
-    return chemin.replace('/', '\\').rstrip('\\').lower()
+if sys.platform == "win32":
+    import _winapi
 
+    dll = _winapi.GetModuleFileName(sys.dllhandle)
+    normalise = lambda chemin: chemin.replace('/', '\\').rstrip('\\').lower()
+    expected = normalise(sys.prefix) + "\\python312.dll"
+    actual = normalise(dll)
+else:
+    import ctypes
 
-dll = _winapi.GetModuleFileName(sys.dllhandle)
-print("python312.dll chargee :", dll)
+    class DlInfo(ctypes.Structure):
+        _fields_ = [("name", ctypes.c_char_p), ("base", ctypes.c_void_p),
+                    ("symbol", ctypes.c_char_p), ("address", ctypes.c_void_p)]
+
+    dladdr = ctypes.CDLL(None).dladdr
+    dladdr.argtypes = [ctypes.c_void_p, ctypes.POINTER(DlInfo)]
+    dladdr.restype = ctypes.c_int
+    info = DlInfo()
+    if not dladdr(ctypes.cast(ctypes.pythonapi.Py_IsInitialized, ctypes.c_void_p),
+                  ctypes.byref(info)) or not info.name:
+        raise RuntimeError("dladdr n'a pas trouve la bibliotheque Python")
+    dll = info.name.decode(sys.getfilesystemencoding())
+    actual = dll.rstrip("/")
+    expected = sys.prefix.rstrip("/") + "/linux-x86_64/lib/libpython3.12.so.1.0"
+
+print("Bibliotheque Python chargee :", dll)
 print("distribution embarquee :", sys.prefix)
 
-if normalise(dll).rsplit('\\', 1)[0] != normalise(sys.prefix):
-    raise RuntimeError("python312.dll ne vient pas de la distribution embarquee : " + dll)
+if actual != expected:
+    raise RuntimeError("Bibliotheque Python inattendue : " + dll + " (attendue : " + expected + ")")
 
 Pin(0, Pin.OUT).on()
 time.sleep(1)

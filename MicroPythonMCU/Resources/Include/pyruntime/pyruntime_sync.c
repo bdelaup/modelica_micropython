@@ -13,7 +13,7 @@
    la simulation se figerait sans aucun message. Chaque native commence donc par
    REQUIRE_WORKER(), qui transforme ce blocage en exception explicite. */
 static int worker_context_ok(void) {
-    if (!g_current || GetCurrentThreadId() != g_current->worker_thread_id) {
+    if (!g_current || !mcu_thread_id_equal(mcu_thread_id(), g_current->worker_thread_id)) {
         PyErr_SetString(PyExc_RuntimeError,
             "machine and time can only be used from the microcontroller script "
             "- a peripheral script runs outside its thread");
@@ -41,11 +41,11 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
     int due_count = 0;
     int i;
 
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     /* machine.disable_irq() : rien n'est consomme, les drapeaux "pending" et
        les echeances restent en place jusqu'a enable_irq(). */
     if (h->irq_disabled) {
-        LeaveCriticalSection(&h->cs);
+        mcu_mutex_unlock(&h->cs);
         return 0;
     }
     for (i = 0; i < h->num_pins; i++) {
@@ -85,7 +85,7 @@ static int run_due_callbacks(struct PyRuntimeHandle* h) {
         Py_XINCREF(due[due_count].arg);
         due_count++;
     }
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
 
     int status = 0;
     for (i = 0; i < due_count; i++) {
@@ -140,19 +140,19 @@ static int yield_until(double wake_at, int interruptible) {
            en etre sorti : aucun thread ne detient jamais cs en attendant le GIL,
            donc pas d'inversion d'ordre de verrous possible. */
         PyThreadState* saved = PyEval_SaveThread();
-        EnterCriticalSection(&h->cs);
+        mcu_mutex_lock(&h->cs);
         if (!h->shutdown && !h->halted) {
             h->wake_requested_at = wake_at;
             h->wake_pending = 1;
             h->turn = TURN_MODELICA;
-            WakeConditionVariable(&h->cv);
+            mcu_condition_signal(&h->cv);
             while (h->turn != TURN_WORKER && !h->shutdown && !h->halted) {
-                SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+                mcu_condition_wait(&h->cv, &h->cs, MCU_WAIT_FOREVER);
             }
         }
         int shutdown = h->shutdown || h->halted;
         int genuine = (interruptible && h->wake_had_input_change) || h->i2c_done_wake || (h->sim_time + PYRUNTIME_EPS >= wake_at);
-        LeaveCriticalSection(&h->cs);
+        mcu_mutex_unlock(&h->cs);
         PyEval_RestoreThread(saved);
 
         if (shutdown) {
