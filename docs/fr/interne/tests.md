@@ -46,6 +46,33 @@ Les scripts qui partagent un `fileNamePrefix` sont exécutés **à la suite l'un
 
 **Constaté le 2026-10-01** : pendant une session où OneDrive synchronisait beaucoup de fichiers modifiés, la suite lancée **dans le dépôt** a pris 21 min (KitchenScale seul : 712 s) et `verify_25` a échoué sur `Permission denied` / `Device or resource busy` (fichiers générés verrouillés). Les mêmes 36 scénarios, sur une copie hors OneDrive, passaient en 3 min 34 (KitchenScale : 76 s, compilation comprise). Un temps mesuré dans le dossier synchronisé n'est donc pas un coût du modèle ; en cas de doute, rejouer hors OneDrive. `--copy` le fait, mais ne copie que les fichiers suivis par git : de nouveaux fichiers pas encore ajoutés en sont absents.
 
+### Référence de performances Windows et Linux du 2026-11-16
+
+Mesures sur le même PC (Core i5-13420H, 16 Go, Windows 11 build 26300) et des copies séparées hors OneDrive, sans débogueur. OpenModelica 1.24.4 et Modelica 4.1.0 sont utilisés partout : Windows avec GCC 13.2.0 ; Linux x86_64 dans Docker Desktop 29.9.3/WSL2, Ubuntu 22.04.5, GCC 11.4.0 et glibc 2.35 (12 CPU et environ 7,6 Gio disponibles pour Docker). Le runtime Linux embarqué est CPython 3.12.16 ; la comparaison entre systèmes reste indicative, car les systèmes, compilateurs et runtimes diffèrent.
+
+Les révisions sont `fe9d542` (avant portage) et `2992f40` (actuelle) pour Windows ; `e3bd1b5` (premier commit Linux) et `2992f40` pour Linux. Les scénarios et paramètres sont ceux de `verify_28_gpio_timing` (0,6 s simulée, 600 intervalles) et `verify_32_kitchen_scale` (7 s simulées, 1 400 intervalles), solveur `dassl` et tolérance 1e-6. Pour chaque cas : chargement mesuré séparément, une compilation avec `simulate`, puis cinq exécutions de l'exécutable produit avec `-lv=LOG_STATS`, sans recompilation. Chaque résultat, y compris celui de la première simulation, satisfait les critères fonctionnels du script `.mos` d'origine.
+
+Les durées ci-dessous sont en secondes réelles, pas en secondes simulées. Le chargement est mesuré dans un processus `omc` distinct ; la génération est la somme des champs `timeFrontend`, `timeBackend`, `timeSimCode` et `timeTemplates` d'OpenModelica. La compilation est le champ `timeCompile` : ces trois valeurs n'ont chacune qu'une mesure. Les cinq exécutions comprennent le démarrage du programme et l'écriture du résultat, mais pas la vérification ultérieure par `omc`.
+
+| Système et révision | Scénario | Chargement | Génération | Compilation C | Exécutions, dans l'ordre | Médiane [min–max] |
+|---|---|---:|---:|---:|---|---:|
+| Windows `fe9d542` | GPIO | 5,65 | 3,08 | 7,92 | 1,67 ; 2,05 ; 1,54 ; 1,16 ; 1,80 | 1,67 [1,16–2,05] |
+| Windows `2992f40` | GPIO | 4,59 | 2,69 | 8,39 | 1,06 ; 1,12 ; 1,17 ; 1,27 ; 1,32 | 1,17 [1,06–1,32] |
+| Windows `fe9d542` | Balance | 3,23 | 4,47 | 5,48 | 120,94 ; 106,06 ; 138,54 ; 171,20 ; 86,71 | 120,94 [86,71–171,20] |
+| Windows `2992f40` | Balance | 3,64 | 4,76 | 5,30 | 134,71 ; 123,62 ; 127,05 ; 124,29 ; 126,65 | 126,65 [123,62–134,71] |
+| Linux `e3bd1b5` | GPIO | 3,73 | 1,13 | 2,35 | 1,49 ; 1,63 ; 1,39 ; 1,24 ; 1,15 | 1,39 [1,15–1,63] |
+| Linux `2992f40` | GPIO | 3,49 | 1,34 | 2,50 | 1,19 ; 2,19 ; 1,46 ; 2,50 ; 1,81 | 1,81 [1,19–2,50] |
+| Linux `e3bd1b5` | Balance | 3,37 | 1,81 | 2,54 | 48,11 ; 43,29 ; 48,83 ; 55,36 ; 43,98 | 48,11 [43,29–55,36] |
+| Linux `2992f40` | Balance | 3,72 | 2,13 | 2,39 | 48,95 ; 48,34 ; 50,56 ; 49,08 ; 49,87 | 49,08 [48,34–50,56] |
+
+Toutes les exécutions ont produit les mêmes nombres : GPIO, 17 608 pas, 4 033 événements d'état et 7 temporels ; balance, 1 871 320 pas, 48 618 événements d'état et 71 temporels. La dispersion importante, notamment sur l'ancienne balance Windows, ne permet pas de déduire une régression reproductible des écarts de médiane. Pour le GPIO Linux, cinq paires supplémentaires alternées dans un même conteneur donnent 1,42 s [1,17–1,83] pour `e3bd1b5` et 1,55 s [1,19–2,33] pour `2992f40` ; chaque résultat passe aussi le contrôle fonctionnel. Cela ne démontre pas une régression.
+
+La suite fonctionnelle complète a également passé **81/81** sous Linux Docker 1.24.4 sur une copie des fichiers suivis à `2992f40` (333,1 s, quatre chaînes en parallèle). Sous Windows 1.27.1, elle a passé **81/81** dans le dépôt (1 506,2 s) ; la révision exacte n'a pas été enregistrée au lancement et ce n'est pas une validation sur copie avant livraison. Ces durées de suite incluent compilation et exécution ; elles ne sont pas les mesures de simulation du tableau. Une mesure pilote s'est en outre déroulée pendant la suite Linux.
+
+**Préparation Docker.** Sur une copie isolée de `2992f40` sous `C:`, les étapes équivalentes au lanceur ont été chronométrées séparément avec `docker create`, `docker start`, puis `docker exec` pour la copie et `verify_01_basic_blink`. Sans `--copy`, les deux copies complètes ont pris 216,81 et 159,91 s (médiane 188,36 s) ; avec `--copy`, la fabrication de l'archive des fichiers suivis a pris 27,19 s une fois et ses trois extractions 26,30 ; 21,49 ; 33,29 s (médiane 26,30 s). Création et démarrage du conteneur ont chacun pris de 0,29 à 1,31 s. Le scénario court passe dans les deux modes : compilation C médiane 2,07 s sans copie suivie et 1,91 s avec, simulation médiane 0,38 s dans les deux cas. Ces mesures de phases utilisent les mêmes opérations de copie que le lanceur, mais `create/start/exec` plutôt que son unique `docker run` ; elles incluent la surcharge des commandes Docker et ne constituent pas une mesure du coût du modèle. La source et le cache du système de fichiers influencent fortement les copies.
+
+Le lanceur réel a aussi été testé sur un clone isolé avec un fichier témoin non suivi : le scénario passe dans les deux modes, et le témoin est présent sans `--copy` mais absent avec. **Limite constatée avec `--copy -k`** : après arrêt du conteneur, le lanceur supprime l'archive montée ; sur ce Docker Desktop, `docker cp` ne peut alors plus récupérer les fichiers du conteneur conservé. La présence des fichiers suivis et l'absence du témoin ont été vérifiées par `docker diff`. Le même échec de `docker cp` a été reproduit avec un conteneur minimal après suppression de son fichier monté.
+
 ### Pendant le travail ou avant un tag : dépôt ou copie
 
 | Quand | Commande | Ce qui est testé |
