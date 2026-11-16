@@ -11,13 +11,13 @@ flowchart TD
         A["PyRuntime.mo<br/>external 'C' + annotation(Include)"]
         B["omc génère le code C<br/>du modèle complet"]
         C["#include PyRuntimeImpl.c<br/>(injecté tel quel)"]
-        D["compilateur MinGW d'OpenModelica<br/>(tools/msys/ucrt64/bin/gcc.exe)"]
-        F["exécutable de simulation<br/>(un .exe par run, process OS séparé,<br/>non lié à python312)"]
+        D["compilateur C d'OpenModelica<br/>(MinGW sous Windows)"]
+        F["exécutable de simulation<br/>(process OS séparé,<br/>non lié à Python)"]
         A --> B --> C --> D --> F
     end
     subgraph Runtime["Exécution"]
         direction TB
-        G["LoadLibraryExW(PythonRuntime/python312.dll)<br/>+ table d'import par GetProcAddress"]
+        G["Chargement Python embarqué par chemin absolu<br/>LoadLibraryExW/GetProcAddress ou dlopen/dlsym"]
         H["Py_InitializeFromConfig<br/>(module_search_paths explicite)"]
         J["Py_NewInterpreterFromConfig<br/>(un sous-interpréteur par MCU, sur son worker)"]
         I["exécution du script utilisateur<br/>dans ce thread dédié"]
@@ -33,10 +33,11 @@ flowchart TD
 ```modelica
 external "C" ... annotation(
   Include = "#include \"PyRuntimeImpl.c\"",
-  IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
+  IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include",
+  Library = "-lpthread");
 ```
 
-Pas d'annotation `Library` : le modèle n'est lié à aucune bibliothèque Python, la DLL est chargée à l'exécution (voir plus bas).
+L'annotation `Library` lie les primitives de threads, pas Python : la bibliothèque Python est chargée à l'exécution (voir plus bas).
 
 `Include` pointe vers le fichier **`.c`** (pas un `.h`) : c'est le moyen standard de faire compiler notre implémentation par le *même* compilateur qu'`omc` utilise pour tout le reste du modèle généré, sans étape de build séparée à maintenir. Chaque fonction externe répète l'annotation (convention Modelica), mais comme `PyRuntimeImpl.c` est inclus tel quel, il n'y a qu'une seule unité de compilation réelle pour tout le modèle.
 
@@ -44,24 +45,34 @@ Pas d'annotation `Library` : le modèle n'est lié à aucune bibliothèque Pytho
 
 ## La distribution Python embarquée
 
-Plutôt que de dépendre d'un Python installé sur le poste (voir `requirements.md`, décision « Distribution Python embarquée »), `Resources/PythonRuntime/` contient la distribution officielle **« embeddable »** de python.org (`python-3.12.4-embed-amd64.zip`) : la DLL (`python312.dll`) et la bibliothèque standard compilée dans `python312.zip` — sans installateur, sans entrée de registre.
+Plutôt que de dépendre d'un Python installé sur le poste (voir `requirements.md`, décision « Distribution Python embarquée »), `Resources/PythonRuntime/windows-x86_64/` contient la distribution officielle Windows **« embeddable »** de python.org (`python-3.12.4-embed-amd64.zip`) : la DLL (`python312.dll`) et la bibliothèque standard compilée dans `python312.zip` — sans installateur, sans entrée de registre. Pour Linux x86-64 expérimental, `linux-x86_64/` contient une distribution python-build-standalone 3.12.16 ; ses licences et sa provenance sont fournies avec elle.
 
-Deux conséquences pour l'implémentation :
+Sous Linux, `pyhost.c` charge `lib/libpython3.12.so.1.0` de cette distribution par chemin absolu avec `dlopen`, puis résout les symboles avec `dlsym`. Les macros générées dans `pyimports_linux.h` précèdent l'inclusion des en-têtes CPython Linux, y compris pour les fonctions inline. Les chemins de la bibliothèque standard et de ses extensions sont configurés explicitement. Un autre Python déjà chargé dans le processus est refusé pour éviter de mélanger les runtimes. Le portage est en cours de validation sur Ubuntu 22.04 (glibc 2.35) ; les systèmes plus anciens, où `dlopen` peut demander une liaison `-ldl` explicite, ne sont pas validés.
 
-1. **Chargement de `python312.dll` par son chemin absolu.** Un lien classique (`-lpython312`) laisserait le chargeur de Windows chercher la DLL au lancement de l'exécutable : dossier de l'exe, System32, répertoire courant, puis PATH. Or `PythonRuntime/` n'est pas dans le PATH, et c'est le `python312.dll` d'un Python installé sur le poste qui était pris (constaté sur le poste de développement). Le modèle n'est donc lié à aucune bibliothèque Python. `pyhost_load_dll()` (`pyhost.c`), appelée en tête de `pyhost_ensure()` avant tout appel à l'API, charge `<pythonHome>\python312.dll` par `LoadLibraryExW`, puis remplit elle-même la table d'import :
+L'en-tête fourni `cpython312linux/pyconfig.h` est adapté localement : il ne
+définit `_POSIX_C_SOURCE` que si cette macro n'est pas déjà définie.
+OpenModelica peut inclure des en-têtes système avant `Python.h` ; sur Ubuntu
+26.04, ceux-ci sélectionnent une valeur différente de celle de CPython.
+Conserver leur valeur évite une redéfinition après leur lecture, sans prétendre
+que l'ordre des inclusions est celui recommandé par CPython. Vérification :
+`Resources/Verification/test_python_headers_linux.c`.
+
+Sous Windows, cela entraîne les choix suivants :
+
+1. **Chargement de `python312.dll` par son chemin absolu.** Un lien classique (`-lpython312`) laisserait le chargeur de Windows chercher la DLL au lancement de l'exécutable : dossier de l'exe, System32, répertoire courant, puis PATH. Or `PythonRuntime/windows-x86_64/` n'est pas dans le PATH, et c'est le `python312.dll` d'un Python installé sur le poste qui était pris (constaté sur le poste de développement). Le modèle n'est donc lié à aucune bibliothèque Python. `pyhost_load_dll()` (`pyhost.c`), appelée en tête de `pyhost_ensure()` avant tout appel à l'API, charge `<pythonHome>\windows-x86_64\python312.dll` par `LoadLibraryExW`, puis remplit elle-même la table d'import :
    ```c
    /* Python.h déclare toute l'API dllimport : le code compilé lit __imp_Py_Foo */
    __declspec(selectany) void* __imp_Py_IsInitialized = NULL;   /* ... un par symbole */
    __imp_Py_IsInitialized = GetProcAddress(dll, "Py_IsInitialized");
    ```
-   Ce procédé couvre les fonctions **et** les données (`Py_None`, `PyExc_TypeError`, `PyLong_Type`...), que le code lit par le même pointeur `__imp_`. La liste des symboles, `Resources/Include/pyimports.h`, est générée par [`make_pyimports.sh`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/tools/make_pyimports.sh). Il faut **le relancer quand le C utilise une nouvelle fonction de l'API Python** ; sinon la simulation échoue à l'édition de liens avec `undefined reference to __imp_PyXxx`. Les modules d'extension `.pyd` importent `python312.dll` par son nom et reçoivent celle qui est déjà chargée. Le scénario de vérification n°29 contrôle que la DLL en mémoire est bien celle de `PythonRuntime/`.
-2. **Résolution explicite des chemins Python.** La distribution embeddable range la bibliothèque standard dans `python312.zip`, pas dans un dossier `Lib/` déplié comme une installation classique. Laisser CPython deviner ses propres chemins (comportement par défaut) s'est avéré peu fiable : sur la machine de développement, le calcul automatique se faisait polluer par l'installation Python système via le registre Windows, et `sys.path` finissait par pointer vers le mauvais Python. `pyhost.c` (démarrage de CPython partagé par le `MCU` et les périphériques série scriptés) construit donc `config.module_search_paths` explicitement (le zip + le dossier `PythonRuntime`) plutôt que de s'appuyer sur la détection automatique :
+   Ce procédé couvre les fonctions **et** les données (`Py_None`, `PyExc_TypeError`, `PyLong_Type`...), que le code lit par le même pointeur `__imp_`. La liste des symboles, `Resources/Include/pyimports.h`, est générée par [`make_pyimports.sh`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/tools/make_pyimports.sh). Il faut **le relancer quand le C utilise une nouvelle fonction de l'API Python** ; sinon la simulation échoue à l'édition de liens avec `undefined reference to __imp_PyXxx`. Les modules d'extension `.pyd` importent `python312.dll` par son nom et reçoivent celle qui est déjà chargée. Le scénario de vérification n°29 contrôle que la DLL en mémoire est bien celle de `PythonRuntime/windows-x86_64/`.
+2. **Résolution explicite des chemins Python.** La distribution embeddable range la bibliothèque standard dans `python312.zip`, pas dans un dossier `Lib/` déplié comme une installation classique. Laisser CPython deviner ses propres chemins (comportement par défaut) s'est avéré peu fiable : sur la machine de développement, le calcul automatique se faisait polluer par l'installation Python système via le registre Windows, et `sys.path` finissait par pointer vers le mauvais Python. `pyhost.c` (démarrage de CPython partagé par le `MCU` et les périphériques série scriptés) construit donc `config.module_search_paths` explicitement (le zip + le dossier `windows-x86_64`) plutôt que de s'appuyer sur la détection automatique :
    ```c
    config.module_search_paths_set = 1;
-   PyWideStringList_Append(&config.module_search_paths, /* <pythonHome>\python312.zip */);
-   PyWideStringList_Append(&config.module_search_paths, /* <pythonHome> */);
+   PyWideStringList_Append(&config.module_search_paths, /* <pythonHome>\windows-x86_64\python312.zip */);
+   PyWideStringList_Append(&config.module_search_paths, /* <pythonHome>\windows-x86_64 */);
    ```
-   `pythonHome` est résolu côté Modelica via `Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime")`, exactement comme `scriptPath` — la portabilité vers un autre poste est donc automatique, sans chemin codé en dur.
+   `pythonHome` est résolu côté Modelica via `Modelica.Utilities.Files.loadResource("modelica://MicroPythonMCU/Resources/PythonRuntime")`, exactement comme `scriptPath` ; le runtime ajoute le sous-dossier de la plateforme — la portabilité vers un autre poste est donc automatique, sans chemin codé en dur.
 3. **Import de modules auxiliaires.** Un mécanisme voisin sert à rendre `import mon_module` possible depuis le script utilisateur : `PyRuntime_new` ajoute à `sys.path`, à l'exécution (l'interpréteur peut déjà être démarré), 0-2 entrées de plus — le dossier de `scriptPath` (si le paramètre `MCU.addScriptDirToPath` est actif, vrai par défaut) et/ou le dossier d'un fichier `.py` désigné par `MCU.libraryPath` (bibliothèque partagée, optionnel). Fonction utilitaire `dirname_of()` dans `PyRuntimeImpl.c` (dernier séparateur `/` ou `\`). Cf. `requirements.md`, décision « Import de modules auxiliaires », et [`Examples/ImportDemo.mo`](https://gitlab.com/bdelaup/modelica_micropython/-/blob/main/MicroPythonMCU/Examples/ImportDemo.mo) pour un exemple bout en bout.
 
 **Prérequis résiduel sur le poste cible** : le VC++ Redistributable, dont dépend `python312.dll` (build officiel, MSVC) — quasi toujours déjà présent sur un poste Windows.
@@ -112,8 +123,18 @@ graph TD
 - **`g_current`**, le pointeur par lequel une native retrouve son microcontrôleur, est **local au thread** (`static __thread`) : un worker, un MCU.
 - **Journal** : chaque interpréteur a son relais `pyruntime_stdio` et son tampon de ligne (`struct RelayBuf`, retrouvé par l'état du module) ; à partir de deux MCU, chaque ligne est préfixée par le nom d'instance.
 - **Scripts de périphérique** : ils restent dans l'interpréteur principal, sur le thread Modelica. Un `import machine` y obtient un module dont chaque attribut lève une erreur explicite, le shim n'existant que dans les sous-interpréteurs.
-- **Débogage** (`debugEnabled`) : le sous-interpréteur est créé avec `MCU_INTERP_CONFIG_DEBUG`, qui permet les threads démons dont pydevd a besoin. `debugpy` (vendoré dans `Resources/Debugpy/`) y est importé par `debug_host.py` **avant** le shim, tant que `time` est encore le vrai module, et son dossier s'ajoute aux préfixes jamais cloisonnés du shim (`_fs_stdlib`). Séquences détaillées (initialisation, pause, fin) dans `cycle-de-vie.md`, section 5.
+- **Débogage** (`debugEnabled`) : le sous-interpréteur est créé avec `MCU_INTERP_CONFIG_DEBUG`, qui permet les threads démons dont pydevd a besoin. `debugpy` (vendoré dans `Resources/Debugpy/`) y est importé par `debug_host.py` **avant** le shim, tant que `time` est encore le vrai module, et son dossier s'ajoute aux préfixes jamais cloisonnés du shim (`_fs_stdlib`). Le traitement des chemins d'un client connecté avant le premier tour attend que la correspondance image → copie de la flash soit connue. Séquences détaillées (initialisation, pause, fin) dans `cycle-de-vie.md`, section 5.
 
-## Portabilité : Windows uniquement
+## Portabilité : Linux expérimental
 
-L'implémentation C utilise directement les API Windows pour le threading (`CRITICAL_SECTION`, `CONDITION_VARIABLE`, `_beginthreadex`) — voir `cycle-de-vie.md`. Ce n'est ni testé ni fonctionnel tel quel sur Linux/macOS ; la distribution Python « embeddable » est elle-même une notion Windows uniquement. Cf. `requirements.md`, restrictions et TODO.
+Le worker utilise `mcu_thread.h`, qui encapsule les primitives Win32 et leurs
+équivalents pthread sous Linux — voir `cycle-de-vie.md`. La branche Linux est
+vérifiée par un test autonome ; ses attentes temporisées utilisent l'horloge
+monotone pour ne pas dépendre d'un changement d'heure système. Sous Linux
+x86_64, le runtime expérimental utilise les en-têtes et la distribution
+python-build-standalone fournis séparément, charge `libpython3.12.so.1.0` par
+son chemin absolu et résout les symboles via `dlsym`. Les fonctions externes
+utilisent `-lpthread` sur les deux plateformes. Le débogage, les lanceurs et la
+suite de vérification Linux restent à porter : la bibliothèque complète est
+encore prise en charge uniquement sous Windows. Cf. `requirements.md`,
+restrictions et TODO.

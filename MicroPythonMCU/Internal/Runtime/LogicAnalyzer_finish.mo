@@ -9,6 +9,6 @@ impure function LogicAnalyzer_finish "Notes the final instant of the simulation,
   // "Comportement en cas d'exception non geree dans le script").
   external "C" done = LogicAnalyzer_finish(an, currentTime) annotation(
     Include = "#include \"AnalyzerImpl.c\"",
-    Library = "-lwinpthread",
+    Library = "-lpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
 end LogicAnalyzer_finish;

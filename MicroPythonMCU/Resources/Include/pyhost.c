@@ -38,8 +38,13 @@
 #ifndef PYHOST_C_INCLUDED
 #define PYHOST_C_INCLUDED
 
+#ifdef _WIN32
 #include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
 
+#ifdef _WIN32
 /* --- Table d'import de python312.dll ---
    L'API Python est declaree dllimport (pyconfig.h Windows : Py_ENABLE_SHARED) :
    le code compile n'appelle pas Py_Foo directement, il lit le pointeur
@@ -84,7 +89,7 @@ static wchar_t* pyhost_widen(const char* s, size_t extra) {
     return w;
 }
 
-/* Charge <pythonHome>\python312.dll et remplit la table d'import. Idempotent.
+/* Charge <pythonHome>\windows-x86_64\python312.dll et remplit la table d'import. Idempotent.
    Retourne 0, ou -1 avec un message dans err. LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR :
    les dependances de la DLL (vcruntime140.dll...) sont cherchees d'abord a cote
    d'elle. Les modules d'extension .pyd importent ensuite python312.dll par son
@@ -95,7 +100,7 @@ static int pyhost_load_dll(const char* pythonHome, char* err, size_t errlen) {
         return 0;
     }
 
-    static const wchar_t dll_name[] = L"\\python312.dll";
+    static const wchar_t dll_name[] = L"\\windows-x86_64\\python312.dll";
     wchar_t* path = pyhost_widen(pythonHome, sizeof(dll_name) / sizeof(wchar_t));
     if (!path) {
         snprintf(err, errlen, "unreadable path of the Python distribution ('%s')", pythonHome);
@@ -115,14 +120,14 @@ static int pyhost_load_dll(const char* pythonHome, char* err, size_t errlen) {
     HMODULE h = LoadLibraryExW(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
     free(path);
     if (!h) {
-        snprintf(err, errlen, "cannot load %s\\python312.dll (Windows error %lu)",
+        snprintf(err, errlen, "cannot load %s\\windows-x86_64\\python312.dll (Windows error %lu)",
                  pythonHome, (unsigned long) GetLastError());
         return -1;
     }
     for (int i = 0; pyhost_import_table[i].name; ++i) {
         void* p = (void*) GetProcAddress(h, pyhost_import_table[i].name);
         if (!p) {
-            snprintf(err, errlen, "symbol %s missing from %s\\python312.dll (unexpected version?)",
+            snprintf(err, errlen, "symbol %s missing from %s\\windows-x86_64\\python312.dll (unexpected version?)",
                      pyhost_import_table[i].name, pythonHome);
             return -1;
         }
@@ -131,6 +136,64 @@ static int pyhost_load_dll(const char* pythonHome, char* err, size_t errlen) {
     dll = h;
     return 0;
 }
+#else
+#include "pyimports.h"
+
+__attribute__((weak)) void* g_pyhost_linux_library = NULL;
+
+static int pyhost_load_dll(const char* pythonHome, char* err, size_t errlen) {
+    static const char suffix[] = "/linux-x86_64/lib/libpython3.12.so.1.0";
+    size_t home_len = strlen(pythonHome);
+    char* path;
+    void* library;
+    void* process;
+    void* existing;
+    if (g_pyhost_linux_library) return 0;
+    if (pythonHome[0] != '/') {
+        snprintf(err, errlen, "Python distribution path must be absolute: %s", pythonHome);
+        return -1;
+    }
+    process = dlopen(NULL, RTLD_LAZY);
+    if (!process) {
+        snprintf(err, errlen, "cannot inspect loaded libraries: %s", dlerror());
+        return -1;
+    }
+    existing = dlsym(process, "Py_IsInitialized");
+    dlclose(process);
+    if (existing) {
+        snprintf(err, errlen, "another Python library is already loaded in this process");
+        return -1;
+    }
+    path = (char*) malloc(home_len + sizeof(suffix));
+    if (!path) {
+        snprintf(err, errlen, "out of memory preparing Python library path");
+        return -1;
+    }
+    memcpy(path, pythonHome, home_len);
+    memcpy(path + home_len, suffix, sizeof(suffix));
+    library = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+    if (!library) {
+        snprintf(err, errlen, "cannot load %s: %s", path, dlerror());
+        free(path);
+        return -1;
+    }
+    free(path);
+#define PYHOST_LOAD(n) do { \
+        _Static_assert(sizeof(pyimp_##n) == sizeof(void*), "incompatible dlsym pointer size"); \
+        void* symbol = dlsym(library, #n); \
+        if (!symbol) { \
+            snprintf(err, errlen, "symbol %s missing from embedded Python", #n); \
+            dlclose(library); \
+            return -1; \
+        } \
+        memcpy(&pyimp_##n, &symbol, sizeof(symbol)); \
+    } while (0);
+    PYHOST_IMPORTS(PYHOST_LOAD)
+#undef PYHOST_LOAD
+    g_pyhost_linux_library = library;
+    return 0;
+}
+#endif
 
 /* --- Lecture de fichier source (shim, script du microcontroleur, script de
    peripherique) --- Retourne le contenu entier dans un tampon alloue, termine
@@ -315,8 +378,22 @@ static int pyhost_install_relay(struct RelayBuf* out, struct RelayBuf* err) {
    pyhost_ensure), et drapeau d'abandon de la finalisation. selectany, comme la
    table d'import : pyhost.c peut etre compile dans deux unites, le compte doit
    rester unique pour le process. */
-__declspec(selectany) int g_pyhost_users = 0;
-__declspec(selectany) int g_pyhost_abandoned = 0;
+#ifdef _WIN32
+#define PYHOST_SHARED __declspec(selectany)
+#else
+#define PYHOST_SHARED __attribute__((weak))
+#endif
+PYHOST_SHARED int g_pyhost_users = 0;
+PYHOST_SHARED int g_pyhost_abandoned = 0;
+
+static int pyhost_add_search_path(PyConfig* config, const char* path) {
+    wchar_t* wide = Py_DecodeLocale(path, NULL);
+    PyStatus status;
+    if (!wide) return -1;
+    status = PyWideStringList_Append(&config->module_search_paths, wide);
+    PyMem_RawFree(wide);
+    return PyStatus_Exception(status) ? -1 : 0;
+}
 
 /* Demarre CPython s'il ne l'est pas deja. Retourne 0 si l'interpreteur est
    pret (demarre ici ou avant), -1 sinon avec un message dans err. Un succes
@@ -325,6 +402,10 @@ __declspec(selectany) int g_pyhost_abandoned = 0;
 static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
     PyStatus status;
     PyConfig config;
+    const char* runtimeHome = pythonHome;
+#ifdef _WIN32
+    char* allocatedHome = NULL;
+#endif
 
     if (pyhost_load_dll(pythonHome, err, errlen) != 0) {
         return -1;
@@ -334,38 +415,73 @@ static int pyhost_ensure(const char* pythonHome, char* err, size_t errlen) {
         return 0;
     }
 
+#ifdef _WIN32
+    {
+        static const char suffix[] = "\\windows-x86_64";
+        size_t home_len = strlen(pythonHome);
+        allocatedHome = (char*) malloc(home_len + sizeof(suffix));
+        if (!allocatedHome) {
+            snprintf(err, errlen, "out of memory preparing Windows Python home");
+            return -1;
+        }
+        memcpy(allocatedHome, pythonHome, home_len);
+        memcpy(allocatedHome + home_len, suffix, sizeof(suffix));
+        runtimeHome = allocatedHome;
+    }
+#endif
+
     PyConfig_InitPythonConfig(&config);
     config.site_import = 0;
     config.use_environment = 0;
     config.module_search_paths_set = 1;
 
-    /* Distribution "embeddable" : le stdlib est dans <home>\python312.zip, les
-       modules d'extension .pyd sont directement dans <home>. Chemins construits
-       explicitement : laisser CPython les deviner s'est revele peu fiable (le
-       calcul se faisait polluer par une installation Python systeme via le
-       registre Windows, cf. docs/integration-python.md). */
+    /* Distribution "embeddable" Windows : stdlib dans <home>\python312.zip,
+       extensions .pyd dans <home>. Linux garde ses sous-dossiers sous pythonHome.
+       Chemins explicites : la detection automatique etait polluee par une
+       installation systeme sous Windows (cf. docs/integration-python.md). */
     {
-        size_t home_len = strlen(pythonHome);
-        char* zip_path = (char*) malloc(home_len + 32);
-        sprintf(zip_path, "%s\\python312.zip", pythonHome);
-        status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(zip_path, NULL));
-        free(zip_path);
-        if (PyStatus_Exception(status)) {
-            PyConfig_Clear(&config);
-            snprintf(err, errlen, "failed to add python312.zip to sys.path");
-            return -1;
-        }
-        status = PyWideStringList_Append(&config.module_search_paths, Py_DecodeLocale(pythonHome, NULL));
-        if (PyStatus_Exception(status)) {
-            PyConfig_Clear(&config);
-            snprintf(err, errlen, "failed to add %s to sys.path", pythonHome);
-            return -1;
+#ifdef _WIN32
+        static const char* paths[] = { "\\python312.zip", "" };
+#else
+        static const char* paths[] = {
+            "/linux-x86_64/lib/python3.12",
+            "/linux-x86_64/lib/python3.12/lib-dynload"
+        };
+#endif
+        size_t home_len = strlen(runtimeHome);
+        for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); ++i) {
+            size_t suffix_len = strlen(paths[i]);
+            char* path = (char*) malloc(home_len + suffix_len + 1);
+            int failed;
+            if (!path) {
+                PyConfig_Clear(&config);
+                snprintf(err, errlen, "out of memory preparing Python search paths");
+#ifdef _WIN32
+                free(allocatedHome);
+#endif
+                return -1;
+            }
+            memcpy(path, runtimeHome, home_len);
+            memcpy(path + home_len, paths[i], suffix_len + 1);
+            failed = pyhost_add_search_path(&config, path);
+            if (failed) snprintf(err, errlen, "failed to add %s to sys.path", path);
+            free(path);
+            if (failed) {
+                PyConfig_Clear(&config);
+#ifdef _WIN32
+                free(allocatedHome);
+#endif
+                return -1;
+            }
         }
     }
-    status = PyConfig_SetBytesString(&config, &config.home, pythonHome);
+    status = PyConfig_SetBytesString(&config, &config.home, runtimeHome);
+#ifdef _WIN32
+    free(allocatedHome);
+#endif
     if (PyStatus_Exception(status)) {
         PyConfig_Clear(&config);
-        snprintf(err, errlen, "failed to set PYTHONHOME ('%s')", pythonHome);
+        snprintf(err, errlen, "failed to set PYTHONHOME under '%s'", pythonHome);
         return -1;
     }
 

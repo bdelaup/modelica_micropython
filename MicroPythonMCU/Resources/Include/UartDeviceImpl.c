@@ -34,7 +34,11 @@
 #ifndef PY_SSIZE_T_CLEAN
 #define PY_SSIZE_T_CLEAN                        /* formats "#" (y#) avec Py_ssize_t */
 #endif
+#ifdef _WIN32
 #include "cpython312/Python.h"
+#else
+#include "pyimports_linux.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

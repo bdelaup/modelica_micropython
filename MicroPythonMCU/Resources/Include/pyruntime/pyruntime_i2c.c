@@ -283,9 +283,9 @@ static PyObject* native_i2c_init(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "I2C frequency %s Hz out of range (%d-%d)", freq_str, (int) I2C_MIN_FREQ, (int) I2C_MAX_FREQ);
         return NULL;
     }
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     if (h->i2cm.busy) {
-        LeaveCriticalSection(&h->cs);
+        mcu_mutex_unlock(&h->cs);
         return i2c_oserror(I2C_ERR_EBUSY);
     }
     if (h->i2c_configured) {
@@ -306,7 +306,7 @@ static PyObject* native_i2c_init(PyObject* self, PyObject* args) {
     h->pin_pull[sda] = PIN_PULL_UP;
     i2c_scl(h, 0);                /* bus au repos : les deux lignes relachees */
     i2c_sda(h, 0);
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -353,11 +353,11 @@ static PyObject* native_i2c_xfer(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     struct I2cMaster* m = &h->i2cm;
     if (m->busy) {
         /* ex. callback de Timer/IRQ appele pendant qu'une transaction est en cours */
-        LeaveCriticalSection(&h->cs);
+        mcu_mutex_unlock(&h->cs);
         return i2c_oserror(I2C_ERR_EBUSY);
     }
     m->addr = addr;
@@ -384,13 +384,13 @@ static PyObject* native_i2c_xfer(PyObject* self, PyObject* args) {
     m->held = 0;
     m->next_time = h->sim_time + m->quarter;
     h->i2c_done_wake = 0;
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
 
     for (;;) {
         int done;
-        EnterCriticalSection(&h->cs);
+        mcu_mutex_lock(&h->cs);
         done = m->done;
-        LeaveCriticalSection(&h->cs);
+        mcu_mutex_unlock(&h->cs);
         if (done) {
             break;
         }
@@ -398,20 +398,20 @@ static PyObject* native_i2c_xfer(PyObject* self, PyObject* args) {
            qui rendra ce reveil authentique. */
         if (yield_to_modelica(1.0e300) != 0) {
             /* un callback Timer/IRQ a leve une exception : on libere le bus */
-            EnterCriticalSection(&h->cs);
+            mcu_mutex_lock(&h->cs);
             i2c_abort(h, I2C_ERR_EIO);
             h->i2c_done_wake = 0;
-            LeaveCriticalSection(&h->cs);
+            mcu_mutex_unlock(&h->cs);
             return NULL;
         }
     }
 
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     h->i2c_done_wake = 0;
     int error = m->error;
     int acks = m->acks;
     PyObject* data = PyBytes_FromStringAndSize((const char*) m->rbuf, m->rcount);
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     if (error) {
         Py_XDECREF(data);
         return i2c_oserror(error);
@@ -427,7 +427,7 @@ static PyObject* native_i2c_deinit(PyObject* self, PyObject* args) {
     struct PyRuntimeHandle* h = g_current;
     int id;
     if (!PyArg_ParseTuple(args, "i", &id)) return NULL;
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     if (h->i2c_configured) {
         i2c_scl(h, 0);
         i2c_sda(h, 0);
@@ -439,7 +439,7 @@ static PyObject* native_i2c_deinit(PyObject* self, PyObject* args) {
     h->i2c_sda_pin = -1;
     memset(&h->i2cm, 0, sizeof(h->i2cm));
     h->i2cm.next_time = 1.0e300;
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }

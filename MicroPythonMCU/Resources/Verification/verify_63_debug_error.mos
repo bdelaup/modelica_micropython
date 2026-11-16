@@ -21,8 +21,10 @@ buildModel(DebugError, stopTime = 2, numberOfIntervals = 100, fileNamePrefix = "
 b := getErrorString();
 
 deleteFile("DebugError_dap.json");
-system("start \"\" /b ..\\PythonRuntime\\python.exe dap_client.py 5863 \"" + cd() + "/script_error.py\" 8 x DebugError_dap.json");
-ret := system(".\DebugError.bat", "DebugError_run.txt");
+system(if getEnvironmentVar("OS") == "Windows_NT" then
+  "start \"\" /b ..\\PythonRuntime\\windows-x86_64\\python.exe dap_client.py 5863 \"" + cd() + "/script_error.py\" 8 x DebugError_dap.json"
+  else "python3 dap_client.py 5863 script_error.py 8 x DebugError_dap.json > /dev/null 2>&1 &");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\DebugError.bat" else "./DebugError", "DebugError_run.txt");
 log := readFile("DebugError_run.txt");
 
 (nAttached, m1) := regex(log, "Debugger: VS Code attached", 1);

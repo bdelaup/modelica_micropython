@@ -8,6 +8,6 @@ function StringToCharCodes "Converts the first n characters of s into ASCII code
   // "Comportement en cas d'exception non geree dans le script").
   external "C" string_to_char_codes(s, n, codes) annotation(
     Include = "#include \"StringToCharCodes.c\"",
-    Library = "-lwinpthread",
+    Library = "-lpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
 end StringToCharCodes;

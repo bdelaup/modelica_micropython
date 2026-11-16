@@ -6,10 +6,19 @@ __pycache__/
 *.exe
 *.o
 *.a
-# ... sauf l'interpréteur de la distribution embarquée : il lance le client DAP du scénario de débogage
-!/MicroPythonMCU/Resources/PythonRuntime/python.exe
+# ... sauf les interpréteurs des distributions embarquées ; Windows lance le client DAP
+!/MicroPythonMCU/Resources/PythonRuntime/windows-x86_64/**/*.a
+!/MicroPythonMCU/Resources/PythonRuntime/windows-x86_64/**/*.o
+!/MicroPythonMCU/Resources/PythonRuntime/windows-x86_64/**/*.bat
+!/MicroPythonMCU/Resources/PythonRuntime/windows-x86_64/**/*.exe
 *.tmp
 *.bat
+# La distribution Linux embarquee est conservee complete, y compris les fichiers
+# dont les extensions correspondent aux artefacts de compilation ci-dessus.
+!/MicroPythonMCU/Resources/PythonRuntime/linux-x86_64/**/*.a
+!/MicroPythonMCU/Resources/PythonRuntime/linux-x86_64/**/*.o
+!/MicroPythonMCU/Resources/PythonRuntime/linux-x86_64/**/*.bat
+!/MicroPythonMCU/Resources/PythonRuntime/linux-x86_64/**/*.exe
 *.log
 *.libs
 *.makefile
@@ -52,6 +61,9 @@ __pycache__/
 *_18spd.c
 /MicroPythonMCU/MCU.c
 /MicroPythonMCU/Resources/Verification/*.c
+!/MicroPythonMCU/Resources/Verification/test_mcu_thread.c
+!/MicroPythonMCU/Resources/Verification/test_launch_linux.c
+!/MicroPythonMCU/Resources/Verification/test_python_headers_linux.c
 # Sortie capturée de la simulation de chaque test (system(".\X.bat", "X_run.txt"))
 /MicroPythonMCU/Resources/Verification/*_run.txt
 # Filet de sécurité : C généré par un omc lancé depuis la racine du dépôt —

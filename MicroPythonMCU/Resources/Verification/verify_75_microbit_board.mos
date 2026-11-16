@@ -26,7 +26,7 @@ end MicroBitBoard;"); getErrorString();
 
 buildModel(MicroBitBoard, stopTime = 1.5, numberOfIntervals = 150, fileNamePrefix = "MicroBitBoard");
 b := getErrorString();
-ret := system(".\\MicroBitBoard.bat", "MicroBitBoard_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitBoard.bat" else "./MicroBitBoard", "MicroBitBoard_run.txt");
 log := readFile("MicroBitBoard_run.txt");
 
 (n1, m) := regex(log, "boot is_on True", 1);

@@ -22,7 +22,7 @@ end UartDuoMcu;"); getErrorString();
 
 buildModel(UartDuoMcu, stopTime = 4, numberOfIntervals = 40, fileNamePrefix = "UartDuoMcu");
 b := getErrorString();
-ret := system(".\\UartDuoMcu.bat", "UartDuoMcu_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\UartDuoMcu.bat" else "./UartDuoMcu", "UartDuoMcu_run.txt");
 log := readFile("UartDuoMcu_run.txt");
 
 (n1, m) := regex(log, "BOTH 1", 1);

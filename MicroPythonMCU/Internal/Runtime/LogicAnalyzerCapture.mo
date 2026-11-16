@@ -34,7 +34,7 @@ class LogicAnalyzerCapture "External Object of Peripherals.Analyzers.LogicAnalyz
     // "Comportement en cas d'exception non geree dans le script").
     external "C" an = LogicAnalyzer_new(fileName, instanceName, channelNames, kinds, baudrates, dataBits, parities, stopBits, msbFirst, clocks, clockFalling, wordBits, signedWords, writeVcd, writePulseViewSession, openPulseView, pulseViewPath, pulseViewLocal, writeText, openText, textFlags, textSilence, textResolution, textWidth) annotation(
       Include = "#include \"AnalyzerImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
@@ -42,7 +42,7 @@ class LogicAnalyzerCapture "External Object of Peripherals.Analyzers.LogicAnalyz
     input LogicAnalyzerCapture an;
     external "C" LogicAnalyzer_destroy(an) annotation(
       Include = "#include \"AnalyzerImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 

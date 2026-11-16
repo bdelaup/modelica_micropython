@@ -204,9 +204,14 @@ static PyObject* devscript_load(const char* component, const char* path,
     /* __name__ : nom de fichier sans extension, comme pour un module importe -
        surtout pas "__main__", qui executerait un eventuel bloc de test. */
     base = strrchr(path, '/');
-    if (!base || strrchr(path, '\\') > base) {
-        base = strrchr(path, '\\');
+#ifdef _WIN32
+    {
+        const char* backslash = strrchr(path, '\\');
+        if (backslash && (!base || backslash > base)) {
+            base = backslash;
+        }
     }
+#endif
     base = base ? base + 1 : path;
     {
         char modname[128];

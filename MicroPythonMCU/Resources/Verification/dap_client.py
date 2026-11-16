@@ -156,6 +156,7 @@ try:
     dap.event('initialized')
     bp = dap.request('setBreakpoints', source={'path': program}, breakpoints=[{'line': line}])
     report['breakpoint_verified'] = bp['breakpoints'][0].get('verified')
+    report['breakpoint_message'] = bp['breakpoints'][0].get('message')
     dap.request('configurationDone')
     dap.response(attach_seq)
 

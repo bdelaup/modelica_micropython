@@ -48,7 +48,7 @@ LED, teaching display, serial devices (echo, temperature sensor, GPS, 20x2 displ
 
 ## Current limits
 
-Windows only, no SPI. A model can hold several microcontrollers, which talk through their pins, a serial link or an I2C bus. Full list: [Limits and troubleshooting](guide/limites.md).
+64-bit Windows; an experimental Linux x86-64 port is being validated; no SPI. A model can hold several microcontrollers, which talk through their pins, a serial link or an I2C bus. Full list: [Limits and troubleshooting](guide/limites.md).
 
 ## Background
 

@@ -44,7 +44,7 @@ end RadioShared;
 
 buildModel(RadioDetuned, stopTime = 0.25, numberOfIntervals = 250, fileNamePrefix = "RadioChannel1");
 b1 := getErrorString();
-ret1 := system(".\\RadioChannel1.bat", "RadioChannel1_run.txt");
+ret1 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioChannel1.bat" else "./RadioChannel1", "RadioChannel1_run.txt");
 log1 := readFile("RadioChannel1_run.txt");
 (nPong1, m1) := regex(log1, "received b.PONG", 1);
 (nDeaf1, m2) := regex(log1, "\\[RadioDetuned.radioB\\] 0 byte\\(s\\) from the UART, 0 sent on air, 0 received on air", 1);
@@ -52,7 +52,7 @@ ok1 := ret1 == 0 and nPong1 == 0 and nDeaf1 == 1;
 
 buildModel(RadioAirMismatch, stopTime = 0.25, numberOfIntervals = 250, fileNamePrefix = "RadioChannel2");
 b2 := getErrorString();
-ret2 := system(".\\RadioChannel2.bat", "RadioChannel2_run.txt");
+ret2 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioChannel2.bat" else "./RadioChannel2", "RadioChannel2_run.txt");
 log2 := readFile("RadioChannel2_run.txt");
 (nPong2, m3) := regex(log2, "received b.PONG", 1);
 (nWarn2, m4) := regex(log2, "\\[RadioAirMismatch.radioB\\] corrupted radio frame dropped", 1);
@@ -61,7 +61,7 @@ ok2 := ret2 == 0 and nPong2 == 0 and nWarn2 == 1 and corrupted2 > 0.5;
 
 buildModel(RadioShared, stopTime = 0.05, numberOfIntervals = 500, fileNamePrefix = "RadioChannel3");
 b3 := getErrorString();
-ret3 := system(".\\RadioChannel3.bat", "RadioChannel3_run.txt");
+ret3 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioChannel3.bat" else "./RadioChannel3", "RadioChannel3_run.txt");
 log3 := readFile("RadioChannel3_run.txt");
 f3 := "RadioChannel3_res.mat";
 rxB1 := val(rxB1.nReceived, 0.049, f3);

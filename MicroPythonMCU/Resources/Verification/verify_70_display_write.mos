@@ -27,7 +27,7 @@ end DisplayWrite;"); getErrorString();
 
 buildModel(DisplayWrite, stopTime = 0.2, numberOfIntervals = 200, fileNamePrefix = "DisplayWrite");
 b := getErrorString();
-ret := system(".\\DisplayWrite.bat", "DisplayWrite_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\DisplayWrite.bat" else "./DisplayWrite", "DisplayWrite_run.txt");
 log := readFile("DisplayWrite_run.txt");
 (nZero, m1) := regex(log, "t=0 s - display received: \"Zero\"", 1);
 (nJoin, m2) := regex(log, "display received: \"T = 25 C\"", 1);

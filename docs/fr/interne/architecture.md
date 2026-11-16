@@ -19,7 +19,7 @@ flowchart TB
     end
     subgraph RES["Resources"]
         Include["Include/<br/>runtime C"]
-        PythonRuntime["PythonRuntime/<br/>python312.dll + stdlib"]
+        PythonRuntime["PythonRuntime/<br/>windows-x86_64/ + linux-x86_64/"]
         Scripts["Scripts/<br/>MCU/, Device/, _shim/"]
         FileSystems["FileSystems/<br/>images de flash"]
         Verification["Verification/<br/>.mos + run_tests.sh"]
@@ -34,7 +34,7 @@ flowchart TB
     XIAO --> Interfaces
     Peripherals --> Interfaces
     Internal -- "annotation Include" --> Include
-    Include -- "LoadLibraryExW" --> PythonRuntime
+    Include -- "LoadLibraryExW / dlopen" --> PythonRuntime
     MCU -- "scriptPath, shim" --> Scripts
     MCU -- "fsSource" --> FileSystems
     Verification -. "simule" .-> Examples
@@ -164,9 +164,9 @@ modelica_micropython/
     └── Resources/
         ├── Include/                -- nos sources C à la racine : PyRuntimeImpl.c + .h (chapeau du runtime Python), UartDeviceImpl.c + .h (chapeau des périphériques série), I2cDeviceImpl.c + .h (chapeau des périphériques I2C), AnalyzerImpl.c + .h (chapeau de la sonde d'analyseur logique, sans Python), RadioModemImpl.c + .h (chapeau des modules radio, sans Python), StringToCharCodes.c, uartcore.h/.c, i2ctarget.h/.c, devscript.c, launch.c
         │   ├── devscript.c         -- script Python d'un périphérique, PARTAGÉ par les chapeaux série et I2C : chargement dans un espace de noms propre, prélude print, conversions, arrêt propre sur exception
-        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de python312.dll par son chemin absolu dans PythonRuntime/ (table d'import pyimports.h, générée par tools/make_pyimports.sh), démarrage unique de l'interpréteur principal (le premier composant construit le démarre ; chaque MCU crée ensuite son sous-interpréteur), relais stdout/stderr avec un tampon par interpréteur, lecture de fichier
+        │   ├── pyhost.c            -- hôte CPython PARTAGÉ par les deux chapeaux : chargement de la bibliothèque de la plateforme par son chemin absolu dans PythonRuntime/<plateforme>/ (tables d'import générées par tools/make_pyimports.sh), démarrage unique de l'interpréteur principal (le premier composant construit le démarre ; chaque MCU crée ensuite son sous-interpréteur), relais stdout/stderr avec un tampon par interpréteur, lecture de fichier
         │   ├── uartcore.h/.c       -- moteur UART générique PARTAGÉ par les deux chapeaux : files circulaires TX/RX, trame au format choisi, niveau de la ligne d'émission, décodage de la réception à partir des fronts, échéances. Ni Python ni thread. Garde d'inclusion obligatoire (omc peut réunir les deux chapeaux dans une seule unité de compilation)
-        │   ├── launch.c            -- lanceur commun PARTAGÉ (Explorateur sur la copie de la flash ; Bloc-notes et PulseView sur les fichiers de l'analyseur logique) : CreateProcess sans attente, seul point du runtime qui dépend du système pour lancer un programme ; hors Windows, un message au journal. Garde d'inclusion
+        │   ├── launch.c            -- lanceur commun PARTAGÉ (copie de la flash ; texte et PulseView de l'analyseur) : CreateProcess sous Windows, double fork et execvp sous Linux ; garde d'inclusion
         │   ├── analyzer/           -- parties du chapeau AnalyzerImpl.c, dans cet ordre : analyzer_vcd.c (enregistreur VCD : nanosecondes, coalescence par instant), analyzer_core.h (structures), analyzer_text.c (décodeurs UART / I2C / série synchrone hors ligne et fichier texte), analyzer_logic.c (capture, API exportée)
         │   ├── i2ctarget.h/.c      -- moteur I2C CIBLE générique PARTAGÉ par les périphériques I2C et machine.I2CTarget du MCU : décodage START/STOP/bits/ACK piloté par les fronts, pilotage de SDA, crochets vers l'hôte. Ni Python ni thread, garde d'inclusion
         │   ├── pyruntime/          -- l'implémentation découpée, incluse textuellement par le chapeau dans un ordre significatif : pyruntime_core.h (constantes + PyRuntimeHandle), _sync.c, _pin.c, _display.c, _uart.c, _i2c.c (maître I2C en drain ouvert), _i2ctarget.c (machine.I2CTarget : mémoire, files, IRQ au même instant), _timer.c, _fs.c (système de fichiers : liaison shim <-> handle), _trace.c (capture des broches pour un analyseur logique, PWM recalculé), _module.c (module natif, création du sous-interpréteur sur le worker, API exportée)
@@ -174,7 +174,7 @@ modelica_micropython/
         │   ├── radiomodem/         -- parties du chapeau RadioModemImpl.c : radiomodem_core.h (struct RadioModem, files horodatées), radiomodem_engine.c (construction, ordonnancement, synchro, bilan de fin)
         │   ├── i2cdevice/          -- idem côté I2C : i2cdevice_core.h (struct I2cDevice), _script.c (contrat on_write / on_read / outputs / lines), _engine.c (crochets du moteur cible i2ctarget.c, construction, synchro)
         │   └── cpython312/         -- en-têtes Python 3.12 vendorés (Python.h et cie), isolés pour ne pas noyer nos fichiers
-        ├── PythonRuntime/          -- distribution Python « embeddable » officielle (DLL + stdlib), voir integration-python.md
+        ├── PythonRuntime/          -- distributions autonomes par plateforme : windows-x86_64/ (« embeddable ») et linux-x86_64/ (python-build-standalone), voir integration-python.md
         ├── FileSystems/            -- images de flash fournies, désignées par MCU.fsSource (datalogger/ : boot.py, main.py, config.txt, lib/ — Examples.FileSystem.Boot)
         ├── Scripts/
         │   ├── MCU/                -- programmes du microcontrôleur, un par exemple (dont demo.py, valeur par défaut de `MCU.scriptPath`) ; companion.py et lib/ servent à Program.Imports ; drivers du commerce posés à côté des programmes qui les importent : driver_grove_lcd_rgb.py, hx711_gpio.py (robert-hh)

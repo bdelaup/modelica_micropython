@@ -4,7 +4,7 @@
 
 **Environnement**
 
-- **Windows 64 bits uniquement**, avec OpenModelica ([Installation](installation.md)).
+- **Windows 64 bits**, avec OpenModelica ([Installation](installation.md)). Le portage Linux x86-64 est expérimental et sa validation est en cours ; macOS n'est pas pris en charge.
 
 **Microcontrôleur**
 

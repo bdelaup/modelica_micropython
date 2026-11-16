@@ -18,7 +18,7 @@ ok := val(mcuA.GP7.v, 0.055, f);
 idleScl := val(mcuA.GP4.v, 0.005, f);
 idleSda := val(mcuA.GP5.v, 0.005, f);
 
-ret := system(".\\MultiI2cMem.bat", "MultiI2cMem_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MultiI2cMem.bat" else "./MultiI2cMem", "MultiI2cMem_run.txt");
 log := readFile("MultiI2cMem_run.txt");
 (nScan, m1) := regex(log, "mcuA] scan: [[]'0x42'[]]", 1);
 (nVolts, m2) := regex(log, "mcuA] voltage measured by B: 2[.]00", 1);

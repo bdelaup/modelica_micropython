@@ -27,7 +27,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Analyzer.UartLink, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartLink");
 b := getErrorString();
-ret := system(".\UartLink.bat -override=analyzer.openPulseView=false,analyzer.openText=false", "UartLink_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\UartLink.bat -override=analyzer.openPulseView=false,analyzer.openText=false" else "./UartLink -override=analyzer.openPulseView=false,analyzer.openText=false", "UartLink_run.txt");
 log := readFile("UartLink_run.txt");
 vcd := readFile("UartLink.analyzer.vcd");
 txt := readFile("UartLink.analyzer.txt");

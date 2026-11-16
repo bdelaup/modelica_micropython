@@ -23,7 +23,7 @@ class RadioModem "External Object wrapping the state of a transparent radio mode
     // "Comportement en cas d'exception non geree dans le script").
     external "C" modem = RadioModem_new(baudrate, dataBits, parity, stopBits, airBaudrate, txBufferSize, rxBufferSize, txDelay, rxDelay, halfDuplex, drawnFMax, warnSampling, instanceName) annotation(
       Include = "#include \"RadioModemImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
@@ -31,7 +31,7 @@ class RadioModem "External Object wrapping the state of a transparent radio mode
     input RadioModem modem;
     external "C" RadioModem_destroy(modem) annotation(
       Include = "#include \"RadioModemImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 

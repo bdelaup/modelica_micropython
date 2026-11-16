@@ -154,8 +154,8 @@ struct PyRuntimeHandle {
     char* instanceName;
     char* fs_root;
 
-    CRITICAL_SECTION cs;
-    CONDITION_VARIABLE cv;
+    McuMutex cs;
+    McuCondition cv;
     int turn;
 
     double sim_time;
@@ -277,8 +277,8 @@ struct PyRuntimeHandle {
        sous-interpreteur et s'arrete. */
     int shutdown;
 
-    HANDLE thread;
-    DWORD worker_thread_id;  /* thread autorise a appeler les natives du shim, cf. worker_context_ok */
+    McuThread thread;
+    McuThreadId worker_thread_id;  /* thread autorise a appeler les natives du shim, cf. worker_context_ok */
 
     /* Initialisation du sous-interpreteur, faite par le worker (cf. worker_init) :
        PyRuntime_new attend que init_state quitte INIT_PENDING pour signaler une

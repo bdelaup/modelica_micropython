@@ -136,7 +136,7 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "invalid stop %d (1 or 2 expected)", stop);
         return NULL;
     }
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     g_current->uart[id].configured = 1;
     g_current->uart[id].tx_pin = tx;
     g_current->uart[id].rx_pin = rx;
@@ -144,7 +144,7 @@ static PyObject* native_uart_init(PyObject* self, PyObject* args) {
     g_current->pin_is_output[rx] = 0;
     g_current->uart_rx_claimed[rx] = 1; /* ses fronts ne reveillent plus le script (cf. PyRuntime_sync) */
     uartcore_configure(&g_current->uart[id].engine, 1.0 / baudrate, bits, parity, stop);
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -166,7 +166,7 @@ static PyObject* native_uart_write(PyObject* self, PyObject* args) {
     }
     Py_ssize_t i;
     long written = 0;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     for (i = 0; i < len; i++) {
         if (!uartcore_tx_push(&g_current->uart[id].engine, (unsigned char) data[i])) {
             break;   /* file pleine : les octets restants sont perdus, comme un FIFO materiel qui deborde */
@@ -175,7 +175,7 @@ static PyObject* native_uart_write(PyObject* self, PyObject* args) {
     }
     /* Si rien n'est en cours d'emission, demarrer tout de suite la premiere trame. */
     uartcore_tx_kick(&g_current->uart[id].engine, g_current->sim_time);
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     /* Non bloquant : le temps n'avance pas ici, Modelica joue la forme d'onde. */
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     return PyLong_FromLong(written);
@@ -190,9 +190,9 @@ static PyObject* native_uart_any(PyObject* self, PyObject* args) {
         return NULL;
     }
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     long n = uartcore_rx_count(&g_current->uart[id].engine);
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     return PyLong_FromLong(n);
 }
 
@@ -208,7 +208,7 @@ static PyObject* native_uart_read(PyObject* self, PyObject* args) {
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     char out[UART_RX_BUF_LEN];
     int count = 0;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     int avail = uartcore_rx_count(&g_current->uart[id].engine);
     int want = (n < 0 || n > avail) ? avail : n;
     while (count < want) {
@@ -218,7 +218,7 @@ static PyObject* native_uart_read(PyObject* self, PyObject* args) {
         }
         out[count++] = (char) byte;
     }
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (count == 0) {
         Py_RETURN_NONE;
     }
@@ -233,7 +233,7 @@ static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
         PyErr_Format(PyExc_ValueError, "UART %d not supported (only UART(0) and UART(1) exist)", id);
         return NULL;
     }
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     if (g_current->uart[id].configured && g_current->uart[id].rx_pin >= 0) {
         g_current->uart_rx_claimed[g_current->uart[id].rx_pin] = 0;
     }
@@ -241,7 +241,7 @@ static PyObject* native_uart_deinit(PyObject* self, PyObject* args) {
     g_current->uart[id].tx_pin = -1;
     g_current->uart[id].rx_pin = -1;
     uartcore_stop(&g_current->uart[id].engine);
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(g_current->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -263,11 +263,11 @@ static PyObject* native_uart_tx_busy(PyObject* self, PyObject* args) {
     }
     int busy;
     double wake;
-    EnterCriticalSection(&g_current->cs);
+    mcu_mutex_lock(&g_current->cs);
     busy = g_current->uart[id].configured &&
            (g_current->uart[id].engine.tx_active || uartcore_tx_count(&g_current->uart[id].engine) > 0);
     wake = busy ? uartcore_deadline(&g_current->uart[id].engine, g_current->sim_time) : g_current->sim_time;
-    LeaveCriticalSection(&g_current->cs);
+    mcu_mutex_unlock(&g_current->cs);
     if (yield_to_modelica(wake) != 0) return NULL;
     if (busy) {
         Py_RETURN_TRUE;

@@ -59,7 +59,7 @@ The repository ships the following third-party components, each under its own li
 
 | Component | Location | License |
 |---|---|---|
-| CPython 3.12, official "embeddable" distribution, and its C headers | `MicroPythonMCU/Resources/PythonRuntime/`, `MicroPythonMCU/Resources/Include/cpython312/` | Python Software Foundation License (`PythonRuntime/LICENSE.txt`) |
+| CPython 3.12, official "embeddable" distribution, and its C headers | `MicroPythonMCU/Resources/PythonRuntime/windows-x86_64/`, `MicroPythonMCU/Resources/Include/cpython312/` | Python Software Foundation License (`PythonRuntime/windows-x86_64/LICENSE.txt`) |
 | [debugpy](https://github.com/microsoft/debugpy) 1.8.20 (Microsoft), debugger used by `MCU.debugEnabled` | `MicroPythonMCU/Resources/Debugpy/` | MIT (`Debugpy/LICENSE`); it embeds PyDev.Debugger (EPL-1.0) and other components listed in `debugpy/ThirdPartyNotices.txt` |
 | `hx711_gpio.py` HX711 driver by [robert-hh](https://github.com/robert-hh/hx711), unmodified | `MicroPythonMCU/Resources/Scripts/MCU/` | MIT (header of the file) |
 | `driver_grove_lcd_rgb.py` Grove LCD RGB driver, © 2019 Christophe Gueneau, unmodified | `MicroPythonMCU/Resources/Scripts/MCU/` | not stated by its author |
@@ -137,7 +137,7 @@ Le dépôt embarque les composants tiers suivants, chacun sous sa propre licence
 
 | Composant | Emplacement | Licence |
 |---|---|---|
-| CPython 3.12, distribution « embeddable » officielle, et ses en-têtes C | `MicroPythonMCU/Resources/PythonRuntime/`, `MicroPythonMCU/Resources/Include/cpython312/` | Python Software Foundation License (`PythonRuntime/LICENSE.txt`) |
+| CPython 3.12, distribution « embeddable » officielle, et ses en-têtes C | `MicroPythonMCU/Resources/PythonRuntime/windows-x86_64/`, `MicroPythonMCU/Resources/Include/cpython312/` | Python Software Foundation License (`PythonRuntime/windows-x86_64/LICENSE.txt`) |
 | [debugpy](https://github.com/microsoft/debugpy) 1.8.20 (Microsoft), débogueur utilisé par `MCU.debugEnabled` | `MicroPythonMCU/Resources/Debugpy/` | MIT (`Debugpy/LICENSE`) ; il intègre PyDev.Debugger (EPL-1.0) et d'autres composants listés dans `debugpy/ThirdPartyNotices.txt` |
 | Driver HX711 `hx711_gpio.py` de [robert-hh](https://github.com/robert-hh/hx711), sans modification | `MicroPythonMCU/Resources/Scripts/MCU/` | MIT (en-tête du fichier) |
 | Driver Grove LCD RGB `driver_grove_lcd_rgb.py`, © 2019 Christophe Gueneau, sans modification | `MicroPythonMCU/Resources/Scripts/MCU/` | non précisée par son auteur |

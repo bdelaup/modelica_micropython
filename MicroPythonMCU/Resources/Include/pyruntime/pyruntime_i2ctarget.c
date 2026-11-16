@@ -213,7 +213,7 @@ static PyObject* native_i2ct_init(PyObject* self, PyObject* args) {
         has_mem = 1;
     }
 
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     i2ct_release(h);
     struct I2cTargetSide* s = &h->i2ct;
     s->configured = 1;
@@ -235,7 +235,7 @@ static PyObject* native_i2ct_init(PyObject* self, PyObject* args) {
     h->pin_pull[sda] = PIN_PULL_UP;
     h->pin_is_output[scl] = 0;  /* la cible ne tient jamais SCL (pas de clock stretching) */
     i2c_drive(h, sda, 0);
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -243,9 +243,9 @@ static PyObject* native_i2ct_init(PyObject* self, PyObject* args) {
 static PyObject* native_i2ct_deinit(PyObject* self, PyObject* args) {
     REQUIRE_WORKER();
     struct PyRuntimeHandle* h = g_current;
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     i2ct_release(h);
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     if (yield_to_modelica(h->sim_time) != 0) return NULL;
     Py_RETURN_NONE;
 }
@@ -262,7 +262,7 @@ static PyObject* native_i2ct_irq(PyObject* self, PyObject* args) {
         PyErr_SetString(PyExc_TypeError, "handler must be callable or None");
         return NULL;
     }
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     struct I2cTargetSide* s = &h->i2ct;
     Py_CLEAR(s->irq_handler);
     Py_CLEAR(s->irq_self);
@@ -274,7 +274,7 @@ static PyObject* native_i2ct_irq(PyObject* self, PyObject* args) {
     }
     s->irq_trigger = trigger;
     s->irq_pending = 0;
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     Py_RETURN_NONE;
 }
 
@@ -295,13 +295,13 @@ static PyObject* native_i2ct_readinto(PyObject* self, PyObject* args) {
     struct PyRuntimeHandle* h = g_current;
     Py_buffer buf;
     if (!PyArg_ParseTuple(args, "w*", &buf)) return NULL;
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     struct I2cTargetSide* s = &h->i2ct;
     int n = s->rx_len < (int) buf.len ? s->rx_len : (int) buf.len;
     memcpy(buf.buf, s->rx, (size_t) n);
     memmove(s->rx, s->rx + n, (size_t) (s->rx_len - n));
     s->rx_len -= n;
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     PyBuffer_Release(&buf);
     return PyLong_FromLong(n);
 }
@@ -312,7 +312,7 @@ static PyObject* native_i2ct_write(PyObject* self, PyObject* args) {
     struct PyRuntimeHandle* h = g_current;
     Py_buffer buf;
     if (!PyArg_ParseTuple(args, "y*", &buf)) return NULL;
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     struct I2cTargetSide* s = &h->i2ct;
     if (s->tx_pos > 0) {
         memmove(s->tx, s->tx + s->tx_pos, (size_t) (s->tx_len - s->tx_pos));
@@ -323,7 +323,7 @@ static PyObject* native_i2ct_write(PyObject* self, PyObject* args) {
     int n = (int) buf.len < room ? (int) buf.len : room;
     memcpy(s->tx + s->tx_len, buf.buf, (size_t) n);
     s->tx_len += n;
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     PyBuffer_Release(&buf);
     return PyLong_FromLong(n);
 }

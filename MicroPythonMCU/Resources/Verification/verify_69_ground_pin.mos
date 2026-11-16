@@ -39,7 +39,7 @@ end GroundPin;"); getErrorString();
 
 buildModel(GroundPin, stopTime = 0.1, numberOfIntervals = 1000, fileNamePrefix = "GroundPin");
 b := getErrorString();
-ret := system(".\\GroundPin.bat", "GroundPin_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\GroundPin.bat" else "./GroundPin", "GroundPin_run.txt");
 log := readFile("GroundPin_run.txt");
 (nEcho, m1) := regex(log, "echo b'OK\\\\n'", 1);
 (nI2c, m2) := regex(log, "i2c 3 b'GND'", 1);

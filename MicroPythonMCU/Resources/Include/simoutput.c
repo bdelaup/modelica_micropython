@@ -15,7 +15,8 @@
 
    Partage par les chapeaux qui en ont besoin : garde d'inclusion obligatoire
    (omc dedoublonne les Include par leur texte, deux chapeaux peuvent atterrir
-   dans la meme unite de compilation). Windows uniquement, comme le reste. */
+   dans la meme unite    de compilation). Sous Linux, la ligne de commande et le chemin de
+   l'executable sont lus dans /proc/self. */
 
 #ifndef MPMCU_SIMOUTPUT_C
 #define MPMCU_SIMOUTPUT_C
@@ -25,6 +26,8 @@
 #include <string.h>
 #ifdef _WIN32
 #include <windows.h>
+#elif defined(__linux__)
+#include <unistd.h>
 #endif
 
 #define SIMOUT_PATH_MAX 2048
@@ -95,6 +98,36 @@ static double simout_step_from_init(const char* path) {
     return step;
 }
 
+#ifdef __linux__
+/* /proc files report a length of zero, so they must be read sequentially. */
+static char* simout_command_line(size_t* length) {
+    FILE* f = fopen("/proc/self/cmdline", "rb");
+    char* buf = NULL;
+    size_t size = 0, capacity = 4096;
+    if (!f) return NULL;
+    buf = (char*) malloc(capacity);
+    if (!buf) { fclose(f); return NULL; }
+    for (;;) {
+        size_t n = fread(buf + size, 1, capacity - size - 1, f);
+        size += n;
+        if (ferror(f)) { free(buf); fclose(f); return NULL; }
+        if (feof(f)) break;
+        if (size == capacity - 1) {
+            char* grown;
+            if (capacity >= 1024 * 1024) { free(buf); fclose(f); return NULL; }
+            capacity *= 2;
+            grown = (char*) realloc(buf, capacity);
+            if (!grown) { free(buf); fclose(f); return NULL; }
+            buf = grown;
+        }
+    }
+    buf[size] = '\0';
+    *length = size;
+    fclose(f);
+    return buf;
+}
+#endif
+
 #ifdef _WIN32
 /* Argument suivant de la ligne de commande (guillemets retires), ou NULL. */
 static const char* simout_next_arg(const char* p, char* out, size_t size) {
@@ -117,18 +150,39 @@ static const char* simout_next_arg(const char* p, char* out, size_t size) {
 
 /* Intervalle de sortie en secondes, ou -1 s'il n'a pas pu etre determine. */
 static double sim_output_interval(void) {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
     static char arg[SIMOUT_PATH_MAX], prev[64], initFile[SIMOUT_PATH_MAX], inputPath[SIMOUT_PATH_MAX];
     static char exe[SIMOUT_PATH_MAX], path[SIMOUT_PATH_MAX];
+#ifdef _WIN32
     const char* p = GetCommandLineA();
+#else
+    size_t commandLength = 0;
+    char* commandLine = simout_command_line(&commandLength);
+    const char* p = commandLine;
+    const char* commandEnd = commandLine ? commandLine + commandLength : NULL;
+#endif
     double step = -1;
     char* base;
+#ifdef _WIN32
     char* dot;
+#endif
     initFile[0] = inputPath[0] = prev[0] = '\0';
 
     /* 1. Ligne de commande. "-x=valeur" ou "-x valeur". */
-    while ((p = simout_next_arg(p, arg, sizeof(arg))) != NULL) {
+#ifdef _WIN32
+    while (p && *p) {
+#else
+    while (p && p < commandEnd) {
+#endif
         const char* value = NULL;
+#ifdef _WIN32
+        p = simout_next_arg(p, arg, sizeof(arg));
+        if (!p) break;
+#else
+        size_t length = strlen(p);
+        snprintf(arg, sizeof(arg), "%s", p);
+        p += length + 1;
+#endif
         if (strncmp(arg, "-override=", 10) == 0) {
             value = arg + 10;
         } else if (strcmp(prev, "-override") == 0) {
@@ -163,20 +217,37 @@ static double sim_output_interval(void) {
         strncpy(prev, arg, sizeof(prev) - 1);
         prev[sizeof(prev) - 1] = '\0';
     }
+#ifdef __linux__
+    free(commandLine);
+#endif
     if (step > 0) return step;
 
     /* 2. Fichier _init.xml. */
     if (initFile[0]) {
         return simout_step_from_init(initFile);
     }
+#ifdef _WIN32
     if (!GetModuleFileNameA(NULL, exe, sizeof(exe))) return -1;
+#else
+    {
+        ssize_t n = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+        if (n < 0 || (size_t) n >= sizeof(exe) - 1) return -1;
+        exe[n] = '\0';
+    }
+#endif
+#ifdef _WIN32
     base = strrchr(exe, '\\');
     if (!base) base = strrchr(exe, '/');
+#else
+    base = strrchr(exe, '/');
+#endif
     base = base ? base + 1 : exe;
+#ifdef _WIN32
     dot = strrchr(base, '.');
     if (dot) *dot = '\0';
+#endif
     if (inputPath[0]) {
-        snprintf(path, sizeof(path), "%s/%s_init.xml", inputPath, base);
+        if (snprintf(path, sizeof(path), "%s/%s_init.xml", inputPath, base) >= (int) sizeof(path)) return -1;
     } else {
         /* base pointe dans exe : ce qui le precede est le dossier de l'exe */
         snprintf(path, sizeof(path), "%.*s%s_init.xml", (int) (base - exe), exe, base);

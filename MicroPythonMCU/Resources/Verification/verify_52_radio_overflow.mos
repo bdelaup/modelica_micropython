@@ -16,7 +16,7 @@ loadFile("Overflow.mo"); getErrorString();
 
 buildModel(Overflow, stopTime = 0.5, numberOfIntervals = 5000, fileNamePrefix = "RadioOverflow");
 b := getErrorString();
-ret := system(".\\RadioOverflow.bat", "RadioOverflow_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioOverflow.bat" else "./RadioOverflow", "RadioOverflow_run.txt");
 log := readFile("RadioOverflow_run.txt");
 
 (nRx, m1) := regex(log, "mcuB\\] received 21 bytes: b.0123456789ABCDEFGHLTb.", 1);

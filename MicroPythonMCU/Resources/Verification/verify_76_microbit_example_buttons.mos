@@ -12,7 +12,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.MicroBit.Buttons, stopTime = 5, numberOfIntervals = 500, fileNamePrefix = "MicroBitButtonsEx");
 b := getErrorString();
-ret := system(".\\MicroBitButtonsEx.bat", "MicroBitButtonsEx_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitButtonsEx.bat" else "./MicroBitButtonsEx", "MicroBitButtonsEx_run.txt");
 log := readFile("MicroBitButtonsEx_run.txt");
 
 (n1, m) := regex(log, "count 1", 1);

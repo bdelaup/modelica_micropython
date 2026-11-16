@@ -18,7 +18,7 @@ impure function UartDevice_sync "Sync point of an external serial device: advanc
   // "Comportement en cas d'exception non geree dans le script").
   external "C" UartDevice_sync(dev, currentTime, rxLevel, valueIn, valueOut, txActive, txLevel, rxBusy, eventSeq, lastRx, lastTx, nextWakeTime) annotation(
     Include = "#include \"UartDeviceImpl.c\"",
-    Library = "-lwinpthread",
+    Library = "-lpthread",
     IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   annotation(
     Documentation(info = "<html>

@@ -14,7 +14,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Radio.Link, stopTime = 0.25, numberOfIntervals = 2500, fileNamePrefix = "RadioLink");
 b := getErrorString();
-ret := system(".\\RadioLink.bat", "RadioLink_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioLink.bat" else "./RadioLink", "RadioLink_run.txt");
 log := readFile("RadioLink_run.txt");
 f := "RadioLink_res.mat";
 

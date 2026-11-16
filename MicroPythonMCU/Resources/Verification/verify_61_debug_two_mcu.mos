@@ -16,7 +16,7 @@ end DebugTwoMcu;"); getErrorString();
 buildModel(DebugTwoMcu, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "DebugTwoMcu");
 b := getErrorString();
 
-ret := system(".\DebugTwoMcu.bat", "DebugTwoMcu_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\DebugTwoMcu.bat" else "./DebugTwoMcu", "DebugTwoMcu_run.txt");
 log := readFile("DebugTwoMcu_run.txt");
 (nMsg, m1) := regex(log, "debugEnabled is set on more than one MCU", 1);
 (nEnd, m2) := regex(log, "The simulation finished successfully", 1);

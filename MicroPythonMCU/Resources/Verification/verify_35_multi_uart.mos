@@ -18,7 +18,7 @@ idleB := val(mcuB.GP0.v, 0.01, f);
 startA := val(mcuA.GP0.v, 0.02005, f);
 ok := val(mcuA.GP7.v, 0.19, f);
 
-ret := system(".\\MultiUart.bat", "MultiUart_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MultiUart.bat" else "./MultiUart", "MultiUart_run.txt");
 log := readFile("MultiUart_run.txt");
 (nReplies, m1) := regex(log, "mcuA] replies: 3 / 3", 1);
 (nAnswered, m2) := regex(log, "mcuB] answered b'PING 2'", 1);

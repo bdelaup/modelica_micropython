@@ -28,7 +28,7 @@ end MicroBitSelfTalk;"); getErrorString();
 
 buildModel(MicroBitSelfTalk, stopTime = 4, numberOfIntervals = 40, fileNamePrefix = "MicroBitSelfTalk");
 b := getErrorString();
-ret := system(".\\MicroBitSelfTalk.bat", "MicroBitSelfTalk_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitSelfTalk.bat" else "./MicroBitSelfTalk", "MicroBitSelfTalk_run.txt");
 log := readFile("MicroBitSelfTalk_run.txt");
 
 (n1, m) := regex(log, "BACK 1", 1);

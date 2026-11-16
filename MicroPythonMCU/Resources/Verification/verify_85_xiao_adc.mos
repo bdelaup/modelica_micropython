@@ -4,7 +4,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.XIAO_rp2040.Adc, stopTime = 0.5, numberOfIntervals = 500, fileNamePrefix = "XiaoAdc");
 b := getErrorString();
-ret := system(".\\XiaoAdc.bat", "XiaoAdc_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\XiaoAdc.bat" else "./XiaoAdc", "XiaoAdc_run.txt");
 log := readFile("XiaoAdc_run.txt");
 (nAdc, m) := regex(log, "D0 ADC[(]0[)] = 32[0-9][0-9][0-9]", 1);
 vD0 := val(xiao.D0.v, 0.1, "XiaoAdc_res.mat");

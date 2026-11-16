@@ -244,7 +244,17 @@ static void debug_host_stop(PyThreadState* ts) {
             return;
         }
         Py_BEGIN_ALLOW_THREADS
+#ifdef _WIN32
         Sleep(10);
+#else
+        struct timespec delay = { 0, 10000000L };
+        while (nanosleep(&delay, &delay) != 0) {
+            if (errno != EINTR) {
+                ModelicaFormatWarning("PyRuntime: debugger shutdown wait failed (error %d)\n", errno);
+                break;
+            }
+        }
+#endif
         Py_END_ALLOW_THREADS
     }
 }
@@ -336,7 +346,11 @@ static int run_program_file(struct PyRuntimeHandle* h, const char* dir, const ch
     if (dir) {
         size_t len = strlen(dir) + strlen(name) + 2;
         path = (char*) malloc(len);
+#ifdef _WIN32
         snprintf(path, len, "%s\\%s", dir, name);
+#else
+        snprintf(path, len, "%s/%s", dir, name);
+#endif
     } else {
         path = strdup(name);
     }
@@ -389,10 +403,10 @@ struct WorkerArg {
     struct WorkerInit init;
 };
 
-static unsigned __stdcall worker_main(void* arg) {
+static MCU_THREAD_RETURN MCU_THREAD_CALL worker_main(void* arg) {
     struct WorkerArg* wa = (struct WorkerArg*) arg;
     struct PyRuntimeHandle* h = wa->h;
-    h->worker_thread_id = GetCurrentThreadId();
+    h->worker_thread_id = mcu_thread_id();
     g_current = h;
 
     int ok = worker_init(h, &wa->init);
@@ -407,10 +421,10 @@ static unsigned __stdcall worker_main(void* arg) {
     free(wa);
 
     /* Resultat de l'initialisation, attendu par PyRuntime_new. */
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     h->init_state = ok ? INIT_OK : INIT_FAILED;
-    WakeAllConditionVariable(&h->cv);
-    LeaveCriticalSection(&h->cs);
+    mcu_condition_broadcast(&h->cv);
+    mcu_mutex_unlock(&h->cs);
     if (!ok) {
         return 0;   /* GIL deja rendu par worker_init */
     }
@@ -422,11 +436,11 @@ static unsigned __stdcall worker_main(void* arg) {
     /* Carte jamais alimentee (cf. started) : ce premier tour n'arrive pas, la
        fin de simulation (shutdown) libere alors le worker sans programme. */
     Py_BEGIN_ALLOW_THREADS
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     while (h->turn != TURN_WORKER && !h->shutdown) {
-        SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        mcu_condition_wait(&h->cv, &h->cs, MCU_WAIT_FOREVER);
     }
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     Py_END_ALLOW_THREADS
     int never_started = h->shutdown && !h->started;
 
@@ -472,11 +486,11 @@ static unsigned __stdcall worker_main(void* arg) {
         ModelicaFormatMessage("PyRuntime: neither boot.py nor main.py at the root of the file system - microcontroller idle\n");
     }
 
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     h->script_done = 1;
     h->turn = TURN_MODELICA;
-    WakeConditionVariable(&h->cv);
-    LeaveCriticalSection(&h->cs);
+    mcu_condition_signal(&h->cv);
+    mcu_mutex_unlock(&h->cs);
 
     /* Programme fini (ou deroule par SystemExit en fin de simulation) : le
        worker se gare, GIL rendu, jusqu'a la destruction. Le sous-interpreteur
@@ -485,11 +499,11 @@ static unsigned __stdcall worker_main(void* arg) {
        execute pendant la fin du sous-interpreteur peut encore appeler une
        native (qui leve alors SystemExit, cf. yield_until). */
     PyThreadState* ts = PyEval_SaveThread();
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     while (!h->shutdown) {
-        SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+        mcu_condition_wait(&h->cv, &h->cs, MCU_WAIT_FOREVER);
     }
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
     PyEval_RestoreThread(ts);
     if (h->debug_enabled) {
         debug_host_stop(ts);
@@ -507,11 +521,15 @@ static unsigned __stdcall worker_main(void* arg) {
    vide si aucun separateur n'est trouve. A liberer par l'appelant (free). */
 static char* dirname_of(const char* path) {
     const char* last_slash = strrchr(path, '/');
+#ifdef _WIN32
     const char* last_backslash = strrchr(path, '\\');
+#endif
     const char* sep = last_slash;
+#ifdef _WIN32
     if (last_backslash && (!sep || last_backslash > sep)) {
         sep = last_backslash;
     }
+#endif
     if (!sep) {
         return strdup("");
     }
@@ -593,8 +611,8 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
         handle->pin_caps[k] = pinCaps[k];
     }
     strcpy(handle->board_profile, boardProfile);
-    InitializeCriticalSection(&handle->cs);
-    InitializeConditionVariable(&handle->cv);
+    mcu_mutex_init(&handle->cs);
+    mcu_condition_init(&handle->cv);
     handle->turn = TURN_MODELICA;
     /* calloc met tout a zero, or 0 est un index de broche valide : les
        broches TX/RX de chaque slot UART doivent donc etre remises
@@ -685,10 +703,18 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
         char* resources = dirname_of(pythonHome);
         size_t len = strlen(shimDir) + 32;
         wa->init.debugHostPath = (char*) malloc(len);
+#ifdef _WIN32
         snprintf(wa->init.debugHostPath, len, "%s\\debug_host.py", shimDir);
+#else
+        snprintf(wa->init.debugHostPath, len, "%s/debug_host.py", shimDir);
+#endif
         len = strlen(resources) + 32;
         wa->init.debugpyDir = (char*) malloc(len);
+#ifdef _WIN32
         snprintf(wa->init.debugpyDir, len, "%s\\Debugpy", resources);
+#else
+        snprintf(wa->init.debugpyDir, len, "%s/Debugpy", resources);
+#endif
         free(resources);
         wa->init.shimDir = shimDir;
         wa->init.debugHostSrc = read_text_file(wa->init.debugHostPath);
@@ -698,8 +724,7 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
         }
     }
 
-    handle->thread = (HANDLE) _beginthreadex(NULL, 0, worker_main, wa, 0, NULL);
-    if (!handle->thread) {
+    if (!mcu_thread_start(&handle->thread, worker_main, wa)) {
         ModelicaFormatError("PyRuntime: failed to create the worker thread");
         return NULL;
     }
@@ -708,12 +733,12 @@ void* PyRuntime_new(const char* scriptPath, const char* pythonHome,
        une erreur de configuration (systeme de fichiers introuvable...) arrete
        ainsi la simulation des la construction, comme avant. GIL non tenu ici
        (invariant de pyhost.c) : le worker peut le prendre. */
-    EnterCriticalSection(&handle->cs);
+    mcu_mutex_lock(&handle->cs);
     while (handle->init_state == INIT_PENDING) {
-        SleepConditionVariableCS(&handle->cv, &handle->cs, INFINITE);
+        mcu_condition_wait(&handle->cv, &handle->cs, MCU_WAIT_FOREVER);
     }
     int init_state = handle->init_state;
-    LeaveCriticalSection(&handle->cs);
+    mcu_mutex_unlock(&handle->cs);
     if (init_state != INIT_OK) {
         ModelicaFormatError("PyRuntime (%s): %s", handle->instanceName, handle->init_failure);
         return NULL;
@@ -739,11 +764,11 @@ void PyRuntime_destroy(void* handle_) {
     if (!h) {
         return;
     }
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     h->shutdown = 1;
-    WakeAllConditionVariable(&h->cv);
-    LeaveCriticalSection(&h->cs);
-    if (WaitForSingleObject(h->thread, SHUTDOWN_WAIT_MS) != WAIT_OBJECT_0) {
+    mcu_condition_broadcast(&h->cv);
+    mcu_mutex_unlock(&h->cs);
+    if (!mcu_thread_join(&h->thread, SHUTDOWN_WAIT_MS)) {
         ModelicaFormatWarning("PyRuntime (%s): the program did not stop at the end of the simulation "
                               "(does it catch SystemExit, e.g. with a bare except:?) - Python is not finalized, "
                               "files left open may be incomplete\n", h->instanceName);
@@ -771,9 +796,9 @@ void PyRuntime_destroy(void* handle_) {
    avertissement seulement (cf. requirements.md) : la simulation continue
    d'attendre, et un calcul long mais legitime finit normalement. Repete a
    intervalle double (10, 20, 40 s...) pour ne pas inonder le journal. */
-static void hang_check(struct PyRuntimeHandle* h, double currentTime, ULONGLONG start,
+static void hang_check(struct PyRuntimeHandle* h, double currentTime, uint64_t start,
                        double* next_warn, int worker_running) {
-    double elapsed = (double) (GetTickCount64() - start) / 1000.0;
+    double elapsed = (double) (mcu_monotonic_ms() - start) / 1000.0;
     if (*next_warn <= 0 || elapsed < *next_warn) {
         return;
     }
@@ -827,9 +852,9 @@ static void power_loss(struct PyRuntimeHandle* h, double currentTime) {
     if (!h->script_done) {
         h->halted = 1;
         h->turn = TURN_WORKER;
-        WakeConditionVariable(&h->cv);
+        mcu_condition_signal(&h->cv);
         while (!h->script_done) {
-            SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+            mcu_condition_wait(&h->cv, &h->cs, MCU_WAIT_FOREVER);
         }
     }
     h->powered_off = 1;
@@ -876,7 +901,7 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
         return;
     }
     if (!h->started) {
-        EnterCriticalSection(&h->cs);
+        mcu_mutex_lock(&h->cs);
         h->started = 1;
         h->boot_time = currentTime;
         /* Moteurs de la carte : alloues et actives au boot, avant le programme
@@ -885,12 +910,12 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
         if (h->board && !h->board_ext) {
             h->board_ext = h->board->boot(h, currentTime);
         }
-        LeaveCriticalSection(&h->cs);
+        mcu_mutex_unlock(&h->cs);
     } else if (!powerGood) {
-        EnterCriticalSection(&h->cs);
+        mcu_mutex_lock(&h->cs);
         h->sim_time = currentTime;
         power_loss(h, currentTime);
-        LeaveCriticalSection(&h->cs);
+        mcu_mutex_unlock(&h->cs);
         publish_unpowered(h, pinBoolOut, pinIsOutput, pinPull, pwmFreqOut, pwmDutyOut,
                           displaySeqOut, displayPayloadOut, uartTxPinOut, uartTxLevelOut, nextWakeTime);
         return;
@@ -937,7 +962,7 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
         return;
     }
 
-    EnterCriticalSection(&h->cs);
+    mcu_mutex_lock(&h->cs);
     h->sim_time = currentTime;
     h->adc_ref = adcRef;
 
@@ -1047,21 +1072,21 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
            PyRuntime_sync, a mesure que le temps simule avance.
            Attente par tranches quand hangWarningTime > 0, pour signaler un
            script qui ne laisse pas avancer la simulation (cf. hang_check). */
-        ULONGLONG start = GetTickCount64();
+        uint64_t start = mcu_monotonic_ms();
         /* Debogage : une pause sur un point d'arret est legitime, pas de
            timeout mou. */
         double next_warn = h->debug_enabled ? 0 : h->hang_warning_time;
         for (;;) {
             h->turn = TURN_WORKER;
-            WakeConditionVariable(&h->cv);
+            mcu_condition_signal(&h->cv);
             while (h->turn != TURN_MODELICA) {
                 if (next_warn > 0) {
-                    SleepConditionVariableCS(&h->cv, &h->cs, HANG_CHECK_MS);
+                    mcu_condition_wait(&h->cv, &h->cs, HANG_CHECK_MS);
                     if (h->turn != TURN_MODELICA) {
                         hang_check(h, currentTime, start, &next_warn, 1);
                     }
                 } else {
-                    SleepConditionVariableCS(&h->cv, &h->cs, INFINITE);
+                    mcu_condition_wait(&h->cv, &h->cs, MCU_WAIT_FOREVER);
                 }
             }
             if (h->script_done || h->script_error) {
@@ -1122,7 +1147,7 @@ static void sync_impl(void* handle_, double currentTime, size_t nPins, const int
             wake_at = next_scan;
         }
     }
-    LeaveCriticalSection(&h->cs);
+    mcu_mutex_unlock(&h->cs);
 
     if (error) {
         ModelicaFormatError("PyRuntime (%s, %s): %s", h->instanceName,

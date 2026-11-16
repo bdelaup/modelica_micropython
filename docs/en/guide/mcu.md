@@ -92,7 +92,7 @@ Pure Python computation, creating a pin, the ADC, PWM and reading the clock rema
 | `fsEnabled` | `false` | Enables the simulated flash. When disabled, `open()` and `os` raise `OSError` |
 | `fsSource` | `""` | Initial flash image: a folder (data, `boot.py`, `main.py`, `lib/`), given by any of its files, by its path or by a `modelica://` URI. Empty: blank flash |
 | `fsWorkspace` | `"."` | Folder where each simulation creates its copy of the flash, named `<instance>_<FS name>_<date>_<time>` (`blank` for a blank flash). Relative to the simulation folder |
-| `fsOpenExplorer` | `true` | Opens Windows Explorer on the copy at the end of the simulation |
+| `fsOpenExplorer` | `true` | Opens the copy at the end of the simulation: Windows Explorer or `xdg-open` on experimental Linux |
 
 The source image is never modified: each simulation starts from a fresh copy, whose path is shown in the log. To chain two simulations, use the copy left by the previous one as `fsSource`. Example image supplied: `Resources/FileSystems/datalogger/` (examples `FileSystem.Boot` and `FileSystem.Script`).
 

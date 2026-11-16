@@ -1,0 +1,10 @@
+Linux x86_64 CPython 3.12.16
+
+Source: python-build-standalone release 20261110, install_only_stripped
+Archive: cpython-3.12.16+20261110-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+SHA-256: 6a9e62dad033790aef722dbd370e0ce76ce17b73627ba3ae679f537049350b39
+URL: https://github.com/astral-sh/python-build-standalone/releases/tag/20261110
+
+The matching C headers are in Resources/Include/cpython312linux.
+The licenses directory contains the upstream license notices from the same
+release tag; CPython's license is also included in lib/python3.12/LICENSE.txt.

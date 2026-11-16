@@ -42,7 +42,7 @@ s8l3 := val(screen8.textCode[96], 1.15, f);    // ligne du message 5, 32e caract
 s8l8a := val(screen8.textCode[233], 1.15, f);  // '1' = 49
 s8l8b := val(screen8.textCode[234], 1.15, f);  // '0' = 48
 
-ret := system(".\\DisplayLarge.bat", "DisplayLarge_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\DisplayLarge.bat" else "./DisplayLarge", "DisplayLarge_run.txt");
 log := readFile("DisplayLarge_run.txt");
 (nStamp1, m1) := regex(log, "[[]t=0[.]100000 s[]] message 1 sent", 1);
 (nStamp10, m2) := regex(log, "[[]t=1[.]000000 s[]] message 10 sent", 1);

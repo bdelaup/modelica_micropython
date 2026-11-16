@@ -33,7 +33,7 @@ end MicroBitTables;"); getErrorString();
 
 buildModel(MicroBitTables, stopTime = 1.5, numberOfIntervals = 150, fileNamePrefix = "MicroBitTables");
 b := getErrorString();
-ret := system(".\\MicroBitTables.bat", "MicroBitTables_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\MicroBitTables.bat" else "./MicroBitTables", "MicroBitTables_run.txt");
 log := readFile("MicroBitTables_run.txt");
 
 // Marqueurs du script Python

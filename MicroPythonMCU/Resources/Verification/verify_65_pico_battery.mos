@@ -12,7 +12,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Pico.Battery, stopTime = 2.5, numberOfIntervals = 2500, fileNamePrefix = "PicoBattery");
 b := getErrorString();
-ret := system(".\\PicoBattery.bat", "PicoBattery_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\PicoBattery.bat" else "./PicoBattery", "PicoBattery_run.txt");
 log := readFile("PicoBattery_run.txt");
 (nVsys, m1) := regex(log, "VSYS = (2[.]9[0-9]|3[.]0[0-9]) V", 1);
 

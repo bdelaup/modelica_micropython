@@ -116,13 +116,18 @@ Le format **VCD** est celui qu'ouvrent les logiciels d'analyse logique. Il ne co
     - **UART** : voie *RX* = le fil à décoder, *Baud rate*, *Data bits*, *Parity*, *Stop bits* identiques à ceux du programme (`UART(0, baudrate=1200, bits=8, parity=0, stop=2, ...)` → 1200, 8, *even*, 2) ;
     - **I2C** : voies *SCL* et *SDA*.
 
-`pulseViewPath` reste vide, sauf cas particulier : la sonde **cherche PulseView d'elle-même**, dans cet ordre, et prend le premier trouvé :
+Sous Windows, `pulseViewPath` reste vide, sauf cas particulier : la sonde **cherche PulseView d'elle-même**, dans cet ordre, et prend le premier trouvé :
 
 | Ordre | Emplacement | Pour qui |
 |---|---|---|
 | 1 | La variable d'environnement `MICROPYTHONMCU_PULSEVIEW` : chemin de `pulseview.exe` ou de son dossier | Une salle de classe : une seule copie sur un partage réseau, la variable réglée une fois par poste (`setx MICROPYTHONMCU_PULSEVIEW "\\serveur\logiciels\PulseView"`) ou par l'administrateur |
 | 2 | Le dossier `PulseView` à côté de `MicroPythonMCU`, rempli par `get_pulseview.cmd` | Un poste personnel |
 | 3 | `C:\Program Files\sigrok\PulseView\`, où le place l'installeur de [sigrok.org](https://sigrok.org/wiki/Downloads) | Un poste où PulseView est déjà installé |
+
+Sous Linux expérimental, installer PulseView séparément : si `pulseViewPath`
+est vide, la sonde utilise `MICROPYTHONMCU_PULSEVIEW` (chemin de l'exécutable
+ou de son dossier), ou `pulseview` dans le `PATH` si cette variable est vide. L'ouverture du texte
+passe par `xdg-open` ; elle nécessite une session graphique.
 
 Introuvable : un avertissement au journal donne les chemins essayés, et la simulation se termine normalement. `pulseViewPath` renseigné court-circuite la recherche.
 

@@ -16,7 +16,7 @@ end UartFormats;"); getErrorString();
 
 buildModel(UartFormats, stopTime = 0.8, numberOfIntervals = 800, fileNamePrefix = "UartFormats");
 b := getErrorString();
-ret := system(".\UartFormats.bat", "UartFormats_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\UartFormats.bat" else "./UartFormats", "UartFormats_run.txt");
 log := readFile("UartFormats_run.txt");
 (nOk, m1) := regex(log, "formats ok: 24 / 24, invalid refused: 3 / 3", 1);
 (nErr, m2) := regex(log, "error on a received byte", 1);

@@ -18,7 +18,7 @@ loadFile("../../package.mo"); getErrorString();
 
 buildModel(MicroPythonMCU.Examples.Analyzer.UartErrors, stopTime = 0.4, numberOfIntervals = 400, fileNamePrefix = "UartErrors");
 b := getErrorString();
-ret1 := system(".\UartErrors.bat -override=analyzer.openText=false,analyzer.textWaveform=false,analyzer.writeVcd=false", "UartErrors_run1.txt");
+ret1 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\UartErrors.bat -override=analyzer.openText=false,analyzer.textWaveform=false,analyzer.writeVcd=false" else "./UartErrors -override=analyzer.openText=false,analyzer.textWaveform=false,analyzer.writeVcd=false", "UartErrors_run1.txt");
 log1 := readFile("UartErrors_run1.txt");
 txt1 := readFile("UartErrors.analyzer.txt");
 vcd1 := regularFileExists("UartErrors.analyzer.vcd");
@@ -26,7 +26,7 @@ vcd1 := regularFileExists("UartErrors.analyzer.vcd");
 (nRx, t2) := regex(txt1, "RX  burst 1  13.750 ms .. 163.750 ms  15 bytes, 15 with error \\(!P parity, !F stop bit low\\)\n +13.750 ms  48!65!6C!6C!6F!2C!20!70! 61!72!69!74!79!21!0A!", 1);
 (nWave1, t3) := regex(txt1, "Timing diagram", 1);
 
-ret2 := system(".\UartErrors.bat -override=analyzer.openText=false,analyzer.textBitLabels=false,analyzer.textSplitFrames=false,analyzer.textResolution=0.001", "UartErrors_run2.txt");
+ret2 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\UartErrors.bat -override=analyzer.openText=false,analyzer.textBitLabels=false,analyzer.textSplitFrames=false,analyzer.textResolution=0.001" else "./UartErrors -override=analyzer.openText=false,analyzer.textBitLabels=false,analyzer.textSplitFrames=false,analyzer.textResolution=0.001", "UartErrors_run2.txt");
 log2 := readFile("UartErrors_run2.txt");
 txt2 := readFile("UartErrors.analyzer.txt");
 (nScale, t4) := regex(txt2, "Timing diagram    1 column = 1.000 ms", 1);

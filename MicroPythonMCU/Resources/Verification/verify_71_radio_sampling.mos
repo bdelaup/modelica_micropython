@@ -16,16 +16,16 @@ loadFile("../../package.mo"); getErrorString();
 buildModel(MicroPythonMCU.Examples.Radio.Modulations, stopTime = 0.04, numberOfIntervals = 200, fileNamePrefix = "RadioSampling");
 b := getErrorString();
 
-ret1 := system(".\\RadioSampling.bat", "RadioSampling_run1.txt");
+ret1 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioSampling.bat" else "./RadioSampling", "RadioSampling_run1.txt");
 log1 := readFile("RadioSampling_run1.txt");
 (nFsk, m1) := regex(log1, "txFSK\\] output interval 0.0002 s: 0.83 point", 1);
 (nOok, m2) := regex(log1, "rxOOK\\] output interval 0.0002 s: 1 point", 1);
 
-ret2 := system(".\\RadioSampling.bat -override=stepSize=2.5e-6", "RadioSampling_run2.txt");
+ret2 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioSampling.bat -override=stepSize=2.5e-6" else "./RadioSampling -override=stepSize=2.5e-6", "RadioSampling_run2.txt");
 log2 := readFile("RadioSampling_run2.txt");
 (nNone, m3) := regex(log2, "drawn carrier", 1);
 
-ret3 := system(".\\RadioSampling.bat -override=numberOfIntervals=100,startTime=0,stopTime=0.04", "RadioSampling_run3.txt");
+ret3 := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\\RadioSampling.bat -override=numberOfIntervals=100,startTime=0,stopTime=0.04" else "./RadioSampling -override=numberOfIntervals=100,startTime=0,stopTime=0.04", "RadioSampling_run3.txt");
 log3 := readFile("RadioSampling_run3.txt");
 (nN, m4) := regex(log3, "txFSK\\] output interval 0.0004 s: 0.42 point", 1);
 

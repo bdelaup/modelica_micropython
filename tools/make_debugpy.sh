@@ -8,7 +8,7 @@
 #
 # Version figée ci-dessous : en changer, c'est rejouer verify_60 à verify_62.
 # La roue cp312 win_amd64 correspond à la distribution Python embarquée
-# (Resources/PythonRuntime, CPython 3.12 64 bits).
+# (Resources/PythonRuntime/windows-x86_64, CPython 3.12 64 bits).
 #
 # Allègement (~28 Mo -> ~5 Mo) : on retire ce qui ne sert qu'à s'attacher à
 # un process par son PID (injection de DLL, winappdbg, symboles .pdb, binaires

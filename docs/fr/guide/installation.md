@@ -2,6 +2,8 @@
 
 `MicroPythonMCU` fonctionne sous **Windows 64 bits** avec [OpenModelica](https://openmodelica.org/download/download-windows/) (OMEdit, testé avec les versions 1.24.4, 1.26.8 et 1.27.1). Le runtime Python est fourni avec la bibliothèque et le compilateur C est celui d'OpenModelica : rien d'autre à installer, sinon le *Microsoft Visual C++ Redistributable*, presque toujours déjà présent.
 
+Le portage **Linux x86-64** est expérimental et en cours de validation, notamment avec OpenModelica 1.24.4 dans un conteneur Ubuntu 22.04. La bibliothèque embarque aussi son propre runtime Python pour Linux ; elle ne nécessite pas le Python du système pour les simulations. Les autres distributions, architectures et l'utilisation graphique native ne sont pas encore validées.
+
 ## Choisir une version
 
 Chaque version de la bibliothèque est un **tag** du dépôt, de la forme `vX.Y.Z` (par exemple `v0.1.0`). La liste des versions est sur la [page des tags](https://gitlab.com/bdelaup/modelica_micropython/-/tags). Prendre la plus récente, sauf raison contraire.

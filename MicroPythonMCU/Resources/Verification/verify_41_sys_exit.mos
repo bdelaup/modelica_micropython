@@ -19,7 +19,7 @@ end SysExit;"); getErrorString();
 buildModel(SysExit, stopTime = 0.5, numberOfIntervals = 50, fileNamePrefix = "SysExit");
 b := getErrorString();
 
-ret := system(".\SysExit.bat", "SysExit_run.txt");
+ret := system(if getEnvironmentVar("OS") == "Windows_NT" then ".\SysExit.bat" else "./SysExit", "SysExit_run.txt");
 log := readFile("SysExit_run.txt");
 (nBefore, m1) := regex(log, "before exit", 1);
 (nAfter, m2) := regex(log, "after exit", 1);

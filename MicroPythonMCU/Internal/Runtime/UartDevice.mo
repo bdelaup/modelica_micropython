@@ -19,7 +19,7 @@ class UartDevice "External Object wrapping the state of an external serial devic
     input Real valueOutStart "Initial value of valueOut, before any capture";
     input Integer mode "1 = command table set by parameters, 2 = Python script";
     input String scriptPath "Path of the device's .py script (mode 2 only)";
-    input String pythonHome "Embedded Python distribution (Resources/PythonRuntime) - used to start CPython if no microcontroller has done it yet";
+    input String pythonHome "Root of the embedded Python distributions (Resources/PythonRuntime) - used to start CPython if no microcontroller has done it yet";
     input String instanceName "Component name, prefixed to the script's print() output";
     output UartDevice dev;
     // Library annotation: -lwinpthread links winpthread dynamically, otherwise ModelicaError crashes
@@ -27,7 +27,7 @@ class UartDevice "External Object wrapping the state of an external serial devic
     // "Comportement en cas d'exception non geree dans le script").
     external "C" dev = UartDevice_new(baudrate, dataBits, parity, stopBits, commandTable, terminator, responseDelay, respondEnabled, echoEnabled, periodicEnabled, period, periodicTemplate, valueOutStart, mode, scriptPath, pythonHome, instanceName) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end constructor;
 
@@ -35,7 +35,7 @@ class UartDevice "External Object wrapping the state of an external serial devic
     input UartDevice dev;
     external "C" UartDevice_destroy(dev) annotation(
       Include = "#include \"UartDeviceImpl.c\"",
-      Library = "-lwinpthread",
+      Library = "-lpthread",
       IncludeDirectory = "modelica://MicroPythonMCU/Resources/Include");
   end destructor;
 
